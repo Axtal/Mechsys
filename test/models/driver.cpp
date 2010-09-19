@@ -30,6 +30,7 @@
 #include <mechsys/models/unconv01.h>
 #include <mechsys/models/unconv02.h>
 #include <mechsys/models/unconv03.h>
+#include <mechsys/models/unconv04.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/numstreams.h>
@@ -40,6 +41,53 @@ using Util::_6_3;
 using Util::_8s;
 using Util::_10_6;
 using Util::SQ2;
+using Util::SQ3;
+using Util::PI;
+
+void LodeTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double dp, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs, double dexy=0., double deyz=0., double dezx=0.)
+{
+    Mat_t D;
+    Mdl->Stiffness (Sta, D);
+
+    double c = -SQ3*dp;
+    double dsx, dsy, dsz, dsxy, dsyz, dszx, dex, dey; 
+    if (fabs(fabs(LodeDeg)-90.0)<1.0e-14)
+    {
+        //printf("--------------------------------------\n");
+        dsx  = -((D(0,0)*(D(1,5)*D(2,1)-D(1,1)*D(2,5))+D(0,1)*(D(1,0)*D(2,5)-D(1,5)*D(2,0))+D(0,5)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dezx+(D(0,0)*(D(1,2)*D(2,1)-D(1,1)*D(2,2))+D(0,1)*(D(1,0)*D(2,2)-D(1,2)*D(2,0))+D(0,2)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dez+ (D(0,0)*(D(1,4)*D(2,1)-D(1,1)*D(2,4))+D(0,1)*(D(1,0)*D(2,4)-D(1,4)*D(2,0))+D(0,4)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*deyz+(D(0,0)*(D(1,3)*D(2,1)-D(1,1)*D(2,3))+D(0,1)*(D(1,0)*D(2,3)-D(1,3)*D(2,0))+D(0,3)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dexy+D(0,0)*D(1,1)*c-D(0,1)*D(1,0)*c)/(D(1,0)*D(2,1)+D(0,0)*(-D(2,1)-2*D(1,1))+D(0,1)*(D(2,0)+2*D(1,0))-D(1,1)*D(2,0));
+        dsy  = -((D(0,0)*(D(1,5)*D(2,1)-D(1,1)*D(2,5))+D(0,1)*(D(1,0)*D(2,5)-D(1,5)*D(2,0))+D(0,5)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dezx+(D(0,0)*(D(1,2)*D(2,1)-D(1,1)*D(2,2))+D(0,1)*(D(1,0)*D(2,2)-D(1,2)*D(2,0))+D(0,2)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dez+ (D(0,0)*(D(1,4)*D(2,1)-D(1,1)*D(2,4))+D(0,1)*(D(1,0)*D(2,4)-D(1,4)*D(2,0))+D(0,4)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*deyz+(D(0,0)*(D(1,3)*D(2,1)-D(1,1)*D(2,3))+D(0,1)*(D(1,0)*D(2,3)-D(1,3)*D(2,0))+D(0,3)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dexy+D(0,0)*D(1,1)*c-D(0,1)*D(1,0)*c)/(D(1,0)*D(2,1)+D(0,0)*(-D(2,1)-2*D(1,1))+D(0,1)*(D(2,0)+2*D(1,0))-D(1,1)*D(2,0));
+        dsz  =  ((D(0,0)*(2*D(1,5)*D(2,1)-2*D(1,1)*D(2,5))+D(0,1)*(2*D(1,0)*D(2,5)-2*D(1,5)*D(2,0))+D(0,5)*(2*D(1,1)*D(2,0)-2*D(1,0)*D(2,1)))*dezx+ (D(0,0)*(2*D(1,2)*D(2,1)-2*D(1,1)*D(2,2))+D(0,1)*(2*D(1,0)*D(2,2)-2*D(1,2)*D(2,0))+D(0,2)*(2*D(1,1)*D(2,0)-2*D(1,0)*D(2,1)))*dez+(D(0,0)*(2*D(1,4)*D(2,1)-2*D(1,1)*D(2,4))+D(0,1)*(2*D(1,0)*D(2,4)-2*D(1,4)*D(2,0))+D(0,4)*(2*D(1,1)*D(2,0)-2*D(1,0)*D(2,1)))*deyz+ (D(0,0)*(2*D(1,3)*D(2,1)-2*D(1,1)*D(2,3))+D(0,1)*(2*D(1,0)*D(2,3)-2*D(1,3)*D(2,0))+D(0,3)*(2*D(1,1)*D(2,0)-2*D(1,0)*D(2,1)))*dexy+D(1,0)*D(2,1)*c-D(0,0)*D(2,1)*c-D(1,1)*D(2,0)*c+D(0,1)*D(2,0)*c)/(D(1,0)*D(2,1)+D(0,0)*(-D(2,1)-2*D(1,1))+D(0,1)*(D(2,0)+2*D(1,0))- D(1,1)*D(2,0));
+        dsxy =  ((D(1,0)*(D(2,1)*D(3,5)-D(2,5)*D(3,1))+D(0,0)*(-D(2,1)*D(3,5)-2*D(1,1)*D(3,5)+D(2,5)*D(3,1)+2*D(1,5)*D(3,1))+D(0,1)*(D(2,0)*D(3,5)+2*D(1,0)*D(3,5)-D(2,5)*D(3,0)-2*D(1,5)*D(3,0))+D(1,1)*(D(2,5)*D(3,0)-D(2,0)*D(3,5))+D(1,5)*(D(2,0)*D(3,1)-D(2,1)*D(3,0)) +D(0,5)*(-D(2,0)*D(3,1)-2*D(1,0)*D(3,1)+D(2,1)*D(3,0)+2*D(1,1)*D(3,0)))*dezx+(D(1,0)*(D(2,1)*D(3,2)-D(2,2)*D(3,1))+D(0,0)*(-D(2,1)*D(3,2)-2*D(1,1)*D(3,2)+D(2,2)*D(3,1)+2*D(1,2)*D(3,1))+D(0,1)*(D(2,0)*D(3,2)+2*D(1,0)*D(3,2)-D(2,2)*D(3,0)-2*D(1,2)*D(3,0))+D(1,1)* (D(2,2)*D(3,0)-D(2,0)*D(3,2))+D(1,2)*(D(2,0)*D(3,1)-D(2,1)*D(3,0))+D(0,2)*(-D(2,0)*D(3,1)-2*D(1,0)*D(3,1)+D(2,1)*D(3,0)+2*D(1,1)*D(3,0)))*dez+(D(1,0)*(D(2,1)*D(3,4)-D(2,4)*D(3,1))+D(0,0)*(-D(2,1)*D(3,4)-2*D(1,1)*D(3,4)+D(2,4)*D(3,1)+2*D(1,4)*D(3,1))+D(0,1)* (D(2,0)*D(3,4)+2*D(1,0)*D(3,4)-D(2,4)*D(3,0)-2*D(1,4)*D(3,0))+D(1,1)*(D(2,4)*D(3,0)-D(2,0)*D(3,4))+D(1,4)*(D(2,0)*D(3,1)-D(2,1)*D(3,0))+D(0,4)*(-D(2,0)*D(3,1)-2*D(1,0)*D(3,1)+D(2,1)*D(3,0)+2*D(1,1)*D(3,0)))*deyz+(D(1,0)*(D(2,1)*D(3,3)-D(2,3)*D(3,1))+D(0,0)* (-D(2,1)*D(3,3)-2*D(1,1)*D(3,3)+D(2,3)*D(3,1)+2*D(1,3)*D(3,1))+D(0,1)*(D(2,0)*D(3,3)+2*D(1,0)*D(3,3)-D(2,3)*D(3,0)-2*D(1,3)*D(3,0))+D(1,1)*(D(2,3)*D(3,0)-D(2,0)*D(3,3))+D(1,3)*(D(2,0)*D(3,1)-D(2,1)*D(3,0))+D(0,3)* (-D(2,0)*D(3,1)-2*D(1,0)*D(3,1)+D(2,1)*D(3,0)+2*D(1,1)*D(3,0)))*dexy+D(1,0)*D(3,1)*c-D(0,0)*D(3,1)*c-D(1,1)*D(3,0)*c+D(0,1)*D(3,0)*c)/(D(1,0)*D(2,1)+D(0,0)*(-D(2,1)-2*D(1,1))+D(0,1)*(D(2,0)+2*D(1,0))-D(1,1)*D(2,0));
+        dsyz =  ((D(1,0)*(D(2,1)*D(4,5)-D(2,5)*D(4,1))+D(0,0)*(-D(2,1)*D(4,5)-2*D(1,1)*D(4,5)+D(2,5)*D(4,1)+2*D(1,5)*D(4,1))+D(0,1)*(D(2,0)*D(4,5)+2*D(1,0)*D(4,5)-D(2,5)*D(4,0)-2*D(1,5)*D(4,0))+D(1,1)*(D(2,5)*D(4,0)-D(2,0)*D(4,5))+D(1,5)*(D(2,0)*D(4,1)-D(2,1)*D(4,0)) +D(0,5)*(-D(2,0)*D(4,1)-2*D(1,0)*D(4,1)+D(2,1)*D(4,0)+2*D(1,1)*D(4,0)))*dezx+(D(1,0)*(D(2,1)*D(4,2)-D(2,2)*D(4,1))+D(0,0)*(-D(2,1)*D(4,2)-2*D(1,1)*D(4,2)+D(2,2)*D(4,1)+2*D(1,2)*D(4,1))+D(0,1)*(D(2,0)*D(4,2)+2*D(1,0)*D(4,2)-D(2,2)*D(4,0)-2*D(1,2)*D(4,0))+D(1,1)* (D(2,2)*D(4,0)-D(2,0)*D(4,2))+D(1,2)*(D(2,0)*D(4,1)-D(2,1)*D(4,0))+D(0,2)*(-D(2,0)*D(4,1)-2*D(1,0)*D(4,1)+D(2,1)*D(4,0)+2*D(1,1)*D(4,0)))*dez+(D(1,0)*(D(2,1)*D(4,4)-D(2,4)*D(4,1))+D(0,0)*(-D(2,1)*D(4,4)-2*D(1,1)*D(4,4)+D(2,4)*D(4,1)+2*D(1,4)*D(4,1))+D(0,1)* (D(2,0)*D(4,4)+2*D(1,0)*D(4,4)-D(2,4)*D(4,0)-2*D(1,4)*D(4,0))+D(1,1)*(D(2,4)*D(4,0)-D(2,0)*D(4,4))+D(1,4)*(D(2,0)*D(4,1)-D(2,1)*D(4,0))+D(0,4)*(-D(2,0)*D(4,1)-2*D(1,0)*D(4,1)+D(2,1)*D(4,0)+2*D(1,1)*D(4,0)))*deyz+(D(1,0)*(D(2,1)*D(4,3)-D(2,3)*D(4,1))+D(0,0)* (-D(2,1)*D(4,3)-2*D(1,1)*D(4,3)+D(2,3)*D(4,1)+2*D(1,3)*D(4,1))+D(0,1)*(D(2,0)*D(4,3)+2*D(1,0)*D(4,3)-D(2,3)*D(4,0)-2*D(1,3)*D(4,0))+D(1,1)*(D(2,3)*D(4,0)-D(2,0)*D(4,3))+D(1,3)*(D(2,0)*D(4,1)-D(2,1)*D(4,0))+D(0,3)* (-D(2,0)*D(4,1)-2*D(1,0)*D(4,1)+D(2,1)*D(4,0)+2*D(1,1)*D(4,0)))*dexy+D(1,0)*D(4,1)*c-D(0,0)*D(4,1)*c-D(1,1)*D(4,0)*c+D(0,1)*D(4,0)*c)/(D(1,0)*D(2,1)+D(0,0)*(-D(2,1)-2*D(1,1))+D(0,1)*(D(2,0)+2*D(1,0))-D(1,1)*D(2,0));
+        dszx =  ((D(1,0)*(D(2,1)*D(5,5)-D(2,5)*D(5,1))+D(0,0)*(-D(2,1)*D(5,5)-2*D(1,1)*D(5,5)+D(2,5)*D(5,1)+2*D(1,5)*D(5,1))+D(0,1)*(D(2,0)*D(5,5)+2*D(1,0)*D(5,5)-D(2,5)*D(5,0)-2*D(1,5)*D(5,0))+D(1,1)*(D(2,5)*D(5,0)-D(2,0)*D(5,5))+D(1,5)*(D(2,0)*D(5,1)-D(2,1)*D(5,0)) +D(0,5)*(-D(2,0)*D(5,1)-2*D(1,0)*D(5,1)+D(2,1)*D(5,0)+2*D(1,1)*D(5,0)))*dezx+(D(1,0)*(D(2,1)*D(5,2)-D(2,2)*D(5,1))+D(0,0)*(-D(2,1)*D(5,2)-2*D(1,1)*D(5,2)+D(2,2)*D(5,1)+2*D(1,2)*D(5,1))+D(0,1)*(D(2,0)*D(5,2)+2*D(1,0)*D(5,2)-D(2,2)*D(5,0)-2*D(1,2)*D(5,0))+D(1,1)* (D(2,2)*D(5,0)-D(2,0)*D(5,2))+D(1,2)*(D(2,0)*D(5,1)-D(2,1)*D(5,0))+D(0,2)*(-D(2,0)*D(5,1)-2*D(1,0)*D(5,1)+D(2,1)*D(5,0)+2*D(1,1)*D(5,0)))*dez+(D(1,0)*(D(2,1)*D(5,4)-D(2,4)*D(5,1))+D(0,0)*(-D(2,1)*D(5,4)-2*D(1,1)*D(5,4)+D(2,4)*D(5,1)+2*D(1,4)*D(5,1))+D(0,1)* (D(2,0)*D(5,4)+2*D(1,0)*D(5,4)-D(2,4)*D(5,0)-2*D(1,4)*D(5,0))+D(1,1)*(D(2,4)*D(5,0)-D(2,0)*D(5,4))+D(1,4)*(D(2,0)*D(5,1)-D(2,1)*D(5,0))+D(0,4)*(-D(2,0)*D(5,1)-2*D(1,0)*D(5,1)+D(2,1)*D(5,0)+2*D(1,1)*D(5,0)))*deyz+(D(1,0)*(D(2,1)*D(5,3)-D(2,3)*D(5,1))+D(0,0)* (-D(2,1)*D(5,3)-2*D(1,1)*D(5,3)+D(2,3)*D(5,1)+2*D(1,3)*D(5,1))+D(0,1)*(D(2,0)*D(5,3)+2*D(1,0)*D(5,3)-D(2,3)*D(5,0)-2*D(1,3)*D(5,0))+D(1,1)*(D(2,3)*D(5,0)-D(2,0)*D(5,3))+D(1,3)*(D(2,0)*D(5,1)-D(2,1)*D(5,0))+D(0,3)* (-D(2,0)*D(5,1)-2*D(1,0)*D(5,1)+D(2,1)*D(5,0)+2*D(1,1)*D(5,0)))*dexy+D(1,0)*D(5,1)*c-D(0,0)*D(5,1)*c-D(1,1)*D(5,0)*c+D(0,1)*D(5,0)*c)/(D(1,0)*D(2,1)+D(0,0)*(-D(2,1)-2*D(1,1))+D(0,1)*(D(2,0)+2*D(1,0))-D(1,1)*D(2,0));
+        dex  =  ((D(1,1)*D(2,5)+D(0,1)*(-D(2,5)-2*D(1,5))+D(0,5)*(D(2,1)+2*D(1,1))-D(1,5)*D(2,1))*dezx+(D(1,1)*D(2,2)+D(0,1)*(-D(2,2)-2*D(1,2))+D(0,2)*(D(2,1)+2*D(1,1))-D(1,2)*D(2,1))*dez+ (D(1,1)*D(2,4)+D(0,1)*(-D(2,4)-2*D(1,4))+D(0,4)*(D(2,1)+2*D(1,1))-D(1,4)*D(2,1))*deyz+(D(1,1)*D(2,3)+D(0,1)*(-D(2,3)-2*D(1,3))+D(0,3)*(D(2,1)+2*D(1,1))-D(1,3)*D(2,1))*dexy-D(1,1)*c+D(0,1)*c)/(D(1,0)*D(2,1)+D(0,0)*(-D(2,1)-2*D(1,1))+D(0,1)* (D(2,0)+2*D(1,0))-D(1,1)*D(2,0));
+        dey  = -((D(1,0)*D(2,5)+D(0,0)*(-D(2,5)-2*D(1,5))+D(0,5)*(D(2,0)+2*D(1,0))-D(1,5)*D(2,0))*dezx+(D(1,0)*D(2,2)+D(0,0)*(-D(2,2)-2*D(1,2))+D(0,2)*(D(2,0)+2*D(1,0))-D(1,2)*D(2,0))*dez+ (D(1,0)*D(2,4)+D(0,0)*(-D(2,4)-2*D(1,4))+D(0,4)*(D(2,0)+2*D(1,0))-D(1,4)*D(2,0))*deyz+(D(1,0)*D(2,3)+D(0,0)*(-D(2,3)-2*D(1,3))+D(0,3)*(D(2,0)+2*D(1,0))-D(1,3)*D(2,0))*dexy-D(1,0)*c+D(0,0)*c)/(D(1,0)*D(2,1)+D(0,0)*(-D(2,1)-2*D(1,1))+D(0,1)* (D(2,0)+2*D(1,0))-D(1,1)*D(2,0));
+    }
+    else
+    {
+        double lode = LodeDeg*PI/180.;
+        double m    = tan(lode);
+        double a    = (1.0-SQ3*m)/2.;
+        double b    = (1.0+SQ3*m)/2.;
+        dsx  =  ((D(0,1)*(D(1,0)*D(2,5)*(a+1)+D(1,5)*D(2,0)*(-a-1))+D(0,0)*(D(1,5)*D(2,1)*(a+1)+D(1,1)*D(2,5)*(-a-1))+D(0,5)*(D(1,1)*D(2,0)*(a+1)+D(1,0)*D(2,1)*(-a-1)))*dezx+ (D(0,1)*(D(1,0)*D(2,2)*(a+1)+D(1,2)*D(2,0)*(-a-1))+D(0,0)*(D(1,2)*D(2,1)*(a+1)+D(1,1)*D(2,2)*(-a-1))+D(0,2)*(D(1,1)*D(2,0)*(a+1)+D(1,0)*D(2,1)*(-a-1)))*dez+ (D(0,1)*(D(1,0)*D(2,4)*(a+1)+D(1,4)*D(2,0)*(-a-1))+D(0,0)*(D(1,4)*D(2,1)*(a+1)+D(1,1)*D(2,4)*(-a-1))+D(0,4)*(D(1,1)*D(2,0)*(a+1)+D(1,0)*D(2,1)*(-a-1)))*deyz+ (D(0,1)*(D(1,0)*D(2,3)*(a+1)+D(1,3)*D(2,0)*(-a-1))+D(0,0)*(D(1,3)*D(2,1)*(a+1)+D(1,1)*D(2,3)*(-a-1))+D(0,3)*(D(1,1)*D(2,0)*(a+1)+D(1,0)*D(2,1)*(-a-1)))*dexy+D(0,0)*(D(1,1)*a*c-D(2,1)*c)+D(0,1)*(D(2,0)*c-D(1,0)*a*c))/(D(0,1)* (D(1,0)*(b-a)+D(2,0)*(b+1))+D(0,0)*(D(1,1)*(a-b)+D(2,1)*(-b-1))+D(1,1)*D(2,0)*(a+1)+D(1,0)*D(2,1)*(-a-1));
+        dsy  = -((D(0,1)*(D(1,0)*D(2,5)*(b+1)+D(1,5)*D(2,0)*(-b-1))+D(0,0)*(D(1,5)*D(2,1)*(b+1)+D(1,1)*D(2,5)*(-b-1))+D(0,5)*(D(1,1)*D(2,0)*(b+1)+D(1,0)*D(2,1)*(-b-1)))*dezx+ (D(0,1)*(D(1,0)*D(2,2)*(b+1)+D(1,2)*D(2,0)*(-b-1))+D(0,0)*(D(1,2)*D(2,1)*(b+1)+D(1,1)*D(2,2)*(-b-1))+D(0,2)*(D(1,1)*D(2,0)*(b+1)+D(1,0)*D(2,1)*(-b-1)))*dez+ (D(0,1)*(D(1,0)*D(2,4)*(b+1)+D(1,4)*D(2,0)*(-b-1))+D(0,0)*(D(1,4)*D(2,1)*(b+1)+D(1,1)*D(2,4)*(-b-1))+D(0,4)*(D(1,1)*D(2,0)*(b+1)+D(1,0)*D(2,1)*(-b-1)))*deyz+ (D(0,1)*(D(1,0)*D(2,3)*(b+1)+D(1,3)*D(2,0)*(-b-1))+D(0,0)*(D(1,3)*D(2,1)*(b+1)+D(1,1)*D(2,3)*(-b-1))+D(0,3)*(D(1,1)*D(2,0)*(b+1)+D(1,0)*D(2,1)*(-b-1)))*dexy+D(0,0)*D(1,1)*b*c-D(0,1)*D(1,0)*b*c+D(1,0)*D(2,1)*c-D(1,1)*D(2,0)*c)/(D(0,1)* (D(1,0)*(b-a)+D(2,0)*(b+1))+D(0,0)*(D(1,1)*(a-b)+D(2,1)*(-b-1))+D(1,1)*D(2,0)*(a+1)+D(1,0)*D(2,1)*(-a-1));
+        dsz  =  ((D(0,1)*(D(1,0)*D(2,5)*(b-a)+D(1,5)*D(2,0)*(a-b))+D(0,0)*(D(1,5)*D(2,1)*(b-a)+D(1,1)*D(2,5)*(a-b))+D(0,5)*(D(1,1)*D(2,0)*(b-a)+D(1,0)*D(2,1)*(a-b)))*dezx+ (D(0,1)*(D(1,0)*D(2,2)*(b-a)+D(1,2)*D(2,0)*(a-b))+D(0,0)*(D(1,2)*D(2,1)*(b-a)+D(1,1)*D(2,2)*(a-b))+D(0,2)*(D(1,1)*D(2,0)*(b-a)+D(1,0)*D(2,1)*(a-b)))*dez+ (D(0,1)*(D(1,0)*D(2,4)*(b-a)+D(1,4)*D(2,0)*(a-b))+D(0,0)*(D(1,4)*D(2,1)*(b-a)+D(1,1)*D(2,4)*(a-b))+D(0,4)*(D(1,1)*D(2,0)*(b-a)+D(1,0)*D(2,1)*(a-b)))*deyz+ (D(0,1)*(D(1,0)*D(2,3)*(b-a)+D(1,3)*D(2,0)*(a-b))+D(0,0)*(D(1,3)*D(2,1)*(b-a)+D(1,1)*D(2,3)*(a-b))+D(0,3)*(D(1,1)*D(2,0)*(b-a)+D(1,0)*D(2,1)*(a-b)))*dexy-D(0,0)*D(2,1)*b*c+D(0,1)*D(2,0)*b*c-D(1,0)*D(2,1)*a*c+D(1,1)*D(2,0)*a*c)/(D(0,1)* (D(1,0)*(b-a)+D(2,0)*(b+1))+D(0,0)*(D(1,1)*(a-b)+D(2,1)*(-b-1))+D(1,1)*D(2,0)*(a+1)+D(1,0)*D(2,1)*(-a-1));
+        dsxy =  ((D(0,1)*(D(1,0)*D(3,5)*(b-a)+D(2,0)*D(3,5)*(b+1)+D(1,5)*D(3,0)*(a-b)+D(2,5)*D(3,0)*(-b-1))+D(0,0)*(D(1,5)*D(3,1)*(b-a)+D(2,5)*D(3,1)*(b+1)+D(1,1)*D(3,5)*(a-b)+D(2,1)*D(3,5)*(-b-1))+D(0,5)* (D(1,1)*D(3,0)*(b-a)+D(2,1)*D(3,0)*(b+1)+D(1,0)*D(3,1)*(a-b)+D(2,0)*D(3,1)*(-b-1))+D(1,1)*(D(2,0)*D(3,5)*(a+1)+D(2,5)*D(3,0)*(-a-1))+D(1,0)*(D(2,5)*D(3,1)*(a+1)+D(2,1)*D(3,5)*(-a-1))+D(1,5)*(D(2,1)*D(3,0)*(a+1)+D(2,0)*D(3,1)*(-a-1)))*dezx+( D(0,1)*(D(1,0)*D(3,2)*(b-a)+D(2,0)*D(3,2)*(b+1)+D(1,2)*D(3,0)*(a-b)+D(2,2)*D(3,0)*(-b-1))+D(0,0)*(D(1,2)*D(3,1)*(b-a)+D(2,2)*D(3,1)*(b+1)+D(1,1)*D(3,2)*(a-b)+D(2,1)*D(3,2)*(-b-1))+D(0,2)* (D(1,1)*D(3,0)*(b-a)+D(2,1)*D(3,0)*(b+1)+D(1,0)*D(3,1)*(a-b)+D(2,0)*D(3,1)*(-b-1))+D(1,1)*(D(2,0)*D(3,2)*(a+1)+D(2,2)*D(3,0)*(-a-1))+D(1,0)*(D(2,2)*D(3,1)*(a+1)+D(2,1)*D(3,2)*(-a-1))+D(1,2)*(D(2,1)*D(3,0)*(a+1)+D(2,0)*D(3,1)*(-a-1)))*dez+( D(0,1)*(D(1,0)*D(3,4)*(b-a)+D(2,0)*D(3,4)*(b+1)+D(1,4)*D(3,0)*(a-b)+D(2,4)*D(3,0)*(-b-1))+D(0,0)*(D(1,4)*D(3,1)*(b-a)+D(2,4)*D(3,1)*(b+1)+D(1,1)*D(3,4)*(a-b)+D(2,1)*D(3,4)*(-b-1))+D(0,4)* (D(1,1)*D(3,0)*(b-a)+D(2,1)*D(3,0)*(b+1)+D(1,0)*D(3,1)*(a-b)+D(2,0)*D(3,1)*(-b-1))+D(1,1)*(D(2,0)*D(3,4)*(a+1)+D(2,4)*D(3,0)*(-a-1))+D(1,0)*(D(2,4)*D(3,1)*(a+1)+D(2,1)*D(3,4)*(-a-1))+D(1,4)*(D(2,1)*D(3,0)*(a+1)+D(2,0)*D(3,1)*(-a-1)))*deyz+( D(0,1)*(D(1,0)*D(3,3)*(b-a)+D(2,0)*D(3,3)*(b+1)+D(1,3)*D(3,0)*(a-b)+D(2,3)*D(3,0)*(-b-1))+D(0,0)*(D(1,3)*D(3,1)*(b-a)+D(2,3)*D(3,1)*(b+1)+D(1,1)*D(3,3)*(a-b)+D(2,1)*D(3,3)*(-b-1))+D(0,3)* (D(1,1)*D(3,0)*(b-a)+D(2,1)*D(3,0)*(b+1)+D(1,0)*D(3,1)*(a-b)+D(2,0)*D(3,1)*(-b-1))+D(1,1)*(D(2,0)*D(3,3)*(a+1)+D(2,3)*D(3,0)*(-a-1))+D(1,0)*(D(2,3)*D(3,1)*(a+1)+D(2,1)*D(3,3)*(-a-1))+D(1,3)*(D(2,1)*D(3,0)*(a+1)+D(2,0)*D(3,1)*(-a-1)))*dexy-D(0,0)* D(3,1)*b*c+D(0,1)*D(3,0)*b*c-D(1,0)*D(3,1)*a*c+D(1,1)*D(3,0)*a*c+D(2,0)*D(3,1)*c-D(2,1)*D(3,0)*c)/(D(0,1)*(D(1,0)*(b-a)+D(2,0)*(b+1))+D(0,0)*(D(1,1)*(a-b)+D(2,1)*(-b-1))+D(1,1)*D(2,0)*(a+1)+D(1,0)*D(2,1)*(-a-1));
+        dsyz =  ((D(0,1)*(D(1,0)*D(4,5)*(b-a)+D(2,0)*D(4,5)*(b+1)+D(1,5)*D(4,0)*(a-b)+D(2,5)*D(4,0)*(-b-1))+D(0,0)*(D(1,5)*D(4,1)*(b-a)+D(2,5)*D(4,1)*(b+1)+D(1,1)*D(4,5)*(a-b)+D(2,1)*D(4,5)*(-b-1))+D(0,5)* (D(1,1)*D(4,0)*(b-a)+D(2,1)*D(4,0)*(b+1)+D(1,0)*D(4,1)*(a-b)+D(2,0)*D(4,1)*(-b-1))+D(1,1)*(D(2,0)*D(4,5)*(a+1)+D(2,5)*D(4,0)*(-a-1))+D(1,0)*(D(2,5)*D(4,1)*(a+1)+D(2,1)*D(4,5)*(-a-1))+D(1,5)*(D(2,1)*D(4,0)*(a+1)+D(2,0)*D(4,1)*(-a-1)))*dezx+( D(0,1)*(D(1,0)*D(4,2)*(b-a)+D(2,0)*D(4,2)*(b+1)+D(1,2)*D(4,0)*(a-b)+D(2,2)*D(4,0)*(-b-1))+D(0,0)*(D(1,2)*D(4,1)*(b-a)+D(2,2)*D(4,1)*(b+1)+D(1,1)*D(4,2)*(a-b)+D(2,1)*D(4,2)*(-b-1))+D(0,2)* (D(1,1)*D(4,0)*(b-a)+D(2,1)*D(4,0)*(b+1)+D(1,0)*D(4,1)*(a-b)+D(2,0)*D(4,1)*(-b-1))+D(1,1)*(D(2,0)*D(4,2)*(a+1)+D(2,2)*D(4,0)*(-a-1))+D(1,0)*(D(2,2)*D(4,1)*(a+1)+D(2,1)*D(4,2)*(-a-1))+D(1,2)*(D(2,1)*D(4,0)*(a+1)+D(2,0)*D(4,1)*(-a-1)))*dez+( D(0,1)*(D(1,0)*D(4,4)*(b-a)+D(2,0)*D(4,4)*(b+1)+D(1,4)*D(4,0)*(a-b)+D(2,4)*D(4,0)*(-b-1))+D(0,0)*(D(1,4)*D(4,1)*(b-a)+D(2,4)*D(4,1)*(b+1)+D(1,1)*D(4,4)*(a-b)+D(2,1)*D(4,4)*(-b-1))+D(0,4)* (D(1,1)*D(4,0)*(b-a)+D(2,1)*D(4,0)*(b+1)+D(1,0)*D(4,1)*(a-b)+D(2,0)*D(4,1)*(-b-1))+D(1,1)*(D(2,0)*D(4,4)*(a+1)+D(2,4)*D(4,0)*(-a-1))+D(1,0)*(D(2,4)*D(4,1)*(a+1)+D(2,1)*D(4,4)*(-a-1))+D(1,4)*(D(2,1)*D(4,0)*(a+1)+D(2,0)*D(4,1)*(-a-1)))*deyz+( D(0,1)*(D(1,0)*D(4,3)*(b-a)+D(2,0)*D(4,3)*(b+1)+D(1,3)*D(4,0)*(a-b)+D(2,3)*D(4,0)*(-b-1))+D(0,0)*(D(1,3)*D(4,1)*(b-a)+D(2,3)*D(4,1)*(b+1)+D(1,1)*D(4,3)*(a-b)+D(2,1)*D(4,3)*(-b-1))+D(0,3)* (D(1,1)*D(4,0)*(b-a)+D(2,1)*D(4,0)*(b+1)+D(1,0)*D(4,1)*(a-b)+D(2,0)*D(4,1)*(-b-1))+D(1,1)*(D(2,0)*D(4,3)*(a+1)+D(2,3)*D(4,0)*(-a-1))+D(1,0)*(D(2,3)*D(4,1)*(a+1)+D(2,1)*D(4,3)*(-a-1))+D(1,3)*(D(2,1)*D(4,0)*(a+1)+D(2,0)*D(4,1)*(-a-1)))*dexy-D(0,0)* D(4,1)*b*c+D(0,1)*D(4,0)*b*c-D(1,0)*D(4,1)*a*c+D(1,1)*D(4,0)*a*c+D(2,0)*D(4,1)*c-D(2,1)*D(4,0)*c)/(D(0,1)*(D(1,0)*(b-a)+D(2,0)*(b+1))+D(0,0)*(D(1,1)*(a-b)+D(2,1)*(-b-1))+D(1,1)*D(2,0)*(a+1)+D(1,0)*D(2,1)*(-a-1));
+        dszx =  ((D(0,1)*(D(1,0)*D(5,5)*(b-a)+D(2,0)*D(5,5)*(b+1)+D(1,5)*D(5,0)*(a-b)+D(2,5)*D(5,0)*(-b-1))+D(0,0)*(D(1,5)*D(5,1)*(b-a)+D(2,5)*D(5,1)*(b+1)+D(1,1)*D(5,5)*(a-b)+D(2,1)*D(5,5)*(-b-1))+D(0,5)* (D(1,1)*D(5,0)*(b-a)+D(2,1)*D(5,0)*(b+1)+D(1,0)*D(5,1)*(a-b)+D(2,0)*D(5,1)*(-b-1))+D(1,1)*(D(2,0)*D(5,5)*(a+1)+D(2,5)*D(5,0)*(-a-1))+D(1,0)*(D(2,5)*D(5,1)*(a+1)+D(2,1)*D(5,5)*(-a-1))+D(1,5)*(D(2,1)*D(5,0)*(a+1)+D(2,0)*D(5,1)*(-a-1)))*dezx+( D(0,1)*(D(1,0)*D(5,2)*(b-a)+D(2,0)*D(5,2)*(b+1)+D(1,2)*D(5,0)*(a-b)+D(2,2)*D(5,0)*(-b-1))+D(0,0)*(D(1,2)*D(5,1)*(b-a)+D(2,2)*D(5,1)*(b+1)+D(1,1)*D(5,2)*(a-b)+D(2,1)*D(5,2)*(-b-1))+D(0,2)* (D(1,1)*D(5,0)*(b-a)+D(2,1)*D(5,0)*(b+1)+D(1,0)*D(5,1)*(a-b)+D(2,0)*D(5,1)*(-b-1))+D(1,1)*(D(2,0)*D(5,2)*(a+1)+D(2,2)*D(5,0)*(-a-1))+D(1,0)*(D(2,2)*D(5,1)*(a+1)+D(2,1)*D(5,2)*(-a-1))+D(1,2)*(D(2,1)*D(5,0)*(a+1)+D(2,0)*D(5,1)*(-a-1)))*dez+( D(0,1)*(D(1,0)*D(5,4)*(b-a)+D(2,0)*D(5,4)*(b+1)+D(1,4)*D(5,0)*(a-b)+D(2,4)*D(5,0)*(-b-1))+D(0,0)*(D(1,4)*D(5,1)*(b-a)+D(2,4)*D(5,1)*(b+1)+D(1,1)*D(5,4)*(a-b)+D(2,1)*D(5,4)*(-b-1))+D(0,4)* (D(1,1)*D(5,0)*(b-a)+D(2,1)*D(5,0)*(b+1)+D(1,0)*D(5,1)*(a-b)+D(2,0)*D(5,1)*(-b-1))+D(1,1)*(D(2,0)*D(5,4)*(a+1)+D(2,4)*D(5,0)*(-a-1))+D(1,0)*(D(2,4)*D(5,1)*(a+1)+D(2,1)*D(5,4)*(-a-1))+D(1,4)*(D(2,1)*D(5,0)*(a+1)+D(2,0)*D(5,1)*(-a-1)))*deyz+( D(0,1)*(D(1,0)*D(5,3)*(b-a)+D(2,0)*D(5,3)*(b+1)+D(1,3)*D(5,0)*(a-b)+D(2,3)*D(5,0)*(-b-1))+D(0,0)*(D(1,3)*D(5,1)*(b-a)+D(2,3)*D(5,1)*(b+1)+D(1,1)*D(5,3)*(a-b)+D(2,1)*D(5,3)*(-b-1))+D(0,3)* (D(1,1)*D(5,0)*(b-a)+D(2,1)*D(5,0)*(b+1)+D(1,0)*D(5,1)*(a-b)+D(2,0)*D(5,1)*(-b-1))+D(1,1)*(D(2,0)*D(5,3)*(a+1)+D(2,3)*D(5,0)*(-a-1))+D(1,0)*(D(2,3)*D(5,1)*(a+1)+D(2,1)*D(5,3)*(-a-1))+D(1,3)*(D(2,1)*D(5,0)*(a+1)+D(2,0)*D(5,1)*(-a-1)))*dexy-D(0,0)* D(5,1)*b*c+D(0,1)*D(5,0)*b*c-D(1,0)*D(5,1)*a*c+D(1,1)*D(5,0)*a*c+D(2,0)*D(5,1)*c-D(2,1)*D(5,0)*c)/(D(0,1)*(D(1,0)*(b-a)+D(2,0)*(b+1))+D(0,0)*(D(1,1)*(a-b)+D(2,1)*(-b-1))+D(1,1)*D(2,0)*(a+1)+D(1,0)*D(2,1)*(-a-1));
+        dex  =  ((D(0,5)*(D(1,1)*(b-a)+D(2,1)*(b+1))+D(0,1)*(D(1,5)*(a-b)+D(2,5)*(-b-1))+D(1,5)*D(2,1)*(a+1)+D(1,1)*D(2,5)*(-a-1))*dezx+ (D(0,2)*(D(1,1)*(b-a)+D(2,1)*(b+1))+D(0,1)*(D(1,2)*(a-b)+D(2,2)*(-b-1))+D(1,2)*D(2,1)*(a+1)+D(1,1)*D(2,2)*(-a-1))*dez+(D(0,4)*(D(1,1)*(b-a)+D(2,1)*(b+1))+D(0,1)*(D(1,4)*(a-b)+D(2,4)*(-b-1))+D(1,4)*D(2,1)*(a+1)+D(1,1)*D(2,4)*(-a-1))* deyz+(D(0,3)*(D(1,1)*(b-a)+D(2,1)*(b+1))+D(0,1)*(D(1,3)*(a-b)+D(2,3)*(-b-1))+D(1,3)*D(2,1)*(a+1)+D(1,1)*D(2,3)*(-a-1))*dexy+D(0,1)*b*c+D(1,1)*a*c-D(2,1)*c)/(D(0,1)*(D(1,0)*(b-a)+D(2,0)*(b+1))+D(0,0)*(D(1,1)*(a-b)+D(2,1)*(-b-1))+ D(1,1)*D(2,0)*(a+1)+D(1,0)*D(2,1)*(-a-1));
+        dey  = -((D(0,5)*(D(1,0)*(b-a)+D(2,0)*(b+1))+D(0,0)*(D(1,5)*(a-b)+D(2,5)*(-b-1))+D(1,5)*D(2,0)*(a+1)+D(1,0)*D(2,5)*(-a-1))*dezx+ (D(0,2)*(D(1,0)*(b-a)+D(2,0)*(b+1))+D(0,0)*(D(1,2)*(a-b)+D(2,2)*(-b-1))+D(1,2)*D(2,0)*(a+1)+D(1,0)*D(2,2)*(-a-1))*dez+(D(0,4)*(D(1,0)*(b-a)+D(2,0)*(b+1))+D(0,0)*(D(1,4)*(a-b)+D(2,4)*(-b-1))+D(1,4)*D(2,0)*(a+1)+D(1,0)*D(2,4)*(-a-1))* deyz+(D(0,3)*(D(1,0)*(b-a)+D(2,0)*(b+1))+D(0,0)*(D(1,3)*(a-b)+D(2,3)*(-b-1))+D(1,3)*D(2,0)*(a+1)+D(1,0)*D(2,3)*(-a-1))*dexy+D(0,0)*b*c+D(1,0)*a*c-D(2,0)*c)/(D(0,1)*(D(1,0)*(b-a)+D(2,0)*(b+1))+D(0,0)*(D(1,1)*(a-b)+D(2,1)*(-b-1))+ D(1,1)*D(2,0)*(a+1)+D(1,0)*D(2,1)*(-a-1));
+    }
+
+    dsig.change_dim(6);
+    deps.change_dim(6);
+    dsig = dsx, dsy, dsz, dsxy, dsyz, dszx;
+    deps = dex, dey, dez, dexy, deyz, dezx;
+
+    // calc divs
+    Vec_t deps_tmp(deps), dsig_tmp(dsig);
+    Mdl->TgIncs (Sta, deps_tmp, dsig_tmp, divs);
+}
 
 Sparse::Triplet<double,int> D11,D12,D21,D22;
 
@@ -92,192 +140,161 @@ void TgIncs (Model const * Mdl, EquilibState const * Sta, double dT, Vec_t const
 
     // calc divs
     Mdl->TgIncs (Sta, deps, dsig, divs);
+
+    // check
+    if (true)
+    {
+        double dsa = (dsig(1)-dsig(0))/SQ2;
+        double dsb = (dsig(1)+dsig(0)-2.0*dsig(2))/SQ2/SQ3;
+        double lod = (fabs(dsa)>1.0e-13 ? atan2(dsb,dsa)*180.0/PI : 90.0);
+        double dp  = -(dsig(0)+dsig(1)+dsig(2))/SQ3;
+        double dez = deps(2);
+        Vec_t dsig2, deps2, divs2;
+        LodeTgIncs (Mdl, Sta, lod, dp, dez, deps2, dsig2, divs2);
+        Vec_t diff_dsig(dsig-dsig2), diff_deps(deps-deps2);
+        double err_dsig = Norm(diff_dsig);
+        double err_deps = Norm(diff_deps);
+        if (err_dsig>1.0e-12) throw new Fatal("TgIncs:: Error with dsig = %g",err_dsig);
+        if (err_deps>1.0e-14) throw new Fatal("TgIncs:: Error with deps = %g",err_deps);
+    }
 }
 
-struct Increments
+struct PathIncs
 {
-    double dsx, dsy, dsz; // stress increments
-    double dex, dey, dez; // strain increments
-    Increments () : dsx(0.),dsy(0.),dsz(0.), dex(0.),dey(0.),dez(0.) {}
+    double dsx, dsy, dsz, dsxy, dsyz, dszx; // stress increments
+    double dex, dey, dez, dexy, deyz, dezx; // strain increments (percentage)
+    double lode, dp;                        // path given Lode angle (deg), dpoct and dez (percentage)
+    bool   WithLode;                        // use lode, dp and dez ?
+    int    ninc;                            // number of increments for this path. -1 => use general
+    PathIncs () : dsx(0.),dsy(0.),dsz(0.),dsxy(0.),dsyz(0.),dszx(0.), 
+                  dex(0.),dey(0.),dez(0.),dexy(0.),deyz(0.),dezx(0.),
+                  lode(0.),dp(0.),WithLode(false),ninc(-1) {}
 };
+
+std::ostream & operator<< (std::ostream & os, PathIncs const & P)
+{
+    os << "ninc="<<P.ninc << " ";
+    if (P.WithLode) { os << "lode="<<P.lode << " dp="<<P.dp << " dez="<<P.dez << std::endl; }
+    else
+    {
+        os << "ds=["<<P.dsx << " "<<P.dsy << " "<<P.dsz << " "<<P.dsxy << " "<<P.dsyz << " "<<P.dszx << "] ";
+        os << "de=["<<P.dex << " "<<P.dey << " "<<P.dez << " "<<P.dexy << " "<<P.deyz << " "<<P.dezx << "]\n";
+    }
+    return os;
+}
+
+std::ostream & operator<< (std::ostream & os, Array<PathIncs> const & A)
+{
+    for (size_t i=0; i<A.Size(); ++i) os << "  " << A[i];
+    return os;
+}
 
 int main(int argc, char **argv) try
 {
-    cout << Util::_8s << endl;
+    // input filename
+    String inp_fname("driver.inp");
+    String mat_fname("materials.inp");
+    if (argc>1) inp_fname = argv[1];
+    if (argc>2) mat_fname = argv[2];
 
-    // input
-    int  tst       = 4;
-    bool isotrop   = false;
-    bool pcte      = false;
-    bool pstrain   = false;
-    int  ninc      = 10;
-    bool cor_drift = true;
-    if (argc>1) tst       = atoi(argv[1]);
-    if (argc>2) isotrop   = atoi(argv[2]);
-    if (argc>3) pcte      = atoi(argv[3]);
-    if (argc>4) pstrain   = atoi(argv[4]);
-    if (argc>5) ninc      = atoi(argv[5]);
-    if (argc>6) cor_drift = atoi(argv[6]);
+    // default values
+    int    matID  = 0;     // material ID
+    double pcam0  = 100.0; // pCam
+    size_t gninc  = 10;    // general number of increments
+    bool   cdrift = true;  // correct YS drift
+    Array<PathIncs> path;  // path increments
 
-    // path
-    Array<Increments> incs;
-
-    // default constants (for tests 1-4)
-    double E   = 6000.0;
-    double nu  = 0.3;
-    double p0  = 100.0;
-    double M   = 1.0;
-    double pf  = 3.0*p0/(3.0-M);
-    double qf  = M*pf;
-    double phi = M2Phi(M,"cam");
-    double K   = E/(3.0*(1.0-2.0*nu));
-    double G   = E/(2.0*(1.0+nu));
-    incs.Resize (1);
-    if (isotrop)
+    // parse input file
+    std::fstream inp_file(inp_fname.CStr(), std::ios::in);
+    if (!inp_file.is_open()) throw new Fatal("Could not open file <%s>",inp_fname.CStr());
+    bool   reading_path = false;
+    int    ndat         = -1;
+    size_t line_num     = 1;
+    int    idxdat       = 0;
+    size_t idxpath      = 0;
+    while (!inp_file.eof())
     {
-        incs[0].dsx = -p0;
-        incs[0].dsy = -p0;
-        incs[0].dsz = -p0;
-    }
-    else
-    {
-        if (pcte)
+        String line,key,equal;
+        double val;
+        std::getline (inp_file,line);
+        std::istringstream iss(line);
+        if (iss >> key >> equal >> val)
         {
-            incs[0].dsz = -80.0;
-            incs[0].dsx = -incs[0].dsz/2.0;
-            incs[0].dsy = -incs[0].dsz/2.0;
+            //cout << key << "  " << val << endl;
+            if (key[0]=='#') { line_num++; continue; }
+            if (reading_path)
+            {
+                if      (key=="ndat") ndat = (int)val;
+                else if (ndat<0) throw new Fatal("Error in file <%s> @ line # %d: key 'ndat' must come before data. Key==%s is in the wrong position",inp_fname.CStr(),line_num,key.CStr());
+                else if (key=="lode")  { path[idxpath].lode = val;   path[idxpath].WithLode=true;  idxdat++; }
+                else if (key=="dpcam") { path[idxpath].dp   = val*SQ3;   idxdat++; }
+                else if (key=="dex")   { path[idxpath].dex  = val/100.;  idxdat++; }
+                else if (key=="dey")   { path[idxpath].dey  = val/100.;  idxdat++; }
+                else if (key=="dez")   { path[idxpath].dez  = val/100.;  idxdat++; }
+                else if (key=="dexy")  { path[idxpath].dexy = val/100.;  idxdat++; }
+                else if (key=="deyz")  { path[idxpath].deyz = val/100.;  idxdat++; }
+                else if (key=="dezx")  { path[idxpath].dezx = val/100.;  idxdat++; }
+                else if (key=="dsx")   { path[idxpath].dsx  = val;       idxdat++; }
+                else if (key=="dsy")   { path[idxpath].dsy  = val;       idxdat++; }
+                else if (key=="dsz")   { path[idxpath].dsz  = val;       idxdat++; }
+                else if (key=="dsxy")  { path[idxpath].dsxy = val;       idxdat++; }
+                else if (key=="dsyz")  { path[idxpath].dsyz = val;       idxdat++; }
+                else if (key=="dszx")  { path[idxpath].dszx = val;       idxdat++; }
+                else if (key=="ninc")  { path[idxpath].ninc = (int)val;  idxdat++; }
+                else throw new Fatal("Error in file<%s> @ line # %d: reading data of path # %d. Key==%s is invalid",inp_fname.CStr(),line_num,idxpath,key.CStr());
+                if (idxdat==ndat)
+                {
+                    ndat   = -1;
+                    idxdat = 0;
+                    idxpath++;
+                    if (idxpath==path.Size()) break;
+                }
+            }
+            else
+            {
+                if      (key=="matID")  matID  = (int)val;
+                else if (key=="pcam0")  pcam0  = val;
+                else if (key=="ninc")   gninc  = (int)val;
+                else if (key=="cdrift") cdrift = (bool)val;
+                else if (key=="npath")
+                {
+                    path.Resize ((size_t)val);
+                    reading_path = true;
+                }
+                else throw new Fatal("Error in file <%s> @ line #: Key==%s in invalid",inp_fname.CStr(),line_num,key.CStr());
+            }
         }
-        else if (pstrain)
-        {
-            cout << "pstrain" << endl;
-            /* TODO: check this
-            incs[0].dez = -0.001;
-            incs[0].dex = 1.0e-9;
-            incs[0].dey = 1.0e-9;
-            */
-            double pf  = p0;
-            double qf  = 100.0;
-            double thf = 0.0;
-            Vec3_t L;
-            pqth2L (pf,qf,thf,L,"cam");
-            incs[0].dsx = L(0)-(-p0);
-            incs[0].dsy = L(1)-(-p0);
-            incs[0].dsz = L(2)-(-p0);
-        }
-        else incs[0].dey = -0.04;
+        line_num++;
     }
+    if (idxpath!=path.Size()) throw new Fatal("Error in file <%s>: Not all path data could be read for npath==%d",inp_fname.CStr(),path.Size());
+    printf("Input data:\n");
+    printf("  matID  = %d\n",matID);
+    printf("  pcam0  = %g\n",pcam0);
+    printf("  ninc   = %d\n",gninc);
+    printf("  cdrift = %d\n",cdrift);
 
-    // model, parameters, and initial values
-    String name;
-    SDPair prms, inis;
-    switch (tst)
-    {
-        case 1: // Elastic
-        {
-            cout << "[1;33m================================ (1) Elastic ===================================[0m\n";
-            name = "LinElastic";
-            prms.Set ("E nu", E, nu);
-            inis.Set ("sx sy sz", -p0,-p0,-p0);
-            break;
-        }
-        case 2: // von Mises
-        {
-            cout << "[1;33m================================ (2) von Mises =================================[0m\n";
-            name = "ElastoPlastic";
-            prms.Set ("E nu fc sY Hp", E, nu, FAILCRIT("VM"), qf, 0.0);
-            inis.Set ("sx sy sz", -p0,-p0,-p0);
-            break;
-        }
-        case 3: // Mohr-Coulomb
-        {
-            cout << "[1;33m================================ (3) Mohr-Coulomb ==============================[0m\n";
-            name = "ElastoPlastic";
-            prms.Set ("E nu fc c phi psi NonAssoc", E, nu, FAILCRIT("MC"), 0.1, phi, 1.0, 1.);
-            inis.Set ("sx sy sz", -p0,-p0,-p0);
-            break;
-        }
-        case 4: // CamClay
-        {
-            cout << "[1;33m================================ (4) Cam-Clay ==================================[0m\n";
-            name = "CamClay";
-            prms.Set ("lam kap nu phi", 0.01, 0.001, nu, phi);
-            inis.Set ("sx sy sz v0", -p0,-p0,-p0, 2.0);
-            break;
-        }
-        case 5:
-        {
-            cout << "[1;33m================================ (5) Cam-Clay ==================================[0m\n";
-            // model
-            name = "CamClay";
-            prms.Set ("lam kap nu phi", 0.0891, 0.0196, 0.2, 31.6);
-            inis.Set ("sx sy sz v0", -196.0,-196.0,-196.0, 1.691);
+    // default initial values
+    Dict prms, inis;
+    inis.Set (-1, "sx sy sz", -pcam0,-pcam0,-pcam0);
 
-            // increments
-            incs.Resize (3);
-            incs[0].dsz = -196.0;
-            incs[1].dsz =  294.0;
-            incs[2].dsz = -481.0;
-            break;
-        }
-        case 6: // Unconv01
-        {
-            cout << "[1;33m================================ (6) Unconv 01 =================================[0m\n";
-            name = "Unconv01";
-            double l0    = 0.001;
-            double l1    = 0.005;
-            double l3    = 0.008;
-            double betb  = 100.0;
-            double betbb = 100.0;
-            double v0    = 2.0;
-            double xR10  = log(p0*sqrt(3.0));
-            double xR30  = xR10+0.1;
-            prms.Set ("l0 l1 l3 betb betbb phi K G", l0, l1, l3, betb, betbb, phi, K, G);
-            inis.Set ("sx sy sz v0 xR10 xR30", -p0,-p0,-p0, v0, xR10, xR30);
-            break;
-        }
-        case 7: // Unconv02
-        {
-            cout << "[1;33m================================ (7) Unconv 02 =================================[0m\n";
-            name = "Unconv02";
-            double k0    = 0.05;
-            double k1    = -0.5;
-            double betk  = 5.0;
-            double ev1   = -0.01/100.;
-            double l0    = 0.001;
-            double l1    = 0.005;
-            double l3    = 0.02;
-            double betb  = 50.0;
-            double betbb = 50.0;
-            double v0    = 2.0;
-            double xR10  = log(p0*sqrt(3.0));
-            double xR30  = xR10;
-            prms.Set ("l0 l1 l3 betb betbb phi nu k0 k1 betk ev1", l0, l1, l3, betb, betbb, phi, nu, k0, k1, betk, ev1);
-            inis.Set ("sx sy sz v0 xR10 xR30", -p0,-p0,-p0, v0, xR10, xR30);
-            break;
-        }
-        case 8: // Unconv03
-        {
-            cout << "[1;33m================================ (8) Unconv 03 =================================[0m\n";
-            name = "Unconv03";
-            double l0    = 0.001;
-            double l1    = 0.005;
-            double l3    = 0.02;
-            double betb  = 40.0;
-            double betbb = 40.0;
-            double v0    = 2.0;
-            double xR10  = log(p0*sqrt(3.0));
-            double xR30  = xR10+0.5;
-            prms.Set ("l0 l1 l3 betb betbb phi nu", l0, l1, l3, betb, betbb, phi, nu);
-            inis.Set ("sx sy sz v0 xR10 xR30", -p0,-p0,-p0, v0, xR10, xR30);
-            break;
-        }
-        default: throw new Fatal("main: Test = %d is not available",tst);
-    }
-    Model * mdl = AllocModel (name, /*NDim*/3, prms);
+    // parse materials file
+    String model_name;
+    ReadMaterial (-1, matID, mat_fname.CStr(), model_name, prms, inis);
+    printf("\nMaterial data:\n");
+    printf("  name = %s\n",model_name.CStr());
+    printf("  prms : "); cout << prms << endl;
+    printf("  inis : "); cout << inis << endl;
+
+    // show path
+    printf("\nPath:\n");
+    cout << path << endl;
+
+    // allocate model
+    Model * mdl = AllocModel (model_name, /*NDim*/3, prms(-1));
 
     // set initial state
     EquilibState sta(/*NDim*/3);
-    mdl->InitIvs (inis, &sta);
+    mdl->InitIvs (inis(-1), &sta);
 
     // number of internal values
     size_t niv = size(sta.Ivs);
@@ -289,14 +306,9 @@ int main(int argc, char **argv) try
     D22.AllocSpace (6,6, 50);
 
     // output initial state
-    std::ostringstream oss;
-    oss << _8s<< "sx"   << _8s<< "sy"   << _8s<< "sz" << _8s<< "sxy" << _8s<< "syz" << _8s<< "szx";
-    oss << _8s<< "ex"   << _8s<< "ey"   << _8s<< "ez" << _8s<< "exy" << _8s<< "eyz" << _8s<< "ezx";
-    for (size_t i=0; i<niv; ++i) oss << _8s<< mdl->IvNames[i]; oss << "\n";
-    for (size_t i=0; i<6;   ++i) oss << _8s<< sta.Sig(i);
-    for (size_t i=0; i<6;   ++i) oss << _8s<< sta.Eps(i);
-    for (size_t i=0; i<niv; ++i) oss << _8s<< sta.Ivs(i);
-    oss << "\n";
+    String res_fname = inp_fname.substr(0,inp_fname.size()-3) + "res";
+    std::ofstream of(res_fname.CStr(), std::ios::out);
+    sta.Output (of, /*header*/true, "%17.8e");
 
     // auxiliar variables
     Vec_t DEps   (6), DSig   (6);               // total increments for one stage
@@ -317,26 +329,47 @@ int main(int argc, char **argv) try
     double MaxSS  = 2000;
 
     // for each state
-    for (size_t i=0; i<incs.Size(); ++i)
+    double lode, dp, dez, dexy, deyz, dezx; // to be used WithLode
+    for (size_t i=0; i<path.Size(); ++i)
     {
+        // number of increments
+        int ninc = (path[i].ninc<0 ? gninc : path[i].ninc);
+
         // set prescribed increments
         set_to_zero (DEps);
         set_to_zero (DSig);
         pDEps = false,false,false, false,false,false;
-        DSig(0) = incs[i].dsx;
-        DSig(1) = incs[i].dsy;
-        DSig(2) = incs[i].dsz;
-        if (fabs(incs[i].dex)>1.0e-10) { DEps(0) = incs[i].dex;  pDEps[0] = true; }
-        if (fabs(incs[i].dey)>1.0e-10) { DEps(1) = incs[i].dey;  pDEps[1] = true; }
-        if (fabs(incs[i].dez)>1.0e-10) { DEps(2) = incs[i].dez;  pDEps[2] = true; }
+        bool wlode = path[i].WithLode;
+        if (wlode)
+        {
+            lode = path[i].lode;
+            dp   = path[i].dp  /ninc;
+            dez  = path[i].dez /ninc;
+            dexy = path[i].dexy/ninc;
+            deyz = path[i].deyz/ninc;
+            dezx = path[i].dezx/ninc;
+            set_to_zero(deps);
+            set_to_zero(dsig);
+        }
+        else
+        {
+            DSig(0) = path[i].dsx;
+            DSig(1) = path[i].dsy;
+            DSig(2) = path[i].dsz;
+            if (fabs(path[i].dex)>1.0e-10) { DEps(0) = path[i].dex;  pDEps[0] = true; }
+            if (fabs(path[i].dey)>1.0e-10) { DEps(1) = path[i].dey;  pDEps[1] = true; }
+            if (fabs(path[i].dez)>1.0e-10) { DEps(2) = path[i].dez;  pDEps[2] = true; }
+            deps = DEps/ninc;
+            dsig = DSig/ninc;
+        }
 
         // for each increment
-        deps = DEps/ninc;
-        dsig = DSig/ninc;
+        cout << "Increment = ";
         for (int j=0; j<ninc; ++j)
         {
             // trial increments
-            TgIncs (mdl, &sta, /*dT*/1.0, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
+            if (wlode) LodeTgIncs (mdl, &sta, lode, dp, dez,                deps_tr, dsig_tr, divs_tr, dexy, deyz, dezx);
+            else           TgIncs (mdl, &sta, /*dT*/1.0, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
 
             // loading-unloading ?
             double aint = -1.0; // no intersection
@@ -346,23 +379,21 @@ int main(int argc, char **argv) try
             if (aint>0.0 && aint<1.0)
             {
                 // update to intersection
-                TgIncs (mdl, &sta, /*dT*/aint, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
+                if (wlode) LodeTgIncs (mdl, &sta, lode, dp*aint, dez*aint,       deps_tr, dsig_tr, divs_tr, dexy*aint, deyz*aint, dezx*aint);
+                else           TgIncs (mdl, &sta, /*dT*/aint, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
                 sta.Eps += deps_tr;
                 sta.Sig += dsig_tr;
                 sta.Ivs += divs_tr;
                 deps = fabs(1.0-aint)*deps; // remaining of deps to be applied
 
                 // drift correction
-                if (cor_drift) mdl->CorrectDrift (&sta);
+                if (cdrift) mdl->CorrectDrift (&sta);
 
                 // output
-                for (size_t i=0; i<6;   ++i) oss << _8s<< sta.Sig(i);
-                for (size_t i=0; i<6;   ++i) oss << _8s<< sta.Eps(i);
-                for (size_t i=0; i<niv; ++i) oss << _8s<< sta.Ivs(i);
-                oss << "\n";
+                sta.Output (of, /*header*/false, "%17.8e");
             }
 
-            // set loading flag (must be after intersection because the TgIncs during intersection must be calc with Ldg=false)
+            // set loading flag (must be after intersection because the tgIncs during intersection must be calc with Ldg=false)
             sta   .Ldg = ldg;
             sta_1 .Ldg = ldg;
             sta_ME.Ldg = ldg;
@@ -380,11 +411,13 @@ int main(int argc, char **argv) try
                 if (T>=1.0) break;
 
                 // FE and ME steps
-                TgIncs (mdl, &sta, dT, deps, dsig, pDEps, deps_1, dsig_1, divs_1);
+                if (wlode) LodeTgIncs (mdl, &sta, lode, dp*dT, dez*dT,   deps_1, dsig_1, divs_1, dexy*dT, deyz*dT, dezx*dT);
+                else           TgIncs (mdl, &sta, dT, deps, dsig, pDEps, deps_1, dsig_1, divs_1);
                 sta_1.Eps = sta.Eps + deps_1;
                 sta_1.Sig = sta.Sig + dsig_1;
                 sta_1.Ivs = sta.Ivs + divs_1;
-                TgIncs (mdl, &sta_1, dT, deps, dsig, pDEps, deps_2, dsig_2, divs_2);
+                if (wlode) LodeTgIncs (mdl, &sta_1, lode, dp*dT, dez*dT,   deps_2, dsig_2, divs_2, dexy*dT, deyz*dT, dezx*dT);
+                else           TgIncs (mdl, &sta_1, dT, deps, dsig, pDEps, deps_2, dsig_2, divs_2);
                 sta_ME.Eps = sta.Eps + 0.5*(deps_1+deps_2);
                 sta_ME.Sig = sta.Sig + 0.5*(dsig_1+dsig_2);
                 sta_ME.Ivs = sta.Ivs + 0.5*(divs_1+divs_2);
@@ -411,7 +444,7 @@ int main(int argc, char **argv) try
                     sta.Ivs = sta_ME.Ivs;
 
                     // drift correction
-                    if (cor_drift) mdl->CorrectDrift (&sta);
+                    if (cdrift) mdl->CorrectDrift (&sta);
 
                     // update stress path in model
                     mdl->UpdatePath (&sta, Vec_t(0.5*(deps_1+deps_2)), Vec_t(0.5*(dsig_1+dsig_2)));
@@ -420,10 +453,7 @@ int main(int argc, char **argv) try
                     if (m>mMax) m = mMax;
 
                     // output
-                    for (size_t i=0; i<6;   ++i) oss << _8s<< sta.Sig(i);
-                    for (size_t i=0; i<6;   ++i) oss << _8s<< sta.Eps(i);
-                    for (size_t i=0; i<niv; ++i) oss << _8s<< sta.Ivs(i);
-                    oss << "\n";
+                    sta.Output (of, /*header*/false, "%17.8e");
                 }
                 else if (m<mMin) m = mMin;
 
@@ -434,19 +464,14 @@ int main(int argc, char **argv) try
                 if (dT>1.0-T) dT = 1.0-T;
             }
             if (k>=MaxSS) throw new Fatal("main: Modified-Euler did not converge after %d substeps",k);
-
-            cout << "increment = " << j << endl;
+            cout << j << " ";
         }
+        cout << "\n";
     }
 
-    // output file
-    String fn;
-    fn.Printf("test_models_%d.res",tst);
-    std::ofstream of(fn.CStr(), std::ios::out);
-    of << oss.str();
+    // end
     of.close();
-
-    // clean up
+    cout << "\nFile <" << TERM_CLR_BLUE << res_fname << TERM_RST << "> written\n\n";
     delete mdl;
     return 0;
 }

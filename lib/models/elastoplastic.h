@@ -27,9 +27,6 @@
 using std::cout;
 using std::endl;
 
-/** Failure criteria names. */
-SDPair FAILCRIT;
-
 class ElastoPlastic : public Model
 {
 public:
@@ -208,6 +205,7 @@ inline void ElastoPlastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig
     ELStiff (sta);
 
     // increments
+    DIvs.change_dim (NIvs);
     if (sta->Ldg)
     {
         // gradients, flow rule, hardening, and hp

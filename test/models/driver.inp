@@ -1,0 +1,17 @@
+matID  = 3
+pcam0  = 100
+ninc   = 10
+cdrift = 1
+npath  = 1
+
+#ndat = 1
+#  dez = -4
+
+#ndat = 2
+#  dez  = 2
+#  ninc = 20
+
+ndat = 3
+  lode  = 90
+  dpcam = 10
+  dez   = -2

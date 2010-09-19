@@ -63,6 +63,7 @@ class Plotter:
         self.proport   = 0.75                                     # proportion (Aesthetic ratio): golden_mean = (sqrt(5)-1.0)/2.0 0.628
         self.lwd       = 2                                        # linewidth
         self.fc_prms   = {'A':None,'B':None,'c':None,'bet':None}  # nonlinear FC parameters
+        self.lnplus1   = False                                    # plot ln(p+1) instead of ln(p) ?
 
         # matplotlib's structures
         self.PH = MPL.path.Path
@@ -177,8 +178,12 @@ class Plotter:
         # 4) lnp, Ev ---------------------------------------------------------------------------
         if self.justone==4 or self.justone<0:
             if self.log_p:
-                X    = log(P)
-                xlbl = r'$\ln{(p_{%s})}$'%(self.pq_ty)
+                if self.lnplus1:
+                    X    = log(P+1.0)
+                    xlbl = r'$\ln{(1+p_{%s})}$'%(self.pq_ty)
+                else:
+                    X    = log(P)
+                    xlbl = r'$\ln{(p_{%s})}$'%(self.pq_ty)
             else:
                 X    = P
                 xlbl = r'$p_{%s}$'%(self.pq_ty)

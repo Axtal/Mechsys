@@ -25,6 +25,7 @@
 #include <cmath>   // for sqrt
 
 // MechSys
+#include <mechsys/util/string.h>
 #include <mechsys/models/model.h>
 #include <mechsys/linalg/matvec.h>
 
@@ -41,6 +42,9 @@ public:
     void Init    (SDPair const & Ini, size_t NIvs=0);
     void Backup  () { SigBkp=Sig; EpsBkp=Eps; IvsBkp=Ivs; LdgBkp=Ldg; }
     void Restore () { Sig=SigBkp; Eps=EpsBkp; Ivs=IvsBkp; Ldg=LdgBkp; }
+
+    // Auxiliar methods
+    void Output (std::ostream & os, bool WithHeader=false, char const * NF="%13g") const;
 
     // Operators
     void operator= (EquilibState const & Another);
@@ -129,6 +133,54 @@ inline void EquilibState::Init (SDPair const & Ini, size_t NIvs)
             set_to_zero (IvsBkp);
         }
     }
+}
+
+inline void EquilibState::Output (std::ostream & os, bool WithHeader, char const * NF) const
+{
+    size_t ncp = size(Sig);
+    size_t niv = size(Ivs);
+    String buf;
+    if (WithHeader)
+    {
+        String nf, str;
+        nf.TextFmt(NF);
+        if (ncp>4)
+        {
+            str.Printf(nf.CStr(),"sx");  buf.append(str);
+            str.Printf(nf.CStr(),"sy");  buf.append(str);
+            str.Printf(nf.CStr(),"sz");  buf.append(str);
+            str.Printf(nf.CStr(),"sxy"); buf.append(str);
+            str.Printf(nf.CStr(),"syz"); buf.append(str);
+            str.Printf(nf.CStr(),"szx"); buf.append(str);
+            str.Printf(nf.CStr(),"ex");  buf.append(str);
+            str.Printf(nf.CStr(),"ey");  buf.append(str);
+            str.Printf(nf.CStr(),"ez");  buf.append(str);
+            str.Printf(nf.CStr(),"exy"); buf.append(str);
+            str.Printf(nf.CStr(),"eyz"); buf.append(str);
+            str.Printf(nf.CStr(),"ezx"); buf.append(str);
+        }
+        else
+        {
+            str.Printf(nf.CStr(),"sx");  buf.append(str);
+            str.Printf(nf.CStr(),"sy");  buf.append(str);
+            str.Printf(nf.CStr(),"sz");  buf.append(str);
+            str.Printf(nf.CStr(),"sxy"); buf.append(str);
+            str.Printf(nf.CStr(),"ex");  buf.append(str);
+            str.Printf(nf.CStr(),"ey");  buf.append(str);
+            str.Printf(nf.CStr(),"ez");  buf.append(str);
+            str.Printf(nf.CStr(),"exy"); buf.append(str);
+        }
+        for (size_t i=0; i<niv; ++i)
+        { 
+            str.Printf("z%d",i);
+            str.Printf(nf.CStr(), str.CStr()); buf.append(str);
+        }
+        os << buf << "\n";
+    }
+    for (size_t i=0; i<ncp; ++i) { buf.Printf(NF,Sig(i)); os<<buf; }
+    for (size_t i=0; i<ncp; ++i) { buf.Printf(NF,Eps(i)); os<<buf; }
+    for (size_t i=0; i<niv; ++i) { buf.Printf(NF,Ivs(i)); os<<buf; }
+    os << "\n";
 }
 
 inline void EquilibState::operator= (EquilibState const & A)

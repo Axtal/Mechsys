@@ -22,6 +22,7 @@
 
 // Std Lib
 #include <iostream>
+#include <fstream>
 
 // MechSys
 #include <mechsys/geomtype.h>
@@ -85,7 +86,8 @@ std::ostream & operator<< (std::ostream & os, Model const & D)
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
 
 
-SDPair MODEL;
+SDPair MODEL;    // Model name
+SDPair FAILCRIT; // Failure criteria names (for ElastoPlastic models only)
 
 typedef Model * (*ModelMakerPtr)(int NDim, SDPair const & Prms);
 
@@ -103,8 +105,71 @@ Model * AllocModel(String const & Name, int NDim, SDPair const & Prms)
     return ptr;
 }
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////// Functions /////
+
+
 #ifdef USE_BOOST_PYTHON
 double PyMODEL (BPy::str const & Key) { return MODEL(BPy::extract<char const *>(Key)()); }
 #endif
+
+inline void ReadMaterial (int Tag, int MatID, const char * FileName, String & ModelName, Dict & Prms, Dict & Inis)
+{
+    // parse materials file
+    ModelName = "__empty__";
+    size_t idxprm   = 0;
+    size_t idxini   = 0;
+    size_t nprms    = 0;
+    size_t ninis    = 0;
+    size_t line_num = 1;
+    std::fstream mat_file(FileName, std::ios::in);
+    if (!mat_file.is_open()) throw new Fatal("ReadMaterial: Could not open file <%s>",FileName);
+    bool reading_model = false;
+    bool reading_inis  = false;
+    bool model_read    = false;
+    while (!mat_file.eof() && !model_read)
+    {
+        String line,key,equal,strval;
+        std::getline (mat_file,line);
+        std::istringstream iss(line);
+        if (iss >> key >> equal >> strval)
+        {
+            if (key[0]=='#') { line_num++; continue; }
+            if (reading_model)
+            {
+                if (ModelName=="__empty__")
+                {
+                    if (key=="name") ModelName = strval;
+                    else throw new Fatal("ReadMaterial: Error in file <%s> @ line # %d: 'name' must follow 'ID'. Key==%s is invalid",FileName,line_num,key.CStr());
+                    Prms.Set (Tag, "name", MODEL(ModelName));
+                }
+                else if (nprms==0)
+                {
+                    if (key=="nprms") nprms = atoi(strval.CStr());
+                    else throw new Fatal("ReadMaterial: Error in file <%s> @ line # %d: 'nprms' must follow 'name'. Key==%s is invalid",FileName,line_num,key.CStr());
+                }
+                else if (key=="ninis") { reading_model=false; ninis=atoi(strval.CStr()); reading_inis=(ninis==0?false:true); model_read=(ninis==0?true:false); }
+                else if (idxprm<nprms)
+                {
+                    Prms.Set (Tag, key.CStr(), (key=="fc" ? FAILCRIT(strval.CStr()) : atof(strval.CStr())));
+                    idxprm++;
+                }
+                else throw new Fatal("ReadMaterial: Error in file <%s> @ line # %d: there are more parameters than specified by nprms==%d. The reading of parameters finishes when 'ninis' is found. Key==%s is invalid",FileName,line_num,nprms,key.CStr());
+            }
+            else if (reading_inis)
+            {
+                if (key=="ID" || key=="name" || key=="nprms" || key=="ninis") throw new Fatal("ReadMaterial: Error in file <%s> @ line # %d: Key==%s found when reading ninis==%d.",FileName,line_num,key.CStr(),ninis);
+                if (idxini<ninis)
+                {
+                    Inis.Set (Tag, key.CStr(), atof(strval.CStr()));
+                    idxini++;
+                    if (idxini==ninis) { reading_inis=false; model_read=true; }
+                }
+            }
+            else if (key=="ID") { if (atoi(strval.CStr())==MatID) reading_model = true; }
+        }
+        line_num++;
+    }
+}
 
 #endif // MECHSYS_MODEL_H
