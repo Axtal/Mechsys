@@ -278,6 +278,15 @@ def s123_calc_oct(s123):
     return sa, sb, sc
 
 
+# Octahedral coordinates: sa, sb, sc
+# ==================================
+def sxyz_calc_oct(sxyz):
+    sa = (sxyz[1]-sxyz[0])/sqrt(2.0)
+    sb = (sxyz[1]+sxyz[0]-2.0*sxyz[2])/sqrt(6.0)
+    sc = -(sxyz[0]+sxyz[1]+sxyz[2])/sqrt(3.0)
+    return sa, sb, sc
+
+
 # Principal stresses: s1, s2, s3
 # ==============================
 def oct_calc_s123(sa,sb,sc):

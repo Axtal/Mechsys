@@ -90,17 +90,42 @@ void zTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, doubl
     Mdl->TgIncs (Sta, deps_tmp, dsig_tmp, divs);
 }
 
-size_t ITMAX = 0;
+//size_t ITMAX = 0;
 
 void kTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double k, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs)
 {
-    // trial
     Mat_t D;
     Mdl->Stiffness (Sta, D);
+
+    double dsx,dsy,dsz,dex,dey;
+    double m = tan(LodeDeg*PI/180.);
+    double a = (1.+m*SQ3)/2.;
+    double b = (1.-m*SQ3)/2.;
+    double n = SQ3*sqrt(1.+m*m)/(SQ2*k);
+    double c = n-1.;
+    double d = n+1.;
+    //printf("m = %g\n",m);
+    //if (fabs(fabs(LodeDeg)-90.0)<1.0e-14)
+    //{
+        //dsx = -((D(0,0)*(D(1,2)*D(2,1)-D(1,1)*D(2,2))+D(0,1)*(D(1,0)*D(2,2)-D(1,2)*D(2,0))+D(0,2)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dez)/(D(0,1)*(D(1,0)*(d-c)+D(2,0))+D(0,0)*(D(1,1)*(c-d)-D(2,1))+D(1,0)*D(2,1)-D(1,1)*D(2,0));
+        //dsy = -((D(0,0)*(D(1,2)*D(2,1)-D(1,1)*D(2,2))+D(0,1)*(D(1,0)*D(2,2)-D(1,2)*D(2,0))+D(0,2)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dez)/(D(0,1)*(D(1,0)*(d-c)+D(2,0))+D(0,0)*(D(1,1)*(c-d)-D(2,1))+D(1,0)*D(2,1)-D(1,1)*D(2,0));
+        //dsz =  ((D(0,1)*(D(1,0)*D(2,2)*(d-c)+D(1,2)*D(2,0)*(c-d))+D(0,0)*(D(1,2)*D(2,1)*(d-c)+D(1,1)*D(2,2)*(c-d))+D(0,2)* (D(1,1)*D(2,0)*(d-c)+D(1,0)*D(2,1)*(c-d)))*dez)/(D(0,1)*(D(1,0)*(d-c)+D(2,0))+D(0,0)*(D(1,1)*(c-d)-D(2,1))+D(1,0)* D(2,1)-D(1,1)*D(2,0));
+        //dex =  ((D(0,2)*(D(1,1)*(d-c)+D(2,1))+D(0,1)*(D(1,2)*(c-d)-D(2,2))+D(1,1)*D(2,2)-D(1,2)*D(2,1))*dez)/(D(0,1)*(D(1,0)*(d-c)+D(2,0))+D(0,0)*(D(1,1)*(c-d)-D(2,1))+D(1,0)*D(2,1)-D(1,1)*D(2,0));
+        //dey = -((D(0,2)*(D(1,0)*(d-c)+D(2,0))+D(0,0)*(D(1,2)*(c-d)-D(2,2))+D(1,0)*D(2,2)-D(1,2)*D(2,0))*dez)/(D(0,1)*(D(1,0)*(d-c)+D(2,0))+D(0,0)*(D(1,1)*(c-d)-D(2,1))+D(1,0)*D(2,1)-D(1,1)*D(2,0));
+    //}
+    //else
+    //{
+        dsx =  ((D(0,1)*(D(1,0)*D(2,2)*(d+b)+D(1,2)*D(2,0)*(-d-b))+D(0,0)* (D(1,2)*D(2,1)*(d+b)+D(1,1)*D(2,2)*(-d-b))+D(0,2)*(D(1,1)*D(2,0)*(d+b)+D(1,0)*D(2,1)*(-d-b)))*dez)/(D(0,1)* (D(1,0)*(a*d+b*c)+D(2,0)*(a-c))+D(0,0)*(D(1,1)*(-a*d-b*c)+D(2,1)*(c-a))+D(1,1)*D(2,0)*(d+b)+D(1,0)*D(2,1)*(-d-b));
+        dsy = -((D(0,0)*(D(1,1)*D(2,2)*(c-a)+D(1,2)*D(2,1)*(a-c))+D(0,2)*(D(1,0)*D(2,1)*(c-a)+D(1,1)*D(2,0)*(a-c))+D(0,1)* (D(1,2)*D(2,0)*(c-a)+D(1,0)*D(2,2)*(a-c)))*dez)/(D(0,1)*(D(1,0)*(a*d+b*c)+D(2,0)*(a-c))+D(0,0)* (D(1,1)*(-a*d-b*c)+D(2,1)*(c-a))+D(1,1)*D(2,0)*(d+b)+D(1,0)*D(2,1)*(-d-b));
+        dsz =  ((D(0,1)*(D(1,0)*D(2,2)*(a*d+b*c)+D(1,2)*D(2,0)*(-a*d-b*c))+D(0,0)*(D(1,2)*D(2,1)*(a*d+b*c)+D(1,1)*D(2,2)*(-a*d-b*c))+D(0,2)* (D(1,1)*D(2,0)*(a*d+b*c)+D(1,0)*D(2,1)*(-a*d-b*c)))*dez)/(D(0,1)*(D(1,0)*(a*d+b*c)+D(2,0)*(a-c))+D(0,0)* (D(1,1)*(-a*d-b*c)+D(2,1)*(c-a))+D(1,1)*D(2,0)*(d+b)+D(1,0)*D(2,1)*(-d-b));
+        dex =  ((D(0,2)*(D(1,1)*(a*d+b*c)+D(2,1)*(a-c))+D(0,1)*(D(1,2)*(-a*d-b*c)+D(2,2)*(c-a))+D(1,2)*D(2,1)*(d+b)+D(1,1)*D(2,2)*(-d-b))*dez)/(D(0,1)*(D(1,0)*(a*d+b*c)+D(2,0)*(a-c))+D(0,0)*(D(1,1)*(-a*d-b*c)+D(2,1)*(c-a))+D(1,1)*D(2,0)*(d+b)+D(1,0)*D(2,1)*(-d-b));
+        dey = -((D(0,2)*(D(1,0)*(a*d+b*c)+D(2,0)*(a-c))+D(0,0)*(D(1,2)*(-a*d-b*c)+D(2,2)*(c-a))+D(1,2)*D(2,0)*(d+b)+D(1,0)*D(2,2)*(-d-b))*dez)/(D(0,1)*(D(1,0)*(a*d+b*c)+D(2,0)*(a-c))+D(0,0)*(D(1,1)*(-a*d-b*c)+D(2,1)*(c-a))+D(1,1)*D(2,0)*(d+b)+D(1,0)*D(2,1)*(-d-b));
+    //}
+
+    // trial
+    /*
     deps = 0., 0., dez, 0., 0., 0.;
     dsig = D*deps;
-    //double dp = Calc_poct(dsig);
-    //zTgIncs (Mdl, Sta, LodeDeg, dp, dez, deps, dsig, divs);
     Vec_t sigf(Sta->Sig + dsig);
 
     // constants
@@ -113,21 +138,11 @@ void kTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, doubl
     double sa0  = (sy0-sx0)/SQ2;
     double sb0  = (sy0+sx0-2.*sz0)/SQ6;
     double sqH0 = sqrt(pow(sx0-sy0,2.) + pow(sy0-sz0,2.) + pow(sz0-sx0,2.));
-    double c    = sqH0 + k*(sx0+sy0+sz0);
-    double a,b,M;
-    if (fabs(fabs(LodeDeg)-90.0)<1.0e-14)
-    {
-        a = 1.;
-        b = 1.;
-        M = SQ6*sa0;
-    }
-    else
-    {
-        double m = tan(LodeDeg*PI/180.);
-        a = 1.-m*SQ3;
-        b = 1.+m*SQ3;
-        M = SQ6*(sb0-m*sa0);
-    }
+           c    = sqH0 + k*(sx0+sy0+sz0);
+    double M;
+    a = 1.-m*SQ3;
+    b = 1.+m*SQ3;
+    M = SQ6*(sb0-m*sa0);
 
     // initial values
     Vec_t x(5), R(5), dx(5);
@@ -136,7 +151,7 @@ void kTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, doubl
 
     // iterations
     double tolR  = 1.0e-11;
-    size_t maxit = 5;
+    size_t maxit = 10;
     size_t it;
     for (it=1; it<=maxit; ++it)
     {
@@ -158,26 +173,15 @@ void kTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, doubl
     }
     if (it>=maxit) throw new Fatal("kTgIncs failed after %d iterations",maxit);
     if (it>ITMAX) ITMAX = it;
-
-    // results
     dsig = x(0)-Sta->Sig(0), x(1)-Sta->Sig(1), x(2)-Sta->Sig(2), 0., 0., 0.;
     deps = x(3), x(4), dez, 0., 0., 0.;
-
-    /*
-    double q0,qf,p0,pf,k_tr,k_new;
-    q0    = Calc_qoct(Sta->Sig);
-    qf    = Calc_qoct(sigf);
-    p0    = Calc_poct(Sta->Sig);
-    pf    = Calc_poct(sigf);
-    k_tr  = (3./SQ2)*(qf-q0)/(pf-p0);
-    sigf  = Sta->Sig+dsig;
-    q0    = Calc_qoct(Sta->Sig);
-    qf    = Calc_qoct(sigf);
-    p0    = Calc_poct(Sta->Sig);
-    pf    = Calc_poct(sigf);
-    k_new = (3./SQ2)*(qf-q0)/(pf-p0);
-    printf("k_tr=%g, k=%g, it=%zd\n",k_tr,k_new,it);
     */
+
+    // results
+    dsig = dsx, dsy, dsz, 0., 0., 0.;
+    deps = dex, dey, dez, 0., 0., 0.;
+
+    //printf("diff = %g, %g, %g, %g, %g\n",dsx-dsig(0), dsy-dsig(1), dsz-dsig(2), dex-deps(0), dey-deps(1));
     
     // calc divs
     Vec_t deps_tmp(deps), dsig_tmp(dsig);
@@ -326,7 +330,7 @@ int main(int argc, char **argv) try
                 else if (ndat<0) throw new Fatal("Error in file <%s> @ line # %d: key 'ndat' must come before data. Key==%s is in the wrong position",inp_fname.CStr(),line_num,key.CStr());
                 else if (key=="kcam")  { path[idxpath].k    = SQ2*val/3.; path[idxpath].kPath=true; path[idxpath].zPath=false; idxdat++; }
                 else if (key=="dpcam") { path[idxpath].dp   = val*SQ3;    path[idxpath].zPath=true; path[idxpath].kPath=false; idxdat++; }
-                else if (key=="lode")  { path[idxpath].lode = val;       idxdat++; }
+                else if (key=="lode")  { path[idxpath].lode = val;       idxdat++; if (val<30. || val>90.) throw new Fatal("Lode angle alpha must be inside [30,90]. Alpha==%g is invalid",val); }
                 else if (key=="dex")   { path[idxpath].dex  = val/100.;  idxdat++; }
                 else if (key=="dey")   { path[idxpath].dey  = val/100.;  idxdat++; }
                 else if (key=="dez")   { path[idxpath].dez  = val/100.;  idxdat++; }
@@ -577,7 +581,7 @@ int main(int argc, char **argv) try
         cout << "\n";
     }
 
-    cout << "ITMAX = " << ITMAX << endl;
+    //cout << "ITMAX = " << ITMAX << endl;
 
     // end
     of.close();

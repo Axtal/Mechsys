@@ -98,7 +98,7 @@ class Plotter:
             S1[i], S2[i], S3[i] = s123  [0], s123  [1], s123  [2]
             Sx[i], Sy[i], Sz[i] = Sig[i][0], Sig[i][1], Sig[i][2]
             sxyz                = Sx[i], Sy[i], Sz[i]
-            Sa[i], Sb[i], Sc[i] = s123_calc_oct  (sxyz) if self.oct_sxyz else s123_calc_oct (s123)
+            Sa[i], Sb[i], Sc[i] = sxyz_calc_oct  (sxyz) if self.oct_sxyz else s123_calc_oct (s123)
             Ev[i], Ed[i]        = eps_calc_ev_ed (Eps[i])
             e123                = eps_calc_e123  (Eps[i])
             E1[i], E2[i], E3[i] = e123  [0], e123  [1], e123  [2]
@@ -206,7 +206,7 @@ class Plotter:
             plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
             plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, '^', color=clr)
             axis ('equal')
-            axis ('off')
+            #axis ('off')
 
         # 6) Ek, Q/P ---------------------------------------------------------------------------
         if self.justone==6 or self.justone<0 and not self.only_six:
@@ -289,6 +289,9 @@ class Plotter:
         # reference
         plot([0.0,l4[0]],[0.0, l4[1]],'k-', color=self.lgray)
         plot([0.0,lo[0]],[0.0, lo[1]],'k-', color=self.lgray)
+        plot([0.0,-l4[0]],[0.0, l4[1]],'k-', color=self.lgray)
+        plot([0.0,-lo[0]],[0.0, lo[1]],'k-', color=self.lgray)
+        plot([-cr*r,cr*r],[0.0,0.0],'k-', color=self.lgray)
         # text
         if self.oct_sxyz: k1,k2,k3 = 'z','y','x'
         else:             k1,k2,k3 = '1','3','2'

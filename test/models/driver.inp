@@ -6,7 +6,7 @@ npath  = 1
 
 ndat = 3
   kcam = 3
-  lode = 10
+  lode = 30
   dez  = -10
 
 #ndat = 1
