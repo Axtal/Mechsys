@@ -4,6 +4,11 @@ ninc   = 10
 cdrift = 1
 npath  = 1
 
+ndat = 3
+  kcam = 3
+  lode = 10
+  dez  = -10
+
 #ndat = 1
 #  dez = -4
 
@@ -11,7 +16,7 @@ npath  = 1
 #  dez  = 2
 #  ninc = 20
 
-ndat = 3
-  lode  = 90
-  dpcam = 10
-  dez   = -2
+#ndat = 3
+#  lode  = 90
+#  dpcam = 10
+#  dez   = -2

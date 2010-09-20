@@ -64,6 +64,8 @@ class Plotter:
         self.lwd       = 2                                        # linewidth
         self.fc_prms   = {'A':None,'B':None,'c':None,'bet':None}  # nonlinear FC parameters
         self.lnplus1   = False                                    # plot ln(p+1) instead of ln(p) ?
+        self.oct_sxyz  = False                                    # use Sx,Sy,Sz in oct plane instead of S1,S2,S3
+        self.fsz       = 8                                        # fontsize
 
         # matplotlib's structures
         self.PH = MPL.path.Path
@@ -93,9 +95,10 @@ class Plotter:
             P [i], Q [i]        = sig_calc_p_q   (Sig[i], Type=self.pq_ty)
             T [i]               = sig_calc_t     (Sig[i])
             s123                = sig_calc_s123  (Sig[i], do_sort=False)
-            Sa[i], Sb[i], Sc[i] = s123_calc_oct  (s123)
             S1[i], S2[i], S3[i] = s123  [0], s123  [1], s123  [2]
             Sx[i], Sy[i], Sz[i] = Sig[i][0], Sig[i][1], Sig[i][2]
+            sxyz                = Sx[i], Sy[i], Sz[i]
+            Sa[i], Sb[i], Sc[i] = s123_calc_oct  (sxyz) if self.oct_sxyz else s123_calc_oct (s123)
             Ev[i], Ed[i]        = eps_calc_ev_ed (Eps[i])
             e123                = eps_calc_e123  (Eps[i])
             E1[i], E2[i], E3[i] = e123  [0], e123  [1], e123  [2]
@@ -287,12 +290,14 @@ class Plotter:
         plot([0.0,l4[0]],[0.0, l4[1]],'k-', color=self.lgray)
         plot([0.0,lo[0]],[0.0, lo[1]],'k-', color=self.lgray)
         # text
+        if self.oct_sxyz: k1,k2,k3 = 'z','y','x'
+        else:             k1,k2,k3 = '1','3','2'
         txt = '/p_{oct}' if self.oct_norm else ''
-        text(l1[0],l1[1],r'$-\sigma_1%s,\theta=+30^\circ$'%txt, ha='center', fontsize=8)
-        text(l2[0],l2[1],r'$-\sigma_2%s$'%txt,                  ha='right',  fontsize=8)
-        text(l3[0],l3[1],r'$-\sigma_3%s$'%txt,                  ha='left',   fontsize=8)
-        text(lo[0],lo[1],r'$\theta=0^\circ$',                   ha='center', fontsize=8)
-        text(l4[0],l4[1],r'$\theta=-30^\circ$',                 ha='left',   fontsize=8)
+        text(l1[0],l1[1],r'$-\sigma_%s%s,\theta=+30^\circ$'%(k1,txt), ha='center', fontsize=self.fsz)
+        text(l2[0],l2[1],r'$-\sigma_%s%s$'%(k2,txt),                  ha='right',  fontsize=self.fsz)
+        text(l3[0],l3[1],r'$-\sigma_%s%s$'%(k3,txt),                  ha='left',   fontsize=self.fsz)
+        text(lo[0],lo[1],r'$\theta=0^\circ$',                         ha='center', fontsize=self.fsz)
+        text(l4[0],l4[1],r'$\theta=-30^\circ$',                       ha='left',   fontsize=self.fsz)
         if self.rst_phi:
             text(0.0,l2[1]-0.05*r,r'$\phi_{comp}=%2.1f^\circ$'%self.fc_phi, ha='center', va='top', fontsize=10)
         if self.rst_circ:

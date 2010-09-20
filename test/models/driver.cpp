@@ -42,9 +42,10 @@ using Util::_8s;
 using Util::_10_6;
 using Util::SQ2;
 using Util::SQ3;
+using Util::SQ6;
 using Util::PI;
 
-void LodeTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double dp, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs, double dexy=0., double deyz=0., double dezx=0.)
+void zTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double dp, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs, double dexy=0., double deyz=0., double dezx=0.)
 {
     Mat_t D;
     Mdl->Stiffness (Sta, D);
@@ -84,6 +85,100 @@ void LodeTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, do
     dsig = dsx, dsy, dsz, dsxy, dsyz, dszx;
     deps = dex, dey, dez, dexy, deyz, dezx;
 
+    // calc divs
+    Vec_t deps_tmp(deps), dsig_tmp(dsig);
+    Mdl->TgIncs (Sta, deps_tmp, dsig_tmp, divs);
+}
+
+size_t ITMAX = 0;
+
+void kTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double k, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs)
+{
+    // trial
+    Mat_t D;
+    Mdl->Stiffness (Sta, D);
+    deps = 0., 0., dez, 0., 0., 0.;
+    dsig = D*deps;
+    //double dp = Calc_poct(dsig);
+    //zTgIncs (Mdl, Sta, LodeDeg, dp, dez, deps, dsig, divs);
+    Vec_t sigf(Sta->Sig + dsig);
+
+    // constants
+    double sx0  = Sta->Sig(0);
+    double sy0  = Sta->Sig(1);
+    double sz0  = Sta->Sig(2);
+    double A    = sx0+D(0,2)*dez;
+    double B    = sy0+D(1,2)*dez;
+    double C    = sz0+D(2,2)*dez;
+    double sa0  = (sy0-sx0)/SQ2;
+    double sb0  = (sy0+sx0-2.*sz0)/SQ6;
+    double sqH0 = sqrt(pow(sx0-sy0,2.) + pow(sy0-sz0,2.) + pow(sz0-sx0,2.));
+    double c    = sqH0 + k*(sx0+sy0+sz0);
+    double a,b,M;
+    if (fabs(fabs(LodeDeg)-90.0)<1.0e-14)
+    {
+        a = 1.;
+        b = 1.;
+        M = SQ6*sa0;
+    }
+    else
+    {
+        double m = tan(LodeDeg*PI/180.);
+        a = 1.-m*SQ3;
+        b = 1.+m*SQ3;
+        M = SQ6*(sb0-m*sa0);
+    }
+
+    // initial values
+    Vec_t x(5), R(5), dx(5);
+    x = sigf(0), sigf(1), sigf(2), deps(0), deps(1);
+    Mat_t J(5,5), Ji(5,5);
+
+    // iterations
+    double tolR  = 1.0e-11;
+    size_t maxit = 5;
+    size_t it;
+    for (it=1; it<=maxit; ++it)
+    {
+        double sqHf = sqrt(pow(x(0)-x(1),2.) + pow(x(1)-x(2),2.) + pow(x(2)-x(0),2.));
+        R = x(0) - D(0,0)*x(3) - D(0,1)*x(4) - A,
+            x(1) - D(1,0)*x(3) - D(1,1)*x(4) - B,
+            x(2) - D(2,0)*x(3) - D(2,1)*x(4) - C,
+            b*x(0) + a*x(1) - 2.*x(2) - M,
+            sqHf + k*(x(0)+x(1)+x(2)) - c;
+        if (Norm(R)<tolR) break;
+        J = 1., 0., 0., -D(0,0), -D(0,1),
+            0., 1., 0., -D(1,0), -D(1,1),
+            0., 0., 1., -D(2,0), -D(2,1),
+            b,  a, -2., 0., 0.,
+            (2.*x(0)-x(1)-x(2))/sqHf+k, (2.*x(1)-x(2)-x(0))/sqHf+k, (2.*x(2)-x(0)-x(1))/sqHf+k, 0., 0.;
+        Inv (J, Ji);
+        dx = Ji * R;
+        x -= dx;
+    }
+    if (it>=maxit) throw new Fatal("kTgIncs failed after %d iterations",maxit);
+    if (it>ITMAX) ITMAX = it;
+
+    // results
+    dsig = x(0)-Sta->Sig(0), x(1)-Sta->Sig(1), x(2)-Sta->Sig(2), 0., 0., 0.;
+    deps = x(3), x(4), dez, 0., 0., 0.;
+
+    /*
+    double q0,qf,p0,pf,k_tr,k_new;
+    q0    = Calc_qoct(Sta->Sig);
+    qf    = Calc_qoct(sigf);
+    p0    = Calc_poct(Sta->Sig);
+    pf    = Calc_poct(sigf);
+    k_tr  = (3./SQ2)*(qf-q0)/(pf-p0);
+    sigf  = Sta->Sig+dsig;
+    q0    = Calc_qoct(Sta->Sig);
+    qf    = Calc_qoct(sigf);
+    p0    = Calc_poct(Sta->Sig);
+    pf    = Calc_poct(sigf);
+    k_new = (3./SQ2)*(qf-q0)/(pf-p0);
+    printf("k_tr=%g, k=%g, it=%zd\n",k_tr,k_new,it);
+    */
+    
     // calc divs
     Vec_t deps_tmp(deps), dsig_tmp(dsig);
     Mdl->TgIncs (Sta, deps_tmp, dsig_tmp, divs);
@@ -150,7 +245,7 @@ void TgIncs (Model const * Mdl, EquilibState const * Sta, double dT, Vec_t const
         double dp  = -(dsig(0)+dsig(1)+dsig(2))/SQ3;
         double dez = deps(2);
         Vec_t dsig2, deps2, divs2;
-        LodeTgIncs (Mdl, Sta, lod, dp, dez, deps2, dsig2, divs2);
+        zTgIncs (Mdl, Sta, lod, dp, dez, deps2, dsig2, divs2);
         Vec_t diff_dsig(dsig-dsig2), diff_deps(deps-deps2);
         double err_dsig = Norm(diff_dsig);
         double err_deps = Norm(diff_deps);
@@ -164,17 +259,20 @@ struct PathIncs
     double dsx, dsy, dsz, dsxy, dsyz, dszx; // stress increments
     double dex, dey, dez, dexy, deyz, dezx; // strain increments (percentage)
     double lode, dp;                        // path given Lode angle (deg), dpoct and dez (percentage)
-    bool   WithLode;                        // use lode, dp and dez ?
+    bool   zPath;                           // use lode, dp and dez ?
     int    ninc;                            // number of increments for this path. -1 => use general
+    double k;                               // path given Lode, k=dqoct/dpoct, and dez
+    bool   kPath;                           // with k=Dq/Dp
     PathIncs () : dsx(0.),dsy(0.),dsz(0.),dsxy(0.),dsyz(0.),dszx(0.), 
                   dex(0.),dey(0.),dez(0.),dexy(0.),deyz(0.),dezx(0.),
-                  lode(0.),dp(0.),WithLode(false),ninc(-1) {}
+                  lode(0.),dp(0.),zPath(false),ninc(-1),k(0.),kPath(false) {}
 };
 
 std::ostream & operator<< (std::ostream & os, PathIncs const & P)
 {
     os << "ninc="<<P.ninc << " ";
-    if (P.WithLode) { os << "lode="<<P.lode << " dp="<<P.dp << " dez="<<P.dez << std::endl; }
+    if      (P.kPath) { os << "lode="<<P.lode << " kcam="<<P.k*3./SQ2 << " dez="<<P.dez << std::endl; }
+    else if (P.zPath) { os << "lode="<<P.lode << " dpcam="<<P.dp/SQ3  << " dez="<<P.dez << std::endl; }
     else
     {
         os << "ds=["<<P.dsx << " "<<P.dsy << " "<<P.dsz << " "<<P.dsxy << " "<<P.dsyz << " "<<P.dszx << "] ";
@@ -226,8 +324,9 @@ int main(int argc, char **argv) try
             {
                 if      (key=="ndat") ndat = (int)val;
                 else if (ndat<0) throw new Fatal("Error in file <%s> @ line # %d: key 'ndat' must come before data. Key==%s is in the wrong position",inp_fname.CStr(),line_num,key.CStr());
-                else if (key=="lode")  { path[idxpath].lode = val;   path[idxpath].WithLode=true;  idxdat++; }
-                else if (key=="dpcam") { path[idxpath].dp   = val*SQ3;   idxdat++; }
+                else if (key=="kcam")  { path[idxpath].k    = SQ2*val/3.; path[idxpath].kPath=true; path[idxpath].zPath=false; idxdat++; }
+                else if (key=="dpcam") { path[idxpath].dp   = val*SQ3;    path[idxpath].zPath=true; path[idxpath].kPath=false; idxdat++; }
+                else if (key=="lode")  { path[idxpath].lode = val;       idxdat++; }
                 else if (key=="dex")   { path[idxpath].dex  = val/100.;  idxdat++; }
                 else if (key=="dey")   { path[idxpath].dey  = val/100.;  idxdat++; }
                 else if (key=="dez")   { path[idxpath].dez  = val/100.;  idxdat++; }
@@ -270,7 +369,7 @@ int main(int argc, char **argv) try
     printf("Input data:\n");
     printf("  matID  = %d\n",matID);
     printf("  pcam0  = %g\n",pcam0);
-    printf("  ninc   = %d\n",gninc);
+    printf("  ninc   = %zd\n",gninc);
     printf("  cdrift = %d\n",cdrift);
 
     // default initial values
@@ -329,7 +428,7 @@ int main(int argc, char **argv) try
     double MaxSS  = 2000;
 
     // for each state
-    double lode, dp, dez, dexy, deyz, dezx; // to be used WithLode
+    double lode, dp, dez, dexy, deyz, dezx, koct;
     for (size_t i=0; i<path.Size(); ++i)
     {
         // number of increments
@@ -339,8 +438,15 @@ int main(int argc, char **argv) try
         set_to_zero (DEps);
         set_to_zero (DSig);
         pDEps = false,false,false, false,false,false;
-        bool wlode = path[i].WithLode;
-        if (wlode)
+        bool zpath = path[i].zPath;
+        bool kpath = path[i].kPath;
+        if (kpath)
+        {
+            lode = path[i].lode;
+            koct = path[i].k;
+            dez  = path[i].dez/ninc;
+        }
+        else if (zpath)
         {
             lode = path[i].lode;
             dp   = path[i].dp  /ninc;
@@ -348,8 +454,6 @@ int main(int argc, char **argv) try
             dexy = path[i].dexy/ninc;
             deyz = path[i].deyz/ninc;
             dezx = path[i].dezx/ninc;
-            set_to_zero(deps);
-            set_to_zero(dsig);
         }
         else
         {
@@ -368,8 +472,9 @@ int main(int argc, char **argv) try
         for (int j=0; j<ninc; ++j)
         {
             // trial increments
-            if (wlode) LodeTgIncs (mdl, &sta, lode, dp, dez,                deps_tr, dsig_tr, divs_tr, dexy, deyz, dezx);
-            else           TgIncs (mdl, &sta, /*dT*/1.0, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
+            if      (kpath) kTgIncs (mdl, &sta, lode, koct, dez,              deps_tr, dsig_tr, divs_tr);
+            else if (zpath) zTgIncs (mdl, &sta, lode, dp,   dez,              deps_tr, dsig_tr, divs_tr, dexy, deyz, dezx);
+            else             TgIncs (mdl, &sta, /*dT*/1.0, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
 
             // loading-unloading ?
             double aint = -1.0; // no intersection
@@ -379,8 +484,9 @@ int main(int argc, char **argv) try
             if (aint>0.0 && aint<1.0)
             {
                 // update to intersection
-                if (wlode) LodeTgIncs (mdl, &sta, lode, dp*aint, dez*aint,       deps_tr, dsig_tr, divs_tr, dexy*aint, deyz*aint, dezx*aint);
-                else           TgIncs (mdl, &sta, /*dT*/aint, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
+                if      (kpath) kTgIncs (mdl, &sta, lode,    koct, dez*aint,       deps_tr, dsig_tr, divs_tr);
+                else if (zpath) zTgIncs (mdl, &sta, lode, dp*aint, dez*aint,       deps_tr, dsig_tr, divs_tr, dexy*aint, deyz*aint, dezx*aint);
+                else             TgIncs (mdl, &sta, /*dT*/aint, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
                 sta.Eps += deps_tr;
                 sta.Sig += dsig_tr;
                 sta.Ivs += divs_tr;
@@ -411,13 +517,15 @@ int main(int argc, char **argv) try
                 if (T>=1.0) break;
 
                 // FE and ME steps
-                if (wlode) LodeTgIncs (mdl, &sta, lode, dp*dT, dez*dT,   deps_1, dsig_1, divs_1, dexy*dT, deyz*dT, dezx*dT);
-                else           TgIncs (mdl, &sta, dT, deps, dsig, pDEps, deps_1, dsig_1, divs_1);
+                if      (kpath) kTgIncs (mdl, &sta, lode,  koct, dez*dT,   deps_1, dsig_1, divs_1);
+                else if (zpath) zTgIncs (mdl, &sta, lode, dp*dT, dez*dT,   deps_1, dsig_1, divs_1, dexy*dT, deyz*dT, dezx*dT);
+                else             TgIncs (mdl, &sta, dT, deps, dsig, pDEps, deps_1, dsig_1, divs_1);
                 sta_1.Eps = sta.Eps + deps_1;
                 sta_1.Sig = sta.Sig + dsig_1;
                 sta_1.Ivs = sta.Ivs + divs_1;
-                if (wlode) LodeTgIncs (mdl, &sta_1, lode, dp*dT, dez*dT,   deps_2, dsig_2, divs_2, dexy*dT, deyz*dT, dezx*dT);
-                else           TgIncs (mdl, &sta_1, dT, deps, dsig, pDEps, deps_2, dsig_2, divs_2);
+                if      (kpath) kTgIncs (mdl, &sta_1, lode,  koct, dez*dT,   deps_2, dsig_2, divs_2);
+                else if (zpath) zTgIncs (mdl, &sta_1, lode, dp*dT, dez*dT,   deps_2, dsig_2, divs_2, dexy*dT, deyz*dT, dezx*dT);
+                else             TgIncs (mdl, &sta_1, dT, deps, dsig, pDEps, deps_2, dsig_2, divs_2);
                 sta_ME.Eps = sta.Eps + 0.5*(deps_1+deps_2);
                 sta_ME.Sig = sta.Sig + 0.5*(dsig_1+dsig_2);
                 sta_ME.Ivs = sta.Ivs + 0.5*(divs_1+divs_2);
@@ -468,6 +576,8 @@ int main(int argc, char **argv) try
         }
         cout << "\n";
     }
+
+    cout << "ITMAX = " << ITMAX << endl;
 
     // end
     of.close();

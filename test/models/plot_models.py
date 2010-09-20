@@ -15,10 +15,12 @@ if tst==0:
 if tst==1:
     p = Plotter()
     #p.fc_c    = 0.1
-    p.fc_phi  = M_calc_phi(1,'cam')
-    p.fc_poct = 150.0*sqrt(3.0)
-    p.show_k  = True
-    p.lwd=1; p.plot ("driver.res",clr='blue', marker='.',    markevery=10, label='CCM')
+    p.fc_phi   = M_calc_phi(1,'cam')
+    p.fc_poct  = 150.0*sqrt(3.0)
+    p.show_k   = True
+    p.oct_sxyz = True
+    p.fsz      = 14
+    p.lwd=2; p.plot ("driver.res",clr='blue', markevery=10, label='CCM', draw_ros=True)
     legend()
 
     # plot data
