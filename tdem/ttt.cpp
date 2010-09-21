@@ -253,120 +253,117 @@ void Report (DEM::Domain & dom, void *UD)
         dat.oss_ss <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez";
         dat.oss_ss << Util::_8s   << "e"    << Util::_8s << "Cn" << Util::_8s << "Nc" << Util::_8s << "Nsc" << "\n";
     }
-    else 
+    if (!dom.Finished) 
     {
-        if (!dom.Finished) 
+        // stress
+        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dat.Sig(0) << Util::_8s << dat.Sig(1) << Util::_8s << dat.Sig(2);
+
+        // strain
+        dat.oss_ss << Util::_8s << (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dat.L0(0))/dat.L0(0);
+        dat.oss_ss << Util::_8s << (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dat.L0(1))/dat.L0(1);
+        dat.oss_ss << Util::_8s << (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dat.L0(2))/dat.L0(2);
+
+        // void ratio
+        double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->Props.R+dom.Particles[dat.InitialIndex+1]->Props.R)*
+                                 (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->Props.R+dom.Particles[dat.InitialIndex+3]->Props.R)*
+                                 (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->Props.R+dom.Particles[dat.InitialIndex+5]->Props.R);
+
+        dat.oss_ss << Util::_8s << (volumecontainer-dom.Vs)/dom.Vs;
+
+        // Number of contacts Nc, number of sliding contacts Nsc and Coordination number Cn
+        double Cn = 0;
+        size_t Nc = 0;
+        size_t Nsc = 0;
+        for (size_t i=0; i<dom.CInteractons.Size(); i++)
         {
-            // stress
-            dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dat.Sig(0) << Util::_8s << dat.Sig(1) << Util::_8s << dat.Sig(2);
-
-            // strain
-            dat.oss_ss << Util::_8s << (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dat.L0(0))/dat.L0(0);
-            dat.oss_ss << Util::_8s << (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dat.L0(1))/dat.L0(1);
-            dat.oss_ss << Util::_8s << (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dat.L0(2))/dat.L0(2);
-
-            // void ratio
-            double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->Props.R+dom.Particles[dat.InitialIndex+1]->Props.R)*
-                                     (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->Props.R+dom.Particles[dat.InitialIndex+3]->Props.R)*
-                                     (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->Props.R+dom.Particles[dat.InitialIndex+5]->Props.R);
-
-            dat.oss_ss << Util::_8s << (volumecontainer-dom.Vs)/dom.Vs;
-
-            // Number of contacts Nc, number of sliding contacts Nsc and Coordination number Cn
-            double Cn = 0;
-            size_t Nc = 0;
-            size_t Nsc = 0;
-            for (size_t i=0; i<dom.CInteractons.Size(); i++)
+            if(dom.CInteractons[i]->I2<dat.InitialIndex)
             {
-                if(dom.CInteractons[i]->I2<dat.InitialIndex)
-                {
-                    Nc += dom.CInteractons[i]->Nc;
-                    Nsc += dom.CInteractons[i]->Nsc;
-                }
+                Nc += dom.CInteractons[i]->Nc;
+                Nsc += dom.CInteractons[i]->Nsc;
             }
-
-            for (size_t i=0; i<dom.Particles.Size(); i++)
-            {
-                Cn += dom.Particles[i]->Cn/dom.Particles.Size();
-            }
-
-            dat.oss_ss << Util::_8s << Cn << Util::_8s << Nc << Util::_8s << Nsc;
-
-            dat.oss_ss << std::endl;
         }
-        else
+
+        for (size_t i=0; i<dom.Particles.Size(); i++)
         {
-            dat.oss_ss.close();
-            String fn;
-            fn.Printf("%s_forces.res",dom.FileKey.CStr());
-            std::ofstream OF(fn.CStr());
-            OF <<  Util::_10_6 << "Fn" << Util::_8s << "Ft" << Util::_8s << "NContacts" << Util::_8s << "Issliding" << "\n";
+            Cn += dom.Particles[i]->Cn/dom.Particles.Size();
+        }
 
-            String f;
-            f.Printf("%s_stress.res",dom.FileKey.CStr());
-            std::ofstream SF(f.CStr());
-            Mat3_t S,B;
-            for (size_t m=0;m<3;m++)
+        dat.oss_ss << Util::_8s << Cn << Util::_8s << Nc << Util::_8s << Nsc;
+
+        dat.oss_ss << std::endl;
+    }
+    else
+    {
+        dat.oss_ss.close();
+        String fn;
+        fn.Printf("%s_forces.res",dom.FileKey.CStr());
+        std::ofstream OF(fn.CStr());
+        OF <<  Util::_10_6 << "Fn" << Util::_8s << "Ft" << Util::_8s << "NContacts" << Util::_8s << "Issliding" << "\n";
+
+        String f;
+        f.Printf("%s_stress.res",dom.FileKey.CStr());
+        std::ofstream SF(f.CStr());
+        Mat3_t S,B;
+        for (size_t m=0;m<3;m++)
+        {
+            for (size_t n=0;n<3;n++)
             {
-                for (size_t n=0;n<3;n++)
-                {
-                    S(m,n)=0.0;
-                    B(m,n)=0.0;
-                }
+                S(m,n)=0.0;
+                B(m,n)=0.0;
             }
-            size_t Ncontacts = 0;
-            for (size_t i=0; i<dom.CInteractons.Size(); i++)
+        }
+        size_t Ncontacts = 0;
+        for (size_t i=0; i<dom.CInteractons.Size(); i++)
+        {
+            if (norm(dom.CInteractons[i]->Fnet)>0.0&&dom.CInteractons[i]->P1->IsFree()&&dom.CInteractons[i]->P2->IsFree())
             {
-                if (norm(dom.CInteractons[i]->Fnet)>0.0&&dom.CInteractons[i]->P1->IsFree()&&dom.CInteractons[i]->P2->IsFree())
-                {
-                    //OF << Util::_10_6 << norm(dom.CInteractons[i]->Fnet) << Util::_8s << norm(dom.CInteractons[i]->Ftnet) << Util::_8s <<  dom.CInteractons[i]->Nc << Util::_8s <<  dom.CInteractons[i]->Nsc << "\n";
-                    OF << Util::_10_6 << dom.CInteractons[i]->Fnet(0) << Util::_8s << dom.CInteractons[i]->Fnet(1) << Util::_8s << dom.CInteractons[i]->Fnet(2) << Util::_8s <<  "\n";
-                    for (size_t m=0;m<3;m++)
-                    {
-                        for (size_t n=0;n<3;n++)
-                        {
-                            B(m,n)+=dom.CInteractons[i]->B(m,n);
-                        }
-                    }
-                    Ncontacts+=dom.CInteractons[i]->Nc;
-                }
-            }
-            OF.close();
-
-            double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->Props.R+dom.Particles[dat.InitialIndex+1]->Props.R)*
-                                     (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->Props.R+dom.Particles[dat.InitialIndex+3]->Props.R)*
-                                     (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->Props.R+dom.Particles[dat.InitialIndex+5]->Props.R);
-
-            for (size_t i=0; i<dom.Particles.Size(); i++)
-            {
+                //OF << Util::_10_6 << norm(dom.CInteractons[i]->Fnet) << Util::_8s << norm(dom.CInteractons[i]->Ftnet) << Util::_8s <<  dom.CInteractons[i]->Nc << Util::_8s <<  dom.CInteractons[i]->Nsc << "\n";
+                OF << Util::_10_6 << dom.CInteractons[i]->Fnet(0) << Util::_8s << dom.CInteractons[i]->Fnet(1) << Util::_8s << dom.CInteractons[i]->Fnet(2) << Util::_8s <<  "\n";
                 for (size_t m=0;m<3;m++)
                 {
                     for (size_t n=0;n<3;n++)
                     {
-                        S(m,n)+=dom.Particles[i]->M(m,n)/volumecontainer;
+                        B(m,n)+=dom.CInteractons[i]->B(m,n);
                     }
                 }
+                Ncontacts+=dom.CInteractons[i]->Nc;
             }
-
-
-            for (size_t m=0;m<3;m++)
-            {
-                for (size_t n=0;n<3;n++)
-                {
-                    SF << Util::_10_6 << S(m,n) << Util::_8s;
-                }
-                SF << std::endl;
-            }
-            for (size_t m=0;m<3;m++)
-            {
-                for (size_t n=0;n<3;n++)
-                {
-                    SF << Util::_10_6 << B(m,n)/Ncontacts << Util::_8s;
-                }
-                SF << std::endl;
-            }
-            SF.close();
         }
+        OF.close();
+
+        double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->Props.R+dom.Particles[dat.InitialIndex+1]->Props.R)*
+                                 (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->Props.R+dom.Particles[dat.InitialIndex+3]->Props.R)*
+                                 (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->Props.R+dom.Particles[dat.InitialIndex+5]->Props.R);
+
+        for (size_t i=0; i<dom.Particles.Size(); i++)
+        {
+            for (size_t m=0;m<3;m++)
+            {
+                for (size_t n=0;n<3;n++)
+                {
+                    S(m,n)+=dom.Particles[i]->M(m,n)/volumecontainer;
+                }
+            }
+        }
+
+
+        for (size_t m=0;m<3;m++)
+        {
+            for (size_t n=0;n<3;n++)
+            {
+                SF << Util::_10_6 << S(m,n) << Util::_8s;
+            }
+            SF << std::endl;
+        }
+        for (size_t m=0;m<3;m++)
+        {
+            for (size_t n=0;n<3;n++)
+            {
+                SF << Util::_10_6 << B(m,n)/Ncontacts << Util::_8s;
+            }
+            SF << std::endl;
+        }
+        SF.close();
     }
 }
 
@@ -469,7 +466,7 @@ int main(int argc, char **argv) try
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.GenBox  (/*O2*/false,/*V*/Lx*Ly*Lz/(0.5*nx*ny*nz),Lx,Ly,Lz);
-        dom.GenFromMesh (mesh,/*R*/R,/*rho*/rho,false,false);
+        dom.GenFromMesh (mesh,/*R*/R,/*rho*/rho,true,false);
     }
     else if (ptype=="rice") dom.GenRice(-1,Lx,nx,R,rho,seed,fraction);
     else throw new Fatal("Packing for particle type not implemented yet");
