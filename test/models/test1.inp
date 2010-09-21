@@ -1,0 +1,20 @@
+matID  = 5
+pcam0  = 0.57735026918962584
+ninc   = 10
+cdrift = 0
+npath  = 1
+
+#ndat = 3
+#  dsx = -85.109027089965736
+#  dsy = -85.109027089965736
+#  dsz = -85.109027089965736
+
+#ndat = 3
+#  kcam = 3
+#  lode = 90
+#  dez  = -10
+
+ndat = 3
+  lode  = 89
+  dpcam = 0
+  dez   = -2

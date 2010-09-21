@@ -4,7 +4,7 @@ from msys_readdata   import *
 from numpy import array, log, sqrt
 from pylab import plot, show, grid, legend, xlabel, ylabel
 
-tst = 1
+tst = 3
 
 if tst==0:
     p = Plotter()
@@ -59,23 +59,7 @@ if tst==2:
 
 if tst==3:
     p = Plotter()
-    #p.fc_c    = 0.1
-    p.fc_phi  = M_calc_phi(1,'cam')
-    p.fc_poct = 150.0*sqrt(3.0)
-    p.show_k  = True
-    #p.set_eps = True
-    p.lwd=1; p.plot ("driver.res", clr='blue',    markevery=10, label='Cam clay', draw_fl=True,draw_ros=True)
-    #p.lwd=1; p.plot ("test_models_6.res", clr='red',     marker='+',    markevery=10, label='Unconventional 1')
-    #p.lwd=1; p.plot ("test_models_7.res", clr='green',   marker='.',    markevery=10, label='Unconventional 2')
-    #p.lwd=1; p.plot ("test_models_8.res", clr='magenta', marker='s',    markevery=10, label='Unconventional 3')
-    #subplot(2,3,3)
-    #legend()
-    p.show()
-    #p.save_eps("dilatancy")
-
-if tst==4:
-    p = Plotter()
-    p.pq_ty = 'oct'
+    p.pq_ty   = 'oct'
     p.lnplus1 = True
     #p.justone = 4
     #p.fc_c    = 0.1
@@ -83,7 +67,7 @@ if tst==4:
     p.fc_poct = 150.0*sqrt(3.0)
     p.show_k  = True
     #p.set_eps = True
-    p.lwd=2; p.plot ("test_models_9.res", clr='blue',  markevery=10, label='Unconventional 4', draw_fl=True,draw_ros=True)
+    p.lwd=2; p.plot ("test1.res", clr='blue',  markevery=10, label='Unconventional 4', draw_fl=True,draw_ros=True)
     #subplot(2,3,3)
     legend()
 

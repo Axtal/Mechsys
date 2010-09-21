@@ -115,8 +115,8 @@ inline void Unconv04::Stiffness (State const * Sta, Mat_t & D) const
     //   x  , a    , b    , c        , A     , B    , bet  , x0  , y0    , D  , lam , y
     Ref (x  , lam1 , 1.0  , -lam1*x1 , lam2  , lam1 , bet1 , x2  , 0.0   , D1 , lr0 , r0);
     Ref (ed , 0.0  , -1.0 , ev2      , -psi1 , 0.0  , bet3 , 0.0 , ev1   , D3 , lr1 , r1);
-    //Ref (ed , 0.0  , 1.0  , -Mcs   , g1    , 0.0  , bet5 , 0.0 , Mso , D5 , lr2 , r2);
-    Ref (ed , 0.0  , 1.0  , -Mcs*p   , g1    , 0.0  , bet5 , 0.0 , Mso*p , D5 , lr2 , r2);
+    Ref (ed , 0.0  , 1.0  , -Mcs   , g1    , 0.0  , bet5 , 0.0 , Mso , D5 , lr2 , r2);
+    //Ref (ed , 0.0  , 1.0  , -Mcs*p   , g1    , 0.0  , bet5 , 0.0 , Mso*p , D5 , lr2 , r2);
 
     double D0  = r0 - ev;
     double D2  = ev - r1;
@@ -129,24 +129,29 @@ inline void Unconv04::Stiffness (State const * Sta, Mat_t & D) const
     //printf("alpha = %g\n",alpha*180.0/Util::PI);
 
     double a = -lam*cos(alpha)/(3.0*(1.0+p))/100.;
-    double K = -sqrt(3.0)/(9.0*a);
-    double G = 100.0;//*g;
+    double A = -a/Util::SQ3;
+    double K = 100000.0/(1.0+9.*100000.0*A);
+    double G = 100000.0;//*g;
     D = (2.0*G)*Psd + K*IdyI;
 
     if (q>1.0e-8)
     {
         double b = -psi*(1.0-cos(alpha))/(3.0*g);
         double c = 1.0/g;
-        Vec_t B, S;
+        //printf("g0=%g, lr2=%g, D4=%g, bet4=%g, exp(-bet4*D4)=%g, g=%g\n",g0,lr2,D4,bet4,exp(-bet4*D4),g);
+        //printf("psi=%g, alpha=%g, g=%g, b=%g, c=%g\n",psi,alpha*180./Util::PI,g,b,c);
+        Vec_t B, S, T;
         Dev (sta->Sig, S);
-        B = (b/q)*I + (c/q)*S;
+        //B = (b/q)*I + (c/q)*S;
+        B = b*I + c*S;
+        T = (1./q)*S;
         Vec_t DeB(D*B);
-        Vec_t SDe;
-        Mult (S,D, SDe);
-        double phi = 1.0 + dot(S,DeB);
+        Vec_t TDe;
+        Mult (T,D, TDe);
+        double phi = 1.0 + dot(T,DeB);
         for (size_t i=0; i<NCps; ++i)
         for (size_t j=0; j<NCps; ++j)
-            D(i,j) -= DeB(i)*SDe(j)/phi;
+            D(i,j) -= DeB(i)*TDe(j)/phi;
     }
 }
 
@@ -160,6 +165,7 @@ inline void Unconv04::UpdatePath (State const * Sta, Vec_t const & DEps, Vec_t c
     double dq = Calc_qoct (DSig);
     double dp = Calc_poct (DSig);
     alpha = atan2(dq,dp);
+    //printf("alpha = %g\n",alpha*180./Util::PI);
 }
 
 inline void Unconv04::Ref (double x, double a, double b, double c, double A, double B, double bet, double x0, double y0, double & D, double & lam, double & y) const

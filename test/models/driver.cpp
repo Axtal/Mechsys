@@ -88,6 +88,8 @@ void zTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, doubl
     // calc divs
     Vec_t deps_tmp(deps), dsig_tmp(dsig);
     Mdl->TgIncs (Sta, deps_tmp, dsig_tmp, divs);
+
+    //printf("deps=[%g, %g, %g],  dsig=[%g, %g, %g]\n",deps(0),deps(1),deps(2),dsig(0),dsig(1),dsig(2));
 }
 
 //size_t ITMAX = 0;
@@ -241,7 +243,7 @@ void TgIncs (Model const * Mdl, EquilibState const * Sta, double dT, Vec_t const
     Mdl->TgIncs (Sta, deps, dsig, divs);
 
     // check
-    if (true)
+    if (false)
     {
         double dsa = (dsig(1)-dsig(0))/SQ2;
         double dsb = (dsig(1)+dsig(0)-2.0*dsig(2))/SQ2/SQ3;
