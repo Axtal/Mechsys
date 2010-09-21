@@ -28,8 +28,10 @@
 #include <set>
 
 // Hdf5
+#ifdef USE_HDF5
 #include <hdf5.h>
 #include <hdf5_hl.h>
+#endif
 
 // Voro++
 #include "src/voro++.cc"
@@ -83,8 +85,10 @@ public:
                             char const * FileKey=NULL, bool RenderVideo=true);                                  ///< Run simulation
     void WritePOV          (char const * FileKey);                                                              ///< Write POV file
     void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
+#ifdef USE_HDF5    
     void Save              (char const * FileKey);                                                              ///< Save the current domain
     void Load              (char const * FileKey);                                                              ///< Load the domain form a file
+#endif
     void BoundingBox       (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
     void Center            (Vec3_t C = Vec3_t(0.0,0.0,0.0));                                                    ///< Centers the domain around C
     void ResetInteractons  ();                                                                                  ///< Reset the interactons
@@ -1231,6 +1235,7 @@ inline void Domain::WriteBPY (char const * FileKey)
 #endif
 }
 
+#ifdef USE_HDF5
 inline void Domain::Save (char const * FileKey)
 {
 
@@ -1543,6 +1548,7 @@ inline void Domain::Load (char const * FileKey)
     H5Fclose(file_id);
 
 }
+#endif
 
 inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
 {
