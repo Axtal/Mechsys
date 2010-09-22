@@ -115,8 +115,8 @@ inline void Unconv04::Stiffness (State const * Sta, Mat_t & D) const
     //   x  , a    , b    , c        , A     , B    , bet  , x0  , y0    , D  , lam , y
     Ref (x  , lam1 , 1.0  , -lam1*x1 , lam2  , lam1 , bet1 , x2  , 0.0   , D1 , lr0 , r0);
     Ref (ed , 0.0  , -1.0 , ev2      , -psi1 , 0.0  , bet3 , 0.0 , ev1   , D3 , lr1 , r1);
-    Ref (ed , 0.0  , 1.0  , -Mcs   , g1    , 0.0  , bet5 , 0.0 , Mso , D5 , lr2 , r2);
-    //Ref (ed , 0.0  , 1.0  , -Mcs*p   , g1    , 0.0  , bet5 , 0.0 , Mso*p , D5 , lr2 , r2);
+    //Ref (ed , 0.0  , 1.0  , -Mcs   , g1    , 0.0  , bet5 , 0.0 , Mso , D5 , lr2 , r2);
+    Ref (ed , 0.0  , 1.0  , -Mcs*p   , g1    , 0.0  , bet5 , 0.0 , Mso*p , D5 , lr2 , r2);
 
     double D0  = r0 - ev;
     double D2  = ev - r1;
@@ -131,8 +131,10 @@ inline void Unconv04::Stiffness (State const * Sta, Mat_t & D) const
     double a = -lam*cos(alpha)/(3.0*(1.0+p))/100.;
     double A = -a/Util::SQ3;
     double K = 100000.0/(1.0+9.*100000.0*A);
-    double G = 100000.0;//*g;
+    double G = 0.0;//*g;
     D = (2.0*G)*Psd + K*IdyI;
+
+    //printf("q=%g\n",q);
 
     if (q>1.0e-8)
     {
@@ -152,6 +154,7 @@ inline void Unconv04::Stiffness (State const * Sta, Mat_t & D) const
         for (size_t i=0; i<NCps; ++i)
         for (size_t j=0; j<NCps; ++j)
             D(i,j) -= DeB(i)*TDe(j)/phi;
+        //std::cout << PrintMatrix(D);
     }
 }
 
