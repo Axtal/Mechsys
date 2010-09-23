@@ -36,6 +36,7 @@ class Plotter:
         self.log_p     = True                                     # use log(p) instead of p ?
         self.q_neg_ext = False                                    # multiply q by -1 for extension (t<0, where t=sin(3th)
         self.pq_ty     = 'cam'                                    # invariants type
+        self.evd_ty    = 'cam'                                    # strain invariants type
         self.fc_ty     = ['MC','MN']                              # failure criteria type (VM, DP, MC, MN)
         self.fc_clr    = ['k', 'k', 'k', 'k']                     # failure criteria colors
         self.fc_ls     = ['solid', 'dashed', 'dotted', 'dashdot'] # failure criteria linestyles
@@ -52,16 +53,16 @@ class Plotter:
         self.isxyz     = (-1,0)                                   # indices for sxyz plot, use negative numbers for principal components
         self.devplot   = True                                     # plot s3-s1, s3-s2 instead of Ek, Sk
         self.pcte      = -1                                       # if pcte>0 => pcte in Ev x p (logp) plot?
-        self.justone   = -1                                       # all plots = -1
         self.maxed     = -1                                       # max Ed to stop the lines
         self.maxev     = -1                                       # max Ev to stop the lines
         self.maxidx    = -1                                       # max index of data to plot
         self.axesdat   = [0.11,0.15,0.98-0.11,0.95-0.15]          # geometry of figure
         self.ms        = 4                                        # marker size in points
         self.set_eps   = False                                    # set geometry for eps (savefig)
+        self.only_one  = -1                                       # all plots = -1
         self.only_six  = True                                     # only 2 x 3 instead of 3 x 3 plots?
+        self.only_four = False                                    # only 2 x 4 instead of others
         self.proport   = 0.75                                     # proportion (Aesthetic ratio): golden_mean = (sqrt(5)-1.0)/2.0 0.628
-        self.lwd       = 2                                        # linewidth
         self.fc_prms   = {'A':None,'B':None,'c':None,'bet':None}  # nonlinear FC parameters
         self.lnplus1   = False                                    # plot ln(p+1) instead of ln(p) ?
         self.oct_sxyz  = False                                    # use Sx,Sy,Sz in oct plane instead of S1,S2,S3
@@ -76,7 +77,7 @@ class Plotter:
 
     # Plot results
     # ============
-    def plot(self, filename, clr='red', draw_fl=False, draw_ros=False, txtlst=False, txtmax=False,
+    def plot(self, filename, clr='red', lwd=2, draw_fl=False, draw_ros=False, txtlst=False, txtmax=False,
                              label=None, marker='None', markevery=None, calc_phi=False):
         # load data
         Sig, Eps = self.load_data (filename)
@@ -99,7 +100,7 @@ class Plotter:
             Sx[i], Sy[i], Sz[i] = Sig[i][0], Sig[i][1], Sig[i][2]
             sxyz                = Sx[i], Sy[i], Sz[i]
             Sa[i], Sb[i], Sc[i] = sxyz_calc_oct  (sxyz) if self.oct_sxyz else s123_calc_oct (s123)
-            Ev[i], Ed[i]        = eps_calc_ev_ed (Eps[i])
+            Ev[i], Ed[i]        = eps_calc_ev_ed (Eps[i], Type=self.evd_ty)
             e123                = eps_calc_e123  (Eps[i])
             E1[i], E2[i], E3[i] = e123  [0], e123  [1], e123  [2]
             Ex[i], Ey[i], Ez[i] = Eps[i][0], Eps[i][1], Eps[i][2]
@@ -120,7 +121,8 @@ class Plotter:
         nhplt = 3  # number of horizontal plots
         nvplt = 3  # number of vertical plots
         iplot = 1  # index of plot
-        if self.only_six: nhplt, nvplt = 2, 3
+        if self.only_six:  nhplt, nvplt = 2, 3
+        if self.only_four: nhplt, nvplt = 2, 2
 
         # calc friction angle
         imaQP = QdivP.argmax() # index of QP used to calculate phi
@@ -132,9 +134,9 @@ class Plotter:
 
         # set for eps
         if self.set_eps:
-            if self.justone>=0:
+            if self.only_one>=0:
                 self.set_fig_for_eps(multiplot=False)
-                #if self.justone==5: axes([0.01,0.01,.99,.99])
+                #if self.only_one==5: axes([0.01,0.01,.99,.99])
                 #else: axes(self.axesdat) # this needs to be after set_eps
             else:
                 self.set_fig_for_eps(multiplot=True)
@@ -145,9 +147,9 @@ class Plotter:
         Ylbl = r'$q_{%s}/p_{%s}$'%(self.pq_ty,self.pq_ty) if self.div_by_p else r'$q_{%s}$'%(self.pq_ty)
 
         # 0) q/p, Ed ---------------------------------------------------------------------------
-        if self.justone==0 or self.justone<0:
-            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot (Ed, Y, color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
+        if self.only_one==0 or self.only_one<0:
+            if self.only_one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot (Ed, Y, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
             plot (Ed[imaQP], Y[imaQP], '^', color=clr)
             #plot (Ed[-1],    Y[-1],    '^', color=clr)
             xlabel (r'$\varepsilon_d$ [%]');  ylabel(Ylbl);  grid(True)
@@ -155,17 +157,17 @@ class Plotter:
             if txtlst: text (Ed[-1],    Y[-1],    '%.2f'%Y[-1],    fontsize=8)
 
         # 1) q/p, Ev ---------------------------------------------------------------------------
-        if self.justone==1 or self.justone<0:
-            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (Ev, Y, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+        if self.only_one==1 or self.only_one<0:
+            if self.only_one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (Ev, Y, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
             xlabel (r'$\varepsilon_v$ [%]');  ylabel(Ylbl);  grid(True)
 
         # 2) p, q ---------------------------------------------------------------------------
-        if self.justone==2 or self.justone<0:
-            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+        if self.only_one==2 or self.only_one<0 and not self.only_four:
+            if self.only_one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             axhline (0.0,color='black'); axvline(0.0,color='black')
             if draw_fl: self.pq_fline(0.1*min(P),2.0*max(P),min(Q),max(Q))
-            plot    (P, Q, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            plot    (P, Q, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
             xlabel  (r'$p_{%s}$'%(self.pq_ty));  ylabel(r'$q_{%s}$'%(self.pq_ty));  grid(True)
             axis    ('equal')
             if self.show_k:
@@ -173,13 +175,13 @@ class Plotter:
                 text ((P[0]+P[-1])/2.0,(Q[0]+Q[-1])/2.0,'k = %g'%k,color='black',ha='left', fontsize=10)
 
         # 3) Ed, Ev ---------------------------------------------------------------------------
-        if self.justone==3 or self.justone<0:
-            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (Ed, Ev, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+        if self.only_one==3 or self.only_one<0:
+            if self.only_one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (Ed, Ev, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
             xlabel (r'$\varepsilon_d$ [%]');  ylabel(r'$\varepsilon_v$ [%]'); grid(True)
 
         # 4) lnp, Ev ---------------------------------------------------------------------------
-        if self.justone==4 or self.justone<0:
+        if self.only_one==4 or self.only_one<0:
             if self.log_p:
                 if self.lnplus1:
                     X    = log(P+1.0)
@@ -192,59 +194,59 @@ class Plotter:
                 xlbl = r'$p_{%s}$'%(self.pq_ty)
             if self.pcte>0:
                 for k, x in enumerate(X): X[k] = self.pcte
-            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (X, Ev, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            if self.only_one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (X, Ev, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
             xlabel (xlbl);  ylabel(r'$\varepsilon_v$ [%]');  grid(True)
 
         # 5) Sa, Sb ---------------------------------------------------------------------------
-        if self.justone==5 or self.justone<0:
+        if self.only_one==5 or self.only_one<0 and not self.only_four:
             pcoef = self.fc_poct if self.oct_norm else 1.0
-            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            if self.only_one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             if draw_ros: self.oct_rosette(min(Sa)/pcoef,max(Sa)/pcoef,min(Sb)/pcoef,max(Sb)/pcoef)
             if draw_fl:  self.oct_fline  (min(Sa)/pcoef,max(Sa)/pcoef,min(Sb)/pcoef,max(Sb)/pcoef)
-            plot (Sa/pcoef, Sb/pcoef, color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            plot (Sa/pcoef, Sb/pcoef, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
             plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
             plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, '^', color=clr)
             axis ('equal')
             #axis ('off')
 
         # 6) Ek, Q/P ---------------------------------------------------------------------------
-        if self.justone==6 or self.justone<0 and not self.only_six:
-            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (E1, Y, lw=self.lwd,linestyle='-',  color=clr)
-            plot   (E2, Y, lw=self.lwd,linestyle='--', color=clr)
-            plot   (E3, Y, lw=self.lwd,linestyle='-.', color=clr)
+        if self.only_one==6 or self.only_one<0 and not self.only_six and not self.only_four:
+            if self.only_one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (E1, Y, lw=lwd,linestyle='-',  color=clr)
+            plot   (E2, Y, lw=lwd,linestyle='--', color=clr)
+            plot   (E3, Y, lw=lwd,linestyle='-.', color=clr)
             xlabel (r'$\varepsilon_1$[--], $\varepsilon_2$[- -], $\varepsilon_3$[- .]')
             ylabel (Ylbl);  grid(True)
 
         if self.devplot:
-            if self.justone==7 or self.justone<0 and not self.only_six:
+            if self.only_one==7 or self.only_one<0 and not self.only_six and not self.only_four:
                 # 7) s3-s1, s3-s2
-                if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+                if self.only_one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
                 if draw_fl: self.s123_fline(S3[imaQP])
-                plot   (S3-S1, S3-S2, lw=self.lwd,linestyle='-', color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+                plot   (S3-S1, S3-S2, lw=lwd,linestyle='-', color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
                 xlabel (r'$\sigma_3-\sigma_1$');  ylabel(r'$\sigma_3-\sigma_2$');  grid(True)
                 axis   ('equal')
         else:
             # 7) Ek, Sk ---------------------------------------------------------------------------
-            if self.justone==7 or self.justone<0 and not self.only_six:
-                if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-                plot   (Ex, -Sx, lw=self.lwd,linestyle='-', color=clr)
-                plot   (Ey, -Sy, lw=self.lwd,linestyle='--', color=clr)
-                plot   (Ez, -Sz, lw=self.lwd,linestyle='-.', color=clr)
+            if self.only_one==7 or self.only_one<0 and not self.only_six and not self.only_four:
+                if self.only_one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+                plot   (Ex, -Sx, lw=lwd,linestyle='-', color=clr)
+                plot   (Ey, -Sy, lw=lwd,linestyle='--', color=clr)
+                plot   (Ez, -Sz, lw=lwd,linestyle='-.', color=clr)
                 xlabel (r'$\varepsilon_x$[--], $\varepsilon_y$[- -], $\varepsilon_z$[- .]')
                 ylabel (r'$-\sigma_x$[--], $-\sigma_y$[- -], $-\sigma_z$[- .]');  grid(True)
 
         # 8) sqrt(2.0)*Si, Sj ---------------------------------------------------------------------------
-        if self.justone==8 or self.justone<0 and not self.only_six:
-            if self.justone<0: self.ax = subplot (nhplt,nvplt,iplot);  iplot += 1
+        if self.only_one==8 or self.only_one<0 and not self.only_six and not self.only_four:
+            if self.only_one<0: self.ax = subplot (nhplt,nvplt,iplot);  iplot += 1
             if draw_fl: self.sxyz_fline()
-            plot   (-sqrt(2.0)*Si, -Sj,  lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            plot   (-sqrt(2.0)*Si, -Sj,  lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
             xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]));  ylabel(r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]));  grid(True)
             axis   ('equal')
 
         # 9) Mohr-circles -----------------------------------------------------------------------------
-        if self.justone==9:
+        if self.only_one==9:
             #each = 5
             #for k in range(0,np,each):
             max_s = max([max(-S1), max(-S2), max(-S3)])
@@ -262,7 +264,7 @@ class Plotter:
                 self.draw_arc(gca(), C1,0.,R1, 0., pi, clr, res=30)
                 self.draw_arc(gca(), C2,0.,R2, 0., pi, clr, res=30)
             p1, = plot ([0], [0], 'r-')
-            p2, = plot ([0,max_s],[0,max_s*tan(self.fc_phi*pi/180.)],'-',color='orange')
+            p2, = plot ([0,max_s],[self.fc_c,self.fc_c+max_s*tan(self.fc_phi*pi/180.)],'-',color='orange')
             xlabel (r'$-\sigma_i$');  ylabel(r'$\tau$');  grid(True)
             axis   ('equal')
 
