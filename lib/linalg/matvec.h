@@ -1111,6 +1111,20 @@ inline void pqth2L (double p, double q, double th, Vec3_t & L, char const * Type
     else throw new Fatal("pqTh2L: Method is not available for invariant Type==%s",Type);
 }
 
+/*
+inline void OctDerivs (Mat3_t & dLdpqth)
+{
+    dLdpqth = -1./Util::SQ3, (2.*sin(th-(2.*Util::PI)/3.))/Util::SQ6, (2.*q*cos(th-(2.*Util::PI)/3.))/Util::SQ6,
+              -1./Util::SQ3, (2.*sin(th)                 )/Util::SQ6, (2.*q*cos(th)                 )/Util::SQ6,
+              -1./Util::SQ3, (2.*sin(th+(2.*Util::PI)/3.))/Util::SQ6, (2.*q*cos(th+(2.*Util::PI)/3.))/Util::SQ6;
+}
+
+inline void OctDerivs (Mat3_t & dpqthdL)
+{
+    dpqthdL = -1./Util::SQ3, -1./Util::SQ3, -1./Util::SQ3,
+}
+*/
+
 #ifdef USE_BOOST_PYTHON
 inline BPy::tuple Pypqth2L (double p, double q, double th, BPy::str const & Type)
 {

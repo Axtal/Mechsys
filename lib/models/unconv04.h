@@ -46,6 +46,7 @@ public:
     double lam0, lam1, lam2, x1, x2, bet0, bet1;
     double psi0, psi1, ev1, ev2, bet2, bet3;
     double g0, g1, Mcs, Mso, bet4, bet5;
+    double K, G;
 
     // Auxiliar data
     Vec_t I;
@@ -84,6 +85,9 @@ inline Unconv04::Unconv04 (int NDim, SDPair const & Prms)
     bet4 = Prms("bet4");
     bet5 = Prms("bet5");
 
+    K    = Prms("K");
+    G    = Prms("G");
+
     Calc_I    (NCps, I);
     Calc_IdyI (NCps, IdyI);
     Calc_Psd  (NCps, Psd);
@@ -107,8 +111,8 @@ inline void Unconv04::Stiffness (State const * Sta, Mat_t & D) const
     EquilibState const * sta = static_cast<EquilibState const*>(Sta);
     double p,q,t,ev,ed;
     OctInvs (sta->Sig, p,q,t);
-    ev = Calc_ev(sta->Eps)*100.;
-    ed = Calc_ed(sta->Eps)*100.;
+    ev = Calc_evoct(sta->Eps)*100.;
+    ed = Calc_edoct(sta->Eps)*100.;
     double x = log(1.0+p);
 
     double D1,D3,D5,r0,r1,r2,lr0,lr1,lr2;
@@ -125,37 +129,52 @@ inline void Unconv04::Stiffness (State const * Sta, Mat_t & D) const
     double psi = psi0 + ( lr1 - psi0)*exp(-bet2*D2);
     double g   = g0   + (-lr2 - g0  )*exp(-bet4*D4);
 
+    printf("psi=%g\n",psi);
     //printf("D1 = %g\n",D1);
     //printf("alpha = %g\n",alpha*180.0/Util::PI);
 
-    double a = -lam*cos(alpha)/(3.0*(1.0+p))/100.;
-    double A = -a/Util::SQ3;
-    double K = 100000.0/(1.0+9.*100000.0*A);
-    double G = 0.0;//*g;
-    D = (2.0*G)*Psd + K*IdyI;
+    double a  = -lam/(3.0*(1.0+p))/100.;
+    double A  = -a/Util::SQ3;
+
+    Mat_t C(A*IdyI + (0.5/G)*Psd);
+    if (q>1.0e-10)
+    {
+        double b = -psi/(3.0*g);
+        double c = 1.0/g;
+        Vec_t B, S;
+        Mat_t BdyS;
+        Dev (sta->Sig, S);
+        B = (b/q)*I + (c/q)*S;
+        Dyad (B,S,BdyS);
+        C += BdyS;
+    }
+    //std::cout << "C =\n" << PrintMatrix(C);
+    Inv (C,D);
+    //std::cout << "D =\n" << PrintMatrix(D);
+
+    //double Kb = K/(1.0+9.*K*A);
+    //D = (2.0*G)*Psd + Kb*IdyI;
 
     //printf("q=%g\n",q);
 
-    if (q>1.0e-8)
-    {
-        double b = -psi*(1.0-cos(alpha))/(3.0*g);
-        double c = 1.0/g;
+    //if (q>1.0e-10)
+    //{
+        //double b = -psi/(3.0*g);
+        //double c = 1.0/g;
         //printf("g0=%g, lr2=%g, D4=%g, bet4=%g, exp(-bet4*D4)=%g, g=%g\n",g0,lr2,D4,bet4,exp(-bet4*D4),g);
         //printf("psi=%g, alpha=%g, g=%g, b=%g, c=%g\n",psi,alpha*180./Util::PI,g,b,c);
-        Vec_t B, S, T;
-        Dev (sta->Sig, S);
+        //Vec_t B, S;
+        //Dev (sta->Sig, S);
         //B = (b/q)*I + (c/q)*S;
-        B = b*I + c*S;
-        T = (1./q)*S;
-        Vec_t DeB(D*B);
-        Vec_t TDe;
-        Mult (T,D, TDe);
-        double phi = 1.0 + dot(T,DeB);
-        for (size_t i=0; i<NCps; ++i)
-        for (size_t j=0; j<NCps; ++j)
-            D(i,j) -= DeB(i)*TDe(j)/phi;
+        //Vec_t DeB(D*B);
+        //Vec_t SDe;
+        //Mult (S,D, SDe);
+        //double phi = 1.0 + dot(S,DeB);
+        //for (size_t i=0; i<NCps; ++i)
+        //for (size_t j=0; j<NCps; ++j)
+            //D(i,j) -= DeB(i)*SDe(j)/phi;
         //std::cout << PrintMatrix(D);
-    }
+    //}
 }
 
 inline bool Unconv04::LoadCond (State const * Sta, Vec_t const & DEps, double & alpInt) const

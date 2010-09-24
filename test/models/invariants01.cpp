@@ -34,7 +34,7 @@ using Util::PI;
 
 int main(int argc, char **argv) try
 {
-    int tst = 1;
+    int tst = 2;
     if (argc>1) tst = atoi(argv[1]);
 
     Vec_t sig(4);
@@ -69,19 +69,31 @@ int main(int argc, char **argv) try
     I2b   = s1*s2+s2*s3+s3*s1;
     I3b   = s1*s2*s3;
 
-    String buf;
-    buf.Printf("sig                = [%g, %g, %g, %g]  \n",sig(0),sig(1),sig(2),sig(3));                 cout<<buf;
-    buf.Printf("dev_sig            = [%g, %g, %g, %g]  \n",dev_sig(0),dev_sig(1),dev_sig(2),dev_sig(3)); cout<<buf;
-    buf.Printf("theta              = %g                \n",60.0*asin(t)/PI);                             cout<<buf;
-    buf.Printf("p,  q,  t          = %g, %g, %g        \n",p,  q,  t);                                   cout<<buf;
-    buf.Printf("p1, q1, t1, q2, q3 = %g, %g, %g, %g, %g\n",p1, q1, t1,   q2, q3);                        cout<<buf;
-    buf.Printf("s1,  s2,  s3       = %g, %g, %g        \n",s1,  s2,  s3);                                cout<<buf;
-    buf.Printf("s1b, s2b, s3b      = %g, %g, %g        \n",s1b, s2b, s3b);                               cout<<buf;
-    buf.Printf("I1 , I2,  I3       = %g, %g, %g        \n",I1 , I2 , I3);                                cout<<buf;
-    buf.Printf("I1b, I2b, I3b      = %g, %g, %g        \n",I1b, I2b, I3b);                               cout<<buf;
-    buf.Printf("dI1dsig            = [%g, %g, %g, %g]  \n",dI1(0),dI1(1),dI1(2),dI1(3));                 cout<<buf;
-    buf.Printf("dI2dsig            = [%g, %g, %g, %g]  \n",dI2(0),dI2(1),dI2(2),dI2(3));                 cout<<buf;
-    buf.Printf("dI3dsig            = [%g, %g, %g, %g]  \n",dI3(0),dI3(1),dI3(2),dI3(3));                 cout<<buf;
+    Vec3_t S((2.*L(0)-L(1)-L(2))/3., 
+             (2.*L(1)-L(2)-L(0))/3.,
+             (2.*L(2)-L(0)-L(1))/3.);
+    Vec3_t devSS((2.*S(1)*S(2) - S(2)*S(0) - S(0)*S(1))/3.,
+                 (2.*S(2)*S(0) - S(1)*S(2) - S(0)*S(1))/3.,
+                 (2.*S(0)*S(1) - S(1)*S(2) - S(2)*S(0))/3.);
+    Vec3_t dtdL2;
+    dtdL2 = (-3./pow(q,3.))*(q*t*S + SQ6*devSS);
+
+    printf("sig                = [%g, %g, %g, %g]  \n",sig(0),sig(1),sig(2),sig(3));
+    printf("dev_sig            = [%g, %g, %g, %g]  \n",dev_sig(0),dev_sig(1),dev_sig(2),dev_sig(3));
+    printf("theta              = %g                \n",60.0*asin(t)/PI);
+    printf("p,  q,  t          = %g, %g, %g        \n",p,  q,  t);
+    printf("p1, q1, t1, q2, q3 = %g, %g, %g, %g, %g\n",p1, q1, t1,   q2, q3);
+    printf("s1,  s2,  s3       = %g, %g, %g        \n",s1,  s2,  s3);
+    printf("s1b, s2b, s3b      = %g, %g, %g        \n",s1b, s2b, s3b);
+    printf("I1 , I2,  I3       = %g, %g, %g        \n",I1 , I2 , I3);
+    printf("I1b, I2b, I3b      = %g, %g, %g        \n",I1b, I2b, I3b);
+    printf("dI1dsig            = [%g, %g, %g, %g]  \n",dI1(0),dI1(1),dI1(2),dI1(3));
+    printf("dI2dsig            = [%g, %g, %g, %g]  \n",dI2(0),dI2(1),dI2(2),dI2(3));
+    printf("dI3dsig            = [%g, %g, %g, %g]  \n",dI3(0),dI3(1),dI3(2),dI3(3));
+    printf("dtdL               = [%g, %g, %g]      \n",dtdL (0),dtdL (1),dtdL (2));
+    printf("dtdL2              = [%g, %g, %g]      \n",dtdL2(0),dtdL2(1),dtdL2(2));
+    printf("dev_L              = [%g, %g, %g]      \n",dev_L(0),dev_L(1),dev_L(2));
+    printf("S                  = [%g, %g, %g]      \n",S    (0),S    (1),S    (2));
 
     Util::Sort(s1,s2,s3);
     Util::Sort(s1b,s2b,s3b);
@@ -90,9 +102,9 @@ int main(int argc, char **argv) try
           fabs(s1-s1b),  fabs(s2-s2b),  fabs(s3-s3b),
           fabs(I1-I1b),  fabs(I2-I2b),  fabs(I3-I3b);
 
-    buf.Printf("ERROR(p,q,t)       = %g, %g, %g, %g, %g\n",err[0], err[1], err[2], err[3], err[4]);      cout<<buf;
-    buf.Printf("ERROR(sk-skb)      = %g, %g, %g        \n",err[5], err[6], err[7]);                      cout<<buf;
-    buf.Printf("ERROR(Ik)          = %g, %g, %g        \n",err[8], err[9], err[10]);                     cout<<buf;
+    printf("ERROR(p,q,t)       = %g, %g, %g, %g, %g\n",err[0], err[1], err[2], err[3], err[4]);
+    printf("ERROR(sk-skb)      = %g, %g, %g        \n",err[5], err[6], err[7]);
+    printf("ERROR(Ik)          = %g, %g, %g        \n",err[8], err[9], err[10]);
 
     if (err.TheMax()>1.0e-8) return 1;
     else                     return 0;

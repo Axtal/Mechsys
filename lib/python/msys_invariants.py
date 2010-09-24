@@ -22,9 +22,14 @@ import numpy.linalg as npyla
 # Calculate ev and ed
 # ===================
 # eps is a column matrix in Mandel's basis
-def eps_calc_ev_ed(eps):
-    ev = eps[0,0]+eps[1,0]+eps[2,0]
-    ed = sqrt((eps[0,0]-eps[1,0])**2.0 + (eps[1,0]-eps[2,0])**2.0 + (eps[2,0]-eps[0,0])**2.0 + 3.0*(eps[3,0]**2.0))*(sqrt(2.0)/3.0)
+def eps_calc_ev_ed(eps,Type='cam'):
+    if Type=='oct':
+        ev = (eps[0,0]+eps[1,0]+eps[2,0])/sqrt(3.0)
+        ed = sqrt((eps[0,0]-eps[1,0])**2.0 + (eps[1,0]-eps[2,0])**2.0 + (eps[2,0]-eps[0,0])**2.0 + 3.0*(eps[3,0]**2.0))/sqrt(3.0)
+    elif Type=='cam':
+        ev = eps[0,0]+eps[1,0]+eps[2,0]
+        ed = sqrt((eps[0,0]-eps[1,0])**2.0 + (eps[1,0]-eps[2,0])**2.0 + (eps[2,0]-eps[0,0])**2.0 + 3.0*(eps[3,0]**2.0))*(sqrt(2.0)/3.0)
+    else: raise Exception('eps_calc_ev_ed: Method not available for invariant Type==%s'%Type)
     return ev, ed
 
 

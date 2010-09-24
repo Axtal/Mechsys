@@ -1,7 +1,8 @@
 matID  = 5
 pcam0  = 0.57735026918962584
-ninc   = 10
+ninc   = 20
 cdrift = 0
+STOL   = 1.0e-6
 npath  = 1
 
 #ndat = 3
@@ -12,9 +13,12 @@ npath  = 1
 #ndat = 3
 #  kcam = 3
 #  lode = 90
-#  dez  = -10
+#  dez  = -2
 
-ndat = 3
-  lode  = 90
-  dpcam = 0
-  dez   = -2
+#ndat = 3
+#  lode  = 90
+#  dpcam = 0
+#  dez   = -2
+
+ndat = 1
+  dez  = -2

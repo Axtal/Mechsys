@@ -306,6 +306,8 @@ int main(int argc, char **argv) try
     double pcam0  = 100.0; // pCam
     size_t gninc  = 10;    // general number of increments
     bool   cdrift = true;  // correct YS drift
+    double STOL   = 1.0e-5;
+
     Array<PathIncs> path;  // path increments
 
     // parse input file
@@ -361,6 +363,7 @@ int main(int argc, char **argv) try
                 else if (key=="pcam0")  pcam0  = val;
                 else if (key=="ninc")   gninc  = (int)val;
                 else if (key=="cdrift") cdrift = (bool)val;
+                else if (key=="STOL")   STOL   = val;
                 else if (key=="npath")
                 {
                     path.Resize ((size_t)val);
@@ -377,6 +380,7 @@ int main(int argc, char **argv) try
     printf("  pcam0  = %g\n",pcam0);
     printf("  ninc   = %zd\n",gninc);
     printf("  cdrift = %d\n",cdrift);
+    printf("  STOL   = %e\n",STOL);
 
     // default initial values
     Dict prms, inis;
@@ -427,7 +431,6 @@ int main(int argc, char **argv) try
     Array<bool> pDEps(6);                       // prescribed strain components ?
 
     // constants
-    double STOL   = 1.0e-5;
     double dTini  = 1.0;
     double mMin   = 0.1;
     double mMax   = 10.0;

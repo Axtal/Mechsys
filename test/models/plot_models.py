@@ -60,14 +60,16 @@ if tst==2:
 if tst==3:
     p = Plotter()
     p.pq_ty   = 'oct'
+    p.evd_ty  = 'oct'
     p.lnplus1 = True
     #p.justone = 4
     #p.fc_c    = 0.1
-    p.fc_phi  = M_calc_phi(1,'oct')
-    p.fc_poct = 150.0*sqrt(3.0)
-    p.show_k  = True
+    p.fc_phi    = M_calc_phi(1,'oct')
+    p.fc_poct   = 150.0*sqrt(3.0)
+    p.show_k    = True
+    p.only_four = True
     #p.set_eps = True
-    p.lwd=2; p.plot ("test1.res", clr='blue',  markevery=10, label='Unconventional 4', draw_fl=True,draw_ros=True)
+    p.lwd=2; p.plot ("test1.res", clr='blue',  markevery=10, label='U4', draw_fl=False,draw_ros=True)
     #subplot(2,3,3)
     legend()
 
@@ -79,15 +81,26 @@ if tst==3:
     x2    = 2.5
     ev1   = -2.0
     ev2   = 3.0
-    psi1  = 5.0
+    psi0  = 2.0
+    psi1  = 2.0
     Mso   = 3.0
     Mcs   = 1.0
     g1    = 5.0
     p0    = 1.0
     x0    = log(1.0+p0)
     xmax  = 6.
+    edmax = 2.
 
-    subplot (2,3,5)
+    idx = 3 if p.only_four else 4
+    num = 2 if p.only_four else 3
+    subplot (2,num,idx)
+    plot    ([0.,0.8],[0.,0.-psi0*0.8],label=r'$\psi_0$')
+    plot    ([0.,0.8],[ev1,ev1+psi1*0.8],label=r'$\psi_1$')
+    plot    ([0.,edmax],[ev2,ev2],label=r'$\varepsilon_{v2}$')
+    legend  (loc='lower right')
+
+    idx = 4 if p.only_four else 5
+    subplot (2,num,idx)
     plot    ([x0,xmax],[0.,-lam0*(xmax-x0)],label=r'$\lambda_0$')
     plot    ([x1,xmax],[0.,-lam1*(xmax-x1)],label=r'$\lambda_1$')
     plot    ([x2,xmax],[0.,-lam2*(xmax-x2)],label=r'$\lambda_2$')
