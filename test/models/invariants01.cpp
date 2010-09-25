@@ -37,18 +37,20 @@ int main(int argc, char **argv) try
     int tst = 2;
     if (argc>1) tst = atoi(argv[1]);
 
-    Vec_t sig(4);
+    Vec_t sig;
     switch (tst)
     {
-        case 1: { sig =   0.375,  -0.25,   0.375,  0.0*SQ2;  break; }
-        case 2: { sig = -90.0,   -120.0, -60.0,   30.0*SQ2;  break; }
-        case 3: { sig = -90.0,    -90.0, -90.0,    0.0*SQ2;  break; }
-        case 4: { sig = -90.0,    -20.0, -20.0,    0.0*SQ2;  break; }
+        case 1: { sig.change_dim(4); sig =   0.375,  -0.25,   0.375,  0.0*SQ2;  break; }
+        case 2: { sig.change_dim(4); sig = -90.0,   -120.0, -60.0,   30.0*SQ2;  break; }
+        case 3: { sig.change_dim(4); sig = -90.0,    -90.0, -90.0,    0.0*SQ2;  break; }
+        case 4: { sig.change_dim(4); sig = -90.0,    -20.0, -20.0,    0.0*SQ2;  break; }
+        case 5: { sig.change_dim(6); sig = -90.0,    -20.0, -20.0,    1.0*SQ2, 2.*SQ2, 1.5*SQ2;  break; }
         default: throw new Fatal("main: Test = %d is not available",tst);
     }
+    size_t ncp = size(sig);
 
     Vec3_t L, dpdL, dqdL, dtdL, dev_L, Ii(1.0,1.0,1.0), Lb;
-    Vec_t  dev_sig(4), dI1(4),dI2(4),dI3(4), P0,P1,P2;
+    Vec_t  dev_sig(ncp), dI1(ncp),dI2(ncp),dI3(ncp), P0,P1,P2;
     double s1,s2,s3, p,q,t, p1,q1,q2,q3,t1;
     double I1,I2,I3, I1b,I2b,I3b;
     double s1b,s2b,s3b;
@@ -69,6 +71,7 @@ int main(int argc, char **argv) try
     I2b   = s1*s2+s2*s3+s3*s1;
     I3b   = s1*s2*s3;
 
+    // derivative of invariants
     Vec3_t S((2.*L(0)-L(1)-L(2))/3., 
              (2.*L(1)-L(2)-L(0))/3.,
              (2.*L(2)-L(0)-L(1))/3.);
@@ -89,7 +92,31 @@ int main(int argc, char **argv) try
     Mat3_t res;
     res = product(dpqthdL,dLdpqth);
     cout << "dpqthdL*dLdpqth = \n" << PrintMatrix(res);
+    bool err_deriv = false;
+    for (size_t i=0; i<3; ++i)
+    for (size_t j=0; j<3; ++j)
+    {
+        if (i!=j && fabs(res(i,j)>1.0e-10)) err_deriv = true;
+    }
+    if (err_deriv) cout << TERM_RED << "Error: dpqthdL*dLdpqth is not identity" << TERM_RST << endl;
 
+    // inverse
+    Vec_t invSig;
+    Mat3_t m_sig,m_invSig;
+    Inv     (sig,    invSig);
+    Ten2Mat (sig,    m_sig);
+    Ten2Mat (invSig, m_invSig);
+    res = product(m_sig,m_invSig);
+    cout << "\nsig*invSig = \n" << PrintMatrix(res);
+    bool err_inv = false;
+    for (size_t i=0; i<3; ++i)
+    for (size_t j=0; j<3; ++j)
+    {
+        if (i!=j && fabs(res(i,j)>1.0e-15)) err_inv = true;
+    }
+    if (err_inv) cout << TERM_RED << "Error: inverse failed" << TERM_RST << endl;
+
+    printf("\n");
     printf("sig                = [%g, %g, %g, %g]  \n",sig(0),sig(1),sig(2),sig(3));
     printf("dev_sig            = [%g, %g, %g, %g]  \n",dev_sig(0),dev_sig(1),dev_sig(2),dev_sig(3));
     printf("theta              = %g                \n",60.0*asin(t)/PI);
@@ -120,6 +147,8 @@ int main(int argc, char **argv) try
     printf("ERROR(sk-skb)      = %g, %g, %g        \n",err[5], err[6], err[7]);
     printf("ERROR(Ik)          = %g, %g, %g        \n",err[8], err[9], err[10]);
 
+    if (err_deriv)           return 1;
+    if (err_inv)             return 1;
     if (err.TheMax()>1.0e-8) return 1;
     else                     return 0;
 }

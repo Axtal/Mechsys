@@ -797,14 +797,15 @@ inline void Inv (Vec_t const & T, Vec_t & Ti, double Tol=1.0e-10)
 
         if (fabs(det)<Tol)
         {
-            std::ostringstream oss;  oss<<T;
-            throw new Fatal("matvec.h::Inv: inverse of 2nd order symmetric tensor failed with null (%g) determinat. T =\n%s",Tol,oss.str().c_str());
+            std::ostringstream oss;  oss<<PrintVector(T);
+            throw new Fatal("matvec.h::Inv: inverse of 2nd order symmetric tensor failed with null (%g) determinat.\n  T =%s",Tol,oss.str().c_str());
         }
 
-        Ti(0) = T(1)*T(2)/det;
-        Ti(1) = T(0)*T(2)/det;
-        Ti(2) = (T(0)*T(1)-2.0*T(3)*T(3))/det;
-        Ti(3) = -2.0*T(2)*T(3)/det;
+        Ti(0) =  T[1]*T[2]/det;
+        Ti(1) =  T[0]*T[2]/det;
+        Ti(2) = (T[0]*T[1] - T[3]*T[3]/2.0)/det;
+        Ti(3) = -T[2]*T[3]/det;
+
     }
     else if (ncp==6)
     {
@@ -816,16 +817,16 @@ inline void Inv (Vec_t const & T, Vec_t & Ti, double Tol=1.0e-10)
 
         if (fabs(det)<Tol)
         {
-            std::ostringstream oss;  oss<<T;
-            throw new Fatal("matvec.h::Inv: inverse of 2nd order symmetric tensor failed with null (%g) determinat. T =\n%s",Tol,oss.str().c_str());
+            std::ostringstream oss;  oss<<PrintVector(T);
+            throw new Fatal("matvec.h::Inv: inverse of 2nd order symmetric tensor failed with null (%g) determinat.\n  T =%s",Tol,oss.str().c_str());
         }
 
-        Ti(0) = (T(1)*T(2)-T(4)*T(4)/2.0)/det;
-        Ti(1) = (T(0)*T(2)-T(5)*T(5)/2.0)/det;
-        Ti(2) = (T(0)*T(1)-T(3)*T(3)/2.0)/det;
-        Ti(3) = ((T(4)*T(5))/Util::SQ2-T(2)*T(3))/det;
-        Ti(4) = ((T(3)*T(5))/Util::SQ2-T(0)*T(4))/det;
-        Ti(5) = ((T(3)*T(4))/Util::SQ2-T(1)*T(5))/det;
+        Ti(0) = (T[1]*T[2] - T[4]*T[4]/2.0)/det;
+        Ti(1) = (T[0]*T[2] - T[5]*T[5]/2.0)/det;
+        Ti(2) = (T[0]*T[1] - T[3]*T[3]/2.0)/det;
+        Ti(3) = (T[4]*T[5]/Util::SQ2 - T[2]*T[3])/det;
+        Ti(4) = (T[3]*T[5]/Util::SQ2 - T[0]*T[4])/det;
+        Ti(5) = (T[3]*T[4]/Util::SQ2 - T[1]*T[5])/det;
     }
     else throw new Fatal("matvec.h::Inv: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
 }
@@ -865,6 +866,27 @@ inline void CharInvs (Vec_t const & Ten, double & I1, double & I2, double & I3, 
     Pow2 (Ten, Ten2);
     dI2dTen = I1*dI1dTen - Ten;
     dI3dTen = Ten2 - I1*Ten + I2*dI1dTen;
+}
+
+/** Derivative of the Inverse of A w.r.t A. */
+inline void DerivInv (Vec_t const & A, Vec_t & Ai, Mat_t & dInvA_dA, double Tol=1.0e-10)
+{
+    Inv (A, Ai, Tol);
+    double s   = Util::SQ2;
+    size_t ncp = size(A);
+    dInvA_dA.change_dim (ncp,ncp);
+    if (ncp==4) throw new Fatal("matvec.h: DerivInv: This method doesn't work for ncp==4");
+    else if (ncp==6)
+    {
+        dInvA_dA = 
+            -Ai[0]*Ai[0]     , -Ai[3]/2.        , -Ai[5]/2.        , -Ai[0]*Ai[3]                      , -(Ai[3]*Ai[5])/s                  , -Ai[0]*Ai[5]                      , 
+            -Ai[3]/2.        , -Ai[1]*Ai[1]     , -Ai[4]/2.        , -Ai[1]*Ai[3]                      , -Ai[1]*Ai[4]                      , -(Ai[3]*Ai[4])/s                  , 
+            -Ai[5]/2.        , -Ai[4]/2.        , -Ai[2]*Ai[2]     , -(Ai[4]*Ai[5])/s                  , -Ai[2]*Ai[4]                      , -Ai[2]*Ai[5]                      , 
+            -Ai[0]*Ai[3]     , -Ai[1]*Ai[3]     , -(Ai[4]*Ai[5])/s , -Ai[3]*Ai[3]/2.-Ai[0]*Ai[1]       , -(Ai[1]*Ai[5])/s-(Ai[3]*Ai[4])/2. , -(Ai[3]*Ai[5])/2.-(Ai[0]*Ai[4])/s , 
+            -(Ai[3]*Ai[5])/s , -Ai[1]*Ai[4]     , -Ai[2]*Ai[4]     , -(Ai[1]*Ai[5])/s-(Ai[3]*Ai[4])/2. , -Ai[4]*Ai[4]/2.-Ai[1]*Ai[2]       , -(Ai[4]*Ai[5])/2.-(Ai[2]*Ai[3])/s , 
+            -Ai[0]*Ai[5]     , -(Ai[3]*Ai[4])/s , -Ai[2]*Ai[5]     , -(Ai[3]*Ai[5])/2.-(Ai[0]*Ai[4])/s , -(Ai[4]*Ai[5])/2.-(Ai[2]*Ai[3])/s , -Ai[5]*Ai[5]/2.-Ai[0]*Ai[2]       ;
+    }
+    else throw new Fatal("matvec.h::DerivInv: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
 }
 
 /** Eigenprojectors of 2nd order symmetric tensor Ten. */
@@ -931,6 +953,29 @@ inline void EigenProjAnalytic (Vec_t const & Ten, Vec3_t & L, Vec_t & P0, Vec_t 
         (*P[k]) = coef*(Ten+(L(k)-I1)*I+(I3/L(k))*Ti);
     }
 }
+
+inline void EigenProjDerivs (Vec_t const & A, Vec3_t & L, Vec_t &  P0,   Vec_t &  P1,   Vec_t &  P2,
+                                                          Mat_t & dP0dA, Mat_t & dP1dA, Mat_t & dP2dA, bool SortAsc=false, bool SortDesc=false)
+{
+    /*
+    // matrix of tensor
+    Mat3_t a;
+    Ten2Mat (A, a);
+
+    EigenProj (A, L, P0, P1, P2, SortAsc, SortDesc);
+    size_t ncp = size(A);
+    dP0dA.change_dim (ncp,ncp);
+    dP1dA.change_dim (ncp,ncp);
+    dP2dA.change_dim (ncp,ncp);
+    Mat_t IIA(ncp,ncp);
+    for (size_t i=0; i<ncp; ++i)
+    for (size_t j=0; j<ncp; ++j)
+    {
+        IIA = 
+    }
+    */
+}
+
 
 /** Initialize second order identity tensor. */
 inline void Calc_I (size_t NCp, Vec_t & I)

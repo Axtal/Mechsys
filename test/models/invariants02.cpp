@@ -53,8 +53,11 @@ public:
         S     .change_dim(6);
         dSigdt.change_dim(6);
         dSdt  .change_dim(6);
+        invSig.change_dim(6);
+        diSdt .change_dim(6);
         M     .change_dim(6,6);
         dMdt  .change_dim(6,6);
+        diSig_dSig.change_dim(6,6);
     }
     void CalcState (double t) const
     {
@@ -77,7 +80,7 @@ public:
                      0.,   0.,      0.,   1.,   0.,      0.,
                      0.,   0.,      0.,   0., 2.*t,      0.,
                      0.,   0.,      0.,   0.,   0., -sin(t);
-            Sig    = M*Sig0;
+            Sig    = 0.1*Sig0 + M*Sig0;
             dSigdt = dMdt*Sig0;
         }
         EigenProj (Sig,    L,     P0,  P1,  P2, /*sort*/true);
@@ -92,6 +95,8 @@ public:
         InvOctDerivs (L, p3, q3, T3, dLdpqth);
         Pow2         (S,  SS);
         Dev          (SS, devSS);
+        Inv          (Sig, invSig);
+        DerivInv     (Sig, invSig, diSig_dSig);
         p = Calc_poct (Sig);
         q = Calc_qoct (Sig);
         if (fabs(p-p1) >1.0e-14) throw new Fatal("Error with p=%g, p1=%g",p,p1);
@@ -115,6 +120,7 @@ public:
         dL0dt2  = dLdpqth(0,0)*dpdt1 + dLdpqth(0,1)*dqdt1 + dLdpqth(0,2)*dthdt1;
         dL1dt2  = dLdpqth(1,0)*dpdt1 + dLdpqth(1,1)*dqdt1 + dLdpqth(1,2)*dthdt1;
         dL2dt2  = dLdpqth(2,0)*dpdt1 + dLdpqth(2,1)*dqdt1 + dLdpqth(2,2)*dthdt1;
+        diSdt   = diSig_dSig * dSigdt;
         pqth2L (p, q, th, L1);
         for (size_t i=0; i<3; ++i)
         {
@@ -123,17 +129,24 @@ public:
             if (fabs(dthdL(i)-dpqthdL(2,i))>1.0e-15) throw new Fatal("Error with dthdL(%d)=%g, dpqthdL(2,%d)=%g",i,dthdL(i),i,dpqthdL(2,i));
         }
     }
-    double pFun  (double t) const { CalcState(t); return p;    }
-    double qFun  (double t) const { CalcState(t); return q;    }
-    double thFun (double t) const { CalcState(t); return th;   }
-    double L0Fun (double t) const { CalcState(t); return L(0); }
-    double L1Fun (double t) const { CalcState(t); return L(1); }
-    double L2Fun (double t) const { CalcState(t); return L(2); }
+    double pFun   (double t) const { CalcState(t); return p;         }
+    double qFun   (double t) const { CalcState(t); return q;         }
+    double thFun  (double t) const { CalcState(t); return th;        }
+    double L0Fun  (double t) const { CalcState(t); return L(0);      }
+    double L1Fun  (double t) const { CalcState(t); return L(1);      }
+    double L2Fun  (double t) const { CalcState(t); return L(2);      }
+    double iS0Fun (double t) const { CalcState(t); return invSig(0); }
+    double iS1Fun (double t) const { CalcState(t); return invSig(1); }
+    double iS2Fun (double t) const { CalcState(t); return invSig(2); }
+    double iS3Fun (double t) const { CalcState(t); return invSig(3); }
+    double iS4Fun (double t) const { CalcState(t); return invSig(4); }
+    double iS5Fun (double t) const { CalcState(t); return invSig(5); }
 
     // Data
     int    test;
     Vec_t  Sig0, I;
-    mutable Mat_t M, dMdt;
+    mutable Vec_t  invSig, diSdt;
+    mutable Mat_t  M, dMdt, diSig_dSig;
     mutable Mat3_t dpqthdL, dLdpqth;
     mutable Vec3_t L, L1, dLdt, dpdL, dqdL, dTdL, dthdL;
     mutable Vec_t  Sig, S, SS, devSS, P0, P1, P2, dSigdt, dSdt, dthdSig;
@@ -218,10 +231,26 @@ int main(int argc, char **argv) try
                    prob.L(2), prob.L1(2), dL2dt_num, prob.dLdt(2), prob.dL2dt2, err_dL2dt1, err_dL2dt2);
     }
 
+    // inverse
+    printf("\n");
+    printf("%6s %12s %12s %16s\n",
+            "t","diS0dt_num","diS0dt","err(diS0dt)");
+    double max_err_diS0dt = 0.0;
+    for (size_t i=0; i<ndiv+1; ++i)
+    {
+        double t          = (double)i/(double)ndiv;
+        double diS0dt_num = nd.DyDx (&Problem::iS0Fun, t);
+        prob.CalcState (t);
+        double err_diS0dt = fabs(diS0dt_num - prob.diSdt(0));
+        if (err_diS0dt > max_err_diS0dt) max_err_diS0dt = err_diS0dt;
+        printf("%6.3f %12.8f %12.8f %16.8e\n",
+                t, diS0dt_num, prob.diSdt(0), err_diS0dt);
+    }
+
     // error
     double tol_dpdt  = 1.0e-6;
     double tol_dqdt  = 1.0e-7;
-    double tol_dthdt = 1.0e-7;
+    double tol_dthdt = 1.0e-6;
     double tol_dL0dt = 1.0e-6;
     double tol_dL1dt = 1.0e-6;
     double tol_dL2dt = 1.0e-6;
