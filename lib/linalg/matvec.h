@@ -868,7 +868,7 @@ inline void CharInvs (Vec_t const & Ten, double & I1, double & I2, double & I3, 
 }
 
 /** Eigenprojectors of 2nd order symmetric tensor Ten. */
-inline void EigenProj (Vec_t const & Ten, Vec3_t & L, Vec_t & P0, Vec_t & P1, Vec_t & P2)
+inline void EigenProj (Vec_t const & Ten, Vec3_t & L, Vec_t & P0, Vec_t & P1, Vec_t & P2, bool SortAsc=false, bool SortDesc=false)
 {
     // matrix of tensor
     Mat3_t ten;
@@ -876,7 +876,7 @@ inline void EigenProj (Vec_t const & Ten, Vec3_t & L, Vec_t & P0, Vec_t & P1, Ve
 
     // eigen-values and vectors
     Vec3_t v0,v1,v2;
-    Eig (ten, L, v0, v1, v2);
+    Eig (ten, L, v0, v1, v2, SortAsc, SortDesc);
 
     // eigen-projectors
     size_t ncp = size(Ten);
@@ -1069,7 +1069,24 @@ inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, doub
     }
 }
 
-/** Octahedral invariants of Sig. */
+/** Octahedral invariants of Sig (L = principal values). */
+inline void OctInvs (Vec3_t const & L, double & p, double & q, double & t, double qTol=1.0e-8)
+{
+    p = -(L(0)+L(1)+L(2))/Util::SQ3;
+    q = sqrt(pow(L(0)-L(1),2.0) + pow(L(1)-L(2),2.0) + pow(L(2)-L(0),2.0))/sqrt(3.0);
+    t = 0.0;
+    if (q>qTol)
+    {
+        Vec3_t S((2.*L(0)-L(1)-L(2))/3.,
+                 (2.*L(1)-L(2)-L(0))/3.,
+                 (2.*L(2)-L(0)-L(1))/3.);
+        t = -3.0*Util::SQ6*S(0)*S(1)*S(2)/pow(q,3.0);
+        if (t<=-1.0) t = -1.0;
+        if (t>= 1.0) t =  1.0;
+    }
+}
+
+/** Octahedral invariants of Sig (L = principal values). With derivatives */
 inline void OctInvs (Vec3_t const & L, double & p, double & q, double & t, Vec3_t & dpdL, Vec3_t & dqdL, Vec3_t & dtdL, double qTol=1.0e-8)
 {
     Vec3_t one(1.0,1.0,1.0), s;
@@ -1111,19 +1128,40 @@ inline void pqth2L (double p, double q, double th, Vec3_t & L, char const * Type
     else throw new Fatal("pqTh2L: Method is not available for invariant Type==%s",Type);
 }
 
-/*
-inline void OctDerivs (Mat3_t & dLdpqth)
+inline void OctDerivs (Vec3_t const & L, double & p, double & q, double & t, Mat3_t & dpqthdL, double qTol=1.0e-8)
 {
+    OctInvs (L, p,q,t, qTol);
+    if (q>qTol)
+    {
+
+        Vec3_t S((2.*L(0)-L(1)-L(2))/3., 
+                 (2.*L(1)-L(2)-L(0))/3.,
+                 (2.*L(2)-L(0)-L(1))/3.);
+        Vec3_t devSS((2.*S(1)*S(2) - S(2)*S(0) - S(0)*S(1))/3.,
+                     (2.*S(2)*S(0) - S(1)*S(2) - S(0)*S(1))/3.,
+                     (2.*S(0)*S(1) - S(1)*S(2) - S(2)*S(0))/3.);
+        double th = asin(t)/3.0;
+        double c  = -1.0/(pow(q,3.0)*cos(3.0*th));
+        dpqthdL = -1./Util::SQ3,                   -1./Util::SQ3,                   -1./Util::SQ3,
+                  S(0)/q,                          S(1)/q,                          S(2)/q,
+                  c*Util::SQ6*devSS(0)+c*q*t*S(0), c*Util::SQ6*devSS(1)+c*q*t*S(1), c*Util::SQ6*devSS(2)+c*q*t*S(2);
+    }
+    else
+    {
+        dpqthdL = -1./Util::SQ3, -1./Util::SQ3, -1./Util::SQ3,
+                   0.,            0.,            0.,
+                   0.,            0.,            0.;
+    }
+}
+
+inline void InvOctDerivs (Vec3_t const & Lsorted, double & p, double & q, double & t, Mat3_t & dLdpqth, double qTol=1.0e-8)
+{
+    OctInvs (Lsorted, p,q,t, qTol);
+    double th = asin(t)/3.0;
     dLdpqth = -1./Util::SQ3, (2.*sin(th-(2.*Util::PI)/3.))/Util::SQ6, (2.*q*cos(th-(2.*Util::PI)/3.))/Util::SQ6,
               -1./Util::SQ3, (2.*sin(th)                 )/Util::SQ6, (2.*q*cos(th)                 )/Util::SQ6,
               -1./Util::SQ3, (2.*sin(th+(2.*Util::PI)/3.))/Util::SQ6, (2.*q*cos(th+(2.*Util::PI)/3.))/Util::SQ6;
 }
-
-inline void OctDerivs (Mat3_t & dpqthdL)
-{
-    dpqthdL = -1./Util::SQ3, -1./Util::SQ3, -1./Util::SQ3,
-}
-*/
 
 #ifdef USE_BOOST_PYTHON
 inline BPy::tuple Pypqth2L (double p, double q, double th, BPy::str const & Type)

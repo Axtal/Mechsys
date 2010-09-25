@@ -78,6 +78,18 @@ int main(int argc, char **argv) try
     Vec3_t dtdL2;
     dtdL2 = (-3./pow(q,3.))*(q*t*S + SQ6*devSS);
 
+    double p4,q4,t4, p5,q5,t5;
+    Mat3_t dpqthdL, dLdpqth;
+    Vec3_t Lsorted(L);
+    Util::Sort   (Lsorted(0), Lsorted(1), Lsorted(2));
+    OctDerivs    (Lsorted, p4,q4,t4, dpqthdL);
+    InvOctDerivs (Lsorted, p5,q5,t5, dLdpqth);
+    cout << "dpqthdL = \n" << PrintMatrix(dpqthdL);
+    cout << "dLdpqth = \n" << PrintMatrix(dLdpqth);
+    Mat3_t res;
+    res = product(dpqthdL,dLdpqth);
+    cout << "dpqthdL*dLdpqth = \n" << PrintMatrix(res);
+
     printf("sig                = [%g, %g, %g, %g]  \n",sig(0),sig(1),sig(2),sig(3));
     printf("dev_sig            = [%g, %g, %g, %g]  \n",dev_sig(0),dev_sig(1),dev_sig(2),dev_sig(3));
     printf("theta              = %g                \n",60.0*asin(t)/PI);
@@ -90,6 +102,8 @@ int main(int argc, char **argv) try
     printf("dI1dsig            = [%g, %g, %g, %g]  \n",dI1(0),dI1(1),dI1(2),dI1(3));
     printf("dI2dsig            = [%g, %g, %g, %g]  \n",dI2(0),dI2(1),dI2(2),dI2(3));
     printf("dI3dsig            = [%g, %g, %g, %g]  \n",dI3(0),dI3(1),dI3(2),dI3(3));
+    printf("dpdL               = [%g, %g, %g]      \n",dpdL (0),dpdL (1),dpdL (2));
+    printf("dqdL               = [%g, %g, %g]      \n",dqdL (0),dqdL (1),dqdL (2));
     printf("dtdL               = [%g, %g, %g]      \n",dtdL (0),dtdL (1),dtdL (2));
     printf("dtdL2              = [%g, %g, %g]      \n",dtdL2(0),dtdL2(1),dtdL2(2));
     printf("dev_L              = [%g, %g, %g]      \n",dev_L(0),dev_L(1),dev_L(2));

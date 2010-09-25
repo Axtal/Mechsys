@@ -18,8 +18,7 @@
 
 SET(PROGS
   driver
-  eigenbases
-  invariants02)
+  eigenbases)
 
 SET(VTK_PROGS
   smp
@@ -27,7 +26,8 @@ SET(VTK_PROGS
   ysurf)
 
 SET(TESTS
-  invariants01)
+  invariants01
+  invariants02)
 
 FOREACH(var ${PROGS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

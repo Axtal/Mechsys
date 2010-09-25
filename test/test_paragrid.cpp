@@ -22,13 +22,16 @@
 // MechSys
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/maps.h>
-#include <mechsys/mesh/paragrid3d.h>
+#ifdef HAS_MPI
+  #include <mechsys/mesh/paragrid3d.h>
+#endif
 
 using std::cout;
 using std::endl;
 
 int main(int argc, char **argv) try
 {
+#ifdef HAS_MPI
     // initialize MPI
     MECHSYS_CATCH_PARALLEL = true;
     MECHSYS_MPI_INIT
@@ -63,6 +66,9 @@ int main(int argc, char **argv) try
 
     // end
     MPI::Finalize();
+#else
+    throw new Fatal("test_paragrid: this test needs MPI");
+#endif
     return 0;
 }
 MECHSYS_CATCH

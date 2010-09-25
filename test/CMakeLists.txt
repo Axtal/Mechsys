@@ -28,7 +28,6 @@ SET(PROGS_C # tests requiring GSL
   quadrature
   monte_carlo
   test_numdiff1
-  test_numdiff2
   test_ode1)
 
 SET(PROGS_D # other tests 
