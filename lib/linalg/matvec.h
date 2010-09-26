@@ -1032,29 +1032,6 @@ inline void EigenProjAnalytic (Vec_t const & Ten, Vec3_t & L, Vec_t & P0, Vec_t 
     }
 }
 
-inline void EigenProjDerivs (Vec_t const & A, Vec3_t & L, Vec_t &  P0,   Vec_t &  P1,   Vec_t &  P2,
-                                                          Mat_t & dP0dA, Mat_t & dP1dA, Mat_t & dP2dA, bool SortAsc=false, bool SortDesc=false)
-{
-    /*
-    // matrix of tensor
-    Mat3_t a;
-    Ten2Mat (A, a);
-
-    EigenProj (A, L, P0, P1, P2, SortAsc, SortDesc);
-    size_t ncp = size(A);
-    dP0dA.change_dim (ncp,ncp);
-    dP1dA.change_dim (ncp,ncp);
-    dP2dA.change_dim (ncp,ncp);
-    Mat_t IIA(ncp,ncp);
-    for (size_t i=0; i<ncp; ++i)
-    for (size_t j=0; j<ncp; ++j)
-    {
-        IIA = 
-    }
-    */
-}
-
-
 /** Initialize second order identity tensor. */
 inline void Calc_I (size_t NCp, Vec_t & I)
 {
@@ -1154,6 +1131,57 @@ inline void Calc_Piso (size_t NCp, Mat_t & Piso)
                    0.0,     0.0,     0.0, 0.0, 0.0, 0.0;
     }
     else throw new Fatal("matvec.h::Calc_Piso: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
+}
+
+/** Derivatives of the eigenprojectors w.r.t its defining tensor. */
+inline void EigenProjDerivs (Vec_t const & A, Vec3_t & L, Vec_t &  P0,   Vec_t &  P1,   Vec_t &  P2,
+                                                          Mat_t & dP0dA, Mat_t & dP1dA, Mat_t & dP2dA, bool SortAsc=false, bool SortDesc=false, double Tol=1.0e-8)
+{
+    // eigenprojectors
+    EigenProj (A, L, P0, P1, P2, SortAsc, SortDesc);
+
+    // check eigenvalues
+    if (fabs(L(0))<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Principal values cannot be zero. L=[%g,%g,%g].",L(0),L(1),L(2));
+    if (fabs(L(1))<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Principal values cannot be zero. L=[%g,%g,%g].",L(0),L(1),L(2));
+    if (fabs(L(2))<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Principal values cannot be zero. L=[%g,%g,%g].",L(0),L(1),L(2));
+
+    // characteristic invariants
+    double I1,I2,I3;
+    CharInvs (A, I1, I2, I3);
+    double a[3] = {2.*L(0)*L(0)-I1*L(0)+I3/L(0),
+                   2.*L(1)*L(1)-I1*L(1)+I3/L(1),
+                   2.*L(2)*L(2)-I1*L(2)+I3/L(2)};
+
+    // check alphas
+    if (fabs(a[0])<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Alpha0 cannot be zero. L=[%g,%g,%g].",L(0),L(1),L(2));
+    if (fabs(a[1])<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Alpha1 cannot be zero. L=[%g,%g,%g].",L(0),L(1),L(2));
+    if (fabs(a[1])<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Alpha2 cannot be zero. L=[%g,%g,%g].",L(0),L(1),L(2));
+
+    // inverse tensor and derivative of inverse
+    size_t ncp = size(A);
+    Vec_t Ai;
+    Mat_t dInvAdA, IIsym;
+    DerivInv   (A, Ai, dInvAdA, Tol);
+    Calc_IIsym (ncp, IIsym);
+
+    // dyadic between projectors
+    Array<Mat_t> PdyP(3);
+    Dyad (P0,P0, PdyP[0]);
+    Dyad (P1,P1, PdyP[1]);
+    Dyad (P2,P2, PdyP[2]);
+
+    // constants
+    double c[3][3] = {{I3/(a[0]*L(0)*L(0))-L(0)/a[0],  I3/(a[0]*L(1)*L(1))-L(0)/a[0],  I3/(a[0]*L(2)*L(2))-L(0)/a[0]},
+                      {I3/(a[1]*L(0)*L(0))-L(1)/a[1],  I3/(a[1]*L(1)*L(1))-L(1)/a[1],  I3/(a[1]*L(2)*L(2))-L(1)/a[1]},
+                      {I3/(a[2]*L(0)*L(0))-L(2)/a[2],  I3/(a[2]*L(1)*L(1))-L(2)/a[2],  I3/(a[2]*L(2)*L(2))-L(2)/a[2]}};
+
+    // derivative of projector
+    dP0dA.change_dim (ncp,ncp);
+    dP1dA.change_dim (ncp,ncp);
+    dP2dA.change_dim (ncp,ncp);
+    dP0dA = (L(0)/a[0])*IIsym + (I3/a[0])*dInvAdA + c[0][0]*PdyP[0] + c[0][1]*PdyP[1] + c[0][2]*PdyP[2];
+    dP1dA = (L(1)/a[1])*IIsym + (I3/a[1])*dInvAdA + c[1][0]*PdyP[0] + c[1][1]*PdyP[1] + c[1][2]*PdyP[2];
+    dP2dA = (L(2)/a[2])*IIsym + (I3/a[2])*dInvAdA + c[2][0]*PdyP[0] + c[2][1]*PdyP[1] + c[2][2]*PdyP[2];
 }
 
 

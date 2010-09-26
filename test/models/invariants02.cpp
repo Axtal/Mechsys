@@ -46,8 +46,10 @@ class Problem
 {
 public:
     Problem ()
+        : test    (2),
+          use_iod (false),
+          sort    (false)
     {
-        test = 2;
         I   .change_dim(6);
         Sig0.change_dim(6);
         I    =  1.0,  1.0,  1.0,   0.0,      0.0,      0.0;
@@ -61,6 +63,7 @@ public:
         M     .change_dim(6,6);
         dMdt  .change_dim(6,6);
         diSig_dSig.change_dim(6,6);
+        dPdt.Resize(3);
     }
     void CalcState (double t) const
     {
@@ -86,7 +89,8 @@ public:
             Sig    = 0.1*Sig0 + M*Sig0;
             dSigdt = dMdt*Sig0;
         }
-        EigenProj (Sig,    L,     P0,  P1,  P2, /*sort*/true);
+        EigenProjDerivs (Sig, L, P0,P1,P2, dP0dSig, dP1dSig, dP2dSig, sort);
+        //EigenProj (Sig,    L,     P0,  P1,  P2, sort);
         //EigenProj (dSigdt, dLdt, dP0, dP1, dP2);
         dLdt(0) = dot(P0,dSigdt);
         dLdt(1) = dot(P1,dSigdt);
@@ -95,7 +99,8 @@ public:
         Dev          (dSigdt, dSdt);
         OctInvs      (L, p1, q1, T1, dpdL, dqdL, dTdL);
         OctDerivs    (L, p2, q2, T2, dpqthdL);
-        InvOctDerivs (L, p3, q3, T3, dLdpqth);
+        if (use_iod) InvOctDerivs (L, p3, q3, T3, dLdpqth); // L need to be sorted
+        else         Inv          (dpqthdL, dLdpqth);
         Pow2         (S,  SS);
         Dev          (SS, devSS);
         Inv          (Sig, invSig);
@@ -107,9 +112,12 @@ public:
         if (fabs(p-p2) >1.0e-14) throw new Fatal("Error with p=%g, p2=%g",p,p1);
         if (fabs(q-q2) >1.0e-14) throw new Fatal("Error with q=%g, q2=%g",q,q1);
         if (fabs(T1-T2)>1.0e-14) throw new Fatal("Error with T1=%g, T2=%g",T1,T2);
-        if (fabs(p-p3) >1.0e-14) throw new Fatal("Error with p=%g, p3=%g",p,p3);
-        if (fabs(q-q3) >1.0e-14) throw new Fatal("Error with q=%g, q3=%g",q,q3);
-        if (fabs(T1-T3)>1.0e-14) throw new Fatal("Error with T1=%g, T3=%g",T1,T3);
+        if (use_iod)
+        {
+            if (fabs(p-p3) >1.0e-14) throw new Fatal("Error with p=%g, p3=%g",p,p3);
+            if (fabs(q-q3) >1.0e-14) throw new Fatal("Error with q=%g, q3=%g",q,q3);
+            if (fabs(T1-T3)>1.0e-14) throw new Fatal("Error with T1=%g, T3=%g",T1,T3);
+        }
         th      = asin(T1)/3.0;
         c       = -1.0/(pow(q,3.)*cos(3.0*th));
         dthdL   = (1.0/(3.0*cos(3.0*th)))*dTdL;
@@ -150,6 +158,10 @@ public:
             if (diff>1.0e-9) throw new Fatal("diSig_dSig is not equal to dInvAdAmat. Error=%17.9e",diff);
         }
 #endif
+        // derivative of eigenprojectors
+        dPdt[0] = dP0dSig * dSigdt;
+        dPdt[1] = dP1dSig * dSigdt;
+        dPdt[2] = dP2dSig * dSigdt;
     }
     double pFun   (double t) const { CalcState(t); return p;         }
     double qFun   (double t) const { CalcState(t); return q;         }
@@ -164,8 +176,31 @@ public:
     double iS4Fun (double t) const { CalcState(t); return invSig(4); }
     double iS5Fun (double t) const { CalcState(t); return invSig(5); }
 
+    double P00Fun (double t) const { CalcState(t); return P0(0);     }
+    double P01Fun (double t) const { CalcState(t); return P0(1);     }
+    double P02Fun (double t) const { CalcState(t); return P0(2);     }
+    double P03Fun (double t) const { CalcState(t); return P0(3);     }
+    double P04Fun (double t) const { CalcState(t); return P0(4);     }
+    double P05Fun (double t) const { CalcState(t); return P0(5);     }
+
+    double P10Fun (double t) const { CalcState(t); return P1(0);     }
+    double P11Fun (double t) const { CalcState(t); return P1(1);     }
+    double P12Fun (double t) const { CalcState(t); return P1(2);     }
+    double P13Fun (double t) const { CalcState(t); return P1(3);     }
+    double P14Fun (double t) const { CalcState(t); return P1(4);     }
+    double P15Fun (double t) const { CalcState(t); return P1(5);     }
+
+    double P20Fun (double t) const { CalcState(t); return P2(0);     }
+    double P21Fun (double t) const { CalcState(t); return P2(1);     }
+    double P22Fun (double t) const { CalcState(t); return P2(2);     }
+    double P23Fun (double t) const { CalcState(t); return P2(3);     }
+    double P24Fun (double t) const { CalcState(t); return P2(4);     }
+    double P25Fun (double t) const { CalcState(t); return P2(5);     }
+
     // Data
     int    test;
+    bool   use_iod; // Use: InvOctDerivs ?
+    bool   sort;    // sort eigenvalues ?
     Vec_t  Sig0, I;
     mutable Vec_t  invSig, diSdt, diAdt;
     mutable Mat_t  M, dMdt, diSig_dSig;
@@ -175,22 +210,36 @@ public:
     //mutable Vec_t dP0, dP1, dP2;
     mutable double c, p, q, th, dpdt1, dqdt1, dqdt2, dpdt2, dthdt1, dthdt2, dL0dt2, dL1dt2, dL2dt2;
     mutable double p1,q1,T1, p2,q2,T2, p3,q3,T3;
+    mutable Mat_t  dP0dSig, dP1dSig, dP2dSig;
+    mutable Array<Vec_t> dPdt;
 };
+
+typedef double (Problem::*pFun) (double t) const;
 
 int main(int argc, char **argv) try
 {
     // initialize problem
     Problem       prob;
     Diff<Problem> nd(&prob);
-    size_t ndiv = 20;
-    if (argc>1) prob.test = atoi(argv[1]);
-    if (argc>2) ndiv      = atoi(argv[2]);
+    bool   verbose = false;
+    size_t ndiv    = 20;
+    if (argc>1) prob.test    = atoi(argv[1]);
+    if (argc>2) prob.use_iod = atoi(argv[2]);
+    if (argc>3) prob.sort    = atoi(argv[3]);
+    if (argc>4) verbose      = atoi(argv[4]);
+    if (argc>5) ndiv         = atoi(argv[5]);
+
+    if (prob.use_iod) printf("  . . . Using InvOctDerivs method\n");
+    if (prob.sort)    printf("  . . . Sorting eigenvalues\n");
 
     // p, q, t and derivatives
-    printf("%6s %12s %12s %12s %12s %16s %16s  %12s %12s %12s %12s %16s %16s  %12s %12s %12s %12s %16s %16s\n",
-            "t","p", "dpdt_num", "dpdt1", "dpdt2", "err(dpdt1)", "err(dpdt2)",
-                "q", "dqdt_num", "dqdt1", "dqdt2", "err(dqdt1)", "err(dqdt2)",
-                "th","dthdt_num","dthdt1","dthdt2","err(dthdt1)","err(dthdt2)");
+    if (verbose)
+    {
+        printf("%6s %12s %12s %12s %12s %16s %16s  %12s %12s %12s %12s %16s %16s  %12s %12s %12s %12s %16s %16s\n",
+                "t","p", "dpdt_num", "dpdt1", "dpdt2", "err(dpdt1)", "err(dpdt2)",
+                    "q", "dqdt_num", "dqdt1", "dqdt2", "err(dqdt1)", "err(dqdt2)",
+                    "th","dthdt_num","dthdt1","dthdt2","err(dthdt1)","err(dthdt2)");
+    }
     double max_err_dpdt  = 0.0;
     double max_err_dqdt  = 0.0;
     double max_err_dthdt = 0.0;
@@ -213,18 +262,24 @@ int main(int argc, char **argv) try
         if (err_dqdt2  > max_err_dqdt ) max_err_dqdt  = err_dqdt2;
         if (err_dthdt1 > max_err_dthdt) max_err_dthdt = err_dthdt1;
         if (err_dthdt2 > max_err_dthdt) max_err_dthdt = err_dthdt2;
-        printf("%6.3f %12.8f %12.8f %12.8f %12.8f %16.8e %16.8e  %12.8f %12.8f %12.8f %12.8f %16.8e %16.8e  %12.8f %12.8f %12.8f %12.8f %16.8e %16.8e\n",
-                t, prob.p,    dpdt_num,  prob.dpdt1,   prob.dpdt2,  err_dpdt1,  err_dpdt2,
-                   prob.q,    dqdt_num,  prob.dqdt1,   prob.dqdt2,  err_dqdt1,  err_dqdt2,
-                   prob.th,   dthdt_num, prob.dthdt1,  prob.dthdt2, err_dthdt1, err_dthdt2);
+        if (verbose)
+        {
+            printf("%6.3f %12.8f %12.8f %12.8f %12.8f %16.8e %16.8e  %12.8f %12.8f %12.8f %12.8f %16.8e %16.8e  %12.8f %12.8f %12.8f %12.8f %16.8e %16.8e\n",
+                    t, prob.p,    dpdt_num,  prob.dpdt1,   prob.dpdt2,  err_dpdt1,  err_dpdt2,
+                       prob.q,    dqdt_num,  prob.dqdt1,   prob.dqdt2,  err_dqdt1,  err_dqdt2,
+                       prob.th,   dthdt_num, prob.dthdt1,  prob.dthdt2, err_dthdt1, err_dthdt2);
+        }
     }
 
     // L0, L1, L2 and derivatives
-    printf("\n");
-    printf("%6s %12s %12s %12s %12s %12s %16s %16s  %12s %12s %12s %12s %12s %16s %16s  %12s %12s %12s %12s %12s %16s %16s\n",
-            "t","L0","L0","dL0dt_num","dL0dt1","dL0dt2","err(dL0dt1)","err(dL0dt2)",
-                "L1","L1","dL1dt_num","dL1dt1","dL1dt2","err(dL1dt1)","err(dL1dt2)",
-                "L2","L2","dL2dt_num","dL2dt1","dL2dt2","err(dL2dt1)","err(dL2dt2)");
+    if (verbose)
+    {
+        printf("\n");
+        printf("%6s %12s %12s %12s %12s %12s %16s %16s  %12s %12s %12s %12s %12s %16s %16s  %12s %12s %12s %12s %12s %16s %16s\n",
+                "t","L0","L0","dL0dt_num","dL0dt1","dL0dt2","err(dL0dt1)","err(dL0dt2)",
+                    "L1","L1","dL1dt_num","dL1dt1","dL1dt2","err(dL1dt1)","err(dL1dt2)",
+                    "L2","L2","dL2dt_num","dL2dt1","dL2dt2","err(dL2dt1)","err(dL2dt2)");
+    }
     double max_err_dL0dt = 0.0;
     double max_err_dL1dt = 0.0;
     double max_err_dL2dt = 0.0;
@@ -247,21 +302,27 @@ int main(int argc, char **argv) try
         if (err_dL1dt2 > max_err_dL1dt) max_err_dL1dt = err_dL1dt2;
         if (err_dL2dt1 > max_err_dL2dt) max_err_dL2dt = err_dL2dt1;
         if (err_dL2dt2 > max_err_dL2dt) max_err_dL2dt = err_dL2dt2;
-        printf("%6.3f %12.8f %12.8f %12.8f %12.8f %12.8f %16.8e %16.8e  %12.8f %12.8f %12.8f %12.8f %12.8f %16.8e %16.8e  %12.8f %12.8f %12.8f %12.8f %12.8f %16.8e %16.8e\n",
-                t, prob.L(0), prob.L1(0), dL0dt_num, prob.dLdt(0), prob.dL0dt2, err_dL0dt1, err_dL0dt2,
-                   prob.L(1), prob.L1(1), dL1dt_num, prob.dLdt(1), prob.dL1dt2, err_dL1dt1, err_dL1dt2,
-                   prob.L(2), prob.L1(2), dL2dt_num, prob.dLdt(2), prob.dL2dt2, err_dL2dt1, err_dL2dt2);
+        if (verbose)
+        {
+            printf("%6.3f %12.8f %12.8f %12.8f %12.8f %12.8f %16.8e %16.8e  %12.8f %12.8f %12.8f %12.8f %12.8f %16.8e %16.8e  %12.8f %12.8f %12.8f %12.8f %12.8f %16.8e %16.8e\n",
+                    t, prob.L(0), prob.L1(0), dL0dt_num, prob.dLdt(0), prob.dL0dt2, err_dL0dt1, err_dL0dt2,
+                       prob.L(1), prob.L1(1), dL1dt_num, prob.dLdt(1), prob.dL1dt2, err_dL1dt1, err_dL1dt2,
+                       prob.L(2), prob.L1(2), dL2dt_num, prob.dLdt(2), prob.dL2dt2, err_dL2dt1, err_dL2dt2);
+        }
     }
 
     // inverse
-    printf("\n");
-    printf("%6s %14s %14s %14s %16s  %14s %14s %16s  %14s %14s %16s  %14s %14s %16s  %14s %14s %16s  %14s %14s %16s\n",
-            "t","diS0dt_num","diS0dt","diA0dt","err(diS0dt)",
-                "diS1dt_num","diS1dt","err(diS1dt)",
-                "diS2dt_num","diS2dt","err(diS2dt)",
-                "diS3dt_num","diS3dt","err(diS3dt)",
-                "diS4dt_num","diS4dt","err(diS4dt)",
-                "diS5dt_num","diS5dt","err(diS5dt)");
+    if (verbose)
+    {
+        printf("\n");
+        printf("%6s %14s %14s %14s %16s  %14s %14s %16s  %14s %14s %16s  %14s %14s %16s  %14s %14s %16s  %14s %14s %16s\n",
+                "t","diS0dt_num","diS0dt","diA0dt","err(diS0dt)",
+                    "diS1dt_num","diS1dt","err(diS1dt)",
+                    "diS2dt_num","diS2dt","err(diS2dt)",
+                    "diS3dt_num","diS3dt","err(diS3dt)",
+                    "diS4dt_num","diS4dt","err(diS4dt)",
+                    "diS5dt_num","diS5dt","err(diS5dt)");
+    }
     double max_err_diS0dt = 0.0;
     double max_err_diS1dt = 0.0;
     double max_err_diS2dt = 0.0;
@@ -292,13 +353,56 @@ int main(int argc, char **argv) try
         if (err_diS3dt > max_err_diS3dt) max_err_diS3dt = err_diS3dt;
         if (err_diS4dt > max_err_diS4dt) max_err_diS4dt = err_diS4dt;
         if (err_diS5dt > max_err_diS5dt) max_err_diS5dt = err_diS5dt;
-        printf("%6.3f %14.8f %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e\n",
-                t, diS0dt_num, prob.diSdt(0), prob.diAdt(0), err_diS0dt,
-                   diS1dt_num, prob.diSdt(1),                err_diS1dt,
-                   diS2dt_num, prob.diSdt(2),                err_diS2dt,
-                   diS3dt_num, prob.diSdt(3),                err_diS3dt,
-                   diS4dt_num, prob.diSdt(4),                err_diS4dt,
-                   diS5dt_num, prob.diSdt(5),                err_diS5dt);
+        if (verbose)
+        {
+            printf("%6.3f %14.8f %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e\n",
+                    t, diS0dt_num, prob.diSdt(0), prob.diAdt(0), err_diS0dt,
+                       diS1dt_num, prob.diSdt(1),                err_diS1dt,
+                       diS2dt_num, prob.diSdt(2),                err_diS2dt,
+                       diS3dt_num, prob.diSdt(3),                err_diS3dt,
+                       diS4dt_num, prob.diSdt(4),                err_diS4dt,
+                       diS5dt_num, prob.diSdt(5),                err_diS5dt);
+        }
+    }
+
+    // eigenprojectors
+    double max_err_dPdt[3][6] = {{0.,0.,0.,0.,0.,0.},
+                                 {0.,0.,0.,0.,0.,0.},
+                                 {0.,0.,0.,0.,0.,0.}};
+    pFun funcs[3][6] = {{&Problem::P00Fun, &Problem::P01Fun, &Problem::P02Fun, &Problem::P03Fun, &Problem::P04Fun, &Problem::P05Fun},
+                        {&Problem::P10Fun, &Problem::P11Fun, &Problem::P12Fun, &Problem::P13Fun, &Problem::P14Fun, &Problem::P15Fun},
+                        {&Problem::P20Fun, &Problem::P21Fun, &Problem::P22Fun, &Problem::P23Fun, &Problem::P24Fun, &Problem::P25Fun}};
+    for (size_t k=0; k<3; ++k)
+    {
+        if (verbose)
+        {
+            printf("\n%6s","t");
+            for (size_t j=0; j<6; ++j)
+            {
+                char str0[32];
+                char str1[32];
+                char str2[32];
+                sprintf(str0,"dP%d%ddt_num",   k,j);
+                sprintf(str1,"dP%d%ddt",       k,j);
+                sprintf(str2,"error(dP%d%ddt)",k,j);
+                printf("%12s %12s %16s  ",str0,str1,str2);
+            }
+            printf("\n");
+        }
+        for (size_t i=0; i<ndiv+1; ++i)
+        {
+            double t = (double)i/(double)ndiv;
+            prob.CalcState (t);
+            if (verbose) printf("%6.3f",t);
+            for (size_t j=0; j<6; ++j)
+            {
+                double dPdt_num = nd.DyDx (funcs[k][j], t);
+                double err      = fabs(dPdt_num - prob.dPdt[k](j));
+                if (err > max_err_dPdt[k][j]) max_err_dPdt[k][j] = err;
+                if (verbose) printf("%12.8f %12.8f %16.8e  ", dPdt_num, prob.dPdt[k](j), err);
+            }
+            if (verbose) printf("\n");
+        }
     }
 
     // error
@@ -314,6 +418,9 @@ int main(int argc, char **argv) try
     double tol_diS3dt = 1.0e-5;
     double tol_diS4dt = 1.0e-5;
     double tol_diS5dt = 1.0e-4;
+    double tol_dPdt[3][6]= {{1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6, 1.0e-7, 1.0e-7},
+                            {1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6, 1.0e-6, 1.0e-7},
+                            {1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6, 1.0e-6, 1.0e-7}};
     printf("\n");
     printf("  max_err_dpdt   = %s%16.8e%s\n",(max_err_dpdt  >tol_dpdt  ?TERM_RED:TERM_GREEN),max_err_dpdt,  TERM_RST);
     printf("  max_err_dqdt   = %s%16.8e%s\n",(max_err_dqdt  >tol_dqdt  ?TERM_RED:TERM_GREEN),max_err_dqdt,  TERM_RST);
@@ -327,6 +434,10 @@ int main(int argc, char **argv) try
     printf("  max_err_diS3dt = %s%16.8e%s\n",(max_err_diS3dt>tol_diS3dt?TERM_RED:TERM_GREEN),max_err_diS3dt,TERM_RST);
     printf("  max_err_diS4dt = %s%16.8e%s\n",(max_err_diS4dt>tol_diS4dt?TERM_RED:TERM_GREEN),max_err_diS4dt,TERM_RST);
     printf("  max_err_diS5dt = %s%16.8e%s\n",(max_err_diS5dt>tol_diS5dt?TERM_RED:TERM_GREEN),max_err_diS5dt,TERM_RST);
+    for (size_t k=0; k<3; ++k)
+    for (size_t i=0; i<6; ++i)
+        printf("  max_err_dP%d%ddt = %s%16.8e%s\n",k,i,(max_err_dPdt[k][i]>tol_dPdt[k][i]?TERM_RED:TERM_GREEN),max_err_dPdt[k][i],TERM_RST);
+    printf("\n");
 
     // end
     if (max_err_dpdt   > tol_dpdt)   return 1;
@@ -341,6 +452,9 @@ int main(int argc, char **argv) try
     if (max_err_diS3dt > tol_diS3dt) return 1;
     if (max_err_diS4dt > tol_diS4dt) return 1;
     if (max_err_diS5dt > tol_diS5dt) return 1;
+    for (size_t k=0; k<3; ++k)
+    for (size_t i=0; i<6; ++i)
+        if (max_err_dPdt[k][i] > tol_dPdt[k][i]) return 1;
     return 0;
 }
 MECHSYS_CATCH
