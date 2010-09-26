@@ -31,10 +31,13 @@ using std::endl;
 using Util::SQ2;
 using Util::SQ6;
 using Util::PI;
+#ifdef HAS_TENSORS
+  using namespace TensorsLib;
+#endif
 
 int main(int argc, char **argv) try
 {
-    int tst = 2;
+    int tst = 5;
     if (argc>1) tst = atoi(argv[1]);
 
     Vec_t sig;
@@ -116,6 +119,77 @@ int main(int argc, char **argv) try
     }
     if (err_inv) cout << TERM_RED << "Error: inverse failed" << TERM_RST << endl;
 
+    // tensors
+    bool err_zer   = false;
+    bool err_t2ten = false;
+    bool err_ten2t = false;
+    bool err_invt  = false;
+    bool err_mat   = false;
+#ifdef HAS_TENSORS
+    // derivative of inverse
+    if (ncp==6)
+    {
+        Vec_t             Atmp;
+        Tensor2<double,3> A, iA;
+        Ten2Tensor (sig, A);
+        Tensor2Ten (A, Atmp, ncp);
+        Inv        (A, iA);
+        cout << "\nsig ="  << PrintVector(sig);
+        cout << "sig ="    << PrintVector(Atmp);
+        cout << "sig =\n"  << A << endl;
+        cout << "iSig ="   << PrintVector(invSig);
+        cout << "iSig =\n" << iA << endl;
+        for (size_t i=0; i<3; ++i)
+        for (size_t j=0; j<3; ++j)
+        {
+            int    k = Tensor2ToMandel_i[i][j];
+            double c = (i==j ? 1.0 : SQ2);
+            if (k>static_cast<int>(ncp-1) && i!=j) // 2D
+            {
+                // check if off diagonal components are zero
+                if (fabs(A[i][j])>1.0e-15) err_zer = true;
+            }
+            else
+            {
+                if (fabs(A[i][j]*c - sig[k])>1.0e-15) err_t2ten = true;
+            }
+        }
+        for (size_t i=0; i<ncp; ++i)
+        {
+            int    k = MandelToTensor2_i[i];
+            int    l = MandelToTensor2_j[i];
+            double c = (k==l ? 1.0 : SQ2);
+            if (fabs(sig(i)    - Atmp(i)   )>1.0e-15) err_ten2t = true;
+            if (fabs(invSig(i) - iA[k][l]*c)>1.0e-15) err_invt  = true;
+        }
+        if (err_zer)   cout << TERM_RED << "Error: Off diagonal components of A in 2D must be zero"   << TERM_RST << endl;
+        if (err_t2ten) cout << TERM_RED << "Error: Ten2Tensor failed"                                 << TERM_RST << endl;
+        if (err_ten2t) cout << TERM_RED << "Error: Tensor2Ten failed"                                 << TERM_RST << endl;
+        if (err_invt)  cout << TERM_RED << "Error: Inverse of Tensor2 is not equal to inverse of Ten" << TERM_RST << endl;
+        Mat_t             diSigdSig, diAdAmat;
+        Tensor4<double,3> diAdA;
+        DerivInv (sig, invSig, diSigdSig);
+        diAdA = ((iA^iA) + (iA|iA)) * (-0.5);
+        Tensor2Ten (diAdA, diAdAmat, ncp);
+        cout << endl;
+        cout << "diSigdSig =\n" << PrintMatrix(diSigdSig) << endl;
+        cout << "diSigdSig =\n" << PrintMatrix(diAdAmat)  << endl;
+        if (CompareMatrices(diSigdSig, diAdAmat)>1.0e-15) err_mat = true;
+        if (err_mat) cout << TERM_RED << "Error: diSigdSig is not equal to diAdAmat" << TERM_RST << endl;
+        /*
+        Tensor4<double,3> One;
+        for (size_t i=0; i<3; ++i)
+        for (size_t j=0; j<3; ++j)
+        for (size_t k=0; k<3; ++k)
+        for (size_t l=0; l<3; ++l)
+            One[i][j][k][l] = 1.0;+i+j+k+l;
+        Mat_t one;
+        Tensor2Ten (One, one, 6);
+        cout << PrintMatrix(one) << endl;
+        */
+    }
+#endif
+
     printf("\n");
     printf("sig                = [%g, %g, %g, %g]  \n",sig(0),sig(1),sig(2),sig(3));
     printf("dev_sig            = [%g, %g, %g, %g]  \n",dev_sig(0),dev_sig(1),dev_sig(2),dev_sig(3));
@@ -149,6 +223,11 @@ int main(int argc, char **argv) try
 
     if (err_deriv)           return 1;
     if (err_inv)             return 1;
+    if (err_zer)             return 1;
+    if (err_t2ten)           return 1;
+    if (err_ten2t)           return 1;
+    if (err_invt)            return 1;
+    if (err_mat)             return 1;
     if (err.TheMax()>1.0e-8) return 1;
     else                     return 0;
 }

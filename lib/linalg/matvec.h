@@ -34,6 +34,11 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_eigen.h>
 
+// Tensors
+#ifdef HAS_TENSORS
+  #include <tensors/tensoperators.h>
+#endif
+
 // MechSys
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
@@ -725,9 +730,82 @@ inline void Ten2Mat (Vec_t const & Ten, Mat3_t & Mat)
     else throw new Fatal("matvec.h::Ten2Mat: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
 }
 
-/** Creates a 2nd order symmetric tensor Ten (using Mandel's representation) based on its matrix components. NOTE: This method does not check if matrix is symmetric. */
-inline void Mat2Ten (Mat3_t const & Mat, Vec_t & Ten, size_t NumComponents)
+/** Creates the matrix representation of 2nd order symmetric tensor Ten (Mandel's representation). */
+#ifdef HAS_TENSORS
+inline void Ten2Tensor (Vec_t const & Ten, TensorsLib::Tensor2<double,3> & T)
 {
+    size_t ncp = size(Ten);
+    if (ncp==4)
+    {
+        T = Ten(0),            Ten(3)/Util::SQ2,     0.0,
+            Ten(3)/Util::SQ2,  Ten(1),               0.0,
+                         0.0,               0.0,  Ten(2);
+    }
+    else if (ncp==6)
+    {
+        T = Ten(0),            Ten(3)/Util::SQ2,  Ten(5)/Util::SQ2,
+            Ten(3)/Util::SQ2,  Ten(1),            Ten(4)/Util::SQ2,
+            Ten(5)/Util::SQ2,  Ten(4)/Util::SQ2,  Ten(2);
+    }
+    else throw new Fatal("matvec.h::Ten2Tensor: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation. NumComponents==%d is invalid",ncp);
+}
+
+inline void Tensor2Ten (TensorsLib::Tensor2<double,3> const & T, Vec_t & Ten, size_t NumComponents, bool CheckSymmetry=true, double Tol=1.0e-10)
+{
+    if (CheckSymmetry)
+    {
+        if (fabs(T[0][1]-T[1][0])>Tol) throw new Fatal("matvec.h::Tensor2Ten: Tensor is not symmetric");
+        if (fabs(T[1][2]-T[2][1])>Tol) throw new Fatal("matvec.h::Tensor2Ten: Tensor is not symmetric");
+        if (fabs(T[2][0]-T[0][2])>Tol) throw new Fatal("matvec.h::Tensor2Ten: Tensor is not symmetric");
+    }
+
+    // Mandel's tensor from Tensor
+    Ten.change_dim (NumComponents);
+    if (NumComponents==4)
+    {
+        Ten = T[0][0], T[1][1], T[2][2], T[0][1]*Util::SQ2;
+    }
+    else if (NumComponents==6)
+    {
+        Ten = T[0][0], T[1][1], T[2][2], T[0][1]*Util::SQ2, T[1][2]*Util::SQ2, T[2][0]*Util::SQ2;
+    }
+    else throw new Fatal("matvec.h::Tensor2Ten: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation. NumComponents==%d is invalid",NumComponents);
+}
+
+inline void Tensor2Ten (TensorsLib::Tensor4<double,3> const & T, Mat_t & Ten, size_t NumComponents, bool CheckSymmetry=true, double Tol=1.0e-10)
+{
+    if (!(NumComponents==4 || NumComponents==6)) throw new Fatal("matvec.h::Tensor2Ten: This method is only available for 4th order symmetric tensors with either 4x4 or 6x6 components according to Mandel's representation. NumComponents==%d is invalid",NumComponents);
+    Ten.change_dim (NumComponents,NumComponents);
+    for (size_t i=0; i<3; ++i)
+    for (size_t j=0; j<3; ++j)
+    for (size_t k=0; k<3; ++k)
+    for (size_t l=0; l<3; ++l)
+    {
+        if (CheckSymmetry)
+        {
+            if (fabs(T[i][j][k][l] - T[i][j][l][k])>Tol) throw new Fatal("matvec.h::Tensor2Ten: 4ht order Tensor is not super symmetric: ijkl != ijlk");
+            if (fabs(T[i][j][k][l] - T[j][i][k][l])>Tol) throw new Fatal("matvec.h::Tensor2Ten: 4ht order Tensor is not super symmetric: ijkl != jikl");
+            if (fabs(T[i][j][k][l] - T[k][l][i][j])>Tol) throw new Fatal("matvec.h::Tensor2Ten: 4ht order Tensor is not super symmetric: ijkl != klij");
+        }
+        size_t I = TensorsLib::Tensor4ToMandel_i[i][j][k][l];
+        size_t J = TensorsLib::Tensor4ToMandel_j[i][j][k][l];
+        double a = (k==l ? 1.0 : Util::SQ2);
+        double b = (i==j ? 1.0 : Util::SQ2);
+        if (I<NumComponents && J<NumComponents) Ten(I,J) = T[i][j][k][l]*a*b;
+    }
+}
+#endif
+
+/** Creates a 2nd order symmetric tensor Ten (using Mandel's representation) based on its matrix components. */
+inline void Mat2Ten (Mat3_t const & Mat, Vec_t & Ten, size_t NumComponents, bool CheckSymmetry=true, double Tol=1.0e-10)
+{
+    if (CheckSymmetry)
+    {
+        if (fabs(Mat(0,1)-Mat(1,0))>Tol) throw new Fatal("matvec.h::Mat2Ten: Matrix is not symmetric");
+        if (fabs(Mat(1,2)-Mat(2,1))>Tol) throw new Fatal("matvec.h::Mat2Ten: Matrix is not symmetric");
+        if (fabs(Mat(2,0)-Mat(0,2))>Tol) throw new Fatal("matvec.h::Mat2Ten: Matrix is not symmetric");
+    }
+
     // tensor from matrix
     Ten.change_dim (NumComponents);
     if (NumComponents==4)
@@ -872,16 +950,16 @@ inline void CharInvs (Vec_t const & Ten, double & I1, double & I2, double & I3, 
 inline void DerivInv (Vec_t const & A, Vec_t & Ai, Mat_t & dInvA_dA, double Tol=1.0e-10)
 {
     Inv (A, Ai, Tol);
-    double s   = Util::SQ2;
     size_t ncp = size(A);
     dInvA_dA.change_dim (ncp,ncp);
     if (ncp==4) throw new Fatal("matvec.h: DerivInv: This method doesn't work for ncp==4");
     else if (ncp==6)
     {
-        dInvA_dA = 
-            -Ai[0]*Ai[0]     , -Ai[3]/2.        , -Ai[5]/2.        , -Ai[0]*Ai[3]                      , -(Ai[3]*Ai[5])/s                  , -Ai[0]*Ai[5]                      , 
-            -Ai[3]/2.        , -Ai[1]*Ai[1]     , -Ai[4]/2.        , -Ai[1]*Ai[3]                      , -Ai[1]*Ai[4]                      , -(Ai[3]*Ai[4])/s                  , 
-            -Ai[5]/2.        , -Ai[4]/2.        , -Ai[2]*Ai[2]     , -(Ai[4]*Ai[5])/s                  , -Ai[2]*Ai[4]                      , -Ai[2]*Ai[5]                      , 
+        double s = Util::SQ2;
+        dInvA_dA =
+            -Ai[0]*Ai[0]     , -Ai[3]*Ai[3]/2.  , -Ai[5]*Ai[5]/2.  , -Ai[0]*Ai[3]                      , -(Ai[3]*Ai[5])/s                  , -Ai[0]*Ai[5]                      , 
+            -Ai[3]*Ai[3]/2.  , -Ai[1]*Ai[1]     , -Ai[4]*Ai[4]/2.  , -Ai[1]*Ai[3]                      , -Ai[1]*Ai[4]                      , -(Ai[3]*Ai[4])/s                  , 
+            -Ai[5]*Ai[5]/2.  , -Ai[4]*Ai[4]/2.  , -Ai[2]*Ai[2]     , -(Ai[4]*Ai[5])/s                  , -Ai[2]*Ai[4]                      , -Ai[2]*Ai[5]                      , 
             -Ai[0]*Ai[3]     , -Ai[1]*Ai[3]     , -(Ai[4]*Ai[5])/s , -Ai[3]*Ai[3]/2.-Ai[0]*Ai[1]       , -(Ai[1]*Ai[5])/s-(Ai[3]*Ai[4])/2. , -(Ai[3]*Ai[5])/2.-(Ai[0]*Ai[4])/s , 
             -(Ai[3]*Ai[5])/s , -Ai[1]*Ai[4]     , -Ai[2]*Ai[4]     , -(Ai[1]*Ai[5])/s-(Ai[3]*Ai[4])/2. , -Ai[4]*Ai[4]/2.-Ai[1]*Ai[2]       , -(Ai[4]*Ai[5])/2.-(Ai[2]*Ai[3])/s , 
             -Ai[0]*Ai[5]     , -(Ai[3]*Ai[4])/s , -Ai[2]*Ai[5]     , -(Ai[3]*Ai[5])/2.-(Ai[0]*Ai[4])/s , -(Ai[4]*Ai[5])/2.-(Ai[2]*Ai[3])/s , -Ai[5]*Ai[5]/2.-Ai[0]*Ai[2]       ;

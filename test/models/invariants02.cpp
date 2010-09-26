@@ -38,6 +38,9 @@ using Util::SQ2;
 using Util::SQ3;
 using Util::SQ6;
 using Numerical::Diff;
+#ifdef HAS_TENSORS
+  using namespace TensorsLib;
+#endif
 
 class Problem
 {
@@ -128,6 +131,25 @@ public:
             if (fabs(dqdL (i)-dpqthdL(1,i))>1.0e-15) throw new Fatal("Error with dqdL(%d)=%g, dpqthdL(1,%d)=%g", i,dqdL(i),i,dpqthdL(1,i));
             if (fabs(dthdL(i)-dpqthdL(2,i))>1.0e-15) throw new Fatal("Error with dthdL(%d)=%g, dpqthdL(2,%d)=%g",i,dthdL(i),i,dpqthdL(2,i));
         }
+#ifdef HAS_TENSORS
+        // derivative of inverse w.r.t. sig
+        Tensor2<double,3> A, iA, dAdt, dInvAdt;
+        Tensor4<double,3> dInvAdA;
+        Ten2Tensor (Sig,    A);
+        Ten2Tensor (dSigdt, dAdt);
+        Inv        (A,      iA);
+        dInvAdA = ((iA^iA) + (iA|iA)) * (-0.5);
+        dInvAdt = (dInvAdA % dAdt);
+        Tensor2Ten (dInvAdt, diAdt, /*ncp*/6);
+        Mat_t dInvAdAmat;
+        Tensor2Ten (dInvAdA,dInvAdAmat,6);
+        for (size_t i=0; i<6; ++i)
+        for (size_t j=0; j<6; ++j)
+        {
+            double diff = fabs(diSig_dSig(i,j) - dInvAdAmat(i,j));
+            if (diff>1.0e-9) throw new Fatal("diSig_dSig is not equal to dInvAdAmat. Error=%17.9e",diff);
+        }
+#endif
     }
     double pFun   (double t) const { CalcState(t); return p;         }
     double qFun   (double t) const { CalcState(t); return q;         }
@@ -145,7 +167,7 @@ public:
     // Data
     int    test;
     Vec_t  Sig0, I;
-    mutable Vec_t  invSig, diSdt;
+    mutable Vec_t  invSig, diSdt, diAdt;
     mutable Mat_t  M, dMdt, diSig_dSig;
     mutable Mat3_t dpqthdL, dLdpqth;
     mutable Vec3_t L, L1, dLdt, dpdL, dqdL, dTdL, dthdL;
@@ -233,42 +255,92 @@ int main(int argc, char **argv) try
 
     // inverse
     printf("\n");
-    printf("%6s %12s %12s %16s\n",
-            "t","diS0dt_num","diS0dt","err(diS0dt)");
+    printf("%6s %14s %14s %14s %16s  %14s %14s %16s  %14s %14s %16s  %14s %14s %16s  %14s %14s %16s  %14s %14s %16s\n",
+            "t","diS0dt_num","diS0dt","diA0dt","err(diS0dt)",
+                "diS1dt_num","diS1dt","err(diS1dt)",
+                "diS2dt_num","diS2dt","err(diS2dt)",
+                "diS3dt_num","diS3dt","err(diS3dt)",
+                "diS4dt_num","diS4dt","err(diS4dt)",
+                "diS5dt_num","diS5dt","err(diS5dt)");
     double max_err_diS0dt = 0.0;
+    double max_err_diS1dt = 0.0;
+    double max_err_diS2dt = 0.0;
+    double max_err_diS3dt = 0.0;
+    double max_err_diS4dt = 0.0;
+    double max_err_diS5dt = 0.0;
     for (size_t i=0; i<ndiv+1; ++i)
     {
         double t          = (double)i/(double)ndiv;
         double diS0dt_num = nd.DyDx (&Problem::iS0Fun, t);
+        double diS1dt_num = nd.DyDx (&Problem::iS1Fun, t);
+        double diS2dt_num = nd.DyDx (&Problem::iS2Fun, t);
+        double diS3dt_num = nd.DyDx (&Problem::iS3Fun, t);
+        double diS4dt_num = nd.DyDx (&Problem::iS4Fun, t);
+        double diS5dt_num = nd.DyDx (&Problem::iS5Fun, t);
         prob.CalcState (t);
-        double err_diS0dt = fabs(diS0dt_num - prob.diSdt(0));
+        double err_diS0dt = fabs(diS0dt_num    - prob.diSdt(0));
+        double err_diA0dt = fabs(prob.diSdt(0) - prob.diAdt(0));
+        double err_diS1dt = fabs(diS1dt_num    - prob.diSdt(1));
+        double err_diS2dt = fabs(diS2dt_num    - prob.diSdt(2));
+        double err_diS3dt = fabs(diS3dt_num    - prob.diSdt(3));
+        double err_diS4dt = fabs(diS4dt_num    - prob.diSdt(4));
+        double err_diS5dt = fabs(diS5dt_num    - prob.diSdt(5));
         if (err_diS0dt > max_err_diS0dt) max_err_diS0dt = err_diS0dt;
-        printf("%6.3f %12.8f %12.8f %16.8e\n",
-                t, diS0dt_num, prob.diSdt(0), err_diS0dt);
+        if (err_diA0dt > max_err_diS0dt) max_err_diS0dt = err_diA0dt;
+        if (err_diS1dt > max_err_diS1dt) max_err_diS1dt = err_diS1dt;
+        if (err_diS2dt > max_err_diS2dt) max_err_diS2dt = err_diS2dt;
+        if (err_diS3dt > max_err_diS3dt) max_err_diS3dt = err_diS3dt;
+        if (err_diS4dt > max_err_diS4dt) max_err_diS4dt = err_diS4dt;
+        if (err_diS5dt > max_err_diS5dt) max_err_diS5dt = err_diS5dt;
+        printf("%6.3f %14.8f %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e  %14.8f %14.8f %16.8e\n",
+                t, diS0dt_num, prob.diSdt(0), prob.diAdt(0), err_diS0dt,
+                   diS1dt_num, prob.diSdt(1),                err_diS1dt,
+                   diS2dt_num, prob.diSdt(2),                err_diS2dt,
+                   diS3dt_num, prob.diSdt(3),                err_diS3dt,
+                   diS4dt_num, prob.diSdt(4),                err_diS4dt,
+                   diS5dt_num, prob.diSdt(5),                err_diS5dt);
     }
 
     // error
-    double tol_dpdt  = 1.0e-6;
-    double tol_dqdt  = 1.0e-7;
-    double tol_dthdt = 1.0e-6;
-    double tol_dL0dt = 1.0e-6;
-    double tol_dL1dt = 1.0e-6;
-    double tol_dL2dt = 1.0e-6;
+    double tol_dpdt   = 1.0e-6;
+    double tol_dqdt   = 1.0e-7;
+    double tol_dthdt  = 1.0e-6;
+    double tol_dL0dt  = 1.0e-6;
+    double tol_dL1dt  = 1.0e-6;
+    double tol_dL2dt  = 1.0e-6;
+    double tol_diS0dt = 1.0e-5;
+    double tol_diS1dt = 1.0e-5;
+    double tol_diS2dt = 1.0e-4;
+    double tol_diS3dt = 1.0e-5;
+    double tol_diS4dt = 1.0e-5;
+    double tol_diS5dt = 1.0e-4;
     printf("\n");
-    printf("  max_err_dpdt  = %s%16.8e%s\n",(max_err_dpdt >tol_dpdt ?TERM_RED:TERM_GREEN),max_err_dpdt, TERM_RST);
-    printf("  max_err_dqdt  = %s%16.8e%s\n",(max_err_dqdt >tol_dqdt ?TERM_RED:TERM_GREEN),max_err_dqdt, TERM_RST);
-    printf("  max_err_dthdt = %s%16.8e%s\n",(max_err_dthdt>tol_dthdt?TERM_RED:TERM_GREEN),max_err_dthdt,TERM_RST);
-    printf("  max_err_dL0dt = %s%16.8e%s\n",(max_err_dL0dt>tol_dL0dt?TERM_RED:TERM_GREEN),max_err_dL0dt,TERM_RST);
-    printf("  max_err_dL1dt = %s%16.8e%s\n",(max_err_dL1dt>tol_dL1dt?TERM_RED:TERM_GREEN),max_err_dL1dt,TERM_RST);
-    printf("  max_err_dL2dt = %s%16.8e%s\n",(max_err_dL2dt>tol_dL2dt?TERM_RED:TERM_GREEN),max_err_dL2dt,TERM_RST);
+    printf("  max_err_dpdt   = %s%16.8e%s\n",(max_err_dpdt  >tol_dpdt  ?TERM_RED:TERM_GREEN),max_err_dpdt,  TERM_RST);
+    printf("  max_err_dqdt   = %s%16.8e%s\n",(max_err_dqdt  >tol_dqdt  ?TERM_RED:TERM_GREEN),max_err_dqdt,  TERM_RST);
+    printf("  max_err_dthdt  = %s%16.8e%s\n",(max_err_dthdt >tol_dthdt ?TERM_RED:TERM_GREEN),max_err_dthdt, TERM_RST);
+    printf("  max_err_dL0dt  = %s%16.8e%s\n",(max_err_dL0dt >tol_dL0dt ?TERM_RED:TERM_GREEN),max_err_dL0dt, TERM_RST);
+    printf("  max_err_dL1dt  = %s%16.8e%s\n",(max_err_dL1dt >tol_dL1dt ?TERM_RED:TERM_GREEN),max_err_dL1dt, TERM_RST);
+    printf("  max_err_dL2dt  = %s%16.8e%s\n",(max_err_dL2dt >tol_dL2dt ?TERM_RED:TERM_GREEN),max_err_dL2dt, TERM_RST);
+    printf("  max_err_diS0dt = %s%16.8e%s\n",(max_err_diS0dt>tol_diS0dt?TERM_RED:TERM_GREEN),max_err_diS0dt,TERM_RST);
+    printf("  max_err_diS1dt = %s%16.8e%s\n",(max_err_diS1dt>tol_diS1dt?TERM_RED:TERM_GREEN),max_err_diS1dt,TERM_RST);
+    printf("  max_err_diS2dt = %s%16.8e%s\n",(max_err_diS2dt>tol_diS2dt?TERM_RED:TERM_GREEN),max_err_diS2dt,TERM_RST);
+    printf("  max_err_diS3dt = %s%16.8e%s\n",(max_err_diS3dt>tol_diS3dt?TERM_RED:TERM_GREEN),max_err_diS3dt,TERM_RST);
+    printf("  max_err_diS4dt = %s%16.8e%s\n",(max_err_diS4dt>tol_diS4dt?TERM_RED:TERM_GREEN),max_err_diS4dt,TERM_RST);
+    printf("  max_err_diS5dt = %s%16.8e%s\n",(max_err_diS5dt>tol_diS5dt?TERM_RED:TERM_GREEN),max_err_diS5dt,TERM_RST);
 
     // end
-    if (max_err_dpdt  > tol_dpdt)  return 1;
-    if (max_err_dqdt  > tol_dqdt)  return 1;
-    if (max_err_dthdt > tol_dthdt) return 1;
-    if (max_err_dL0dt > tol_dL0dt) return 1;
-    if (max_err_dL1dt > tol_dL1dt) return 1;
-    if (max_err_dL2dt > tol_dL2dt) return 1;
+    if (max_err_dpdt   > tol_dpdt)   return 1;
+    if (max_err_dqdt   > tol_dqdt)   return 1;
+    if (max_err_dthdt  > tol_dthdt)  return 1;
+    if (max_err_dL0dt  > tol_dL0dt)  return 1;
+    if (max_err_dL1dt  > tol_dL1dt)  return 1;
+    if (max_err_dL2dt  > tol_dL2dt)  return 1;
+    if (max_err_diS0dt > tol_diS0dt) return 1;
+    if (max_err_diS1dt > tol_diS1dt) return 1;
+    if (max_err_diS2dt > tol_diS2dt) return 1;
+    if (max_err_diS3dt > tol_diS3dt) return 1;
+    if (max_err_diS4dt > tol_diS4dt) return 1;
+    if (max_err_diS5dt > tol_diS5dt) return 1;
     return 0;
 }
 MECHSYS_CATCH
