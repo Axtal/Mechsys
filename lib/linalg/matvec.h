@@ -1135,27 +1135,34 @@ inline void Calc_Piso (size_t NCp, Mat_t & Piso)
 
 /** Derivatives of the eigenprojectors w.r.t its defining tensor. */
 inline void EigenProjDerivs (Vec_t const & A, Vec3_t & L, Vec_t &  P0,   Vec_t &  P1,   Vec_t &  P2,
-                                                          Mat_t & dP0dA, Mat_t & dP1dA, Mat_t & dP2dA, bool SortAsc=false, bool SortDesc=false, double Tol=1.0e-8)
+                                                          Mat_t & dP0dA, Mat_t & dP1dA, Mat_t & dP2dA,
+                             double Pertubation=1.0e-7, double Tol=1.0e-14, bool SortAsc=false, bool SortDesc=false)
 {
     // eigenprojectors
     EigenProj (A, L, P0, P1, P2, SortAsc, SortDesc);
 
     // check eigenvalues
-    if (fabs(L(0))<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Principal values cannot be zero. L=[%g,%g,%g].",L(0),L(1),L(2));
-    if (fabs(L(1))<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Principal values cannot be zero. L=[%g,%g,%g].",L(0),L(1),L(2));
-    if (fabs(L(2))<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Principal values cannot be zero. L=[%g,%g,%g].",L(0),L(1),L(2));
+    if (fabs(L(0))<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Principal values cannot be zero (Tol=%g).\n L = [%g, %g, %g]",Tol,L(0),L(1),L(2));
+    if (fabs(L(1))<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Principal values cannot be zero (Tol=%g).\n L = [%g, %g, %g]",Tol,L(0),L(1),L(2));
+    if (fabs(L(2))<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Principal values cannot be zero (Tol=%g).\n L = [%g, %g, %g]",Tol,L(0),L(1),L(2));
+
+    // apply pertubation
+    bool pert[3] = { false, false, false };
+    if (fabs(L(0)-L(1))<Pertubation) { L(0)+=Pertubation;  L(1)-=Pertubation;  pert[0]=true; }
+    if (fabs(L(1)-L(2))<Pertubation) { L(1)+=Pertubation;  L(2)-=Pertubation;  pert[1]=true; }
+    if (fabs(L(2)-L(0))<Pertubation) { L(2)+=Pertubation;  L(0)-=Pertubation;  pert[2]=true; }
 
     // characteristic invariants
-    double I1,I2,I3;
-    CharInvs (A, I1, I2, I3);
+    double I1 = L(0)+L(1)+L(2);
+    double I3 = L(0)*L(1)*L(2);
     double a[3] = {2.*L(0)*L(0)-I1*L(0)+I3/L(0),
                    2.*L(1)*L(1)-I1*L(1)+I3/L(1),
                    2.*L(2)*L(2)-I1*L(2)+I3/L(2)};
 
     // check alphas
-    if (fabs(a[0])<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Alpha0 cannot be zero. L=[%g,%g,%g].",L(0),L(1),L(2));
-    if (fabs(a[1])<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Alpha1 cannot be zero. L=[%g,%g,%g].",L(0),L(1),L(2));
-    if (fabs(a[1])<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Alpha2 cannot be zero. L=[%g,%g,%g].",L(0),L(1),L(2));
+    if (fabs(a[0])<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Alpha0 cannot be zero (Tol=%g).\n  L = [%g, %g, %g]\n  I1,I3 = [%g, %g, %g]\n  Alphas = [%g, %g, %g]",Tol,L(0),L(1),L(2), I1,I3, a[0],a[1],a[2]);
+    if (fabs(a[1])<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Alpha1 cannot be zero (Tol=%g).\n  L = [%g, %g, %g]\n  I1,I3 = [%g, %g, %g]\n  Alphas = [%g, %g, %g]",Tol,L(0),L(1),L(2), I1,I3, a[0],a[1],a[2]);
+    if (fabs(a[1])<Tol) throw new Fatal("matvec.h::EigenProjDerivs: Alpha2 cannot be zero (Tol=%g).\n  L = [%g, %g, %g]\n  I1,I3 = [%g, %g, %g]\n  Alphas = [%g, %g, %g]",Tol,L(0),L(1),L(2), I1,I3, a[0],a[1],a[2]);
 
     // inverse tensor and derivative of inverse
     size_t ncp = size(A);
@@ -1182,6 +1189,11 @@ inline void EigenProjDerivs (Vec_t const & A, Vec3_t & L, Vec_t &  P0,   Vec_t &
     dP0dA = (L(0)/a[0])*IIsym + (I3/a[0])*dInvAdA + c[0][0]*PdyP[0] + c[0][1]*PdyP[1] + c[0][2]*PdyP[2];
     dP1dA = (L(1)/a[1])*IIsym + (I3/a[1])*dInvAdA + c[1][0]*PdyP[0] + c[1][1]*PdyP[1] + c[1][2]*PdyP[2];
     dP2dA = (L(2)/a[2])*IIsym + (I3/a[2])*dInvAdA + c[2][0]*PdyP[0] + c[2][1]*PdyP[1] + c[2][2]*PdyP[2];
+
+    // remove pertubation
+    if (pert[0]) { L(0)-=Pertubation;  L(1)+=Pertubation; }
+    if (pert[1]) { L(1)-=Pertubation;  L(2)+=Pertubation; }
+    if (pert[2]) { L(2)-=Pertubation;  L(0)+=Pertubation; }
 }
 
 
