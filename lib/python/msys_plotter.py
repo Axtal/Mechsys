@@ -67,6 +67,10 @@ class Plotter:
         self.lnplus1   = False                                    # plot ln(p+1) instead of ln(p) ?
         self.oct_sxyz  = False                                    # use Sx,Sy,Sz in oct plane instead of S1,S2,S3
         self.fsz       = 8                                        # fontsize
+        self.LDnl_cbar = 0.0
+        self.LDnl_pa   = 1.0
+        self.LDnl_m    = 0.0
+        self.LDnl_eta1 = 1.0
 
         # matplotlib's structures
         self.PH = MPL.path.Path
@@ -474,6 +478,13 @@ class Plotter:
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
             I1,I2,I3 = char_invs(sig_)
             f        = I1**3.0 - kld*I3
+        elif fc_ty=='LDnl':
+            sig0     = self.LDnl_cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
+            sig_     = sig+sig0
+            l        = sig_calc_s123(sig_)
+            if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
+            I1,I2,I3 = char_invs(sig_)
+            f        = (I1**3.0/I3 - 27.)*(-I1/self.LDnl_pa)**self.LDnl_m - self.LDnl_eta1
         else: raise Exception('failure_crit: fc_ty==%s is invalid' % fc_ty)
         return f
 
