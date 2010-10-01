@@ -105,7 +105,7 @@ ENDIF(wxWidgets_FOUND AND USE_WXW)
 
 
 if (A_USE_VTK)
-    SUBDIRS(models vtk)
+    SUBDIRS(graph models vtk)
 else (A_USE_VTK)
-    SUBDIRS(models)
+    SUBDIRS(graph models)
 endif (A_USE_VTK)

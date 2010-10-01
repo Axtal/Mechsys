@@ -17,6 +17,7 @@ install_manifest.txt
 .project
 .pydevproject
 .DS_Store
+*.dot
 *.pvd
 *.vtu
 *.vtk
