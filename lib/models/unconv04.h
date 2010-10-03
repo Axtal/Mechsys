@@ -109,11 +109,26 @@ inline void Unconv04::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec
 inline void Unconv04::Stiffness (State const * Sta, Mat_t & D) const
 {
     EquilibState const * sta = static_cast<EquilibState const*>(Sta);
-    double p,q,t,ev,ed;
-    OctInvs (sta->Sig, p,q,t);
-    ev = Calc_evoct(sta->Eps)*100.;
-    ed = Calc_edoct(sta->Eps)*100.;
+
+    Vec3_t Le, Ls;
+    Vec_t P0,P1,P2, Q0,Q1,Q2;
+    EigenProj (sta->Eps, Le, Q0,Q1,Q2, /*sort*/true);
+    EigenProj (sta->Sig, Ls, P0,P1,P2, /*sort*/true);
+
+    Mat3_t X, Y, Yi; // devedgamdL, dpqthdL, dLdpqth
+    double ev,ed,te;
+    double p, q, ts;
+    OctDerivs (Le, ev, ed, te, X);
+    OctDerivs (Ls, p,  q,  ts, Y);
+    InvOctDerivs (Ls, p,  q,  ts, Yi);
     double x = log(1.0+p);
+
+    X(0,0) *= -1.;
+    X(0,1) *= -1.;
+    X(0,2) *= -1.;
+
+    ev *= 100.;
+    ed *= 100.;
 
     double D1,D3,D5,r0,r1,r2,lr0,lr1,lr2;
     //   x  , a    , b    , c        , A     , B    , bet  , x0  , y0    , D  , lam , y
@@ -128,53 +143,60 @@ inline void Unconv04::Stiffness (State const * Sta, Mat_t & D) const
     double lam = lam0 + ( lr0 - lam0)*exp(-bet0*D0);
     double psi = psi0 + ( lr1 - psi0)*exp(-bet2*D2);
     double g   = g0   + (-lr2 - g0  )*exp(-bet4*D4);
+    double A   = 1.0;
+    double B   = 1.0;
 
-    printf("psi=%g\n",psi);
-    //printf("D1 = %g\n",D1);
-    //printf("alpha = %g\n",alpha*180.0/Util::PI);
+    double a = -100.*(1.0+p)/(lam*A);
+    double b = -100.*psi*B*(1.0+p)/(lam*A);
+    double d =  100.*g;
+    double m = 1.0;
 
-    double a  = -lam/(3.0*(1.0+p))/100.;
-    double A  = -a/Util::SQ3;
+    printf("a=%g, b=%g, d=%g\n",a,b,d);
 
-    Mat_t C(A*IdyI + (0.5/G)*Psd);
-    if (q>1.0e-10)
+
+    Mat3_t Z;
+    Z =  a,   b,   0., 
+         0.,  d,   0., 
+         0.,  0.,  m;
+
+    Mat3_t tm, E;
+    //Inv (Y, Yi);
+    tm = product (Yi, Z); // tm = Yi*Z
+    E  = product (tm, X); // E  = tm*X = Yi*Z*X
+
+    std::cout << "E=\n"   << PrintMatrix(E)        << std::endl;
+
+    if (q<1.0e-7)
     {
-        double b = -psi/(3.0*g);
-        double c = 1.0/g;
-        Vec_t B, S;
-        Mat_t BdyS;
-        Dev (sta->Sig, S);
-        B = (b/q)*I + (c/q)*S;
-        Dyad (B,S,BdyS);
-        C += BdyS;
+        E = K+(4.0*G)/3.0,  K-(2.0*G)/3.0,  K-(2.0*G)/3.0,
+            K-(2.0*G)/3.0,  K+(4.0*G)/3.0,  K-(2.0*G)/3.0,
+            K-(2.0*G)/3.0,  K-(2.0*G)/3.0,  K+(4.0*G)/3.0;
     }
-    //std::cout << "C =\n" << PrintMatrix(C);
-    Inv (C,D);
-    //std::cout << "D =\n" << PrintMatrix(D);
 
-    //double Kb = K/(1.0+9.*K*A);
-    //D = (2.0*G)*Psd + Kb*IdyI;
+    std::cout << "sig="   << PrintVector(sta->Sig) << std::endl;
+    std::cout << "X=\n"   << PrintMatrix(X)        << std::endl;
+    std::cout << "Y=\n"   << PrintMatrix(Y)        << std::endl;
+    std::cout << "Yi=\n"  << PrintMatrix(Yi)       << std::endl;
+    std::cout << "Z=\n"   << PrintMatrix(Z)        << std::endl;
+    std::cout << "E=\n"   << PrintMatrix(E)        << std::endl;
 
-    //printf("q=%g\n",q);
+    D.change_dim (NCps,NCps);
+    set_to_zero  (D);
+    for (size_t i=0; i<NCps; ++i)
+    for (size_t j=0; j<NCps; ++j)
+    {
+        //if (i<3 && j<3) D(i,j) = E(i,j);
+        D(i,j) = P0(i)*E(0,0)*P0(j) + P0(i)*E(0,1)*P1(j) + P0(i)*E(0,2)*P2(j) + 
+                 P1(i)*E(1,0)*P0(j) + P1(i)*E(1,1)*P1(j) + P1(i)*E(1,2)*P2(j) + 
+                 P2(i)*E(2,0)*P0(j) + P2(i)*E(2,1)*P1(j) + P2(i)*E(2,2)*P2(j);
+        if (i>2 && j>2 && i==j) D(i,j) += 1.0;
+    }
 
-    //if (q>1.0e-10)
-    //{
-        //double b = -psi/(3.0*g);
-        //double c = 1.0/g;
-        //printf("g0=%g, lr2=%g, D4=%g, bet4=%g, exp(-bet4*D4)=%g, g=%g\n",g0,lr2,D4,bet4,exp(-bet4*D4),g);
-        //printf("psi=%g, alpha=%g, g=%g, b=%g, c=%g\n",psi,alpha*180./Util::PI,g,b,c);
-        //Vec_t B, S;
-        //Dev (sta->Sig, S);
-        //B = (b/q)*I + (c/q)*S;
-        //Vec_t DeB(D*B);
-        //Vec_t SDe;
-        //Mult (S,D, SDe);
-        //double phi = 1.0 + dot(S,DeB);
-        //for (size_t i=0; i<NCps; ++i)
-        //for (size_t j=0; j<NCps; ++j)
-            //D(i,j) -= DeB(i)*SDe(j)/phi;
-        //std::cout << PrintMatrix(D);
-    //}
+    //Mat_t De;
+    //De = (2.0*G)*Psd + K*IdyI;
+    //std::cout << "De=\n" << PrintMatrix(De) << std::endl;
+    std::cout << "D=\n"  << PrintMatrix(D)  << std::endl;
+    //D = De;
 }
 
 inline bool Unconv04::LoadCond (State const * Sta, Vec_t const & DEps, double & alpInt) const
