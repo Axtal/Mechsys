@@ -787,6 +787,7 @@ inline bool Particle::IsInside (Vec3_t & V)
 {
     bool inside = false;
     size_t nv = Verts.Size(),ne = Edges.Size(),nf = Faces.Size();
+    if (Distance(x,V)>Dmax) return inside;
     for (size_t i = 0; i < nv; i++)
     {
         if (Distance(V,*Verts[i]) < Props.R) {
@@ -822,14 +823,10 @@ inline bool Particle::IsInside (Vec3_t & V)
             }
         }
         Vec3_t ct(0,0,0);
-        for (size_t i = 0; i < Faces[k]->Edges.Size(); i++)
-        {
-            ct += *Faces[k]->Edges[i]->X0;
-        }
-        ct = ct/double(Faces[k]->Edges.Size());
+        Faces[k]->Centroid(ct);
         Vec3_t pro = V - ct;
-        Vec3_t nor = cross(Faces[k]->Edges[0]->dL,Faces[k]->Edges[1]->dL);
-        nor = nor/norm(nor);
+        Vec3_t nor;
+        Faces[k]->Normal(nor);
         if (dot(pro,nor)<0) inside =true;
     }
 

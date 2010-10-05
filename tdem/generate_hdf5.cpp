@@ -35,7 +35,7 @@ using std::endl;
 int main(int argc, char **argv) try
 {
     DEM::Domain dom;
-    dom.AddVoroPack (-1, 0.1, 10,10,10, 4,4,4, 1.0, true, 123, 1);
+    dom.AddVoroPack (-1, 0.1, 10,10,10, 4,4,4, 1.0, false, true, 123, 1);
     dom.Save ("voronoi_pack");
 }
 MECHSYS_CATCH

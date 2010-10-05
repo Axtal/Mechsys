@@ -461,7 +461,7 @@ int main(int argc, char **argv) try
 
     // particle
     if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction);
-    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed, fraction);
+    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, false, seed, fraction);
     else if (ptype=="tetra")
     {
         Mesh::Unstructured mesh(/*NDim*/3);
@@ -471,6 +471,7 @@ int main(int argc, char **argv) try
     else if (ptype=="rice") dom.GenRice(-1,Lx,nx,R,rho,seed,fraction);
     else throw new Fatal("Packing for particle type not implemented yet");
     dat.InitialIndex = dom.Particles.Size();
+    dom.WriteBPY("test");
     dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3);
 
     // properties of particles prior the triaxial test

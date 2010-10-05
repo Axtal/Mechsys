@@ -67,16 +67,17 @@ public:
     void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                                            ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenBoundingBox  (int InitialTag, double R, double Cf);                                                                             ///< Generate o bounding box enclosing the previous included particles.
     void GenFromMesh     (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);              ///< Generate particles from a FEM mesh generator
-    void GenFromVoro     (int Tag, container & VC, double R, double rho, double fraction=1.0,char const * Type=NULL);                       ///< Generate Particles from a Voronoi container
+    //void GenFromVoro     (int Tag, container & VC, double R, double rho, double fraction=1.0,char const * Type=NULL);                       ///< Generate Particles from a Voronoi container
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, 
-                          double rho, bool Periodic,size_t Randomseed, double fraction, double q=0.0);                                      ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
+                          double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, double q=0.0);                       ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
     // Single particle addition
     void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
     void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void AddTetra    (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
-    void AddVoroCell (int Tag, voronoicell & VC, double R, double rho, bool Erode);                                              ///< Add Voronoi cell
+    void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode
+                     ,size_t IIndex,Array<Array<size_t> > & L);                                                                  ///< Add Voronoi cell
 
     // Methods
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
@@ -97,6 +98,7 @@ public:
     void ResetContacts     ();                                                                                  ///< Reset the displacements
     void EnergyOutput      (size_t IdxOut, std::ostream & OutFile);                                             ///< Output of the energy variables
     void GetGSD            (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv=10) const;     ///< Get the Grain Size Distribution
+    void Clusters          (Array<Array <size_t> > & Cindex);                                                   ///< Check the bounded particles in the domain and how many connected clusters are still present
 
     // Access methods
     Particle       * GetParticle  (int Tag, bool Check=true);       ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
@@ -109,23 +111,23 @@ public:
     double CalcEnergy      (double & Ekin, double & Epot);  ///< Return total energy of the system
 
     // Data
-    bool                Initialized;                 ///< System (particles and interactons) initialized ?
-    bool                Finished;                    ///< Has the simulation finished
-    Array<Particle*>    Particles;                   ///< All particles in domain
-    Array<Interacton*>  Interactons;                 ///< All interactons
-    Array<CInteracton*> CInteractons;                ///< Contact interactons
-    Array<BInteracton*> BInteractons;                ///< Cohesion interactons
-    Vec3_t              CamPos;                      ///< Camera position for POV
-    double              Time;                        ///< Current time
-    double              Evis;                        ///< Energy dissipated by the viscosity of the grains
-    double              Efric;                       ///< Energy dissipated by friction
-    double              Wext;                        ///< Work done by external forces
-    double              Vs;                          ///< Volume occupied by the grains
-    double              Alpha;                       ///< Verlet distance
-    void *              UserData;                    ///< Some user data
-    String              FileKey;                     ///< File Key for output files
-    size_t              idx_out;                     ///< Index of output
-    set<pair<Particle *, Particle *> > Listofpairs;  ///< List of pair of particles associated per interacton for memory optimization
+    bool                                              Initialized;                 ///< System (particles and interactons) initialized ?
+    bool                                              Finished;                    ///< Has the simulation finished
+    Array<Particle*>                                  Particles;                   ///< All particles in domain
+    Array<Interacton*>                                Interactons;                 ///< All interactons
+    Array<CInteracton*>                               CInteractons;                ///< Contact interactons
+    Array<BInteracton*>                               BInteractons;                ///< Cohesion interactons
+    Vec3_t                                            CamPos;                      ///< Camera position for POV
+    double                                            Time;                        ///< Current time
+    double                                            Evis;                        ///< Energy dissipated by the viscosity of the grains
+    double                                            Efric;                       ///< Energy dissipated by friction
+    double                                            Wext;                        ///< Work done by external forces
+    double                                            Vs;                          ///< Volume occupied by the grains
+    double                                            Alpha;                       ///< Verlet distance
+    void *                                            UserData;                    ///< Some user data
+    String                                            FileKey;                     ///< File Key for output files
+    size_t                                            idx_out;                     ///< Index of output
+    set<pair<Particle *, Particle *> >                Listofpairs;                 ///< List of pair of particles associated per interacton for memory optimization
 
 #ifdef USE_BOOST_PYTHON
     void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
@@ -458,45 +460,8 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
     printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
-inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho, double fraction, char const *Type)
-{
-    // info
-    Util::Stopwatch stopwatch;
-    printf("\n%s--- Generating particles from Voronoi tessellaton -------------------------------%s\n",TERM_CLR1,TERM_RST);
-
-    fpoint x,y,z,px,py,pz;
-    container *cp = & VC;
-    voropp_loop l1(cp);
-    int q,s;
-    voronoicell c;
-    s=l1.init(VC.ax,VC.bx,VC.ay,VC.by,VC.az,VC.bz,px,py,pz);
-
-    do 
-    {
-        for(q=0;q<VC.co[s];q++) 
-        {
-            x=VC.p[s][VC.sz*q]+px;y=VC.p[s][VC.sz*q+1]+py;z=VC.p[s][VC.sz*q+2]+pz;
-            if(x>VC.ax&&x<VC.bx&&y>VC.ay&&y<VC.by&&z>VC.az&&z<VC.bz) 
-            {
-                if(VC.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) 
-                {
-
-                    if (rand()<fraction*RAND_MAX)
-                    {
-                        AddVoroCell(Tag,c,R,rho,true);
-                        Vec3_t trans(x,y,z);
-                        Particles[Particles.Size()-1]->Translate(trans);
-                    }
-                }
-            }
-        }
-    } while((s=l1.inc(px,py,pz))!=-1);
-
-    // info
-    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
-}
-
-inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho, bool Periodic,size_t Randomseed, double fraction, double qin)
+inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho
+                                 , bool Cohesion, bool Periodic,size_t Randomseed, double fraction, double qin)
 {
     // info
     Util::Stopwatch stopwatch;
@@ -507,6 +472,7 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
     const double y_min=-Ly/2.0, y_max=Ly/2.0;
     const double z_min=-Lz/2.0, z_max=Lz/2.0;
     container con(x_min,x_max,y_min,y_max,z_min,z_max,nx,ny,nz, Periodic,Periodic,Periodic,8);
+    Array<Vec3_t> coor;
     int n = 0;
     for (size_t i=0; i<nx; i++)
     {
@@ -517,6 +483,7 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
                 double x = x_min+(i+0.5*qin+(1-qin)*double(rand())/RAND_MAX)*(x_max-x_min)/nx;
                 double y = y_min+(j+0.5*qin+(1-qin)*double(rand())/RAND_MAX)*(y_max-y_min)/ny;
                 double z = z_min+(k+0.5*qin+(1-qin)*double(rand())/RAND_MAX)*(z_max-z_min)/nz;
+                coor.Push(Vec3_t(x,y,z));
                 con.put (n,x,y,z);
                 n++;
             }
@@ -527,9 +494,11 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
     container *cp = & con;
     voropp_loop l1(cp);
     int q,s;
-    voronoicell c;
+    voronoicell_neighbor c;
     s=l1.init(con.ax,con.bx,con.ay,con.by,con.az,con.bz,px,py,pz);
 
+    Array<Array <size_t> > ListBpairs(n);
+    size_t IIndex = Particles.Size();
     do 
     {
         for(q=0;q<con.co[s];q++) 
@@ -542,7 +511,7 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
 
                     if (rand()<fraction*RAND_MAX)
                     {
-                        AddVoroCell(Tag,c,R,rho,true);
+                        AddVoroCell(Tag,c,R,rho,true,IIndex,ListBpairs);
                         Vec3_t trans(x,y,z);
                         Particle * P = Particles[Particles.Size()-1];
                         P->Translate(trans);
@@ -555,6 +524,73 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
 
     // info
     printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
+
+
+    if (Cohesion)
+    {
+        if (Periodic) throw new Fatal("Domain::AddVoroPack: The Cohesion and Periodic conditions are exlusive, please change one");
+        if (fraction<1.0) throw new Fatal("Domain::AddVoroPack: With the Cohesion all particles should be considered, plese change the fraction to 1.0");
+        Array<size_t> Coor2Particle(Particles.Size()-IIndex);
+        for (size_t i=0;i<Particles.Size()-IIndex;i++)
+        {
+            bool found = false;
+            for (size_t j=IIndex;j<Particles.Size();j++)
+            {
+                if (Particles[j]->IsInside(coor[i]))
+                {
+                    //if (i==5) std::cout << j << std::endl;
+                    if (found)
+                    {
+                        //std::cout << coor[i] << " " << i  << std::endl;
+                        throw new Fatal("Domain::AddVoroPack: The Voronoi point was found in two particles");
+                    }
+                    found = true;
+                    Coor2Particle[i]=j;
+                }
+            }
+        }
+
+
+        for (size_t i=0;i<ListBpairs.Size();i++)
+        {
+            for (size_t j=0;j<ListBpairs[i].Size();j++)
+            {
+                size_t m = Coor2Particle[ListBpairs[i][j]];
+                if (i<m)
+                {
+                    Vec3_t Delta = coor[ListBpairs[i][j]]-coor[Coor2Particle.Find(i)];
+                    Delta/=norm(Delta);
+                    size_t F1 = 0;
+                    Vec3_t n1;
+                    Particles[i+IIndex]->Faces[F1]->Normal(n1);
+                    double pro = dot(n1,Delta);
+                    for (size_t k=1;k<Particles[i+IIndex]->Faces.Size();k++)
+                    {
+                        Particles[i+IIndex]->Faces[k]->Normal(n1);
+                        if (fabs(dot(n1,Delta)-1.0)<fabs(pro-1.0))
+                        {
+                            pro = dot(n1,Delta);
+                            F1=k;
+                        }
+                    }
+                    size_t F2 = 0;
+                    Vec3_t n2;
+                    Particles[m+IIndex]->Faces[F2]->Normal(n2);
+                    pro = dot(n2,Delta);
+                    for (size_t k=1;k<Particles[m+IIndex]->Faces.Size();k++)
+                    {
+                        Particles[m+IIndex]->Faces[k]->Normal(n2);
+                        if (fabs(dot(n2,Delta)+1.0)<fabs(pro+1.0))
+                        {
+                            pro = dot(n2,Delta);
+                            F2=k;
+                        }
+                    }
+                    BInteractons.Push(new BInteracton(Particles[i+IIndex],Particles[m+IIndex],F1,F2));
+                }
+            }
+        }
+    }
 }
 
 // Single particle addition
@@ -784,7 +820,8 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
     if (!ThereisanAxis) delete Axis;
 }
 
-inline void Domain::AddVoroCell (int Tag, voronoicell & VC, double R, double rho,bool Erode)
+inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho,bool Erode
+                                 ,size_t IIndex,Array<Array<size_t> > & ListBpairs)
 {
     Array<Vec3_t> V(VC.p);
     Array<Array <int> > E;
@@ -805,6 +842,7 @@ inline void Domain::AddVoroCell (int Tag, voronoicell & VC, double R, double rho
     }
     Array<Array <int> > F;
     Array<int> Faux;
+    size_t nf = 0;
     for(int i=0;i<VC.p;i++) 
     {
         for(int j=0;j<VC.nu[i];j++) 
@@ -813,6 +851,11 @@ inline void Domain::AddVoroCell (int Tag, voronoicell & VC, double R, double rho
             if (k>=0) 
             {
                 Faux.Push(i);
+                if (VC.neighbor.ne[i][j]>=0)
+                {
+                    ListBpairs[Particles.Size()-IIndex].Push(VC.neighbor.ne[i][j]);
+                }
+                nf++;
                 VC.ed[i][j]=-1-k;
                 int l=VC.cycle_up(VC.ed[i][VC.nu[i]+j],k);
                 do 
@@ -1831,6 +1874,12 @@ inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> 
         }
         Y.Push (cumsum/Particles.Size());
     }
+}
+
+inline void Domain::Clusters (Array<Array <size_t> > & CIndex)
+{
+    CIndex.Clear();
+    
 }
 
 inline Particle * Domain::GetParticle (int Tag, bool Check)

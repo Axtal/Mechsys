@@ -477,7 +477,7 @@ inline void BInteracton::CalcForce(double dt)
         Rotation  (Tt,q,T);
         P2->T += T;
 
-        // Breaking point
+         //Breaking point
         if (fabs(delta)+norm(Lt)+fabs(An)*sqrt(Area/Util::PI)>L0*eps) 
         {
             valid = false;
