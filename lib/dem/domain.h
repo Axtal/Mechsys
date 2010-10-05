@@ -44,6 +44,7 @@
 #include <mechsys/mesh/mesh.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/stopwatch.h>
+#include <mechsys/util/tree.h>
 
 namespace DEM
 {
@@ -98,7 +99,7 @@ public:
     void ResetContacts     ();                                                                                  ///< Reset the displacements
     void EnergyOutput      (size_t IdxOut, std::ostream & OutFile);                                             ///< Output of the energy variables
     void GetGSD            (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv=10) const;     ///< Get the Grain Size Distribution
-    void Clusters          (Array<Array <size_t> > & Cindex);                                                   ///< Check the bounded particles in the domain and how many connected clusters are still present
+    void Clusters          ();                                                                                  ///< Check the bounded particles in the domain and how many connected clusters are still present
 
     // Access methods
     Particle       * GetParticle  (int Tag, bool Check=true);       ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
@@ -128,6 +129,7 @@ public:
     String                                            FileKey;                     ///< File Key for output files
     size_t                                            idx_out;                     ///< Index of output
     set<pair<Particle *, Particle *> >                Listofpairs;                 ///< List of pair of particles associated per interacton for memory optimization
+    Array<Array <int> >                               Listofclusters;              ///< List of particles belonging to bounded clusters (applies only for cohesion simulations)
 
 #ifdef USE_BOOST_PYTHON
     void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
@@ -185,7 +187,7 @@ public:
 // Constructor & Destructor
 
 inline Domain::Domain (void * UD)
-    :  Initialized(false), Time(0.0), Alpha(0.1), UserData(UD)
+    :  Initialized(false), Time(0.0), Alpha(0.005), UserData(UD)
 {
     CamPos = 1.0, 2.0, 3.0;
 #ifdef USE_MPI
@@ -529,8 +531,7 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
 
     if (Cohesion)
     {
-        //if (Periodic) throw new Fatal("Domain::AddVoroPack: The Cohesion and Periodic conditions are exlusive, please change one");
-        //if (fraction<1.0) throw new Fatal("Domain::AddVoroPack: With the Cohesion all particles should be considered, plese change the fraction to 1.0");
+        if (fraction<1.0) throw new Fatal("Domain::AddVoroPack: With the Cohesion all particles should be considered, plese change the fraction to 1.0");
         Array<size_t> Coor2Particle(Particles.Size()-IIndex);
         for (size_t i=0;i<Particles.Size()-IIndex;i++)
         {
@@ -541,12 +542,10 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
                 {
                     if (found)
                     {
-                        //std::cout << coor[i] << " " << i  << std::endl;
                         throw new Fatal("Domain::AddVoroPack: The Voronoi point was found in two particles");
                     }
                     found = true;
                     Coor2Particle[i]=j;
-                    //std::cout << i << " " << j << std::endl;
                 }
             }
         }
@@ -1233,16 +1232,32 @@ inline void Domain::WritePOV (char const * FileKey)
     std::ofstream of(fn.CStr(), std::ios::out);
     POVHeader (of);
     POVSetCam (of, CamPos, OrthoSys::O);
-    for (size_t i=0; i<Particles.Size(); i++)
-    {
-        if (Particles[i]->IsFree())
+    //for (size_t i=0;i<4;i++) std::cout << Colors[i].CStr() << std::endl;
+    if (BInteractons.Size()==0)
+    { 
+        for (size_t i=0; i<Particles.Size(); i++)
         {
-            if(Particles[i]->IsBroken) Particles[i]->Draw(of,"Black");
-            else                       Particles[i]->Draw(of,"Red");
+            if (Particles[i]->IsFree())
+            {
+                Particles[i]->Draw(of,"Red");
+            }
+            else Particles[i]->Draw(of,"Col_Glass_Bluish");
         }
-        else Particles[i]->Draw(of,"Col_Glass_Bluish");
+        of.close();
     }
-    of.close();
+    else
+    {
+        Clusters();
+        Array <String> Colors(7);
+        Colors = "Red","Blue","Yellow","Gold","Green","Blue","Orange";
+        for (size_t i=0;i<Listofclusters.Size();i++)
+        {
+            for (size_t j=0;j<Listofclusters[i].Size();j++)
+            {
+                Particles[Listofclusters[i][j]]->Draw(of,Colors[i%7].CStr());
+            }
+        }
+    }
 #endif
 }
 
@@ -1877,10 +1892,20 @@ inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> 
     }
 }
 
-inline void Domain::Clusters (Array<Array <size_t> > & CIndex)
+inline void Domain::Clusters ()
 {
-    CIndex.Clear();
-    
+    Array<int> connections;
+    for (size_t i=0;i<BInteractons.Size();i++)
+    {
+        if (BInteractons[i]->valid)
+        {
+            connections.Push(BInteractons[i]->P1->Index);
+            connections.Push(BInteractons[i]->P2->Index);
+        }
+    }
+
+    Util::Tree tree(connections);
+    tree.GetClusters(Listofclusters);
 }
 
 inline Particle * Domain::GetParticle (int Tag, bool Check)

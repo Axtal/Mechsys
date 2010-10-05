@@ -26,7 +26,7 @@
 // iGraph
 extern "C"
 {
-    #include <igraph/igraph.h>
+    #include <src/igraph.h>
 }
 
 // MechSys
