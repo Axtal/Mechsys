@@ -66,7 +66,7 @@ int main(int argc, char **argv) try
     //d.GenFromMesh(mesh,/*spheroradius*/0.1,/*density*/1.0,/*iscohesive*/true,/*montecarlo mass properties*/false,/*thickness*/2.0);
 
     
-    d.AddVoroPack (-1, 0.1, 5,5,5, 5,5,5, 3.0, false, false, 1000, 1.0,0.0);
+    d.AddVoroPack (-1, 0.1, 5,5,5, 5,5,5, 3.0, true, false, 1000, 1.0,0.0);
     d.Center(Vec3_t(0.0,8.0,0.0));
     d.AddPlane(/*tag*/-2,/*position*/Vec3_t(0.0,-0.2,0.0),/*spheroradius*/0.2,/*Lx*/100,/*Ly*/100,/*rho*/1.0,/*angle*/M_PI/2.0,/*axis*/&OrthoSys::e0);
     d.WriteBPY(filekey.CStr());

@@ -461,7 +461,7 @@ int main(int argc, char **argv) try
 
     // particle
     if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction);
-    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, false, seed, fraction);
+    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, false, seed, fraction, 1.0);
     else if (ptype=="tetra")
     {
         Mesh::Unstructured mesh(/*NDim*/3);

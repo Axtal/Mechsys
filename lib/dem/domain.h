@@ -76,8 +76,8 @@ public:
     void AddTetra    (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
-    void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode
-                     ,size_t IIndex,Array<Array<size_t> > & L);                                                                  ///< Add Voronoi cell
+    void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode);
+                     //,size_t IIndex,Array<Array<size_t> > & L);                                                                  ///< Add Voronoi cell
 
     // Methods
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
@@ -511,7 +511,8 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
 
                     if (rand()<fraction*RAND_MAX)
                     {
-                        AddVoroCell(Tag,c,R,rho,true,IIndex,ListBpairs);
+                        //AddVoroCell(Tag,c,R,rho,true,IIndex,ListBpairs);
+                        AddVoroCell(Tag,c,R,rho,true);
                         Vec3_t trans(x,y,z);
                         Particle * P = Particles[Particles.Size()-1];
                         P->Translate(trans);
@@ -528,8 +529,8 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
 
     if (Cohesion)
     {
-        if (Periodic) throw new Fatal("Domain::AddVoroPack: The Cohesion and Periodic conditions are exlusive, please change one");
-        if (fraction<1.0) throw new Fatal("Domain::AddVoroPack: With the Cohesion all particles should be considered, plese change the fraction to 1.0");
+        //if (Periodic) throw new Fatal("Domain::AddVoroPack: The Cohesion and Periodic conditions are exlusive, please change one");
+        //if (fraction<1.0) throw new Fatal("Domain::AddVoroPack: With the Cohesion all particles should be considered, plese change the fraction to 1.0");
         Array<size_t> Coor2Particle(Particles.Size()-IIndex);
         for (size_t i=0;i<Particles.Size()-IIndex;i++)
         {
@@ -538,7 +539,6 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
             {
                 if (Particles[j]->IsInside(coor[i]))
                 {
-                    //if (i==5) std::cout << j << std::endl;
                     if (found)
                     {
                         //std::cout << coor[i] << " " << i  << std::endl;
@@ -546,47 +546,48 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
                     }
                     found = true;
                     Coor2Particle[i]=j;
+                    //std::cout << i << " " << j << std::endl;
                 }
             }
         }
 
-
-        for (size_t i=0;i<ListBpairs.Size();i++)
+        // define some tolerance for comparissions
+        double tol = 1.0e-7;
+        for (size_t i=IIndex;i<Particles.Size()-1;i++)
         {
-            for (size_t j=0;j<ListBpairs[i].Size();j++)
+            Particle * P1 = Particles[i];
+            for (size_t j=i+1;j<Particles.Size();j++)
             {
-                size_t m = Coor2Particle[ListBpairs[i][j]];
-                if (i<m)
+                Particle * P2 = Particles[j];
+                if (Distance(P1->x,P2->x)<P1->Dmax+P2->Dmax)
                 {
-                    Vec3_t Delta = coor[ListBpairs[i][j]]-coor[Coor2Particle.Find(i)];
-                    Delta/=norm(Delta);
-                    size_t F1 = 0;
-                    Vec3_t n1;
-                    Particles[i+IIndex]->Faces[F1]->Normal(n1);
-                    double pro = dot(n1,Delta);
-                    for (size_t k=1;k<Particles[i+IIndex]->Faces.Size();k++)
+                    Vec3_t xc1 = coor[Coor2Particle.Find(i)];
+                    Vec3_t xc2 = coor[Coor2Particle.Find(j)];
+                    Vec3_t Delta = xc2 - xc1;
+
+                    for (size_t k=0;k<P1->Faces.Size();k++)
                     {
-                        Particles[i+IIndex]->Faces[k]->Normal(n1);
-                        if (fabs(dot(n1,Delta)-1.0)<fabs(pro-1.0))
+                        Face * F1 = P1->Faces[k];
+                        Vec3_t n1;
+                        F1->Normal(n1);
+                        bool found = false;
+                        for (size_t l=0;l<P2->Faces.Size();l++)
                         {
-                            pro = dot(n1,Delta);
-                            F1=k;
+                            Face * F2 = P2->Faces[l];
+                            Vec3_t n2;
+                            F2->Normal(n2);
+                            if ((fabs(dot(n1,n2)+1.0)<tol)
+                                 &&(fabs(Distance(xc1,*F1)-Distance(xc2,*F2))<tol)
+                                 &&(fabs(Distance(xc1,*F1)+R-0.5*norm(Delta))<tol)
+                                 &&(fabs(dot(n1,Delta)-norm(Delta))<tol))
+                            {
+                                BInteractons.Push(new BInteracton(P1,P2,k,l));
+                                found = true;
+                                break;
+                            }
                         }
+                        if (found) break;
                     }
-                    size_t F2 = 0;
-                    Vec3_t n2;
-                    Particles[m+IIndex]->Faces[F2]->Normal(n2);
-                    pro = dot(n2,Delta);
-                    for (size_t k=1;k<Particles[m+IIndex]->Faces.Size();k++)
-                    {
-                        Particles[m+IIndex]->Faces[k]->Normal(n2);
-                        if (fabs(dot(n2,Delta)+1.0)<fabs(pro+1.0))
-                        {
-                            pro = dot(n2,Delta);
-                            F2=k;
-                        }
-                    }
-                    BInteractons.Push(new BInteracton(Particles[i+IIndex],Particles[m+IIndex],F1,F2));
                 }
             }
         }
@@ -820,8 +821,8 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
     if (!ThereisanAxis) delete Axis;
 }
 
-inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho,bool Erode
-                                 ,size_t IIndex,Array<Array<size_t> > & ListBpairs)
+inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho,bool Erode)
+                                 //,size_t IIndex,Array<Array<size_t> > & ListBpairs)
 {
     Array<Vec3_t> V(VC.p);
     Array<Array <int> > E;
@@ -851,10 +852,10 @@ inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, d
             if (k>=0) 
             {
                 Faux.Push(i);
-                if (VC.neighbor.ne[i][j]>=0)
-                {
-                    ListBpairs[Particles.Size()-IIndex].Push(VC.neighbor.ne[i][j]);
-                }
+                //if (VC.neighbor.ne[i][j]>=0)
+                //{
+                    //ListBpairs[Particles.Size()-IIndex].Push(VC.neighbor.ne[i][j]);
+                //}
                 nf++;
                 VC.ed[i][j]=-1-k;
                 int l=VC.cycle_up(VC.ed[i][VC.nu[i]+j],k);

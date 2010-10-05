@@ -415,8 +415,9 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     Gt              = 2*ReducedValue(P1->Props.Gt,P2->Props.Gt)*ReducedValue(P1->Props.m,P2->Props.m);
     eps             = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
 
-    Vec3_t t1;
+    Vec3_t t1,t2;
     P1->Faces[F1]->Normal(t1);
+    P2->Faces[F2]->Normal(t2);
     Vec3_t c1,c2;
     c1 = P1->x;
     c2 = P2->x;
