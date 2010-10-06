@@ -44,7 +44,7 @@ public:
     ~UGrid ();
 
     // Methods
-    void AddTo (VTK::Win & win) { win.AddActor(_grid_actor); }
+    void AddTo (VTK::Win & win) { win.AddActor(_grid_actor);  if (_wire_actor!=NULL) win.AddActor(_wire_actor); }
 
     // Add methods
     int InsertNextPoint (double X, double Y, double Z) { return _pnts->InsertNextPoint (X,Y,Z);      }
@@ -54,12 +54,15 @@ public:
     UGrid & SetColor     (char const * Name="peacock", double Opacity=0.8);
     void    SetPoint     (int Id, double X, double Y, double Z) { _pnts->SetPoint (Id, X,Y,Z); }
     void    Modified     () { _grid->Modified(); }
+    void    SetWire      (bool WithWireframe=true);
 
 private:
     vtkPoints           * _pnts;
     vtkUnstructuredGrid * _grid;
     vtkDataSetMapper    * _grid_mapper;
     vtkActor            * _grid_actor;
+    vtkDataSetMapper    * _wire_mapper;
+    vtkActor            * _wire_actor;
 };
 
 
@@ -67,6 +70,7 @@ private:
 
 
 inline UGrid::UGrid ()
+    : _wire_actor (NULL)
 {
     _pnts        = vtkPoints           ::New();
     _grid        = vtkUnstructuredGrid ::New();
@@ -84,6 +88,11 @@ inline UGrid::~UGrid ()
     _grid        -> Delete();
     _grid_mapper -> Delete();
     _grid_actor  -> Delete();
+    if (_wire_actor!=NULL)
+    {
+        _wire_mapper -> Delete();
+        _wire_actor  -> Delete();
+    }
 }
 
 inline UGrid & UGrid::SetColor (char const * Name, double Opacity)
@@ -92,6 +101,26 @@ inline UGrid & UGrid::SetColor (char const * Name, double Opacity)
     _grid_actor->GetProperty()->SetColor   (c(0), c(1), c(2));
     _grid_actor->GetProperty()->SetOpacity (Opacity);
     return (*this);
+}
+
+inline void UGrid::SetWire (bool WithWireframe)
+{
+    if (_wire_actor!=NULL)
+    {
+        _wire_mapper -> Delete();
+        _wire_actor  -> Delete();
+    }
+    if (WithWireframe)
+    {
+        _wire_mapper = vtkDataSetMapper     ::New();
+        _wire_actor  = vtkActor             ::New();
+        _wire_mapper -> SetInput            (_grid);
+        _wire_mapper -> ScalarVisibilityOff ();
+        _wire_actor  -> SetMapper           (_wire_mapper);
+        _wire_actor  -> GetProperty         ()->SetRepresentationToWireframe();
+        Vec3_t c(Colors::Get("black"));
+        _wire_actor->GetProperty()->SetColor (c.data());
+    }
 }
 
 #endif // MECHSYS_POLYGON_H
