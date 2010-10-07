@@ -187,7 +187,7 @@ public:
 // Constructor & Destructor
 
 inline Domain::Domain (void * UD)
-    :  Initialized(false), Time(0.0), Alpha(0.005), UserData(UD)
+    :  Initialized(false), Time(0.0), Alpha(0.05), UserData(UD)
 {
     CamPos = 1.0, 2.0, 3.0;
 #ifdef USE_MPI
@@ -513,7 +513,6 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
 
                     if (rand()<fraction*RAND_MAX)
                     {
-                        //AddVoroCell(Tag,c,R,rho,true,IIndex,ListBpairs);
                         AddVoroCell(Tag,c,R,rho,true);
                         Vec3_t trans(x,y,z);
                         Particle * P = Particles[Particles.Size()-1];
@@ -551,7 +550,8 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
         }
 
         // define some tolerance for comparissions
-        double tol = 1.0e-7;
+        double tol1 = 1.0e-8;
+        double tol2 = 1.0e-3;
         for (size_t i=IIndex;i<Particles.Size()-1;i++)
         {
             Particle * P1 = Particles[i];
@@ -575,10 +575,13 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
                             Face * F2 = P2->Faces[l];
                             Vec3_t n2;
                             F2->Normal(n2);
-                            if ((fabs(dot(n1,n2)+1.0)<tol)
-                                 &&(fabs(Distance(xc1,*F1)-Distance(xc2,*F2))<tol)
-                                 &&(fabs(Distance(xc1,*F1)+R-0.5*norm(Delta))<tol)
-                                 &&(fabs(dot(n1,Delta)-norm(Delta))<tol))
+                            //if (i==1) std::cout << dot(n1,n2) << " " << fabs(Distance(xc1,*F1)-Distance(xc2,*F2)) << " "
+                                      //<< fabs(dot(n1,Delta)-norm(Delta)) << " " << fabs(Distance(xc1,*F1)+R-0.5*norm(Delta)) 
+                                      //<< " " << j << " " << k << " " << l << std::endl;
+                            if ((fabs(dot(n1,n2)+1.0)<tol1)
+                                 &&(fabs(Distance(xc1,*F1)-Distance(xc2,*F2))<tol2)
+                                 &&(fabs(Distance(xc1,*F1)+R-0.5*norm(Delta))<tol2)
+                                 &&(fabs(dot(n1,Delta)-norm(Delta))<tol2))
                             {
                                 BInteractons.Push(new BInteracton(P1,P2,k,l));
                                 found = true;
@@ -1232,32 +1235,56 @@ inline void Domain::WritePOV (char const * FileKey)
     std::ofstream of(fn.CStr(), std::ios::out);
     POVHeader (of);
     POVSetCam (of, CamPos, OrthoSys::O);
-    //for (size_t i=0;i<4;i++) std::cout << Colors[i].CStr() << std::endl;
-    if (BInteractons.Size()==0)
-    { 
-        for (size_t i=0; i<Particles.Size(); i++)
-        {
-            if (Particles[i]->IsFree())
-            {
-                Particles[i]->Draw(of,"Red");
-            }
-            else Particles[i]->Draw(of,"Col_Glass_Bluish");
-        }
-        of.close();
-    }
-    else
+    Array <String> Colors(7);
+    Colors = "Gray","Blue","Yellow","Gold","Green","Blue","Orange";
+    if (BInteractons.Size()>0) Clusters();
+    for (size_t i=0; i<Particles.Size(); i++)
     {
-        Clusters();
-        Array <String> Colors(7);
-        Colors = "Red","Blue","Yellow","Gold","Green","Blue","Orange";
-        for (size_t i=0;i<Listofclusters.Size();i++)
+        if (!Particles[i]->IsFree()) Particles[i]->Draw(of,"Col_Glass_Bluish");
+        else
         {
-            for (size_t j=0;j<Listofclusters[i].Size();j++)
+            bool found = false;
+            for (size_t j=0;j<Listofclusters.Size();j++)
             {
-                Particles[Listofclusters[i][j]]->Draw(of,Colors[i%7].CStr());
+                if (Listofclusters[j].Has(i)&&BInteractons.Size()>0)
+                {
+                    Particles[i]->Draw(of,Colors[j%7].CStr());
+                    found = true;
+                }
             }
+            if (!found) Particles[i]->Draw(of,"Red");
         }
     }
+
+
+    //if (BInteractons.Size()==0)
+    //{ 
+        //for (size_t i=0; i<Particles.Size(); i++)
+        //{
+            //if (Particles[i]->IsFree())
+            //{
+                //Particles[i]->Draw(of,"Red");
+            //}
+            //else Particles[i]->Draw(of,"Col_Glass_Bluish");
+        //}
+        //of.close();
+    //}
+    //else
+    //{
+        //Clusters();
+        //Array <String> Colors(7);
+        //Colors = "Red","Blue","Yellow","Gold","Green","Blue","Orange";
+        //for (size_t i=0;i<Listofclusters.Size();i++)
+        //{
+            //for (size_t j=0;j<Listofclusters[i].Size();j++)
+            //{
+                //Particles[Listofclusters[i][j]]->Draw(of,Colors[i%7].CStr());
+            //}
+        //}
+        //for (size_t i=0;i<Particles.Size();i++)
+        //{
+        //}
+    //}
 #endif
 }
 

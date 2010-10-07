@@ -145,6 +145,7 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
     Array<Vec3_t> Normal(3);
     Array<Array <int> > VFlist;
     Array<Vec3_t> Vtemp;
+    //First each trio of faces is moved inward and the intersection is checked
     for (size_t i=0; i<F.Size()-2; i++)
     {
         Normal[0] = cross(Faces[i]->Edges[0]->dL,Faces[i]->Edges[1]->dL);
@@ -251,20 +252,24 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
     }
     V = Vtemp;
     if (V.Size()<=3) throw new Fatal("The erosion gave too few vertices to build a convex hull, try a smaller erosion parameter");
+    // cm will be a point inside the polyhedron
     Vec3_t cm(0,0,0);
     for (size_t i = 0; i < V.Size(); i++)
     {
         cm += V[i];
     }
     cm /=V.Size();
+    // Here the edges are constructed cheking if the vertices share a face
     E.Resize(0);
     for (size_t i = 0; i < V.Size()-1; i++)
     {
         for (size_t j = i+1; j < V.Size(); j++)
         {
+        	// Since a pair of vertices share two faces then the edge is created only for the first one found
             bool first = true;
             for (size_t k = 0; k < 3; k++)
             {
+            	// Checking if vertex i and j share face k
                 if (VFlist[j].Find(VFlist[i][k])!=-1)
                 {
                     if (!first)
@@ -279,6 +284,8 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
             }
         }
     }
+    // Creating faces, in order to do this we assume that the number of eroded faces is lees or equal to the number 
+    // of original faces. If a vertex belongs to th eoriginal and eroded face is pushed.
     Array<Array <int> > Ftemp;
     Array <int> Faux;
     for (size_t i = 0;i < F.Size();i++)
@@ -293,7 +300,8 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
         }
         if(Faux.Size()!=0) Ftemp.Push(Faux);
     }
-
+    
+    //Now the vertices are ordered to ensure the the normal vector points outwars
     for (size_t i=0;i<Ftemp.Size();i++)
     {
         Array<double> Angles(Ftemp[i].Size());
@@ -309,7 +317,10 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
         for (size_t j = 1;j<Ftemp[i].Size();j++)
         {
             Vec3_t t1 = V[Ftemp[i][j]] - ct;
-            Angles[j] = acos(dot(axis,t1)/(norm(axis)*norm(t1)));
+            double arg = dot(axis,t1)/(norm(axis)*norm(t1));
+            if (arg> 1) arg= 1;
+            if (arg<-1) arg=-1;
+            Angles[j] = acos(arg);
             Vec3_t t2 = cross(axis,t1);
             if (dot(t2,inward)>0) Angles[j] = 2*M_PI - Angles[j];
         }
