@@ -71,7 +71,7 @@ int main(int argc, char **argv) try
 
     // change tags
     size_t nc = mesh.Cells.Size();
-    mesh.Cells[0]->Tag   = -2;
+    mesh.Cells[0]->Tag    = -2;
     mesh.Cells[nc-1]->Tag = -3;
 
     // write
@@ -88,17 +88,21 @@ int main(int argc, char **argv) try
     dom.GenFromMesh (mesh, 0.1, 1., cohesion, montecarlo);
     dom.Center();
     dom.Save ("test_beam");
+    Dict B;
+    B.Set(-2,"Gn Gt Mu eps",0.0,0.0,0.0,0.01);
+    B.Set(-3,"Gn Gt Mu eps",0.0,0.0,0.0,0.01);
+    dom.SetProps(B);
     dom.CamPos = cam_x, cam_y, cam_z;
 
     // connect
     dat.p = dom.GetParticle (-3);
-    dat.p->v=0.0,0.0,100.0;
+    dat.p->w=0.0,0.0,0.0;
 
     // fix -2
     Particle * p = dom.GetParticle (-2);
     p->FixVeloc();
 
-    double tf        = 200.;
+    double tf        = 20.;
     double dt        = 0.0001;
     double dtOut     = 0.5;
     //char   filekey[] = "test_beam";

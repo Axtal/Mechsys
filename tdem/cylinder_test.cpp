@@ -38,36 +38,36 @@ int main(int argc, char **argv) try
     //
     Domain d;
     d.CamPos = Vec3_t(0.0, 2.5, 30.0); // position of camera
-    Mesh::Unstructured mesh(/*NDim*/2);
-    mesh.Set    (8, 8, 1, 1);            // 8 points, 8 segments, 1 region, 1 hole
-    mesh.SetReg (0, -1, -1.0, 0.2, 0.2); // id, tag, max{area}, x, y <<<<<<< regions
-    mesh.SetHol (0, 2.5, 2.5);           // id, x, y <<<<<<< holes
-    mesh.SetPnt (0, -1, 0.0, 0.0);       // id, vtag, x, y <<<<<< points
-    mesh.SetPnt (1, -2, 5.0, 0.0);       // id, vtag, x, y
-    mesh.SetPnt (2, -3, 5.0, 5.0);       // id, vtag, x, y
-    mesh.SetPnt (3, -4, 0.0, 5.0);       // id, vtag, x, y
-    mesh.SetPnt (4,  0, 2.0, 2.0);       // id, vtag, x, y
-    mesh.SetPnt (5,  0, 3.0, 2.0);       // id, vtag, x, y
-    mesh.SetPnt (6,  0, 3.0, 3.0);       // id, vtag, x, y
-    mesh.SetPnt (7,  0, 2.0, 3.0);       // id, vtag, x, y
-    mesh.SetSeg (0, -10,  0, 1);         // id, etag, L, R <<<<<<<<<<<< segments
-    mesh.SetSeg (1, -20,  1, 2);         // id, etag, L, R
-    mesh.SetSeg (2, -30,  2, 3);         // id, etag, L, R
-    mesh.SetSeg (3, -40,  3, 0);         // id, etag, L, R
-    mesh.SetSeg (4,   0,  4, 5);         // id, etag, L, R
-    mesh.SetSeg (5,   0,  5, 6);         // id, etag, L, R
-    mesh.SetSeg (6,   0,  6, 7);         // id, etag, L, R
-    mesh.SetSeg (7,   0,  7, 4);         // id, etag, L, R
-    mesh.Generate ();
-
-    d.GenFromMesh(mesh,/*spheroradius*/0.1,/*density*/1.0,/*iscohesive*/true,/*montecarlo mass properties*/false,/*thickness*/2.0);
-    d.Center(Vec3_t(0.0,8.0,1.0));
-
-    d.GenFromMesh(mesh,/*spheroradius*/0.1,/*density*/1.0,/*iscohesive*/true,/*montecarlo mass properties*/false,/*thickness*/2.0);
+    //Mesh::Unstructured mesh(/*NDim*/2);
+    //mesh.Set    (8, 8, 1, 1);            // 8 points, 8 segments, 1 region, 1 hole
+    //mesh.SetReg (0, -1, -1.0, 0.2, 0.2); // id, tag, max{area}, x, y <<<<<<< regions
+    //mesh.SetHol (0, 2.5, 2.5);           // id, x, y <<<<<<< holes
+    //mesh.SetPnt (0, -1, 0.0, 0.0);       // id, vtag, x, y <<<<<< points
+    //mesh.SetPnt (1, -2, 5.0, 0.0);       // id, vtag, x, y
+    //mesh.SetPnt (2, -3, 5.0, 5.0);       // id, vtag, x, y
+    //mesh.SetPnt (3, -4, 0.0, 5.0);       // id, vtag, x, y
+    //mesh.SetPnt (4,  0, 2.0, 2.0);       // id, vtag, x, y
+    //mesh.SetPnt (5,  0, 3.0, 2.0);       // id, vtag, x, y
+    //mesh.SetPnt (6,  0, 3.0, 3.0);       // id, vtag, x, y
+    //mesh.SetPnt (7,  0, 2.0, 3.0);       // id, vtag, x, y
+    //mesh.SetSeg (0, -10,  0, 1);         // id, etag, L, R <<<<<<<<<<<< segments
+    //mesh.SetSeg (1, -20,  1, 2);         // id, etag, L, R
+    //mesh.SetSeg (2, -30,  2, 3);         // id, etag, L, R
+    //mesh.SetSeg (3, -40,  3, 0);         // id, etag, L, R
+    //mesh.SetSeg (4,   0,  4, 5);         // id, etag, L, R
+    //mesh.SetSeg (5,   0,  5, 6);         // id, etag, L, R
+    //mesh.SetSeg (6,   0,  6, 7);         // id, etag, L, R
+    //mesh.SetSeg (7,   0,  7, 4);         // id, etag, L, R
+    //mesh.Generate ();
 //
-    //
-    //d.AddVoroPack (-1, 0.1, 2,2,2, 2,2,2, 3.0, true, true, 1000, 1.0,0.0);
-    //d.Center(Vec3_t(0.0,2.0,0.0));
+    //d.GenFromMesh(mesh,/*spheroradius*/0.1,/*density*/1.0,/*iscohesive*/true,/*montecarlo mass properties*/false,/*thickness*/2.0);
+    //d.Center(Vec3_t(0.0,8.0,0.0));
+//
+    //d.GenFromMesh(mesh,/*spheroradius*/0.1,/*density*/1.0,/*iscohesive*/true,/*montecarlo mass properties*/false,/*thickness*/2.0);
+
+    
+    d.AddVoroPack (-1, 0.1, 4,4,4, 4,4,4, 3.0, true, true, 1000, 1.0,0.0);
+    d.Center(Vec3_t(0.0,4.0,0.0));
     d.AddPlane(/*tag*/-2,/*position*/Vec3_t(0.0,-0.2,0.0),/*spheroradius*/0.2,/*Lx*/100,/*Ly*/100,/*rho*/1.0,/*angle*/M_PI/2.0,/*axis*/&OrthoSys::e0);
     d.WriteBPY(filekey.CStr());
     d.Initialize();
@@ -83,10 +83,11 @@ int main(int argc, char **argv) try
     double Bm          = 3.3e4;
     double Gn          = 16.0;
     double Gt          = 8.0;
-    double eps         = 0.01;
+    double eps         = 0.08;
 
     Dict B;
     B.Set(-1,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
+    B.Set(-2,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
     d.SetProps(B);
     //ofstream fg("granulometry.txt");
     //for (size_t i = 0;i < X.Size() ; i++ )
@@ -106,7 +107,7 @@ int main(int argc, char **argv) try
         d.Particles[i]->Ff = d.Particles[i]->Props.m*Vec3_t(0.0,-9.8,0.0);
     }
 
-    d.Solve     (/*tf*/10.0, /*dt*/0.0001, /*dtOut*/0.1, NULL, NULL, filekey.CStr());
+    d.Solve     (/*tf*/10.0, /*dt*/0.00005, /*dtOut*/0.1, NULL, NULL, filekey.CStr());
 
     return 0;
 }

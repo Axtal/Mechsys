@@ -396,6 +396,7 @@ inline void CInteractonSphere::UpdateParameters ()
     beta = 2*ReducedValue(P1->Props.Beta,P2->Props.Beta);
     eta  = 2*ReducedValue(P1->Props.Eta,P2->Props.Eta);
 }
+
 //Cohesion interacton
 
 inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, size_t Fi2)
@@ -448,23 +449,12 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     t2         = (a*c-b*d)/(b*f-c*c);
 
     Vec3_t p2  = -s2*F->Edges[0]->dL - t2*F->Edges[1]->dL;
-
-    //An         = acos(dot(p1,p2)/(norm(p1)*norm(p2)));
-
-
-
-    //Vec3_t pro2 = *F->Edges[0]->X0 + s2*F->Edges[0]->dL + t2*F->Edges[1]->dL;
-
-    //std::cout << Distance(pro1,pro2) << " " << dot(n1,pro2-pro1) << " " << L0 << std::endl;
-
-
-    //Distance(c,*P1->Faces[F1],c1,t1);
-    //Distance(c,*P2->Faces[F2],c2,t2);
-    //std::cout << Distance(t1,*P1->Faces[F1]) << " " << Distance(t2,*P2->Faces[F2]) << std::endl;
-    //std::cout << Distance(t1,*P1->Faces[F1]) << " " << Distance(t2,*P2->Faces[F2]) << std::endl;
-    //std::cout << Distance(c,*P1->Faces[F1]) << " " << Distance(c,*P2->Faces[F2]) << std::endl;
-    //std::cout <<dot(n1,n2) << " " << P1->Faces[F1]->Area() << " " << P2->Faces[F2]->Area() << " " << P1->Index << " " << P2->Index << " " << L0 << std::endl;
-    //std::cout <<dot(t1,t2) << " " << P1->Faces[F1]->Edges.Size() << " " << P2->Faces[F2]->Edges.Size() << " " << P1->Index << " " << P2->Index << " " << L0 << std::endl;
+    
+    double arg = dot(p1,p2)/(norm(p1)*norm(p2));
+    if (arg> 1.0) arg= 1.0;
+    if (arg<-1.0) arg=-1.0;
+    An         = acos(arg);
+    if (dot(cross(p1,p2),n1)<0) An = -An;
 }
 
 inline bool BInteracton::UpdateContacts (double alpha)
@@ -501,19 +491,11 @@ inline void BInteracton::CalcForce(double dt)
 
         // Tangential Force
         Vec3_t x = 0.5*(pro1+pro2);
-        Vec3_t r1,r2,x1,x2;
-        Rotation(P1->w,P1->Q,r1);
-        Rotation(P2->w,P2->Q,r2);
+        Vec3_t x1,x2;
         x1 = x - P1->x;
         x2 = x - P2->x;
-        Vec3_t vrel = -((P2->v-P1->v)+cross(r2,x2)-cross(r1,x1));
-        Vec3_t vt = vrel - dot(n,vrel)*n;
         Vec3_t td   = pro2-pro1-dot(pro2-pro1,n)*n;
-        //Vec3_t Ft   = -Bt*td/L0-Gt*vt-Gn*dot(n,vrel)*n;
         Vec3_t Ft   = -Bt*td/L0;
-        //std::cout << norm(td) << std::endl;
-        
-        //std::cout << dot(Ft,Fn) << std::endl;
 
         //Adding forces and torques
         Vec3_t Fnet = Fn+Ft;
@@ -521,66 +503,33 @@ inline void BInteracton::CalcForce(double dt)
         P2->F += Fnet;
         Vec3_t T, Tt;
         Tt = cross (x1,Fnet);
-        Quaternion_t q;
-        Conjugate (P1->Q,q);
-        Rotation  (Tt,q,T);
+        Quaternion_t q1;
+        Conjugate (P1->Q,q1);
+        Rotation  (Tt,q1,T);
         P1->T -= T;
         Tt = cross (x2,Fnet);
-        Conjugate (P2->Q,q);
-        Rotation  (Tt,q,T);
+        Quaternion_t q2;
+        Conjugate (P2->Q,q2);
+        Rotation  (Tt,q2,T);
         P2->T += T;
 
         //Torque
-        //double Ant  = acos(dot(p1,p2)/(norm(p1)*norm(p2)));
+        double arg = dot(p1,p2)/(norm(p1)*norm(p2));
+        if (arg> 1.0) arg= 1.0;
+        if (arg<-1.0) arg=-1.0;
+        double Ant = acos(arg);
+        if (dot(cross(p1,p2),n)<0) Ant = -Ant;
+        Tt         = -Bm*(Ant-An)*n/L0;
+        Rotation  (Tt,q1,T);
+        P1->T -= T;
+        Rotation  (Tt,q2,T);
+        P2->T += T;
 
-        //Vec3_t T,Tt = Bm*(Ant-An)*n/L0;
-        //Quaternion_t q;
-        //Conjugate (P1->Q,q);
-        //Rotation  (Tt,q,T);
-        //P1->T -= T;
-        //Conjugate (P2->Q,q);
-        //Rotation  (Tt,q,T);
-        //P2->T += T;
-        
-        
-        // Tangential force
-        //P1->Faces[F1]->Centroid(c1);
-        //P2->Faces[F2]->Centroid(c2);
-        //Vec3_t x = 0.5*(c1+c2);
-        //Vec3_t t1,t2,x1,x2;
-        //Rotation(P1->w,P1->Q,t1);
-        //Rotation(P2->w,P2->Q,t2);
-        //x1 = x - P1->x;
-        //x2 = x - P2->x;
-        //Vec3_t vrel = -((P2->v-P1->v)+cross(t2,x2)-cross(t1,x1));
-        //Vec3_t vt = vrel - dot(n,vrel)*n;
-        //Vec3_t temp = Lt;
-        //Lt = Ltb + 2*vt*dt;
-        //Lt -= dot(Lt,n)*n;
-        //Ltb = temp;
-        //Gn=Gt=0.0;
-        //Vec3_t Ft = (Bt/L0)*Lt+Gt*vt/L0+Gn*dot(n,vrel)*n/L0;
-        //P1->F -= Fn+Ft;
-        //P2->F += Fn+Ft;
-        //P1->F -= Fn;
-        //P2->F += Fn;
-         //Torque
-        //An+=dot(t1-t2,n)*dt;
-        //Vec3_t T,Tt = Bm*An*n/L0;
-        //Quaternion_t q;
-        //Conjugate (P1->Q,q);
-        //Rotation  (Tt,q,T);
-        //P1->T -= T;
-        //Conjugate (P2->Q,q);
-        //Rotation  (Tt,q,T);
-        //P2->T += T;
-        //std::cout << Fn << " " << Ft << " " << P1->Index << " " << P2->Index << std::endl;
-
-         //Breaking point
-        //if (fabs(delta)+norm(td)+fabs(An)*sqrt(Area/Util::PI)>L0*eps)
-        //{
-            //valid = false;
-        //}
+        //Breaking point
+        if (L0*fabs(delta)+norm(td)+fabs(Ant-An)*sqrt(Area/Util::PI)>L0*eps)
+        {
+            valid = false;
+        }
     }
 }
 

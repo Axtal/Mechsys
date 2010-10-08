@@ -2,11 +2,11 @@
 1.0           thickness;          
 20.0          radius;             
 1.0e4         Bn;                 
-3.3e3         Bt;                 
-3.3e3         Bm;                 
+1.0e4         Bt;                 
+0.0e3         Bm;                 
 16.0          Gn;                 
 8.0           Gt;                 
-0.01          eps;                
+0.02          eps;                
 5.0          Amax;
 0.2           width;
 1.0e-4        dt;

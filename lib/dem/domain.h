@@ -405,9 +405,9 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
         Particles[Particles.Size()-1]->Index = Particles.Size()-1;
         if (!MC)
         {
-            Particles[Particles.Size()-1]->x     = CM;
-            Particles[Particles.Size()-1]->Props.V     = vol;
-            Particles[Particles.Size()-1]->Props.m     = vol*rho;
+            Particles[Particles.Size()-1]->x       = CM;
+            Particles[Particles.Size()-1]->Props.V = vol;
+            Particles[Particles.Size()-1]->Props.m = vol*rho;
             Vec3_t I;
             Quaternion_t Q;
             Vec3_t xp,yp,zp;
