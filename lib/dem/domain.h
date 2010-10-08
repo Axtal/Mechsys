@@ -1235,8 +1235,8 @@ inline void Domain::WritePOV (char const * FileKey)
     std::ofstream of(fn.CStr(), std::ios::out);
     POVHeader (of);
     POVSetCam (of, CamPos, OrthoSys::O);
-    Array <String> Colors(7);
-    Colors = "Gray","Blue","Yellow","Gold","Green","Blue","Orange";
+    Array <String> Colors(10);
+    Colors = "Gray","Blue","Yellow","Gold","Green","Blue","Orange","Salmon","Copper","Aquamarine";
     if (BInteractons.Size()>0) Clusters();
     for (size_t i=0; i<Particles.Size(); i++)
     {
@@ -1248,7 +1248,7 @@ inline void Domain::WritePOV (char const * FileKey)
             {
                 if (Listofclusters[j].Has(i)&&BInteractons.Size()>0)
                 {
-                    Particles[i]->Draw(of,Colors[j%7].CStr());
+                    Particles[i]->Draw(of,Colors[j%10].CStr());
                     found = true;
                 }
             }

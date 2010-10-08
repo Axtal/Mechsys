@@ -115,17 +115,17 @@ inline void CheckDestroGiro(Vec3_t & xp, Vec3_t & yp, Vec3_t & zp) // Check if t
     if (!destrogiro)
     {
         xp = -xp;
-        if (1+xp(0)+yp(1)+zp(2)>=0) return;
+        if (1+xp(0)+yp(1)+zp(2)>0) return;
         else 
         {
             xp = -xp;
             yp = -yp;
-            if (1+xp(0)+yp(1)+zp(2)>=0) return;
+            if (1+xp(0)+yp(1)+zp(2)>0) return;
             else
             {
                 yp = -yp;
                 zp = -zp;
-                if (1+xp(0)+yp(1)+zp(2)>=0) return;
+                if (1+xp(0)+yp(1)+zp(2)>0) return;
                 else throw new Fatal("specialfunctions.h::CheckDestroGiro: The system cannot be transformed by a quaternion operation");
             }
         }
@@ -318,8 +318,8 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
         {
             Vec3_t t1 = V[Ftemp[i][j]] - ct;
             double arg = dot(axis,t1)/(norm(axis)*norm(t1));
-            if (arg> 1) arg= 1;
-            if (arg<-1) arg=-1;
+            if (arg> 1.0) arg= 1.0;
+            if (arg<-1.0) arg=-1.0;
             Angles[j] = acos(arg);
             Vec3_t t2 = cross(axis,t1);
             if (dot(t2,inward)>0) Angles[j] = 2*M_PI - Angles[j];

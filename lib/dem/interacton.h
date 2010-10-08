@@ -246,7 +246,6 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             {
                 // Count a sliding contact
                 Nsc++;
-
                 FMap[p] = Mu*norm(Fn)/Kt*tan;
                 dEfric += Kt*dot(FMap[p],vt)*dt;
             }
@@ -273,11 +272,11 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             {
                 for (size_t n=0;n<3;n++)
                 {
-                    P1->M(m,n)-=F(m)*x1(n);
-                    P2->M(m,n)+=F(m)*x2(n);
-                    P1->B(m,n)+=nor(m)*nor(n);
-                    P2->B(m,n)+=nor(m)*nor(n);
-                    this->B(m,n)     =nor(m)*nor(n);
+                    P1->M(m,n)  -= F(m)*x1(n);
+                    P2->M(m,n)  += F(m)*x2(n);
+                    P1->B(m,n)  += nor(m)*nor(n);
+                    P2->B(m,n)  += nor(m)*nor(n);
+                    this->B(m,n) = nor(m)*nor(n);
                 }
             }
 
@@ -428,7 +427,6 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     L0         = dot(n1,c2-c1);
     Vec3_t V   = 0.5*(c1+c2);
 
-
     Face * F   = P1->Faces[F1];
     double a   = dot(*F->Edges[0]->X0-V , F->Edges[0]->dL);
     double b   = dot(F->Edges[0]->dL    , F->Edges[0]->dL);
@@ -465,7 +463,7 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     //std::cout << Distance(t1,*P1->Faces[F1]) << " " << Distance(t2,*P2->Faces[F2]) << std::endl;
     //std::cout << Distance(t1,*P1->Faces[F1]) << " " << Distance(t2,*P2->Faces[F2]) << std::endl;
     //std::cout << Distance(c,*P1->Faces[F1]) << " " << Distance(c,*P2->Faces[F2]) << std::endl;
-    std::cout <<dot(n1,n2) << " " << P1->Faces[F1]->Area() << " " << P2->Faces[F2]->Area() << " " << P1->Index << " " << P2->Index << " " << L0 << std::endl;
+    //std::cout <<dot(n1,n2) << " " << P1->Faces[F1]->Area() << " " << P2->Faces[F2]->Area() << " " << P1->Index << " " << P2->Index << " " << L0 << std::endl;
     //std::cout <<dot(t1,t2) << " " << P1->Faces[F1]->Edges.Size() << " " << P2->Faces[F2]->Edges.Size() << " " << P1->Index << " " << P2->Index << " " << L0 << std::endl;
 }
 
@@ -513,25 +511,35 @@ inline void BInteracton::CalcForce(double dt)
         Vec3_t td   = pro2-pro1-dot(pro2-pro1,n)*n;
         //Vec3_t Ft   = -Bt*td/L0-Gt*vt-Gn*dot(n,vrel)*n;
         Vec3_t Ft   = -Bt*td/L0;
+        //std::cout << norm(td) << std::endl;
         
-        //std::cout << Distance(pro2,pro1) << " " << norm(td) << std::endl;
+        //std::cout << dot(Ft,Fn) << std::endl;
 
-        //Adding forces
-        P1->F -= Fn+Ft;
-        P2->F += Fn+Ft;
-        //P1->F -= Fn;
-        //P2->F += Fn;
-
-        //Torque
-        double Ant  = acos(dot(p1,p2)/(norm(p1)*norm(p2)));
-
-        Vec3_t T,Tt = Bm*(Ant-An)*n/L0;
+        //Adding forces and torques
+        Vec3_t Fnet = Fn+Ft;
+        P1->F -= Fnet;
+        P2->F += Fnet;
+        Vec3_t T, Tt;
+        Tt = cross (x1,Fnet);
         Quaternion_t q;
         Conjugate (P1->Q,q);
         Rotation  (Tt,q,T);
-        //P1->T -= T;
+        P1->T -= T;
+        Tt = cross (x2,Fnet);
         Conjugate (P2->Q,q);
         Rotation  (Tt,q,T);
+        P2->T += T;
+
+        //Torque
+        //double Ant  = acos(dot(p1,p2)/(norm(p1)*norm(p2)));
+
+        //Vec3_t T,Tt = Bm*(Ant-An)*n/L0;
+        //Quaternion_t q;
+        //Conjugate (P1->Q,q);
+        //Rotation  (Tt,q,T);
+        //P1->T -= T;
+        //Conjugate (P2->Q,q);
+        //Rotation  (Tt,q,T);
         //P2->T += T;
         
         
@@ -572,8 +580,6 @@ inline void BInteracton::CalcForce(double dt)
         //if (fabs(delta)+norm(td)+fabs(An)*sqrt(Area/Util::PI)>L0*eps)
         //{
             //valid = false;
-            //P1->IsBroken = true;
-            //P2->IsBroken = true;
         //}
     }
 }

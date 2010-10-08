@@ -40,8 +40,8 @@ struct UserData
 void Setup (DEM::Domain & Dom, void * UD)
 {
     // force at -3
-    UserData & dat = (*static_cast<UserData *>(UD));
-    dat.p->Ff=0.0,0.0,3.0*cos(0.3*Dom.Time);
+    //UserData & dat = (*static_cast<UserData *>(UD));
+    //dat.p->Ff=0.0,0.0,3.0*cos(0.3*Dom.Time);
 }
 
 //void Report (DEM::Domain const & Dom, void * UD)
@@ -61,10 +61,10 @@ int main(int argc, char **argv) try
 
     // gen beam
     size_t nx = 1;
-    size_t ny = 10;
+    size_t ny = 2;
     size_t nz = 1;
     double lx = 1.;
-    double ly = 10.;
+    double ly = 2.;
     double lz = 1.;
     Mesh::Structured mesh(3);
     mesh.GenBox (false, nx, ny, nz, lx, ly, lz);
@@ -92,6 +92,7 @@ int main(int argc, char **argv) try
 
     // connect
     dat.p = dom.GetParticle (-3);
+    dat.p->v=0.0,0.0,100.0;
 
     // fix -2
     Particle * p = dom.GetParticle (-2);
