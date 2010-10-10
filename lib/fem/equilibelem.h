@@ -97,37 +97,48 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
     // set initial values
     if (Ini.HasKey("geostatic"))
     {
+        bool   has_water = false;
+        double z_water   = 0;
         if (GTy==pse_t)                       throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, geometry cannot be of 'plane-stress' (pse) type");
         if (!Ini.HasKey("K0"))                throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, 'K0' must be provided in 'Ini' dictionary");
         if (!Ini.HasKey("gam"))               throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, 'gam' must be provided in 'Ini' dictionary");
         if (NDim==2 && !Ini.HasKey("y_surf")) throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses in 2D, 'y_surf' must be provided in 'Ini' dictionary");
         if (NDim==3 && !Ini.HasKey("z_surf")) throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses in 3D, 'z_surf' must be provided in 'Ini' dictionary");
-        double K0   = Ini("K0");
-        double gam  = Ini("gam");
-        double surf = (NDim==2 ? Ini("y_surf") : Ini("z_surf"));
-        Vec_t X; // coords of IP
+        if (NDim==2 &&  Ini.HasKey("y_water")) { has_water=true; z_water=Ini("y_water"); }
+        if (NDim==3 &&  Ini.HasKey("z_water")) { has_water=true; z_water=Ini("z_water"); }
+        if (has_water && !Ini.HasKey("gamW")) throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses with either 'y_water' or 'z_water', gamW must be provided");
+        bool   pos_pw = (Ini.HasKey("only_positive_pw") ? true : false);
+        double K0     = Ini("K0");
+        double gam    = Ini("gam");
+        double gamW   = (has_water ? Ini("gamW") : 0.0);
+        double z_surf = (NDim==2 ? Ini("y_surf") : Ini("z_surf"));
         for (size_t i=0; i<GE->NIP; ++i)
         {
+            // elevation of point
+            Vec_t X;
             CoordsOfIP (i, X);
+            double z = (NDim==2 ? X(1) : X(2));
+            if (z>z_surf) throw new Fatal("EquilibElem::EquilibElem: y_surf(2D) or z_surf(3D) must be higher than any point in the domain.\n\tThere is a point [%g,%g,%g] above surf=%g.",X(0),X(1),(NDim==3?X(2):0.0),z_surf);
+
+            // pore-water pressure
+            double pw = 0.0;
+            if (has_water)
+            {
+                double hw = z_water-z; // column of water
+                pw = (hw>0.0 ? gamW*hw : (pos_pw ? 0.0 : gamW*hw));
+            }
+
+            // vertical and horizontal stresses
+            double hs  = fabs(z_surf-z); // column of (wet) soil
+            double sv  = -gam*hs;        // total vertical stress
+            double sv_ = sv + pw;        // effective vertical stresss
+            double sh_ = K0*sv_;         // effective horizontal stress
+            double sh  = sh_ - pw;       // total horizontal stress
+
+            // set stress tensor with total stresses
             Vec_t & sig = static_cast<EquilibState *>(Sta[i])->Sig;
-            if (NDim==2)
-            {
-                double hei = fabs(surf-X(1));
-                sig(1) = -gam*hei;  // sy
-                sig(0) = K0*sig(1); // sx
-                sig(2) = K0*sig(1); // sz
-                sig(3) = 0.0;       // sxy*sq2
-            }
-            else // 3D
-            {
-                double hei = fabs(surf-X(2));
-                sig(2) = -gam*hei;  // sz
-                sig(0) = K0*sig(2); // sx
-                sig(1) = K0*sig(2); // sy
-                sig(3) = 0.0;       // sxy*sq2
-                sig(4) = 0.0;       // syz*sq2
-                sig(5) = 0.0;       // szx*sq2
-            }
+            if (NDim==2) sig = sh, sv, sh, 0.0;
+            else         sig = sh, sh, sv, 0.0,0.0,0.0;
         }
     }
 
