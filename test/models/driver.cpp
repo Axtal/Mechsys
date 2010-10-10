@@ -34,6 +34,8 @@
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/numstreams.h>
+#include <mechsys/inpfile.h>
+#include <mechsys/fem/fem.h>
 
 using std::cout;
 using std::endl;
@@ -44,6 +46,10 @@ using Util::SQ2;
 using Util::SQ3;
 using Util::SQ6;
 using Util::PI;
+using Util::TRUE;
+using Util::FALSE;
+using FEM::PROB;
+using FEM::GEOM;
 
 void zTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double dp, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs, double dexy=0., double deyz=0., double dezx=0.)
 {
@@ -91,8 +97,6 @@ void zTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, doubl
 
     //printf("deps=[%g, %g, %g],  dsig=[%g, %g, %g]\n",deps(0),deps(1),deps(2),dsig(0),dsig(1),dsig(2));
 }
-
-//size_t ITMAX = 0;
 
 void kTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double k, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs)
 {
@@ -260,39 +264,6 @@ void TgIncs (Model const * Mdl, EquilibState const * Sta, double dT, Vec_t const
     }
 }
 
-struct PathIncs
-{
-    double dsx, dsy, dsz, dsxy, dsyz, dszx; // stress increments
-    double dex, dey, dez, dexy, deyz, dezx; // strain increments (percentage)
-    double lode, dp;                        // path given Lode angle (deg), dpoct and dez (percentage)
-    bool   zPath;                           // use lode, dp and dez ?
-    int    ninc;                            // number of increments for this path. -1 => use general
-    double k;                               // path given Lode, k=dqoct/dpoct, and dez
-    bool   kPath;                           // with k=Dq/Dp
-    PathIncs () : dsx(0.),dsy(0.),dsz(0.),dsxy(0.),dsyz(0.),dszx(0.), 
-                  dex(0.),dey(0.),dez(0.),dexy(0.),deyz(0.),dezx(0.),
-                  lode(0.),dp(0.),zPath(false),ninc(-1),k(0.),kPath(false) {}
-};
-
-std::ostream & operator<< (std::ostream & os, PathIncs const & P)
-{
-    os << "ninc="<<P.ninc << " ";
-    if      (P.kPath) { os << "lode="<<P.lode << " kcam="<<P.k*3./SQ2 << " dez="<<P.dez << std::endl; }
-    else if (P.zPath) { os << "lode="<<P.lode << " dpcam="<<P.dp/SQ3  << " dez="<<P.dez << std::endl; }
-    else
-    {
-        os << "ds=["<<P.dsx << " "<<P.dsy << " "<<P.dsz << " "<<P.dsxy << " "<<P.dsyz << " "<<P.dszx << "] ";
-        os << "de=["<<P.dex << " "<<P.dey << " "<<P.dez << " "<<P.dexy << " "<<P.deyz << " "<<P.dezx << "]\n";
-    }
-    return os;
-}
-
-std::ostream & operator<< (std::ostream & os, Array<PathIncs> const & A)
-{
-    for (size_t i=0; i<A.Size(); ++i) os << "  " << A[i];
-    return os;
-}
-
 int main(int argc, char **argv) try
 {
     // input filename
@@ -301,94 +272,18 @@ int main(int argc, char **argv) try
     if (argc>1) inp_fname = argv[1];
     if (argc>2) mat_fname = argv[2];
 
-    // default values
-    int    matID  = 0;     // material ID
-    double pcam0  = 100.0; // pCam
-    size_t gninc  = 10;    // general number of increments
-    bool   cdrift = true;  // correct YS drift
-    double STOL   = 1.0e-5;
+    // read input file
+    InpFile inp;
+    inp.Read (inp_fname.CStr());
+    cout << inp;
 
-    Array<PathIncs> path;  // path increments
-
-    // parse input file
-    std::fstream inp_file(inp_fname.CStr(), std::ios::in);
-    if (!inp_file.is_open()) throw new Fatal("Could not open file <%s>",inp_fname.CStr());
-    bool   reading_path = false;
-    int    ndat         = -1;
-    size_t line_num     = 1;
-    int    idxdat       = 0;
-    size_t idxpath      = 0;
-    while (!inp_file.eof())
-    {
-        String line,key,equal;
-        double val;
-        std::getline (inp_file,line);
-        std::istringstream iss(line);
-        if (iss >> key >> equal >> val)
-        {
-            //cout << key << "  " << val << endl;
-            if (key[0]=='#') { line_num++; continue; }
-            if (reading_path)
-            {
-                if      (key=="ndat") ndat = (int)val;
-                else if (ndat<0) throw new Fatal("Error in file <%s> @ line # %d: key 'ndat' must come before data. Key==%s is in the wrong position",inp_fname.CStr(),line_num,key.CStr());
-                else if (key=="kcam")  { path[idxpath].k    = SQ2*val/3.; path[idxpath].kPath=true; path[idxpath].zPath=false; idxdat++; }
-                else if (key=="dpcam") { path[idxpath].dp   = val*SQ3;    path[idxpath].zPath=true; path[idxpath].kPath=false; idxdat++; }
-                else if (key=="lode")  { path[idxpath].lode = val;       idxdat++; if (val<30. || val>90.) throw new Fatal("Lode angle alpha must be inside [30,90]. Alpha==%g is invalid",val); }
-                else if (key=="dex")   { path[idxpath].dex  = val/100.;  idxdat++; }
-                else if (key=="dey")   { path[idxpath].dey  = val/100.;  idxdat++; }
-                else if (key=="dez")   { path[idxpath].dez  = val/100.;  idxdat++; }
-                else if (key=="dexy")  { path[idxpath].dexy = val/100.;  idxdat++; }
-                else if (key=="deyz")  { path[idxpath].deyz = val/100.;  idxdat++; }
-                else if (key=="dezx")  { path[idxpath].dezx = val/100.;  idxdat++; }
-                else if (key=="dsx")   { path[idxpath].dsx  = val;       idxdat++; }
-                else if (key=="dsy")   { path[idxpath].dsy  = val;       idxdat++; }
-                else if (key=="dsz")   { path[idxpath].dsz  = val;       idxdat++; }
-                else if (key=="dsxy")  { path[idxpath].dsxy = val;       idxdat++; }
-                else if (key=="dsyz")  { path[idxpath].dsyz = val;       idxdat++; }
-                else if (key=="dszx")  { path[idxpath].dszx = val;       idxdat++; }
-                else if (key=="ninc")  { path[idxpath].ninc = (int)val;  idxdat++; }
-                else throw new Fatal("Error in file<%s> @ line # %d: reading data of path # %d. Key==%s is invalid",inp_fname.CStr(),line_num,idxpath,key.CStr());
-                if (idxdat==ndat)
-                {
-                    ndat   = -1;
-                    idxdat = 0;
-                    idxpath++;
-                    if (idxpath==path.Size()) break;
-                }
-            }
-            else
-            {
-                if      (key=="matID")  matID  = (int)val;
-                else if (key=="pcam0")  pcam0  = val;
-                else if (key=="ninc")   gninc  = (int)val;
-                else if (key=="cdrift") cdrift = (bool)val;
-                else if (key=="STOL")   STOL   = val;
-                else if (key=="npath")
-                {
-                    path.Resize ((size_t)val);
-                    reading_path = true;
-                }
-                else throw new Fatal("Error in file <%s> @ line #: Key==%s in invalid",inp_fname.CStr(),line_num,key.CStr());
-            }
-        }
-        line_num++;
-    }
-    if (idxpath!=path.Size()) throw new Fatal("Error in file <%s>: Not all path data could be read for npath==%d",inp_fname.CStr(),path.Size());
-    printf("Input data:\n");
-    printf("  matID  = %d\n",matID);
-    printf("  pcam0  = %g\n",pcam0);
-    printf("  ninc   = %zd\n",gninc);
-    printf("  cdrift = %d\n",cdrift);
-    printf("  STOL   = %e\n",STOL);
-
-    // default initial values
+    // initial values
     Dict prms, inis;
-    inis.Set (-1, "sx sy sz", -pcam0,-pcam0,-pcam0);
+    inis.Set (-1, "sx sy sz", -inp.pCam0,-inp.pCam0,-inp.pCam0);
 
     // parse materials file
     String model_name;
-    ReadMaterial (-1, matID, mat_fname.CStr(), model_name, prms, inis);
+    ReadMaterial (-1, inp.MatID, mat_fname.CStr(), model_name, prms, inis);
     printf("\nMaterial data:\n");
     printf("  name = %s\n",model_name.CStr());
     printf("  prms : "); cout << prms << endl;
@@ -396,202 +291,277 @@ int main(int argc, char **argv) try
 
     // show path
     printf("\nPath:\n");
-    cout << path << endl;
-
-    // allocate model
-    Model * mdl = AllocModel (model_name, /*NDim*/3, prms(-1));
-
-    // set initial state
-    EquilibState sta(/*NDim*/3);
-    mdl->InitIvs (inis(-1), &sta);
-
-    // number of internal values
-    size_t niv = size(sta.Ivs);
-
-    // allocate memory
-    D11.AllocSpace (6,6, 50);
-    D12.AllocSpace (6,6, 50);
-    D21.AllocSpace (6,6, 50);
-    D22.AllocSpace (6,6, 50);
-
-    // output initial state
-    String res_fname = inp_fname.substr(0,inp_fname.size()-3) + "res";
-    std::ofstream of(res_fname.CStr(), std::ios::out);
-    sta.Output (of, /*header*/true, "%17.8e");
+    cout << inp.Path;
 
     // auxiliar variables
-    Vec_t DEps   (6), DSig   (6);               // total increments for one stage
-    Vec_t deps   (6), dsig   (6);               // subincrements
-    Vec_t deps_tr(6), dsig_tr(6), divs_tr(niv); // trial increments
-    Vec_t deps_1 (6), dsig_1 (6), divs_1 (niv); // intermediate increments
-    Vec_t deps_2 (6), dsig_2 (6), divs_2 (niv); // ME increments
-    Vec_t eps_dif(6), sig_dif(6);               // ME - FE strain/stress difference
-    EquilibState sta_1 (/*NDim*/3);             // intermediate state
-    EquilibState sta_ME(/*NDim*/3);             // Modified-Euler state
-    Array<bool> pDEps(6);                       // prescribed strain components ?
+    Vec_t DEps(6), DSig(6); // total increments for one stage
+    Array<bool>   pDEps(6); // prescribed strain components ?
 
-    // constants
-    double dTini  = 1.0;
-    double mMin   = 0.1;
-    double mMax   = 10.0;
-    double MaxSS  = 2000;
-
-    // for each state
-    double lode, dp, dez, dexy, deyz, dezx, koct;
-    for (size_t i=0; i<path.Size(); ++i)
+    // FEM using one single element
+    if (inp.FEM)
     {
-        // number of increments
-        int ninc = (path[i].ninc<0 ? gninc : path[i].ninc);
+        // mesh
+        int option = 0; // Vol=0, Surf=1, Both=2
+        Mesh::Generic mesh(3);
+        mesh.SetSize   (8, 1);
+        mesh.SetVert   (0, 0, 0.0, 0.0, 0.0);
+        mesh.SetVert   (1, 0, 1.0, 0.0, 0.0);
+        mesh.SetVert   (2, 0, 1.0, 1.0, 0.0);
+        mesh.SetVert   (3, 0, 0.0, 1.0, 0.0);
+        mesh.SetVert   (4, 0, 0.0, 0.0, 1.0);
+        mesh.SetVert   (5, 0, 1.0, 0.0, 1.0);
+        mesh.SetVert   (6, 0, 1.0, 1.0, 1.0);
+        mesh.SetVert   (7, 0, 0.0, 1.0, 1.0);
+        mesh.SetCell   (0, -1, Array<int>(0,1,2,3,4,5,6,7));
+        mesh.SetBryTag (0, 0, -10);
+        mesh.SetBryTag (0, 1, -11);
+        mesh.SetBryTag (0, 2, -20);
+        mesh.SetBryTag (0, 3, -22);
+        mesh.SetBryTag (0, 4, -30);
+        mesh.SetBryTag (0, 5, -33);
+        mesh.WriteVTU  ("driver",option);
 
-        // set prescribed increments
-        set_to_zero (DEps);
-        set_to_zero (DSig);
-        pDEps = false,false,false, false,false,false;
-        bool zpath = path[i].zPath;
-        bool kpath = path[i].kPath;
-        if (kpath)
+        // properties
+        Dict prps;
+        prps.Set (-1, "prob geom active d3d", PROB("Equilib"), GEOM("Hex8"), TRUE, TRUE);
+
+        // select some nodes for output
+        Array<int> out_nods(6, 7);
+
+        // domain and solver
+        FEM::Domain dom(mesh, prps, prms, inis, "driver", &out_nods);
+        FEM::Solver sol(dom);
+
+        // solve
+        for (size_t i=0; i<inp.Path.Size(); ++i)
         {
-            lode = path[i].lode;
-            koct = path[i].k;
-            dez  = path[i].dez/ninc;
+            // number of increments
+            int ninc = (inp.Path[i].ninc<0 ? inp.NInc : inp.Path[i].ninc);
+
+            // set prescribed increments
+            set_to_zero (DEps);
+            set_to_zero (DSig);
+            pDEps = false,false,false, false,false,false;
+            DSig(0) = inp.Path[i].dsx;
+            DSig(1) = inp.Path[i].dsy;
+            DSig(2) = inp.Path[i].dsz;
+            if (fabs(inp.Path[i].dex)>1.0e-10) { DEps(0) = inp.Path[i].dex;  pDEps[0] = true; }
+            if (fabs(inp.Path[i].dey)>1.0e-10) { DEps(1) = inp.Path[i].dey;  pDEps[1] = true; }
+            if (fabs(inp.Path[i].dez)>1.0e-10) { DEps(2) = inp.Path[i].dez;  pDEps[2] = true; }
+
+            // solve
+            Dict bcs;
+            bcs.Set (-10, "ux", 0.0);
+            bcs.Set (-20, "uy", 0.0);
+            bcs.Set (-30, "uz", 0.0);
+            if (pDEps[0]) bcs.Set(-11, "ux", DEps(0)); else bcs.Set(-11, "qn", DSig(0));
+            if (pDEps[1]) bcs.Set(-22, "uy", DEps(1)); else bcs.Set(-22, "qn", DSig(1));
+            if (pDEps[2]) bcs.Set(-33, "uz", DEps(2)); else bcs.Set(-33, "qn", DSig(2));
+            dom.SetBCs (bcs);
+            sol.SSOut = inp.SSOut;
+            sol.Solve  (ninc);
         }
-        else if (zpath)
-        {
-            lode = path[i].lode;
-            dp   = path[i].dp  /ninc;
-            dez  = path[i].dez /ninc;
-            dexy = path[i].dexy/ninc;
-            deyz = path[i].deyz/ninc;
-            dezx = path[i].dezx/ninc;
-        }
-        else
-        {
-            DSig(0) = path[i].dsx;
-            DSig(1) = path[i].dsy;
-            DSig(2) = path[i].dsz;
-            if (fabs(path[i].dex)>1.0e-10) { DEps(0) = path[i].dex;  pDEps[0] = true; }
-            if (fabs(path[i].dey)>1.0e-10) { DEps(1) = path[i].dey;  pDEps[1] = true; }
-            if (fabs(path[i].dez)>1.0e-10) { DEps(2) = path[i].dez;  pDEps[2] = true; }
-            deps = DEps/ninc;
-            dsig = DSig/ninc;
-        }
-
-        // for each increment
-        cout << "Increment = ";
-        for (int j=0; j<ninc; ++j)
-        {
-            // trial increments
-            if      (kpath) kTgIncs (mdl, &sta, lode, koct, dez,              deps_tr, dsig_tr, divs_tr);
-            else if (zpath) zTgIncs (mdl, &sta, lode, dp,   dez,              deps_tr, dsig_tr, divs_tr, dexy, deyz, dezx);
-            else             TgIncs (mdl, &sta, /*dT*/1.0, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
-
-            // loading-unloading ?
-            double aint = -1.0; // no intersection
-            bool   ldg  = mdl->LoadCond (&sta, deps_tr, aint); // returns true if there is loading (also when there is intersection)
-
-            // with intersection ?
-            if (aint>0.0 && aint<1.0)
-            {
-                // update to intersection
-                if      (kpath) kTgIncs (mdl, &sta, lode,    koct, dez*aint,       deps_tr, dsig_tr, divs_tr);
-                else if (zpath) zTgIncs (mdl, &sta, lode, dp*aint, dez*aint,       deps_tr, dsig_tr, divs_tr, dexy*aint, deyz*aint, dezx*aint);
-                else             TgIncs (mdl, &sta, /*dT*/aint, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
-                sta.Eps += deps_tr;
-                sta.Sig += dsig_tr;
-                sta.Ivs += divs_tr;
-                deps = fabs(1.0-aint)*deps; // remaining of deps to be applied
-
-                // drift correction
-                if (cdrift) mdl->CorrectDrift (&sta);
-
-                // output
-                sta.Output (of, /*header*/false, "%17.8e");
-            }
-
-            // set loading flag (must be after intersection because the tgIncs during intersection must be calc with Ldg=false)
-            sta   .Ldg = ldg;
-            sta_1 .Ldg = ldg;
-            sta_ME.Ldg = ldg;
-
-            // update stress path in model
-            mdl->UpdatePath (&sta, deps_tr, dsig_tr);
-
-            // for each pseudo time T
-            double T  = 0.0;
-            double dT = dTini;
-            size_t k  = 0;
-            for (k=0; k<MaxSS; ++k)
-            {
-                // exit point
-                if (T>=1.0) break;
-
-                // FE and ME steps
-                if      (kpath) kTgIncs (mdl, &sta, lode,  koct, dez*dT,   deps_1, dsig_1, divs_1);
-                else if (zpath) zTgIncs (mdl, &sta, lode, dp*dT, dez*dT,   deps_1, dsig_1, divs_1, dexy*dT, deyz*dT, dezx*dT);
-                else             TgIncs (mdl, &sta, dT, deps, dsig, pDEps, deps_1, dsig_1, divs_1);
-                sta_1.Eps = sta.Eps + deps_1;
-                sta_1.Sig = sta.Sig + dsig_1;
-                sta_1.Ivs = sta.Ivs + divs_1;
-                if      (kpath) kTgIncs (mdl, &sta_1, lode,  koct, dez*dT,   deps_2, dsig_2, divs_2);
-                else if (zpath) zTgIncs (mdl, &sta_1, lode, dp*dT, dez*dT,   deps_2, dsig_2, divs_2, dexy*dT, deyz*dT, dezx*dT);
-                else             TgIncs (mdl, &sta_1, dT, deps, dsig, pDEps, deps_2, dsig_2, divs_2);
-                sta_ME.Eps = sta.Eps + 0.5*(deps_1+deps_2);
-                sta_ME.Sig = sta.Sig + 0.5*(dsig_1+dsig_2);
-                sta_ME.Ivs = sta.Ivs + 0.5*(divs_1+divs_2);
-
-                // local error estimate
-                eps_dif = sta_ME.Eps - sta_1.Eps;
-                sig_dif = sta_ME.Sig - sta_1.Sig;
-                double eps_err = Norm(eps_dif)/(1.0+Norm(sta_ME.Eps));
-                double sig_err = Norm(sig_dif)/(1.0+Norm(sta_ME.Sig));
-                double ivs_err = 0.0;
-                for (size_t i=0; i<niv; ++i) ivs_err += fabs(sta_ME.Ivs(i)-sta_1.Ivs(i))/(1.0+fabs(sta_ME.Ivs(i)));
-                double error = eps_err + sig_err + ivs_err;
-
-                // step multiplier
-                double m = (error>0.0 ? 0.9*sqrt(STOL/error) : mMax);
-
-                // update
-                if (error<STOL)
-                {
-                    // update state
-                    T += dT;
-                    sta.Eps = sta_ME.Eps;
-                    sta.Sig = sta_ME.Sig;
-                    sta.Ivs = sta_ME.Ivs;
-
-                    // drift correction
-                    if (cdrift) mdl->CorrectDrift (&sta);
-
-                    // update stress path in model
-                    mdl->UpdatePath (&sta, Vec_t(0.5*(deps_1+deps_2)), Vec_t(0.5*(dsig_1+dsig_2)));
-
-                    // limit change on stepsize
-                    if (m>mMax) m = mMax;
-
-                    // output
-                    sta.Output (of, /*header*/false, "%17.8e");
-                }
-                else if (m<mMin) m = mMin;
-
-                // change next step size
-                dT = m * dT;
-
-                // check for last increment
-                if (dT>1.0-T) dT = 1.0-T;
-            }
-            if (k>=MaxSS) throw new Fatal("main: Modified-Euler did not converge after %d substeps",k);
-            cout << j << " ";
-        }
-        cout << "\n";
     }
 
-    //cout << "ITMAX = " << ITMAX << endl;
+    // single point integration
+    else
+    {
+        // allocate model and set initial values
+        Model * mdl = AllocModel (model_name, /*NDim*/3, prms(-1));
+        EquilibState sta(/*NDim*/3);
+        mdl->InitIvs (inis(-1), &sta);
+
+        // allocate memory
+        D11.AllocSpace (6,6, 50);
+        D12.AllocSpace (6,6, 50);
+        D21.AllocSpace (6,6, 50);
+        D22.AllocSpace (6,6, 50);
+
+        // output initial state
+        std::ostringstream oss; // output string
+        sta.Output (oss, /*header*/true, "%17.8e");
+
+        // auxiliar variables
+        size_t niv = size(sta.Ivs);                 // number of internal values
+        Vec_t deps   (6), dsig   (6);               // subincrements
+        Vec_t deps_tr(6), dsig_tr(6), divs_tr(niv); // trial increments
+        Vec_t deps_1 (6), dsig_1 (6), divs_1 (niv); // intermediate increments
+        Vec_t deps_2 (6), dsig_2 (6), divs_2 (niv); // ME increments
+        Vec_t eps_dif(6), sig_dif(6);               // ME - FE strain/stress difference
+        EquilibState sta_1 (/*NDim*/3);             // intermediate state
+        EquilibState sta_ME(/*NDim*/3);             // Modified-Euler state
+
+        // constants
+        double dTini  = 1.0;
+        double mMin   = 0.1;
+        double mMax   = 10.0;
+        double MaxSS  = 2000;
+
+        // for each state
+        double lode, dp, dez, dexy, deyz, dezx, koct;
+        for (size_t i=0; i<inp.Path.Size(); ++i)
+        {
+            // number of increments
+            int ninc = (inp.Path[i].ninc<0 ? inp.NInc : inp.Path[i].ninc);
+
+            // set prescribed increments
+            set_to_zero (DEps);
+            set_to_zero (DSig);
+            pDEps = false,false,false, false,false,false;
+            bool zpath = inp.Path[i].zPath;
+            bool kpath = inp.Path[i].kPath;
+            if (kpath)
+            {
+                lode = inp.Path[i].lode;
+                koct = inp.Path[i].k;
+                dez  = inp.Path[i].dez/ninc;
+            }
+            else if (zpath)
+            {
+                lode = inp.Path[i].lode;
+                dp   = inp.Path[i].dp  /ninc;
+                dez  = inp.Path[i].dez /ninc;
+                dexy = inp.Path[i].dexy/ninc;
+                deyz = inp.Path[i].deyz/ninc;
+                dezx = inp.Path[i].dezx/ninc;
+            }
+            else
+            {
+                DSig(0) = inp.Path[i].dsx;
+                DSig(1) = inp.Path[i].dsy;
+                DSig(2) = inp.Path[i].dsz;
+                if (fabs(inp.Path[i].dex)>1.0e-10) { DEps(0) = inp.Path[i].dex;  pDEps[0] = true; }
+                if (fabs(inp.Path[i].dey)>1.0e-10) { DEps(1) = inp.Path[i].dey;  pDEps[1] = true; }
+                if (fabs(inp.Path[i].dez)>1.0e-10) { DEps(2) = inp.Path[i].dez;  pDEps[2] = true; }
+                deps = DEps/ninc;
+                dsig = DSig/ninc;
+            }
+
+            // for each increment
+            cout << "Increment = ";
+            for (int j=0; j<ninc; ++j)
+            {
+                // trial increments
+                if      (kpath) kTgIncs (mdl, &sta, lode, koct, dez,              deps_tr, dsig_tr, divs_tr);
+                else if (zpath) zTgIncs (mdl, &sta, lode, dp,   dez,              deps_tr, dsig_tr, divs_tr, dexy, deyz, dezx);
+                else             TgIncs (mdl, &sta, /*dT*/1.0, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
+
+                // loading-unloading ?
+                double aint = -1.0; // no intersection
+                bool   ldg  = mdl->LoadCond (&sta, deps_tr, aint); // returns true if there is loading (also when there is intersection)
+
+                // with intersection ?
+                if (aint>0.0 && aint<1.0)
+                {
+                    // update to intersection
+                    if      (kpath) kTgIncs (mdl, &sta, lode,    koct, dez*aint,       deps_tr, dsig_tr, divs_tr);
+                    else if (zpath) zTgIncs (mdl, &sta, lode, dp*aint, dez*aint,       deps_tr, dsig_tr, divs_tr, dexy*aint, deyz*aint, dezx*aint);
+                    else             TgIncs (mdl, &sta, /*dT*/aint, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
+                    sta.Eps += deps_tr;
+                    sta.Sig += dsig_tr;
+                    sta.Ivs += divs_tr;
+                    deps = fabs(1.0-aint)*deps; // remaining of deps to be applied
+
+                    // drift correction
+                    if (inp.CDrift) mdl->CorrectDrift (&sta);
+
+                    // output
+                    sta.Output (oss, /*header*/false, "%17.8e");
+                }
+
+                // set loading flag (must be after intersection because the tgIncs during intersection must be calc with Ldg=false)
+                sta   .Ldg = ldg;
+                sta_1 .Ldg = ldg;
+                sta_ME.Ldg = ldg;
+
+                // update stress path in model
+                mdl->UpdatePath (&sta, deps_tr, dsig_tr);
+
+                // for each pseudo time T
+                double T  = 0.0;
+                double dT = dTini;
+                size_t k  = 0;
+                for (k=0; k<MaxSS; ++k)
+                {
+                    // exit point
+                    if (T>=1.0) break;
+
+                    // FE and ME steps
+                    if      (kpath) kTgIncs (mdl, &sta, lode,  koct, dez*dT,   deps_1, dsig_1, divs_1);
+                    else if (zpath) zTgIncs (mdl, &sta, lode, dp*dT, dez*dT,   deps_1, dsig_1, divs_1, dexy*dT, deyz*dT, dezx*dT);
+                    else             TgIncs (mdl, &sta, dT, deps, dsig, pDEps, deps_1, dsig_1, divs_1);
+                    sta_1.Eps = sta.Eps + deps_1;
+                    sta_1.Sig = sta.Sig + dsig_1;
+                    sta_1.Ivs = sta.Ivs + divs_1;
+                    if      (kpath) kTgIncs (mdl, &sta_1, lode,  koct, dez*dT,   deps_2, dsig_2, divs_2);
+                    else if (zpath) zTgIncs (mdl, &sta_1, lode, dp*dT, dez*dT,   deps_2, dsig_2, divs_2, dexy*dT, deyz*dT, dezx*dT);
+                    else             TgIncs (mdl, &sta_1, dT, deps, dsig, pDEps, deps_2, dsig_2, divs_2);
+                    sta_ME.Eps = sta.Eps + 0.5*(deps_1+deps_2);
+                    sta_ME.Sig = sta.Sig + 0.5*(dsig_1+dsig_2);
+                    sta_ME.Ivs = sta.Ivs + 0.5*(divs_1+divs_2);
+
+                    // local error estimate
+                    eps_dif = sta_ME.Eps - sta_1.Eps;
+                    sig_dif = sta_ME.Sig - sta_1.Sig;
+                    double eps_err = Norm(eps_dif)/(1.0+Norm(sta_ME.Eps));
+                    double sig_err = Norm(sig_dif)/(1.0+Norm(sta_ME.Sig));
+                    double ivs_err = 0.0;
+                    for (size_t i=0; i<niv; ++i) ivs_err += fabs(sta_ME.Ivs(i)-sta_1.Ivs(i))/(1.0+fabs(sta_ME.Ivs(i)));
+                    double error = eps_err + sig_err + ivs_err;
+
+                    // step multiplier
+                    double m = (error>0.0 ? 0.9*sqrt(inp.STOL/error) : mMax);
+
+                    // update
+                    if (error<inp.STOL)
+                    {
+                        // update state
+                        T += dT;
+                        sta.Eps = sta_ME.Eps;
+                        sta.Sig = sta_ME.Sig;
+                        sta.Ivs = sta_ME.Ivs;
+
+                        // drift correction
+                        if (inp.CDrift) mdl->CorrectDrift (&sta);
+
+                        // update stress path in model
+                        mdl->UpdatePath (&sta, Vec_t(0.5*(deps_1+deps_2)), Vec_t(0.5*(dsig_1+dsig_2)));
+
+                        // limit change on stepsize
+                        if (m>mMax) m = mMax;
+
+                        // output
+                        if (inp.SSOut) sta.Output (oss, /*header*/false, "%17.8e");
+                    }
+                    else if (m<mMin) m = mMin;
+
+                    // change next step size
+                    dT = m * dT;
+
+                    // check for last increment
+                    if (dT>1.0-T) dT = 1.0-T;
+                }
+                if (k>=MaxSS) throw new Fatal("main: Modified-Euler did not converge after %d substeps",k);
+                cout << j << " ";
+
+                // output
+                if (!inp.SSOut) sta.Output (oss, /*header*/false, "%17.8e");
+            }
+            cout << "\n";
+        }
+
+        // write output file
+        String res_fname = inp_fname.substr(0,inp_fname.size()-3) + "res";
+        std::ofstream of(res_fname.CStr(), std::ios::out);
+        of << oss.str();
+        of.close();
+        cout << "\nFile <" << TERM_CLR_BLUE_H << res_fname << TERM_RST << "> written\n\n";
+
+        // clean up
+        delete mdl;
+    }
 
     // end
-    of.close();
-    cout << "\nFile <" << TERM_CLR_BLUE << res_fname << TERM_RST << "> written\n\n";
-    delete mdl;
     return 0;
 }
 MECHSYS_CATCH

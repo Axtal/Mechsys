@@ -23,6 +23,9 @@
 
 namespace BPy = boost::python;
 
+// MechSys
+#include <mechsys/inpfile.h>
+
 // MechSys -- FEM
 #include <mechsys/fem/fem.h>
 
@@ -51,6 +54,11 @@ BOOST_PYTHON_MODULE (mechsys)
 
 //////////////////////////////////////////////////////////////////////////////////// util /////
 
+// String
+BPy::class_<String>("String")
+    .def(BPy::self_ns::str(BPy::self))
+    ;
+
 // SDPair
 BPy::class_<SDPair>("SDPair")
     .def("Set", &SDPair::PySet)
@@ -77,6 +85,21 @@ BPy::register_exception_translator<Fatal *>(&PyExceptTranslator);
 BPy::def("pqth2L", Pypqth2L);
 BPy::def("Phi2M",  Phi2M, FUN_PHI2M());
 BPy::def("M2Phi",  M2Phi, FUN_M2PHI());
+
+///////////////////////////////////////////////////////////////////////////////// InpFile /////
+
+BPy::class_<InpFile>("InpFile")
+    .def("Read", &InpFile::Read)
+    .def(BPy::self_ns::str(BPy::self))
+    .def_readwrite("MatID",  &InpFile::MatID)
+    .def_readwrite("pCam0",  &InpFile::pCam0)
+    .def_readwrite("NInc",   &InpFile::NInc)
+    .def_readwrite("CDrift", &InpFile::CDrift)
+    .def_readwrite("STOL",   &InpFile::STOL)
+    .def_readwrite("FEM",    &InpFile::FEM)
+    ;
+
+BPy::def("ReadMaterial", ReadMaterial);
 
 //////////////////////////////////////////////////////////////////////////////////// mesh /////
 

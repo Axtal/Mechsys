@@ -1,18 +1,51 @@
+import optparse
+from mechsys         import String, Dict, InpFile, ReadMaterial
 from msys_plotter    import *
 from msys_invariants import *
 from msys_readdata   import *
 from numpy import array, log, sqrt
 from pylab import plot, show, grid, legend, xlabel, ylabel
+import matplotlib.font_manager
 
-tst = 3
+# input
+op = optparse.OptionParser()
+op.add_option('--inp',  '-i', dest='inp',  default='driver.inp',    help='input filename, ex: driver.inp')
+op.add_option('--mat',  '-m', dest='mat',  default='materials.inp', help='materials filename, ex: materials.inp')
+op.add_option('--tst',  '-t', dest='tst',  default='1',             help='test number')
+op.add_option('--fem',  '-f', dest='fem',  default='0')
+op.add_option('--both', '-b', dest='both', default='1')
+opts, args = op.parse_args()
 
-if tst==0:
+# input file
+inp = InpFile()
+inp.Read (opts.inp)
+
+# default initial values
+inis = Dict()
+inis.Set (-1, {'sx':-inp.pCam0, 'sy':-inp.pCam0, 'sz':-inp.pCam0})
+
+# parse materials file
+prms = Dict()
+name = String()
+ReadMaterial (-1, inp.MatID, opts.mat, name, prms, inis)
+print inp
+print "Material data:"
+print "  name = ", name
+print "  prms : ", prms
+print "  inis : ", inis
+
+# res file
+fem = 'driver_nod_6_0.res'
+pnt = 'driver.res'
+res = fem if opts.fem=='1' else pnt
+
+if opts.tst=='0':
     p = Plotter()
-    p.plot ("test_models.res", draw_ys=False,draw_fl=False,dpt_out=5,pqty='cam')
+    p.plot (res, draw_ys=False,draw_fl=False,dpt_out=5,pqty='cam')
     p.plot ('FO1_CTR_01.kgf.pct.dat',fem_res=False)
     p.show()
 
-if tst==1:
+elif opts.tst=='1':
     p = Plotter()
     #p.fc_c    = 0.1
     p.fc_phi   = M_calc_phi(1,'cam')
@@ -20,8 +53,11 @@ if tst==1:
     p.show_k   = True
     p.oct_sxyz = True
     p.fsz      = 14
-    p.lwd=2; p.plot ("driver.res",clr='blue', markevery=10, label='CCM', draw_ros=True)
-    legend()
+    if opts.both=='1':
+        p.lwd=2; p.plot (pnt,clr='blue', markevery=10, draw_ros=True, label='Point (%s)'%name)
+        p.lwd=2; p.plot (fem,clr='red',  markevery=10, draw_ros=True, label='FEM (%s)'%name)
+    else:
+        p.lwd=2; p.plot (res,clr='blue', markevery=10, draw_ros=True, label='%s'%name)
 
     # plot data
     dat = read_tables(['../../tfem/mdl_tst_01.dat','../../tfem/mdl_tst_02.dat'])
@@ -31,9 +67,12 @@ if tst==1:
     subplot(2,3,1); plot(dat['mdl_tst_01']['ed'],dat['mdl_tst_01']['q'],  'ko')
     subplot(2,3,4); plot(dat['mdl_tst_02']['ed'],dat['mdl_tst_02']['mev'],'ko')
 
+    # legend
+    subplot(2,3,3)
+    l = legend(loc='upper left',prop=matplotlib.font_manager.FontProperties(size=8))
     p.show()
 
-if tst==2:
+elif opts.tst=='2':
     p = Plotter()
     #p.fc_c    = 0.1
     p.fc_phi  = M_calc_phi(1,'cam')
@@ -57,7 +96,7 @@ if tst==2:
 
     p.show()
 
-if tst==3:
+elif opts.tst=='3':
     p = Plotter()
     p.pq_ty   = 'oct'
     p.evd_ty  = 'oct'
@@ -72,7 +111,6 @@ if tst==3:
     p.lwd=2; p.plot ("test1.res", clr='blue',  markevery=10, label='U4', draw_fl=False,draw_ros=True)
     #subplot(2,3,3)
     legend()
-
 
     lam0  = 0.1
     lam1  = 1.0
