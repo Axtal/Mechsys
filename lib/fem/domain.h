@@ -225,7 +225,7 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
             bool has_tag = (Msh.Verts[i]->Tag<0 ? OutV->Has(Msh.Verts[i]->Tag) : false);
             if (OutV->Has(Msh.Verts[i]->ID) || has_tag)
             {
-                String buf; buf.Printf("%s_nod_%d_%d.res", FNKey, Msh.Verts[i]->ID, Msh.Verts[i]->Tag);
+                String buf; buf.Printf("%s_nod_%d.res", FNKey, Msh.Verts[i]->ID);
                 std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
                 OutNods.Push (Nods.Last());
                 FilNods.Push (of);

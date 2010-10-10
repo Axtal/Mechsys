@@ -1,9 +1,13 @@
-matid  = 3
+matid  = 0
 pcam0  = 100
 ninc   = 10
 cdrift = 1
 ssout  = 1
 fem    = 1
+dyn    = 0
+hm     = 1
+tsw    = 0.5
+dt     = 0.01
 npath  = 1
 
 #ndat = 3
@@ -11,8 +15,13 @@ npath  = 1
 #  lode = 30
 #  dez  = -10
 
-ndat = 1
-  dez = -10
+#ndat = 1
+#  dez = -10
+
+ndat = 3
+  dsx = 0
+  dsy = 0
+  dsz = -149
 
 #ndat = 3
 #  lode  = 90

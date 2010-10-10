@@ -51,13 +51,20 @@ public:
     void Read (char const * FileName);
 
     // Data
-    int    MatID;  // material ID
-    double pCam0;  // pCam
-    size_t NInc;   // general number of increments (for all load-unload paths)
-    bool   CDrift; // correct YS drift
-    double STOL;   // local error tolerance
-    bool   FEM;    // use one Hex8 FEM element instead of point integration
-    bool   SSOut;  // output substeps ?
+    int    MatID;       // material ID
+    double pCam0;       // pCam
+    size_t NInc;        // general number of increments (for all load-unload paths)
+    bool   CDrift;      // correct YS drift
+    double STOL;        // local error tolerance
+    bool   FEM;         // use one Hex8 FEM element instead of point integration
+    bool   SSOut;       // output substeps ?
+    bool   Dyn;         // dynamic analysis ?
+    double tf,dt,dtOut; // variables for dynamic analysis
+    double tSW;         // switch time (for dynamic simulation)
+    double Am;          // Damping Am
+    double Ak;          // Damping Ak
+    bool   Ray;         // Rayleigh damping ?
+    bool   HM;          // HydroMech ?
 
     // path increments
     Array<PathIncs> Path;
@@ -68,13 +75,22 @@ public:
 
 
 inline InpFile::InpFile ()
-    : MatID  (0),
-      pCam0  (100.0),
-      NInc   (10),
-      CDrift (true),
-      STOL   (1.0e-5),
-      FEM    (false),
-      SSOut  (true)
+    : MatID   (0),
+      pCam0   (100.0),
+      NInc    (10),
+      CDrift  (true),
+      STOL    (1.0e-5),
+      FEM     (false),
+      SSOut   (true),
+      Dyn     (false),
+      tf      (10.0),
+      dt      (0.1),
+      dtOut   (0.2),
+      tSW     (0.5),
+      Am      (0.02),
+      Ak      (0.02),
+      Ray     (false),
+      HM      (false)
 {
 }
 
@@ -135,6 +151,15 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="stol")   STOL   = val;
                 else if (key=="fem")    FEM    = val;
                 else if (key=="ssout")  SSOut  = (bool)val;
+                else if (key=="dyn")    Dyn    = (bool)val;
+                else if (key=="tf")     tf     = val;
+                else if (key=="dt")     dt     = val;
+                else if (key=="dtout")  dtOut  = val;
+                else if (key=="tsw")    tSW    = val;
+                else if (key=="am")     Am     = val;
+                else if (key=="ak")     Ak     = val;
+                else if (key=="ray")    Ray    = (bool)val;
+                else if (key=="hm")     HM     = (bool)val;
                 else if (key=="npath")
                 {
                     Path.Resize ((size_t)val);
@@ -177,6 +202,15 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     os << "  stol   = " <<  IF.STOL    << "\n";
     os << "  fem    = " <<  IF.FEM     << "\n";
     os << "  ssout  = " <<  IF.SSOut   << "\n";
+    os << "  dyn    = " <<  IF.Dyn     << "\n";
+    os << "  tf     = " <<  IF.tf      << "\n";
+    os << "  dt     = " <<  IF.dt      << "\n";
+    os << "  dtout  = " <<  IF.dtOut   << "\n";
+    os << "  tsw    = " <<  IF.tSW     << "\n";
+    os << "  am     = " <<  IF.Am      << "\n";
+    os << "  ak     = " <<  IF.Ak      << "\n";
+    os << "  ray    = " <<  IF.Ray     << "\n";
+    os << "  hm     = " <<  IF.HM      << "\n";
     return os;
 }
 

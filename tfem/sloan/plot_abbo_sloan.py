@@ -44,15 +44,15 @@ def plot_one(data,txt,clr,marker,lwd,hline=False,dutxt=0.0,a=1.0,c=10.0,t=0.2):
 if plt==0:
     # loaded nodes
     if quad8:
-        quad8 = [read_table("%s_nod_0_0.res" %fkey),
-                 read_table("%s_nod_6_0.res" %fkey),
-                 read_table("%s_nod_22_0.res"%fkey)]
+        quad8 = [read_table("%s_nod_0.res" %fkey),
+                 read_table("%s_nod_6.res" %fkey),
+                 read_table("%s_nod_22.res"%fkey)]
     else:
-        tri15 = [read_table("%s_nod_0_0.res" %fkey),
-                 read_table("%s_nod_6_0.res" %fkey),
-                 read_table("%s_nod_22_0.res"%fkey),
-                 read_table("%s_nod_44_0.res"%fkey),
-                 read_table("%s_nod_45_0.res"%fkey)]
+        tri15 = [read_table("%s_nod_0.res" %fkey),
+                 read_table("%s_nod_6.res" %fkey),
+                 read_table("%s_nod_22.res"%fkey),
+                 read_table("%s_nod_44.res"%fkey),
+                 read_table("%s_nod_45.res"%fkey)]
 
     # with reference solution
     if ref: passs
@@ -91,26 +91,26 @@ def plot_one2(L,B,data,txt,clr,marker,lwd,hline=False,dutxt=0.0,c=10.0):
 
 if plt==1:
     if quad:
-        quad8 = [read_table("abbo_sloan_02_quad8_nod_12_0.res"),
-                 read_table("abbo_sloan_02_quad8_nod_13_0.res"),
-                 read_table("abbo_sloan_02_quad8_nod_43_0.res")]
+        quad8 = [read_table("abbo_sloan_02_quad8_nod_12.res"),
+                 read_table("abbo_sloan_02_quad8_nod_13.res"),
+                 read_table("abbo_sloan_02_quad8_nod_43.res")]
     else:
-        tri15 = [read_table("abbo_sloan_02_tri15_nod_0_0.res"  ),
-                 read_table("abbo_sloan_02_tri15_nod_207_0.res"),
-                 read_table("abbo_sloan_02_tri15_nod_60_0.res" ),
-                 read_table("abbo_sloan_02_tri15_nod_206_0.res"),
-                 read_table("abbo_sloan_02_tri15_nod_13_0.res" )]
+        tri15 = [read_table("abbo_sloan_02_tri15_nod_0.res"  ),
+                 read_table("abbo_sloan_02_tri15_nod_207.res"),
+                 read_table("abbo_sloan_02_tri15_nod_60.res" ),
+                 read_table("abbo_sloan_02_tri15_nod_206.res"),
+                 read_table("abbo_sloan_02_tri15_nod_13.res" )]
 
     if ref:
-        tri15_ref = [read_table("abbo_sloan_01_tri15_ref_nod_0_0.res"),
-                     read_table("abbo_sloan_01_tri15_ref_nod_6_0.res"),
-                     read_table("abbo_sloan_01_tri15_ref_nod_22_0.res"),
-                     read_table("abbo_sloan_01_tri15_ref_nod_44_0.res"),
-                     read_table("abbo_sloan_01_tri15_ref_nod_45_0.res")]
+        tri15_ref = [read_table("abbo_sloan_01_tri15_ref_nod_0.res"),
+                     read_table("abbo_sloan_01_tri15_ref_nod_6.res"),
+                     read_table("abbo_sloan_01_tri15_ref_nod_22.res"),
+                     read_table("abbo_sloan_01_tri15_ref_nod_44.res"),
+                     read_table("abbo_sloan_01_tri15_ref_nod_45.res")]
 
-        quad8_ref = [read_table("abbo_sloan_01_quad8_ref_nod_0_0.res"),
-                     read_table("abbo_sloan_01_quad8_ref_nod_6_0.res"),
-                     read_table("abbo_sloan_01_quad8_ref_nod_22_0.res")]
+        quad8_ref = [read_table("abbo_sloan_01_quad8_ref_nod_0.res"),
+                     read_table("abbo_sloan_01_quad8_ref_nod_6.res"),
+                     read_table("abbo_sloan_01_quad8_ref_nod_22.res")]
 
     L = 0.564
     B = 2.0

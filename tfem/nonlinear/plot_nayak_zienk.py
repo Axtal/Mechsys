@@ -32,8 +32,8 @@ elif plt==1:
     u_b1 = array(d2['u_b'])
     p_y3 = array(d2['p_y'])
 
-    r1 = read_table("nayak_zienk_01_nod_2_-200.res")
-    r2 = read_table("nayak_zienk_01_nod_17_-200.res")
+    r1 = read_table("nayak_zienk_01_nod_2.res")
+    r2 = read_table("nayak_zienk_01_nod_17.res")
     a  = 3.0
     u_a2 = 100.0*array(r1['ux'])/a
     p_y2 = array(r1['Time'])*1.392

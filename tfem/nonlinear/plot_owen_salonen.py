@@ -41,7 +41,7 @@ if opts.tst=='0':
     plot(X2,l2.y(X2),'g-')
 
     # simulation
-    r1 = read_table("owen_salonen_uni_nod_0_-1.res")
+    r1 = read_table("owen_salonen_uni_nod_0.res")
     ea = array(r1['ez'])
     sa = array(r1['sz'])
 
@@ -58,16 +58,16 @@ elif opts.tst=='1':
 
     delp = 18000.0
 
-    r1 = read_table("owen_salonen_3d_nod_0_-1.res")
-    r2 = read_table("owen_salonen_3d_nod_2_-2.res")
-    r3 = read_table("owen_salonen_3d_nod_81_-5.res")
+    r1 = read_table("owen_salonen_3d_nod_0.res")
+    r2 = read_table("owen_salonen_3d_nod_2.res")
+    r3 = read_table("owen_salonen_3d_nod_81.res")
     p1 = array(r1['Time'])*delp
     plot (r1['uy'],p1,'b-',lw=3,marker='s',clip_on=False,label='MechSys (3D)')
     plot (r2['uy'],p1,'r-',lw=2,marker='+',clip_on=False)
     plot (r3['uz'],p1,'b-',lw=2,marker='.',clip_on=False)
 
-    s1 = read_table("owen_salonen_2d_nod_0_0.res")
-    s2 = read_table("owen_salonen_2d_nod_27_0.res")
+    s1 = read_table("owen_salonen_2d_nod_0.res")
+    s2 = read_table("owen_salonen_2d_nod_27.res")
     p2 = array(s1['Time'])*delp
     plot (s1['ux'],p2,'k-',marker='.',clip_on=False,label='MechSys (2D)')
     #plot (s2['uy'],p2,'r-',marker='d',clip_on=False)

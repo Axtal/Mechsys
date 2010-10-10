@@ -51,6 +51,14 @@ using Util::FALSE;
 using FEM::PROB;
 using FEM::GEOM;
 
+double T_SWITCH = 0.5;
+
+double Multiplier (double t)
+{
+    if (t>=T_SWITCH) return 1.0;
+    else return (1.0/T_SWITCH)*t;
+}
+
 void zTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double dp, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs, double dexy=0., double deyz=0., double dezx=0.)
 {
     Mat_t D;
@@ -276,6 +284,7 @@ int main(int argc, char **argv) try
     InpFile inp;
     inp.Read (inp_fname.CStr());
     cout << inp;
+    T_SWITCH = inp.tSW;
 
     // initial values
     Dict prms, inis;
@@ -302,6 +311,9 @@ int main(int argc, char **argv) try
     {
         // mesh
         int option = 0; // Vol=0, Surf=1, Both=2
+        Mesh::Structured mesh(3);
+        mesh.GenBox (true, 1,1,1, 1.0,1.0,1.0);
+        /*
         Mesh::Generic mesh(3);
         mesh.SetSize   (8, 1);
         mesh.SetVert   (0, 0, 0.0, 0.0, 0.0);
@@ -319,18 +331,31 @@ int main(int argc, char **argv) try
         mesh.SetBryTag (0, 3, -22);
         mesh.SetBryTag (0, 4, -30);
         mesh.SetBryTag (0, 5, -33);
-        mesh.WriteVTU  ("driver",option);
+        */
+        mesh.WriteVTU  ("driver_mesh",option);
 
         // properties
         Dict prps;
-        prps.Set (-1, "prob geom active d3d", PROB("Equilib"), GEOM("Hex8"), TRUE, TRUE);
+        prps.Set (-1, "prob geom active d3d", (inp.HM ? PROB("HydroMech") : PROB("Equilib")), GEOM("Hex20"), TRUE, TRUE);
 
         // select some nodes for output
-        Array<int> out_nods(6, 7);
+        Array<int> out_nods(4,5,6,7, 10,11,14,15);
 
         // domain and solver
         FEM::Domain dom(mesh, prps, prms, inis, "driver", &out_nods);
         FEM::Solver sol(dom);
+        if (inp.Dyn) // dynamic analysis
+        {
+            dom.MFuncs[-11] = &Multiplier;
+            dom.MFuncs[-22] = &Multiplier;
+            dom.MFuncs[-33] = &Multiplier;
+            if (inp.Ray)
+            {
+                sol.DampAm  = inp.Am;
+                sol.DampAk  = inp.Ak;
+                sol.DampTy  = FEM::Solver::Rayleigh_t;
+            }
+        }
 
         // solve
         for (size_t i=0; i<inp.Path.Size(); ++i)
@@ -354,12 +379,26 @@ int main(int argc, char **argv) try
             bcs.Set (-10, "ux", 0.0);
             bcs.Set (-20, "uy", 0.0);
             bcs.Set (-30, "uz", 0.0);
-            if (pDEps[0]) bcs.Set(-11, "ux", DEps(0)); else bcs.Set(-11, "qn", DSig(0));
-            if (pDEps[1]) bcs.Set(-22, "uy", DEps(1)); else bcs.Set(-22, "qn", DSig(1));
-            if (pDEps[2]) bcs.Set(-33, "uz", DEps(2)); else bcs.Set(-33, "qn", DSig(2));
+            if (inp.Dyn)
+            {
+                if (pDEps[0]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-11, "ux mfunc", DEps(0), TRUE);*/ else bcs.Set(-11, "qn mfunc", DSig(0), TRUE);
+                if (pDEps[1]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-21, "uy mfunc", DEps(1), TRUE);*/ else bcs.Set(-21, "qn mfunc", DSig(1), TRUE);
+                if (pDEps[2]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-31, "uz mfunc", DEps(2), TRUE);*/ else bcs.Set(-31, "qn mfunc", DSig(2), TRUE);
+            }
+            else
+            {
+                if (pDEps[0]) bcs.Set(-11, "ux", DEps(0)); else bcs.Set(-11, "qn", DSig(0));
+                if (pDEps[1]) bcs.Set(-21, "uy", DEps(1)); else bcs.Set(-21, "qn", DSig(1));
+                if (pDEps[2]) bcs.Set(-31, "uz", DEps(2)); else bcs.Set(-31, "qn", DSig(2));
+            }
             dom.SetBCs (bcs);
             sol.SSOut = inp.SSOut;
-            sol.Solve  (ninc);
+            if (inp.Dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtOut, "driver");
+            else
+            {
+                sol.Solve    (ninc);
+                dom.WriteVTU ("driver");
+            }
         }
     }
 

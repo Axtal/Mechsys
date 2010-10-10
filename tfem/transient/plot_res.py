@@ -3,7 +3,7 @@ from pylab import plot, grid, show
 from msys_readdata import *
 
 if False:
-    dat = read_table("wood_lewis_nod_34_0.res")
+    dat = read_table("wood_lewis_nod_34.res")
 
     def solution(x,t):
         H = 1.0
@@ -21,7 +21,7 @@ if False:
     show()
 
 if False:
-    dat = read_table("owen_hinton_03_nod_50_-200.res")
+    dat = read_table("owen_hinton_03_nod_50.res")
     t = array(dat['Time'])
     plot(1.e3*t,dat['ux'],'r-',lw=2)
     grid()
@@ -29,8 +29,8 @@ if False:
 
 if True:
     nod = 2
-    #dat = read_table("zienk_shiomi_01_nod_20_-200.res")
-    dat = read_table("zienk_shiomi_01_nod_%d_0.res"%nod)
+    #dat = read_table("zienk_shiomi_01_nod_20.res")
+    dat = read_table("zienk_shiomi_01_nod_%d.res"%nod)
     T = array(dat['Time'])
     plot(T,dat['pw'],'r-',lw=2)
     grid()

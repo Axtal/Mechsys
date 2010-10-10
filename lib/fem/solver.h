@@ -132,6 +132,7 @@ public:
 
     // Vectors
     Vec_t R;            ///< Residual
+    Vec_t F0;           ///< External force at the beginning of the stage
     Vec_t F, F_int;     ///< External and internal forces
     Vec_t W, U;         ///< Workspace, displacement
     Vec_t V, A;         ///< (Transient/Dynamic) velocity and acceleration
@@ -729,6 +730,7 @@ inline void Solver::Initialize (bool Transient)
     // set variables
     for (size_t i=0; i<Dom.ActNods.Size(); ++i) Dom.ActNods[i]->GetUF (U,F);
     F_int = F;
+    F0    = F;
 
     // calc residual
     _cal_resid ();
@@ -1094,7 +1096,7 @@ inline void Solver::_GN22_update (double tf, double dt)
                 int eq = nod->EqPF(j);
                 if (!pU[eq]) // set dF for unknown variables only
                 {
-                    F(eq) = nod->PF(j, Time+DynTh1*dt);
+                    F(eq) = F0(eq) + nod->PF(j, Time+DynTh1*dt);
                 }
             }
         }

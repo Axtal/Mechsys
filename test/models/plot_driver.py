@@ -35,9 +35,12 @@ print "  prms : ", prms
 print "  inis : ", inis
 
 # res file
-fem = 'driver_nod_6_0.res'
+fem = 'driver_nod_6.res'
 pnt = 'driver.res'
 res = fem if opts.fem=='1' else pnt
+
+# legend properties
+lprp = matplotlib.font_manager.FontProperties(size=8)
 
 if opts.tst=='0':
     p = Plotter()
@@ -69,7 +72,7 @@ elif opts.tst=='1':
 
     # legend
     subplot(2,3,3)
-    l = legend(loc='upper left',prop=matplotlib.font_manager.FontProperties(size=8))
+    l = legend(loc='upper left',prop=lprp)
     p.show()
 
 elif opts.tst=='2':
@@ -144,3 +147,50 @@ elif opts.tst=='3':
     plot    ([x2,xmax],[0.,-lam2*(xmax-x2)],label=r'$\lambda_2$')
 
     p.show()
+
+elif opts.tst=='4':
+    fem4  = 'driver_nod_4.res'
+    fem5  = 'driver_nod_5.res'
+    fem6  = 'driver_nod_6.res'
+    fem7  = 'driver_nod_7.res'
+    fem10 = 'driver_nod_10.res'
+    fem11 = 'driver_nod_11.res'
+    fem14 = 'driver_nod_14.res'
+    fem15 = 'driver_nod_15.res'
+    res4  = read_table(fem4)
+    res5  = read_table(fem5)
+    res6  = read_table(fem6)
+    res7  = read_table(fem7)
+    res10 = read_table(fem10)
+    res11 = read_table(fem11)
+    res14 = read_table(fem14)
+    res15 = read_table(fem15)
+
+    subplot(1,2,1)
+    plot   (res4 ['Time'],res4 ['sz'],label='Node # 4')
+    plot   (res5 ['Time'],res5 ['sz'],label='Node # 5')
+    plot   (res6 ['Time'],res6 ['sz'],label='Node # 6')
+    plot   (res7 ['Time'],res7 ['sz'],label='Node # 7')
+    plot   (res10['Time'],res10['sz'],label='Node # 10')
+    plot   (res11['Time'],res11['sz'],label='Node # 11')
+    plot   (res14['Time'],res14['sz'],label='Node # 14')
+    plot   (res15['Time'],res15['sz'],label='Node # 15')
+    xlabel ('Time')
+    ylabel (r'$\sigma_z$')
+    grid   ()
+    legend (loc='upper right',prop=lprp)
+
+    subplot(1,2,2)
+    plot   (res4 ['uz'],res4 ['sz'],label='Node # 4')
+    plot   (res5 ['uz'],res5 ['sz'],label='Node # 5')
+    plot   (res6 ['uz'],res6 ['sz'],label='Node # 6')
+    plot   (res7 ['uz'],res7 ['sz'],label='Node # 7')
+    plot   (res10['uz'],res10['sz'],label='Node # 10')
+    plot   (res11['uz'],res11['sz'],label='Node # 11')
+    plot   (res14['uz'],res14['sz'],label='Node # 14')
+    plot   (res15['uz'],res15['sz'],label='Node # 15')
+    xlabel (r'$u_z$')
+    ylabel (r'$\sigma_z$')
+    grid   ()
+    legend (loc='upper left',prop=lprp)
+    show   ()

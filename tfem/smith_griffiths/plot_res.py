@@ -1,11 +1,15 @@
+import optparse
 from numpy import *
 from pylab import *
 from msys_readdata import *
 
-plt = 2
+# input
+op = optparse.OptionParser()
+op.add_option('--tst', '-t', dest='tst', default='0', help='test number')
+opts, args = op.parse_args()
 
-if plt==0:
-    dat = read_table("fig_11_01_nod_1_-200.res")
+if opts.tst=='0':
+    dat = read_table("fig_11_01_nod_1.res")
 
     tsw = 1.0
     def calc_U(t):
@@ -21,8 +25,8 @@ if plt==0:
     grid()
     show()
 
-if plt==1:
-    res   = read_table("fig_11_04_nod_17_-100.res")
+if opts.tst=='1':
+    res   = read_table("fig_11_04_nod_17.res")
     p113d = read_table("sg_11_07_p113.dat")
     p113  = read_table("sg_11_07_p113.sim")
     p114  = read_table("sg_11_07_p114.sim")
@@ -39,8 +43,8 @@ if plt==1:
     grid()
     show()
 
-if plt==2:
-    res  = read_table("fig_11_19_nod_30_-200.res")
+if opts.tst=='2':
+    res  = read_table("fig_11_19_nod_30.res")
     p117 = read_table("sg_11_19.sim")
 
     plot(res ['Time'],res ['uy'],'r-',lw=2)
@@ -52,7 +56,7 @@ if plt==2:
     grid()
     show()
 
-if plt==3:
+if opts.tst=='3':
     nod = 17
     res = read_table("fig_11_04.out")
 

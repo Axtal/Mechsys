@@ -6,7 +6,7 @@ plt = 1
 
 if plt==1:
     fin    = read_table("mix01_fine.res")
-    res    = read_table("mix01_nod_12_0.res")
+    res    = read_table("mix01_nod_12.res")
     fin_ux = array(fin['ux'])
     fin_fx = array(fin['fx'])
     ux     = array(res['ux'])
@@ -20,7 +20,7 @@ if plt==1:
     show   ()
 
 if plt==2:
-    res    = read_table("mix02_nod_7_0.res")
+    res    = read_table("mix02_nod_7.res")
     ux     = array(res['ux'])
     fx     = array(res['fx'])
     plot   (ux,fx,'ro', label='fx')

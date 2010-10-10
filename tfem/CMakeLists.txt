@@ -19,8 +19,6 @@
 SET(PROGS
   arch
   beam02
-  labtest
-  oneelem
   shapefun)
 
 SET(TESTS
