@@ -931,15 +931,15 @@ inline void Structured::GenBox (bool O2, int Nx, int Ny, int Nz, double Lx, doub
                       4----------------7
                     ,'|              ,'|
                   ,'  |            ,'  |
-                ,'    | -60   -10,'    |
+                ,'    | -31   -10,'    |
               ,'      |        ,'      |
             5'===============6'        |
-            |         |      |    -40  |
-            |    -30  |      |         |
+            |         |      |    -21  |
+            |    -20  |      |         |
             |         0- - - | -  - - -3
             |       ,'       |       ,'
-            |     ,' -20     |     ,'
-            |   ,'        -50|   ,'
+            |     ,' -11     |     ,'
+            |   ,'        -30|   ,'
             | ,'             | ,'
             1----------------2'
     */
@@ -953,7 +953,7 @@ inline void Structured::GenBox (bool O2, int Nx, int Ny, int Nz, double Lx, doub
                  -6.,   Lx, 0.0,  Lz, 
                  -7.,   Lx,  Ly,  Lz, 
                  -8.,  0.0,  Ly,  Lz,
-                 -10.,-20.,-30.,-40.,-50.,-60.); // face tags
+                 -10.,-11.,-20.,-21.,-30.,-31.); // face tags
     blks[0].SetNx (Nx);
     blks[0].SetNy (Ny);
     blks[0].SetNz (Nz);

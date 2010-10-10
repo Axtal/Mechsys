@@ -34,8 +34,8 @@ using FEM::GEOM;
 
 int main(int argc, char **argv) try
 {
-    bool unitest = false; // uniaxial test ?
     bool is2d    = true;
+    bool unitest = false; // uniaxial test ?
     bool NR      = true;
 
     cout << "\nUsage:\n\t" << argv[0] << "  [0,1](is2d)  [0,1](unitest)\n" << endl;
@@ -92,23 +92,35 @@ int main(int argc, char **argv) try
     String fkey;
     Array<int> out_verts;
     Dict prps, mdls;
-    if (is2d)
+    if (unitest)
     {
-        out_verts.Resize(6);
-        fkey      = "owen_salonen_2d";
-        out_verts = 0,1,2, 27,28,29;
-        prps.Set(-1, "prob geom pse h", PROB("Equilib"), (o2 ? GEOM("Quad8") : GEOM("Quad4")), 1.0, t);
-        mdls.Set(-1, "name E nu fc sY Hp pse", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
-        //mdls.Set(-1, "name E nu pse", MODEL("LinElastic"), E, nu, 1.0);
-    }
-    else
-    {
-        out_verts.Resize(8);
-        fkey      = "owen_salonen_3d";
-        out_verts = -1,-2,-3,-4,-5,-6,-7,-8;
+        out_verts.Resize(1);
+        fkey      = "owen_salonen_uni";
+        out_verts = 0;
         prps.Set(-1, "prob geom", PROB("Equilib"), (o2 ? GEOM("Hex20") : GEOM("Hex8")));
         mdls.Set(-1, "name E nu fc sY Hp", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp);
         //mdls.Set(-1, "name E nu", MODEL("LinElastic"), E, nu);
+    }
+    else
+    {
+        if (is2d)
+        {
+            out_verts.Resize(6);
+            fkey      = "owen_salonen_2d";
+            out_verts = 0,1,2, 27,28,29;
+            prps.Set(-1, "prob geom pse h", PROB("Equilib"), (o2 ? GEOM("Quad8") : GEOM("Quad4")), 1.0, t);
+            mdls.Set(-1, "name E nu fc sY Hp pse", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
+            //mdls.Set(-1, "name E nu pse", MODEL("LinElastic"), E, nu, 1.0);
+        }
+        else
+        {
+            out_verts.Resize(8);
+            fkey      = "owen_salonen_3d";
+            out_verts = -1,-2,-3,-4,-5,-6,-7,-8;
+            prps.Set(-1, "prob geom", PROB("Equilib"), (o2 ? GEOM("Hex20") : GEOM("Hex8")));
+            mdls.Set(-1, "name E nu fc sY Hp", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp);
+            //mdls.Set(-1, "name E nu", MODEL("LinElastic"), E, nu);
+        }
     }
     FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict(), fkey.CStr(), &out_verts);
     FEM::Solver sol(dom);
@@ -120,9 +132,9 @@ int main(int argc, char **argv) try
     {
         Dict bcs;
         bcs.Set      (-10, "ux", 0.0);
-        bcs.Set      (-30, "uy", 0.0);
-        bcs.Set      (-50, "uz", 0.0);
-        bcs.Set      (-60, "uz", 0.012);
+        bcs.Set      (-20, "uy", 0.0);
+        bcs.Set      (-30, "uz", 0.0);
+        bcs.Set      (-31, "uz", 0.012);
         dom.SetBCs   (bcs);
         sol.Solve    (10);
         dom.WriteVTU ("owen_salonen_uni");

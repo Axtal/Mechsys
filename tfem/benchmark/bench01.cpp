@@ -159,9 +159,9 @@ int main(int argc, char **argv) try
     // boundary conditions for stage # 1
     Dict bcs;
     bcs.Set (-10, "ux",  0.0);
-    bcs.Set (-30, "uy",  0.0);
-    bcs.Set (-50, "uz",  0.0);
-    bcs.Set (-60, "uz", -0.2);
+    bcs.Set (-20, "uy",  0.0);
+    bcs.Set (-30, "uz",  0.0);
+    bcs.Set (-31, "uz", -0.2);
     dom.SetBCs (bcs);
 
     // output domain

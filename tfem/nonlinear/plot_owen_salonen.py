@@ -1,12 +1,16 @@
+import optparse
 from numpy import array
 from pylab import *
 from msys_readdata import read_table
 from msys_plotter  import Plotter
 from msys_linfit   import LinFit
 
-plt = 1
+# input
+op = optparse.OptionParser()
+op.add_option('--tst', '-t', dest='tst', default='0', help='test number')
+opts, args = op.parse_args()
 
-if plt==0:
+if opts.tst=='0':
     # data
     d1  = read_table("owen_salonen_fig5.dat")
     d2  = read_table("owen_salonen_fig5_bilinear.dat")
@@ -37,7 +41,7 @@ if plt==0:
     plot(X2,l2.y(X2),'g-')
 
     # simulation
-    r1 = read_table("owen_salonen_uni_ele_0_-1.res")
+    r1 = read_table("owen_salonen_uni_nod_0_-1.res")
     ea = array(r1['ez'])
     sa = array(r1['sz'])
 
@@ -47,7 +51,7 @@ if plt==0:
     grid()
     show()
 
-elif plt==1:
+elif opts.tst=='1':
     d1 = read_table("owen_salonen_fig6_pstrain.dat")
     p  = array(d1['p'])*2.0#2.0=>thickness = 0.5
     plot (d1['u'],p,'ro',label='Owen and Salonen (1975)')
