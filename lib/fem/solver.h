@@ -1105,6 +1105,7 @@ inline void Solver::_GN22_update (double tf, double dt)
         {
             // new F and residual
             R = F - F_int;
+            for (size_t i=0; i<pEQ.Size(); ++i) R(pEQ[i]) = 0.0; // clear residual corresponding to supports
             //std::cout << "F    = " << PrintVector(F,     "%8.2f");
             //std::cout << "Fint = " << PrintVector(F_int, "%8.2f");
             //std::cout << "R    = " << PrintVector(R,     "%8.2f");
@@ -1121,7 +1122,6 @@ inline void Solver::_GN22_update (double tf, double dt)
 
             // update elements
             UpdateElements (dU, /*CalcFint*/true);
-            for (size_t i=0; i<pEQ.Size(); ++i) F_int(pEQ[i]) = 0.0; // clear internal forces related to supports
 
             // update state
             U += dU;
