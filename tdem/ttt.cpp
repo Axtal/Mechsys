@@ -380,6 +380,7 @@ int main(int argc, char **argv) try
     double verlet;      // Verlet distance for optimization
     String ptype;       // Particle type 
     bool   RenderVideo; // Decide is video should be render
+    bool   Cohesion;    // Decide if coheison is going to be simulated
     double fraction;    // Fraction of particles to be generated
     double Kn;          // Normal stiffness
     double Kt;          // Tangential stiffness
@@ -388,6 +389,10 @@ int main(int argc, char **argv) try
     double Mu;          // Microscopic friction coefficient
     double Beta;        // Rolling stiffness coefficient (only for spheres)
     double Eta;         // Plastic moment coefficient (only for spheres, 0 if rolling resistance is not used)
+    double Bn;          // Cohesion normal stiffness
+    double Bt;          // Cohesion tangential stiffness
+    double Bm;          // Cohesion torque stiffness
+    double Eps;         // Threshold for breking bonds
     double R;           // Spheroradius
     size_t seed;        // Seed of the ramdon generator
     double dt;          // Time step
@@ -417,6 +422,7 @@ int main(int argc, char **argv) try
         infile >> verlet;       infile.ignore(200,'\n');
         infile >> ptype;        infile.ignore(200,'\n');
         infile >> RenderVideo;  infile.ignore(200,'\n');
+        infile >> Cohesion;     infile.ignore(200,'\n');
         infile >> fraction;     infile.ignore(200,'\n');
         infile >> Kn;           infile.ignore(200,'\n');
         infile >> Kt;           infile.ignore(200,'\n');
@@ -425,6 +431,10 @@ int main(int argc, char **argv) try
         infile >> Mu;           infile.ignore(200,'\n');
         infile >> Beta;         infile.ignore(200,'\n');
         infile >> Eta;          infile.ignore(200,'\n');
+        infile >> Bn;           infile.ignore(200,'\n');
+        infile >> Bt;           infile.ignore(200,'\n');
+        infile >> Bm;           infile.ignore(200,'\n');
+        infile >> Eps;          infile.ignore(200,'\n');
         infile >> R;            infile.ignore(200,'\n');
         infile >> seed;         infile.ignore(200,'\n');
         infile >> dt;           infile.ignore(200,'\n');
@@ -461,12 +471,12 @@ int main(int argc, char **argv) try
 
     // particle
     if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction);
-    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, false, seed, fraction, 1.0);
+    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, Cohesion, true, seed, fraction, 1.0);
     else if (ptype=="tetra")
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.GenBox  (/*O2*/false,/*V*/Lx*Ly*Lz/(0.5*nx*ny*nz),Lx,Ly,Lz);
-        dom.GenFromMesh (mesh,/*R*/R,/*rho*/rho,true,false);
+        dom.GenFromMesh (mesh,/*R*/R,/*rho*/rho,Cohesion,false);
     }
     else if (ptype=="rice") dom.GenRice(-1,Lx,nx,R,rho,seed,fraction);
     else throw new Fatal("Packing for particle type not implemented yet");
@@ -476,13 +486,13 @@ int main(int argc, char **argv) try
 
     // properties of particles prior the triaxial test
     Dict B;
-    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,Mu ,Beta,Eta);
-    B.Set(-2,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
-    B.Set(-3,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
-    B.Set(-4,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
-    B.Set(-5,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
-    B.Set(-6,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
-    B.Set(-7,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,Mu ,Beta,Eta,Bn,Bt,Bm,Eps);
+    B.Set(-2,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,0.0,Beta,Eta,Bn,Bt,Bm,Eps);
+    B.Set(-3,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,0.0,Beta,Eta,Bn,Bt,Bm,Eps);
+    B.Set(-4,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,0.0,Beta,Eta,Bn,Bt,Bm,Eps);
+    B.Set(-5,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,0.0,Beta,Eta,Bn,Bt,Bm,Eps);
+    B.Set(-6,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,0.0,Beta,Eta,Bn,Bt,Bm,Eps);
+    B.Set(-7,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,0.0,Beta,Eta,Bn,Bt,Bm,Eps);
     dom.SetProps(B);
 
     // stage 1: isotropic compresssion  //////////////////////////////////////////////////////////////////////
@@ -508,16 +518,11 @@ int main(int argc, char **argv) try
     sigf   = lf(0), lf(1), lf(2);
     peps   = bVec3_t(pssrx, pssry, pssrz);
     depsdt = Vec3_t(srx/(Tf-dom.Time), sry/(Tf-dom.Time), srz/(Tf-dom.Time));
-
-    // properties of particles at the start of  the triaxial test
-    //B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,Mu,Beta,Eta);
-    //dom.SetProps(B);
     
     // run
     ResetEps  (dom,dat);
     SetTxTest (sigf, peps, depsdt, thf*M_PI/180, alpf*M_PI/180, isfailure, dat, dom);
     dat.tspan = Tf - dom.Time;
-    //dom.ResetInteractons();
     dom.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_c.CStr(),RenderVideo);
 
     return 0;

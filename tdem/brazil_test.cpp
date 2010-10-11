@@ -33,6 +33,7 @@ struct UserData
     Particle         * p1;  // Upper plane
     Particle         * p2;  // Lower plane
     Vec3_t          force;  // Force on planes
+    double              S;  // Vertical separation of the planes
     std::ofstream  oss_ss;  // File to store the forces
 };
 
@@ -40,6 +41,7 @@ void Setup (DEM::Domain & dom, void *UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     dat.force = 0.5*(dat.p2->F-dat.p1->F);
+    dat.S     = dat.p2->x(1)-dat.p1->x(1);
 }
 
 void Report (DEM::Domain & dom, void *UD)
@@ -50,13 +52,13 @@ void Report (DEM::Domain & dom, void *UD)
         String fs;
         fs.Printf("%s_walls.res",dom.FileKey.CStr());
         dat.oss_ss.open(fs.CStr());
-        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "fx" << Util::_8s << "fy" << Util::_8s << "fz \n";
+        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "fx" << Util::_8s << "fy" << Util::_8s << "fz" << Util::_8s << "S \n";
     }
     else 
     {
         if (!dom.Finished) 
         {
-            dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << fabs(dat.force(0)) << Util::_8s << fabs(dat.force(1)) << Util::_8s << fabs(dat.force(2)) << std::endl;
+            dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << fabs(dat.force(0)) << Util::_8s << fabs(dat.force(1)) << Util::_8s << fabs(dat.force(2)) << Util::_8s << dat.S << std::endl;
         }
         else
         {

@@ -78,7 +78,6 @@ public:
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode);
-                     //,size_t IIndex,Array<Array<size_t> > & L);                                                                  ///< Add Voronoi cell
 
     // Methods
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
@@ -575,9 +574,6 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
                             Face * F2 = P2->Faces[l];
                             Vec3_t n2;
                             F2->Normal(n2);
-                            //if (i==1) std::cout << dot(n1,n2) << " " << fabs(Distance(xc1,*F1)-Distance(xc2,*F2)) << " "
-                                      //<< fabs(dot(n1,Delta)-norm(Delta)) << " " << fabs(Distance(xc1,*F1)+R-0.5*norm(Delta)) 
-                                      //<< " " << j << " " << k << " " << l << std::endl;
                             if ((fabs(dot(n1,n2)+1.0)<tol1)
                                  &&(fabs(Distance(xc1,*F1)-Distance(xc2,*F2))<tol2)
                                  &&(fabs(Distance(xc1,*F1)+R-0.5*norm(Delta))<tol2)
