@@ -24,6 +24,7 @@
 #include <mechsys/vtk/axes.h>
 #include <mechsys/vtk/cube.h>
 #include <mechsys/vtk/cylinder.h>
+#include <mechsys/vtk/disk.h>
 #include <mechsys/vtk/plane.h>
 #include <mechsys/vtk/sphere.h>
 #include <mechsys/vtk/spheres.h>
@@ -37,13 +38,24 @@ int main(int argc, char **argv) try
     VTK::Arrow    ar(/*x*/Vec3_t(0.0,0.0,0.0), /*v*/Vec3_t(0.5,0.5,0.5));
     VTK::Sphere   sp(/*x*/Vec3_t(0.75,0.75,0.75), /*R*/0.25);
     VTK::Cube     cu(/*Cen*/Vec3_t(0.0,0.0,0.0), /*lx*/1.0, /*ly*/1.0, /*lz*/1.0);
-    VTK::Cylinder cy(/*X*/Vec3_t(0.0,0.0,0.0), /*V*/Vec3_t(1.0,0.0,0.0), /*R*/0.1, /*Cap*/false, /*Res*/30);
+    VTK::Cylinder cy(/*X0*/Vec3_t(0.0,0.0,0.0), /*X1*/Vec3_t(1.0,0.0,0.0), /*R*/0.1, /*Cap*/false, /*Res*/30);
+    VTK::Disk     di(/*X0*/Vec3_t(0.0,0.0,0.0), /*X2*/Vec3_t(1.0,1.0,1.0), /*Rin*/0.1, /*Rout*/0.2, /*Cap*/false);
+    VTK::Disk     d1(/*X0*/Vec3_t(1.0,0.0,0.0), /*X2*/Vec3_t(1.0,1.0,1.0), /*Rin*/0.1, /*Rout*/0.2, /*Cap*/false);
+    VTK::Disk     d2(/*X0*/Vec3_t(0.0,1.0,0.0), /*X2*/Vec3_t(1.0,1.0,1.0), /*Rin*/0.1, /*Rout*/0.2, /*Cap*/false);
+    VTK::Disk     d3;
     VTK::Text     tx(/*X*/Vec3_t(0.8,0.3,0.5), "VTK");
     VTK::Plane    pl(/*Ori*/Vec3_t(0,0,0), /*P1*/Vec3_t(2,0,0), /*P2*/Vec3_t(0,2,0), /*normal*/Vec3_t(0,0,1));
     VTK::Plane    p2(/*Cen*/Vec3_t(1,1,1), /*n*/Vec3_t(1,1,1));
 
     p2.SetColor ("green");
     cu.SetColor ("peacock", 0.1);
+    di.SetColor ("blue",    0.3);
+    d1.SetColor ("blue",    0.3);
+    d2.SetColor ("blue",    0.3);
+
+    d3.SetRadiusIn  (0.05);
+    d3.SetRadiusOut (0.08);
+    d3.SetPoints    (/*X0*/Vec3_t(2.0,0.0,0.0), /*X2*/Vec3_t(0.0,2.0,0.0));
 
     Array<Vec3_t> X(3);
     Array<double> R(3);
@@ -70,6 +82,10 @@ int main(int argc, char **argv) try
     sp.AddTo (win);
     cu.AddTo (win);
     cy.AddTo (win);
+    di.AddTo (win);
+    d1.AddTo (win);
+    d2.AddTo (win);
+    d3.AddTo (win);
     tx.AddTo (win);
     pl.AddTo (win);
     p2.AddTo (win);
