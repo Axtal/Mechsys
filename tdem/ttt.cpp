@@ -241,6 +241,21 @@ void Setup (DEM::Domain & dom, void * UD)
 void Report (DEM::Domain & dom, void *UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
+    //Ouput particle status at each time step
+    String fv;
+    fv.Printf    ("%s_%08d_particles.res",dom.FileKey.CStr(), dom.idx_out);
+    std::ofstream FV(fv.CStr());
+    FV <<  Util::_10_6 << "PID" << Util::_8s << "vx" << Util::_8s << "vy" << Util::_8s << "vz" << Util::_8s << "x" << Util::_8s << "y" << Util::_8s << "z" <<"\n";
+
+    for (size_t i=0; i<dom.Particles.Size(); i++)
+    {
+        if (dom.Particles[i]->IsFree())
+        {
+            FV << Util::_8s << dom.Particles[i]->Index << Util::_8s << dom.Particles[i]->v(0)   << Util::_8s << dom.Particles[i]->v(1) << Util::_8s << dom.Particles[i]->v(2)
+               << Util::_8s << dom.Particles[i]->x(0)  << Util::_8s << dom.Particles[i]->x(1)   << Util::_8s << dom.Particles[i]->x(2) << "\n";
+        }
+    }
+    FV.close();
     // output triaxial test data
     // header
     if (dom.idx_out==0)

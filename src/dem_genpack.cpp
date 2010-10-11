@@ -92,7 +92,7 @@ int main(int argc, char **argv) try
     double L        = 1.0;
     size_t seed     = 123;
     double fraction = 1.0;
-    if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,num, /*rho*/1.0, /*periodic*/true, seed, fraction);
+    if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction);
     else      dom.GenSpheres  (-10, L, num, /*rho*/1.0, "HCP", /*seed*/1000, /*fraction*/0.8);
 
     if (sim)
