@@ -714,6 +714,7 @@ inline void Solver::Initialize (bool Transient)
     R     .change_dim (NEq);  set_to_zero (R);
     F     .change_dim (NEq);  set_to_zero (F);
     F_int .change_dim (NEq);  set_to_zero (F_int);
+    F0    .change_dim (NEq);  set_to_zero (F0);
     W     .change_dim (NEq);  set_to_zero (W);
     U     .change_dim (NEq);  set_to_zero (U);
     dU    .change_dim (NEq);  set_to_zero (dU);
