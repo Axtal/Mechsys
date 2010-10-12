@@ -137,6 +137,7 @@ public:
     bool valid;                            ///< Check if the bound has not been broken
     double s1,t1;                          ///< Planar coordinates for face F1
     double s2,t2;                          ///< Planar coordinates for face F2
+    Vec3_t Fnet;                           ///< Net force excerted by the interacton
 
 };
 
@@ -476,8 +477,6 @@ inline void BInteracton::CalcForce(double dt)
         c1 = P1->x;
         c2 = P2->x;
 
-        //std::cout << dot(n,c2-c1) <<std::endl;
-
         Face * F    = P1->Faces[F1];
         Vec3_t pro1 = *F->Edges[0]->X0 + s1*F->Edges[0]->dL + t1*F->Edges[1]->dL;
         Vec3_t p1   = -s1*F->Edges[0]->dL - t1*F->Edges[1]->dL;
@@ -498,7 +497,7 @@ inline void BInteracton::CalcForce(double dt)
         Vec3_t Ft   = -Bt*td/L0;
 
         //Adding forces and torques
-        Vec3_t Fnet = Fn+Ft;
+        Fnet   = Fn+Ft;
         P1->F -= Fnet;
         P2->F += Fnet;
         Vec3_t T, Tt;

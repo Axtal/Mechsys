@@ -241,6 +241,59 @@ void Setup (DEM::Domain & dom, void * UD)
 void Report (DEM::Domain & dom, void *UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
+    //Output force vectors for each interacton
+    String ff;
+    ff.Printf    ("%s_%08d_chains.res",dom.FileKey.CStr(), dom.idx_out);
+    std::ofstream FF(ff.CStr());
+    FF <<  Util::_10_6 << "Fx" << Util::_8s << "Fy" << Util::_8s << "Fz" <<  Util::_8s << "Ftx" << Util::_8s << "Fty" << Util::_8s << "Ftz" 
+       <<    Util::_8s << "Nc" << Util::_8s << "Nsc"<< Util::_8s << "P1" <<  Util::_8s << "P2" <<"\n";
+
+    for (size_t i=0; i<dom.CInteractons.Size(); i++)
+    {
+        if ((norm(dom.CInteractons[i]->Fnet)>0.0)&&(dom.CInteractons[i]->P1->IsFree()&&dom.CInteractons[i]->P2->IsFree()))
+        {
+            FF << Util::_8s << dom.CInteractons[i]->Fnet(0)   << Util::_8s << dom.CInteractons[i]->Fnet(1)   << Util::_8s <<  dom.CInteractons[i]->Fnet(2) 
+               << Util::_8s << dom.CInteractons[i]->Ftnet(0)  << Util::_8s << dom.CInteractons[i]->Ftnet(1)  << Util::_8s <<  dom.CInteractons[i]->Ftnet(2) 
+               << Util::_8s << dom.CInteractons[i]->Nc        << Util::_8s << dom.CInteractons[i]->Nsc
+               << Util::_8s << dom.CInteractons[i]->P1->Index << Util::_8s << dom.CInteractons[i]->P2->Index << "\n";
+        }
+    }
+    FF.close();
+    //Output cohesion interactons information
+    size_t Nb  = dom.BInteractons.Size(); //Number of bonds
+    size_t Nbb = 0;                   //Number of broken bonds
+    if (Nb>0)
+    {
+        String fc;
+        fc.Printf    ("%s_%08d_bonds.res",dom.FileKey.CStr(), dom.idx_out);
+        std::ofstream FC(fc.CStr());
+        FC <<  Util::_10_6 << "Fx" << Util::_8s << "Fy" << Util::_8s << "Fz" <<  Util::_8s << "Area" << Util::_8s << "valid" << Util::_8s << "P1" <<  Util::_8s << "P2" <<"\n";
+
+        for (size_t i=0; i<dom.BInteractons.Size(); i++)
+        {
+            FC << Util::_8s << dom.BInteractons[i]->Fnet(0)   << Util::_8s << dom.BInteractons[i]->Fnet(1)   << Util::_8s <<  dom.BInteractons[i]->Fnet(2) 
+               << Util::_8s << dom.BInteractons[i]->Area      << Util::_8s << dom.BInteractons[i]->valid
+               << Util::_8s << dom.BInteractons[i]->P1->Index << Util::_8s << dom.BInteractons[i]->P2->Index << "\n";
+            if (!dom.BInteractons[i]->valid) Nbb++; //Add one broken bond if it is no longer valid
+        }
+        FC.close();
+
+        String fl;
+        fl.Printf    ("%s_%08d_clusters.res",dom.FileKey.CStr(), dom.idx_out);
+        std::ofstream FL(fl.CStr());
+        FL <<  Util::_10_6 << "Cluster" << Util::_8s << "Mass" << "\n";
+        FL <<  Util::_8s   << 0         << Util::_8s << dom.Ms << "\n";
+        for (size_t i=0;i<dom.Listofclusters.Size();i++)
+        {
+            double m = 0.0; //mass of the cluster
+            for (size_t j=0;j<dom.Listofclusters[i].Size();j++)
+            {
+                m+=dom.Particles[dom.Listofclusters[i][j]]->Props.m;
+            }
+            FL << Util::_8s << i+1 << Util::_8s << m << "\n"; 
+        }
+        FL.close();
+    }
     //Ouput particle status at each time step
     String fv;
     fv.Printf    ("%s_%08d_particles.res",dom.FileKey.CStr(), dom.idx_out);
@@ -263,10 +316,12 @@ void Report (DEM::Domain & dom, void *UD)
         String fs;
         fs.Printf("%s_walls.res",dom.FileKey.CStr());
         dat.oss_ss.open(fs.CStr());
-
+        // Output of the current time, the stress state sx,sy,sz the strain state ex,ey,ez the void ratio, the coordination number the number of
+        // contacts and sliding contacts Nc,Nsc and the number of bonds and broken bonds Nb Nbb
         dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz";
         dat.oss_ss <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez";
-        dat.oss_ss << Util::_8s   << "e"    << Util::_8s << "Cn" << Util::_8s << "Nc" << Util::_8s << "Nsc" << "\n";
+        dat.oss_ss << Util::_8s   << "e"    << Util::_8s << "Cn" << Util::_8s << "Nc" << Util::_8s << "Nsc";         
+        dat.oss_ss <<                                               Util::_8s << "Nb" << Util::_8s << "Nbb" << "\n";
     }
     if (!dom.Finished) 
     {
@@ -303,7 +358,7 @@ void Report (DEM::Domain & dom, void *UD)
             Cn += dom.Particles[i]->Cn/dom.Particles.Size();
         }
 
-        dat.oss_ss << Util::_8s << Cn << Util::_8s << Nc << Util::_8s << Nsc;
+        dat.oss_ss << Util::_8s << Cn << Util::_8s << Nc << Util::_8s << Nsc << Util::_8s << Nb << Util::_8s << Nbb;
 
         dat.oss_ss << std::endl;
     }
@@ -486,7 +541,7 @@ int main(int argc, char **argv) try
 
     // particle
     if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction);
-    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, Cohesion, true, seed, fraction, 1.0);
+    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, Cohesion, true, seed, fraction);
     else if (ptype=="tetra")
     {
         Mesh::Unstructured mesh(/*NDim*/3);
@@ -496,7 +551,6 @@ int main(int argc, char **argv) try
     else if (ptype=="rice") dom.GenRice(-1,Lx,nx,R,rho,seed,fraction);
     else throw new Fatal("Packing for particle type not implemented yet");
     dat.InitialIndex = dom.Particles.Size();
-    dom.WriteBPY("test");
     dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3);
 
     // properties of particles prior the triaxial test

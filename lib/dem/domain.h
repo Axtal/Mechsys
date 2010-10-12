@@ -123,6 +123,7 @@ public:
     double                                            Efric;                       ///< Energy dissipated by friction
     double                                            Wext;                        ///< Work done by external forces
     double                                            Vs;                          ///< Volume occupied by the grains
+    double                                            Ms;                          ///< Total mass of the particles
     double                                            Alpha;                       ///< Verlet distance
     void *                                            UserData;                    ///< Some user data
     String                                            FileKey;                     ///< File Key for output files
@@ -1046,10 +1047,14 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
     // calc the total volume of particles (solids)
     Vs = 0.0;
+    Ms = 0.0;
     for (size_t i=0; i<Particles.Size(); i++) 
     { 
-        if (!Particles[i]->vxf&&!Particles[i]->vyf&&!Particles[i]->vzf&&!Particles[i]->wxf
-            &&!Particles[i]->wyf&&!Particles[i]->wzf)  Vs += Particles[i]->Props.V;
+        if (Particles[i]->IsFree())
+        {
+            Vs += Particles[i]->Props.V;
+            Ms += Particles[i]->Props.m;
+        }
     }
 
     // info
@@ -1132,6 +1137,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         if (Time>=tout)
         {
             idx_out++;
+            if (BInteractons.Size()>0) Clusters();
             if (ptReport!=NULL) (*ptReport) ((*this), UserData);
             if (TheFileKey!=NULL)
             {
@@ -1233,7 +1239,6 @@ inline void Domain::WritePOV (char const * FileKey)
     POVSetCam (of, CamPos, OrthoSys::O);
     Array <String> Colors(10);
     Colors = "Gray","Blue","Yellow","Gold","Green","Blue","Orange","Salmon","Copper","Aquamarine";
-    if (BInteractons.Size()>0) Clusters();
     for (size_t i=0; i<Particles.Size(); i++)
     {
         if (!Particles[i]->IsFree()) Particles[i]->Draw(of,"Col_Glass_Bluish");
@@ -1246,6 +1251,7 @@ inline void Domain::WritePOV (char const * FileKey)
                 {
                     Particles[i]->Draw(of,Colors[j%10].CStr());
                     found = true;
+                    break;
                 }
             }
             if (!found) Particles[i]->Draw(of,"Red");
