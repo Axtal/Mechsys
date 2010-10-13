@@ -420,8 +420,6 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     P1->Faces[F1]->Normal(n1);
     P2->Faces[F2]->Normal(n2);
     Vec3_t c1,c2;
-    c1 = P1->x;
-    c2 = P2->x;
     An         = 0.0;
     valid      = true;
     P1->Faces[F1]->Centroid(c1);

@@ -474,7 +474,6 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
     const double y_min=-Ly/2.0, y_max=Ly/2.0;
     const double z_min=-Lz/2.0, z_max=Lz/2.0;
     container con(x_min,x_max,y_min,y_max,z_min,z_max,nx,ny,nz, Periodic,Periodic,Periodic,8);
-    Array<Vec3_t> coor;
     int n = 0;
     for (size_t i=0; i<nx; i++)
     {
@@ -485,7 +484,6 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
                 double x = x_min+(i+0.5*qin+(1-qin)*double(rand())/RAND_MAX)*(x_max-x_min)/nx;
                 double y = y_min+(j+0.5*qin+(1-qin)*double(rand())/RAND_MAX)*(y_max-y_min)/ny;
                 double z = z_min+(k+0.5*qin+(1-qin)*double(rand())/RAND_MAX)*(z_max-z_min)/nz;
-                coor.Push(Vec3_t(x,y,z));
                 con.put (n,x,y,z);
                 n++;
             }
@@ -531,23 +529,6 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
     if (Cohesion)
     {
         if (fraction<1.0) throw new Fatal("Domain::AddVoroPack: With the Cohesion all particles should be considered, plese change the fraction to 1.0");
-        Array<size_t> Coor2Particle(Particles.Size()-IIndex);
-        for (size_t i=0;i<Particles.Size()-IIndex;i++)
-        {
-            bool found = false;
-            for (size_t j=IIndex;j<Particles.Size();j++)
-            {
-                if (Particles[j]->IsInside(coor[i]))
-                {
-                    if (found)
-                    {
-                        throw new Fatal("Domain::AddVoroPack: The Voronoi point was found in two particles");
-                    }
-                    found = true;
-                    Coor2Particle[i]=j;
-                }
-            }
-        }
 
         // define some tolerance for comparissions
         double tol1 = 1.0e-8;
@@ -560,25 +541,24 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
                 Particle * P2 = Particles[j];
                 if (Distance(P1->x,P2->x)<P1->Dmax+P2->Dmax)
                 {
-                    Vec3_t xc1 = coor[Coor2Particle.Find(i)];
-                    Vec3_t xc2 = coor[Coor2Particle.Find(j)];
-                    Vec3_t Delta = xc2 - xc1;
-
                     for (size_t k=0;k<P1->Faces.Size();k++)
                     {
                         Face * F1 = P1->Faces[k];
-                        Vec3_t n1;
-                        F1->Normal(n1);
+                        Vec3_t n1,c1;
+                        F1->Normal  (n1);
+                        F1->Centroid(c1);
                         bool found = false;
                         for (size_t l=0;l<P2->Faces.Size();l++)
                         {
                             Face * F2 = P2->Faces[l];
-                            Vec3_t n2;
-                            F2->Normal(n2);
+                            Vec3_t n2,c2;
+                            F2->Normal  (n2);
+                            F2->Centroid(c2);
+                            Vec3_t n = 0.5*(n1-n2);
+                            n/=norm(n);
                             if ((fabs(dot(n1,n2)+1.0)<tol1)
-                                 &&(fabs(Distance(xc1,*F1)-Distance(xc2,*F2))<tol2)
-                                 &&(fabs(Distance(xc1,*F1)+R-0.5*norm(Delta))<tol2)
-                                 &&(fabs(dot(n1,Delta)-norm(Delta))<tol2))
+                               &&(fabs(Distance(c1,*F2)-2*R)<tol2)
+                               &&(fabs(Distance(c2,*F1)-2*R)<tol2))
                             {
                                 BInteractons.Push(new BInteracton(P1,P2,k,l));
                                 found = true;
@@ -821,7 +801,6 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
 }
 
 inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho,bool Erode)
-                                 //,size_t IIndex,Array<Array<size_t> > & ListBpairs)
 {
     Array<Vec3_t> V(VC.p);
     Array<Array <int> > E;
