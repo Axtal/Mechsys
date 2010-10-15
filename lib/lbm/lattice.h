@@ -95,6 +95,12 @@ public:
 	void ApplyForce   ();
 	void WriteState   (size_t TimeStep); ///< Write the current state to a vtk output file
 
+    // Auxiliar methods
+    void SetTopSolid    () { for (size_t i=0; i<Top()   .Size(); ++i)    Top()[i]->SetSolid(); }
+    void SetBottomSolid () { for (size_t i=0; i<Bottom().Size(); ++i) Bottom()[i]->SetSolid(); }
+    void SetLeftSolid   () { for (size_t i=0; i<Left()  .Size(); ++i)   Left()[i]->SetSolid(); }
+    void SetRightSolid  () { for (size_t i=0; i<Right() .Size(); ++i)  Right()[i]->SetSolid(); }
+
 	// Output methods
 	void SetOutCells (Array<size_t> const & Cells, Str_t FileKey); ///< Set cells to output for each timestep
 	void OutCells    (bool Header=false) const;                    ///< Output cells selected for output for each timestep

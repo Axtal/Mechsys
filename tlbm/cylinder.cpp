@@ -25,70 +25,56 @@
 using std::cout;
 using std::endl;
 
-// Analysis constants
-double u_max  = 0.1;
-double Re     = 100;
-int    nx     = 400;
-int    ny     = 100;
-int    radius = ny/10 + 1;
-
-double CalcViscosity()
-{
-	double kin_visc = u_max*(2*radius)/Re; // nu
-	return 3.0*kin_visc + 0.5;
-}
-
-void CalcInitSpeed(int x, int y, double & vx, double & vy)
-{
-	double L = ny - 2;
-	double yp = y - 1.5;
-	vx = u_max*4/(L*L)*(L*yp - yp*yp);
-	vy = 0.0;
-}
+/* Flow past a cylinder with obstacle */
 
 int main(int argc, char **argv) try
 {
+    // constants
+    double u_max  = 0.1;                 // Poiseuille's maximum velocity
+    double Re     = 100;                 // Reynold's number
+    int    nx     = 400;                 // cell dimension
+    int    ny     = 100;                 // cell dimension
+    int    radius = ny/10 + 1;           // radius of inner circle (obstacle)
+	double h      = 1;                   // grid space
+	double dt     = 1;                   // timestep
+    double nu     = u_max*(2*radius)/Re; // viscocity
 
-	double h=1;
-	double dt=1;
-
-	// Allocate lattice
-	LBM::Lattice l("cylinder", false, u_max*(2*radius)/Re, nx, ny, 1, h, dt);             
+	// allocate lattice
+	LBM::Lattice l(/*filekey*/"cylinder", /*3d?*/false, nu, nx, ny, /*nz*/1, dt, h);             
 					
+	// set walls (top and bottom)
+    l.SetTopSolid    ();
+    l.SetBottomSolid ();
 
-	// Set tau
-
-	// Set walls (top and bottom)
-	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
-	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
-
-	// Set inner obstacle
+	// set inner obstacle
 	int obsX = ny/2;   // x position
 	int obsY = ny/2+3; // y position
-    LBM::Disk Ball(Vec3_t(obsX, obsY, 0.0), Vec3_t(0.0,0.0,0.0), radius, 100.0, 1000.0, dt);
-	Ball.DrawDisk(l,dt);
+    LBM::Disk Ball (Vec3_t(obsX, obsY, 0.0), Vec3_t(0.0,0.0,0.0), radius, 100.0, 1000.0, dt);
+	Ball.DrawDisk  (l, dt);
 
-	// Define boundary conditions
+	// define boundary conditions
 	for (size_t j=0; j<l.Ny(); j++)
 	{
-		double vx, vy;
-		CalcInitSpeed (0, j, vx, vy);
-		Vec3_t v;  v = vx, vy, 0.0;
-		l.SetVelocityBC (0, j, v);
-		l.SetDensityBC  (nx-1,j, 1.0);
+        // set parabolic profile
+        double L  = ny - 2;                       // channel width in cell units
+        double yp = j - 1.5;                      // ordinate of cell
+        double vx = u_max*4/(L*L)*(L*yp - yp*yp); // horizontal velocity
+        double vy = 0.0;                          // vertical velocity
+		Vec3_t v(vx, vy, 0.0);                    // velocity vector
+		l.SetVelocityBC (0, j, v);                // set velocity BC to the left-side
+		l.SetDensityBC  (nx-1, j, 1.0);           // set density BC to the right-side
 	}
 
-	// Define Initial conditions: velocity speed and density
+	// define initial conditions: velocity speed and density
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)
 	{
 		double rho0 = 1.0;
-		Vec3_t v0;  v0 = 0.08, 0.0, 0.0;
+		Vec3_t v0(0.08, 0.0, 0.0);
 		l.GetCell(i,j)->Initialize (rho0, v0, l.Cs());
 	}
 
-	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/15000.0,/*dtOut*/200.0);
-	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
+	// solve
+	l.Solve(/*tIni*/0.0, /*tFin*/5000.0,/*dtOut*/10.0);
 }
 MECHSYS_CATCH
