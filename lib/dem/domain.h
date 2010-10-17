@@ -821,7 +821,6 @@ inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, d
     }
     Array<Array <int> > F;
     Array<int> Faux;
-    size_t nf = 0;
     for(int i=0;i<VC.p;i++) 
     {
         for(int j=0;j<VC.nu[i];j++) 
@@ -830,11 +829,6 @@ inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, d
             if (k>=0) 
             {
                 Faux.Push(i);
-                //if (VC.neighbor.ne[i][j]>=0)
-                //{
-                    //ListBpairs[Particles.Size()-IIndex].Push(VC.neighbor.ne[i][j]);
-                //}
-                nf++;
                 VC.ed[i][j]=-1-k;
                 int l=VC.cycle_up(VC.ed[i][VC.nu[i]+j],k);
                 do 

@@ -484,6 +484,7 @@ inline void BInteracton::CalcForce(double dt)
 
         // Normal force
         double delta = (dot(pro2-pro1,n)-L0)/L0;
+        if (delta<0.0) delta = 0.0;
         Vec3_t Fn = -Bn*(delta)*n;
 
         // Tangential Force

@@ -241,75 +241,75 @@ void Setup (DEM::Domain & dom, void * UD)
 void Report (DEM::Domain & dom, void *UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
+    if(dat.RenderVideo)
+    {
     //Output force vectors for each interacton
-    String ff;
-    ff.Printf    ("%s_%08d_chains.res",dom.FileKey.CStr(), dom.idx_out);
-    std::ofstream FF(ff.CStr());
-    FF <<  Util::_10_6 << "Fx" << Util::_8s << "Fy" << Util::_8s << "Fz" <<  Util::_8s << "Ftx" << Util::_8s << "Fty" << Util::_8s << "Ftz" 
-       <<    Util::_8s << "Nc" << Util::_8s << "Nsc"<< Util::_8s << "P1" <<  Util::_8s << "P2" <<"\n";
+        String ff;
+        ff.Printf    ("%s_%08d_chains.res",dom.FileKey.CStr(), dom.idx_out);
+        std::ofstream FF(ff.CStr());
+        FF <<  Util::_10_6 << "Fx" << Util::_8s << "Fy" << Util::_8s << "Fz" <<  Util::_8s << "Ftx" << Util::_8s << "Fty" << Util::_8s << "Ftz" 
+           <<    Util::_8s << "Nc" << Util::_8s << "Nsc"<< Util::_8s << "P1" <<  Util::_8s << "P2" <<"\n";
 
-    for (size_t i=0; i<dom.CInteractons.Size(); i++)
-    {
-        if ((norm(dom.CInteractons[i]->Fnet)>0.0)&&(dom.CInteractons[i]->P1->IsFree()&&dom.CInteractons[i]->P2->IsFree()))
+        for (size_t i=0; i<dom.CInteractons.Size(); i++)
         {
-            FF << Util::_8s << dom.CInteractons[i]->Fnet(0)   << Util::_8s << dom.CInteractons[i]->Fnet(1)   << Util::_8s <<  dom.CInteractons[i]->Fnet(2) 
-               << Util::_8s << dom.CInteractons[i]->Ftnet(0)  << Util::_8s << dom.CInteractons[i]->Ftnet(1)  << Util::_8s <<  dom.CInteractons[i]->Ftnet(2) 
-               << Util::_8s << dom.CInteractons[i]->Nc        << Util::_8s << dom.CInteractons[i]->Nsc
-               << Util::_8s << dom.CInteractons[i]->P1->Index << Util::_8s << dom.CInteractons[i]->P2->Index << "\n";
-        }
-    }
-    FF.close();
-    //Output cohesion interactons information
-    size_t Nb  = dom.BInteractons.Size(); //Number of bonds
-    size_t Nbb = 0;                   //Number of broken bonds
-    if (Nb>0)
-    {
-        String fc;
-        fc.Printf    ("%s_%08d_bonds.res",dom.FileKey.CStr(), dom.idx_out);
-        std::ofstream FC(fc.CStr());
-        FC <<  Util::_10_6 << "Fx" << Util::_8s << "Fy" << Util::_8s << "Fz" <<  Util::_8s << "Area" << Util::_8s << "valid" << Util::_8s << "P1" <<  Util::_8s << "P2" <<"\n";
-
-        for (size_t i=0; i<dom.BInteractons.Size(); i++)
-        {
-            FC << Util::_8s << dom.BInteractons[i]->Fnet(0)   << Util::_8s << dom.BInteractons[i]->Fnet(1)   << Util::_8s <<  dom.BInteractons[i]->Fnet(2) 
-               << Util::_8s << dom.BInteractons[i]->Area      << Util::_8s << dom.BInteractons[i]->valid
-               << Util::_8s << dom.BInteractons[i]->P1->Index << Util::_8s << dom.BInteractons[i]->P2->Index << "\n";
-            if (!dom.BInteractons[i]->valid) Nbb++; //Add one broken bond if it is no longer valid
-        }
-        FC.close();
-
-        String fl;
-        fl.Printf    ("%s_%08d_clusters.res",dom.FileKey.CStr(), dom.idx_out);
-        std::ofstream FL(fl.CStr());
-        FL <<  Util::_10_6 << "Cluster" << Util::_8s << "Mass" << "\n";
-        FL <<  Util::_8s   << 0         << Util::_8s << dom.Ms << "\n";
-        for (size_t i=0;i<dom.Listofclusters.Size();i++)
-        {
-            double m = 0.0; //mass of the cluster
-            for (size_t j=0;j<dom.Listofclusters[i].Size();j++)
+            if ((norm(dom.CInteractons[i]->Fnet)>0.0)&&(dom.CInteractons[i]->P1->IsFree()&&dom.CInteractons[i]->P2->IsFree()))
             {
-                m+=dom.Particles[dom.Listofclusters[i][j]]->Props.m;
+                FF << Util::_8s << dom.CInteractons[i]->Fnet(0)   << Util::_8s << dom.CInteractons[i]->Fnet(1)   << Util::_8s <<  dom.CInteractons[i]->Fnet(2) 
+                   << Util::_8s << dom.CInteractons[i]->Ftnet(0)  << Util::_8s << dom.CInteractons[i]->Ftnet(1)  << Util::_8s <<  dom.CInteractons[i]->Ftnet(2) 
+                   << Util::_8s << dom.CInteractons[i]->Nc        << Util::_8s << dom.CInteractons[i]->Nsc
+                   << Util::_8s << dom.CInteractons[i]->P1->Index << Util::_8s << dom.CInteractons[i]->P2->Index << "\n";
             }
-            FL << Util::_8s << i+1 << Util::_8s << m << "\n"; 
         }
-        FL.close();
-    }
-    //Ouput particle status at each time step
-    String fv;
-    fv.Printf    ("%s_%08d_particles.res",dom.FileKey.CStr(), dom.idx_out);
-    std::ofstream FV(fv.CStr());
-    FV <<  Util::_10_6 << "PID" << Util::_8s << "vx" << Util::_8s << "vy" << Util::_8s << "vz" << Util::_8s << "x" << Util::_8s << "y" << Util::_8s << "z" <<"\n";
-
-    for (size_t i=0; i<dom.Particles.Size(); i++)
-    {
-        if (dom.Particles[i]->IsFree())
+        FF.close();
+        //Output cohesion interactons information
+        if (dom.BInteractons.Size()>0)
         {
-            FV << Util::_8s << dom.Particles[i]->Index << Util::_8s << dom.Particles[i]->v(0)   << Util::_8s << dom.Particles[i]->v(1) << Util::_8s << dom.Particles[i]->v(2)
-               << Util::_8s << dom.Particles[i]->x(0)  << Util::_8s << dom.Particles[i]->x(1)   << Util::_8s << dom.Particles[i]->x(2) << "\n";
+            String fc;
+            fc.Printf    ("%s_%08d_bonds.res",dom.FileKey.CStr(), dom.idx_out);
+            std::ofstream FC(fc.CStr());
+            FC <<  Util::_10_6 << "Fx" << Util::_8s << "Fy" << Util::_8s << "Fz" <<  Util::_8s << "Area" << Util::_8s << "valid" << Util::_8s << "P1" <<  Util::_8s << "P2" <<"\n";
+
+            for (size_t i=0; i<dom.BInteractons.Size(); i++)
+            {
+                FC << Util::_8s << dom.BInteractons[i]->Fnet(0)   << Util::_8s << dom.BInteractons[i]->Fnet(1)   << Util::_8s <<  dom.BInteractons[i]->Fnet(2) 
+                   << Util::_8s << dom.BInteractons[i]->Area      << Util::_8s << dom.BInteractons[i]->valid
+                   << Util::_8s << dom.BInteractons[i]->P1->Index << Util::_8s << dom.BInteractons[i]->P2->Index << "\n";
+            }
+            FC.close();
+
+            String fl;
+            fl.Printf    ("%s_%08d_clusters.res",dom.FileKey.CStr(), dom.idx_out);
+            std::ofstream FL(fl.CStr());
+            FL <<  Util::_10_6 << "Cluster" << Util::_8s << "Mass" << "\n";
+            FL <<  Util::_8s   << 0         << Util::_8s << dom.Ms << "\n";
+            for (size_t i=0;i<dom.Listofclusters.Size();i++)
+            {
+                double m = 0.0; //mass of the cluster
+                for (size_t j=0;j<dom.Listofclusters[i].Size();j++)
+                {
+                    m+=dom.Particles[dom.Listofclusters[i][j]]->Props.m;
+                }
+                FL << Util::_8s << i+1 << Util::_8s << m << "\n"; 
+            }
+            FL.close();
         }
+        //Ouput particle status at each time step
+        String fv;
+        fv.Printf    ("%s_%08d_particles.res",dom.FileKey.CStr(), dom.idx_out);
+        std::ofstream FV(fv.CStr());
+        FV <<  Util::_10_6 << "PID" << Util::_8s << "vx" << Util::_8s << "vy" << Util::_8s << "vz" << Util::_8s << "x" << Util::_8s << "y" << Util::_8s << "z" <<"\n";
+
+        for (size_t i=0; i<dom.Particles.Size(); i++)
+        {
+            if (dom.Particles[i]->IsFree())
+            {
+                FV << Util::_8s << dom.Particles[i]->Index << Util::_8s << dom.Particles[i]->v(0)   << Util::_8s << dom.Particles[i]->v(1) << Util::_8s << dom.Particles[i]->v(2)
+                   << Util::_8s << dom.Particles[i]->x(0)  << Util::_8s << dom.Particles[i]->x(1)   << Util::_8s << dom.Particles[i]->x(2) << "\n";
+            }
+        }
+        FV.close();
+        // output triaxial test data
     }
-    FV.close();
-    // output triaxial test data
     // header
     if (dom.idx_out==0)
     {
@@ -350,6 +350,16 @@ void Report (DEM::Domain & dom, void *UD)
             {
                 Nc += dom.CInteractons[i]->Nc;
                 Nsc += dom.CInteractons[i]->Nsc;
+            }
+        }
+
+        size_t Nb  = dom.BInteractons.Size(); //Number of bonds
+        size_t Nbb = 0;                   //Number of broken bonds
+        for (size_t i=0; i<dom.BInteractons.Size(); i++)
+        {
+            if(!dom.BInteractons[i]->valid)
+            {
+                Nbb ++;
             }
         }
 
@@ -538,6 +548,7 @@ int main(int argc, char **argv) try
     dom.Alpha=verlet;
     dom.CamPos = Vec3_t(0.1*Lx, 0.7*(Lx+Ly+Lz), 0.15*Lz); // position of camera
     dat.dt = dt;
+    dat.RenderVideo = RenderVideo;
 
     // particle
     if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction);
