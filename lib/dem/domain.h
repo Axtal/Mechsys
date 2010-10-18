@@ -931,9 +931,9 @@ inline void Domain::SetProps (Dict & D)
                 {
                     Particles[i]->Props.Mu = p("Mu");
                 }
-                if (p.HasKey("eps"))
+                if (p.HasKey("Eps"))
                 {
-                    Particles[i]->Props.eps = p("eps");
+                    Particles[i]->Props.eps = p("Eps");
                 }
                 if (p.HasKey("Beta"))
                 {
