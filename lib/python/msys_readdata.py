@@ -17,6 +17,7 @@
 ########################################################################
 
 from os.path import basename
+from numpy import array
 
 # Read file with table
 # ====================
@@ -32,6 +33,8 @@ def read_table(filename):
         for i, key in enumerate(header):
             dat[key].append(float(res[i]))
     file.close()
+    for k, v in dat.iteritems():
+        dat[k] = array(v)
     return dat
 
 # Read many files with tables
