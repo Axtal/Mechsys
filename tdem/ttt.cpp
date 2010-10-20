@@ -561,7 +561,7 @@ int main(int argc, char **argv) try
     else if (ptype=="rice") dom.GenRice(-1,Lx,nx,R,rho,seed,fraction);
     else throw new Fatal("Packing for particle type not implemented yet");
     dat.InitialIndex = dom.Particles.Size();
-    dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3,true);
+    dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3,Cohesion);
 
     // properties of particles prior the triaxial test
     Dict B;
