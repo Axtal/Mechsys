@@ -165,7 +165,7 @@ void Setup (DEM::Domain & dom, void * UD)
         if (!dat.pSig(0))
         {
             double area = (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1))*(dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2));
-            double sig = -0.5*(fabs(dom.Particles[dat.InitialIndex  ]->F(0))+fabs(dom.Particles[dat.InitialIndex+1]->F(0)))/area;
+            double sig = -0.5*(dom.Particles[dat.InitialIndex  ]->F(0)-dom.Particles[dat.InitialIndex+1]->F(0))/area;
             double dsig = sig - dat.Sig0(0);
             double r = dsig/((2.0/3.0)*sin(dat.Alp)*sin(dat.Thf-2.0*Util::PI/3.0)-cos(dat.Alp));
             dat.Sig(0) = dat.Sig0(0)-r*cos(dat.Alp) + (2.0/3.0)*r*sin(dat.Alp)*sin(dat.Thf-2.0*Util::PI/3.0);
@@ -175,7 +175,7 @@ void Setup (DEM::Domain & dom, void * UD)
         if (!dat.pSig(1))
         {
             double area = (dom.Particles[dat.InitialIndex]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0))*(dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2));
-            double sig = -0.5*(fabs(dom.Particles[dat.InitialIndex+2]->F(1))+fabs(dom.Particles[dat.InitialIndex+3]->F(1)))/area;
+            double sig = -0.5*(dom.Particles[dat.InitialIndex+2]->F(1)-dom.Particles[dat.InitialIndex+3]->F(1))/area;
             double dsig = sig - dat.Sig0(1);
             double r = dsig/((2.0/3.0)*sin(dat.Alp)*sin(dat.Thf)-cos(dat.Alp));
             dat.Sig(0) = dat.Sig0(0)-r*cos(dat.Alp) + (2.0/3.0)*r*sin(dat.Alp)*sin(dat.Thf-2.0*Util::PI/3.0);
@@ -185,14 +185,13 @@ void Setup (DEM::Domain & dom, void * UD)
         if (!dat.pSig(2))
         {
             double area = (dom.Particles[dat.InitialIndex]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0))*(dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1));
-            double sig = -0.5*(fabs(dom.Particles[dat.InitialIndex+4]->F(2))+fabs(dom.Particles[dat.InitialIndex+5]->F(2)))/area;
+            double sig = -0.5*(dom.Particles[dat.InitialIndex+4]->F(2)-dom.Particles[dat.InitialIndex+5]->F(2))/area;
             double dsig = sig - dat.Sig0(2);
             double r = dsig/((2.0/3.0)*sin(dat.Alp)*sin(dat.Thf+2.0*Util::PI/3.0)-cos(dat.Alp));
             dat.Sig(0) = dat.Sig0(0)-r*cos(dat.Alp) + (2.0/3.0)*r*sin(dat.Alp)*sin(dat.Thf-2.0*Util::PI/3.0);
             dat.Sig(1) = dat.Sig0(1)-r*cos(dat.Alp) + (2.0/3.0)*r*sin(dat.Alp)*sin(dat.Thf);
             dat.Sig(2) = dat.Sig0(2)-r*cos(dat.Alp) + (2.0/3.0)*r*sin(dat.Alp)*sin(dat.Thf+2.0*Util::PI/3.0);
         }
-
     }
     Vec3_t force;
     bool   update_sig = false;
@@ -207,7 +206,7 @@ void Setup (DEM::Domain & dom, void * UD)
     else if (!dat.StrainCtrl)
     {
         double area = (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1))*(dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2));
-        dat.Sig(0) = -0.5*(fabs(dom.Particles[dat.InitialIndex  ]->F(0))+fabs(dom.Particles[dat.InitialIndex+1]->F(0)))/area;
+        dat.Sig(0) = -0.5*(dom.Particles[dat.InitialIndex  ]->F(0)-dom.Particles[dat.InitialIndex+1]->F(0))/area;
     }
     if (dat.pSig(1))
     {
@@ -220,7 +219,7 @@ void Setup (DEM::Domain & dom, void * UD)
     else if (!dat.StrainCtrl)
     {
         double area = (dom.Particles[dat.InitialIndex]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0))*(dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2));
-        dat.Sig(1) = -0.5*(fabs(dom.Particles[dat.InitialIndex+2]->F(1))+fabs(dom.Particles[dat.InitialIndex+3]->F(1)))/area;
+        dat.Sig(1) = -0.5*(dom.Particles[dat.InitialIndex+2]->F(1)-dom.Particles[dat.InitialIndex+3]->F(1))/area;
     }
     if (dat.pSig(2))
     {
@@ -233,7 +232,7 @@ void Setup (DEM::Domain & dom, void * UD)
     else if (!dat.StrainCtrl)
     {
         double area = (dom.Particles[dat.InitialIndex]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0))*(dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1));
-        dat.Sig(2) = -0.5*(fabs(dom.Particles[dat.InitialIndex+4]->F(2))+fabs(dom.Particles[dat.InitialIndex+5]->F(2)))/area;
+        dat.Sig(2) = -0.5*(dom.Particles[dat.InitialIndex+4]->F(2)-dom.Particles[dat.InitialIndex+5]->F(2))/area;
     }
     if (update_sig) dat.Sig += dat.dt*dat.DSig/(dat.tspan);
 }
@@ -562,7 +561,7 @@ int main(int argc, char **argv) try
     else if (ptype=="rice") dom.GenRice(-1,Lx,nx,R,rho,seed,fraction);
     else throw new Fatal("Packing for particle type not implemented yet");
     dat.InitialIndex = dom.Particles.Size();
-    dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3);
+    dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3,true);
 
     // properties of particles prior the triaxial test
     Dict B;

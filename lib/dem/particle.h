@@ -512,7 +512,10 @@ inline void Particle::Translate (double dt)
     if (vxf) F(0) = 0.0;
     if (vyf) F(1) = 0.0;
     if (vzf) F(2) = 0.0;
-    if(isnan(norm(F))) throw new Fatal("Particle::Translate: The force is not a number %d(%d), try reducing the time step",Index,Tag);
+    if(isnan(norm(F))) 
+    {
+        throw new Fatal("Particle::Translate: The force is not a number %d(%d), try reducing the time step",Index,Tag);
+    }
     Vec3_t temp,xa;
     xa    = 2*x - xb + F*(dt*dt/Props.m);
     temp  = xa - x;

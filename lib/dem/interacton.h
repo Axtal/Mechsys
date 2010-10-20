@@ -405,10 +405,18 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     P1              = Pt1;
     P2              = Pt2;
     F1              = Fi1;
-    F2              = Fi2;
+    if (Fi2>=P2->Faces.Size())
+    {
+        F2 = P2->Faces.Size()-1;
+        Area            = P1->Faces[F1]->Area();
+    }
+    else
+    {
+        F2 = Fi2;
+        Area            = 0.5*(P1->Faces[F1]->Area()+P2->Faces[F2]->Area());
+    }
     I1              = P1->Index;
     I2              = P2->Index;
-    Area            = 0.5*(P1->Faces[F1]->Area()+P2->Faces[F2]->Area());
     Bn              = 2*ReducedValue(P1->Props.Bn,P2->Props.Bn)*Area;
     Bt              = 2*ReducedValue(P1->Props.Bt,P2->Props.Bt)*Area;
     Bm              = 2*ReducedValue(P1->Props.Bm,P2->Props.Bm)*Area;
@@ -425,6 +433,7 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     P1->Faces[F1]->Centroid(c1);
     P2->Faces[F2]->Centroid(c2);
     L0         = dot(n1,c2-c1);
+    if (Fi2>=P2->Faces.Size()) c2 = c1;
     Vec3_t V   = 0.5*(c1+c2);
 
     Face * F   = P1->Faces[F1];
@@ -471,9 +480,6 @@ inline void BInteracton::CalcForce(double dt)
         P2->Faces[F2]->Normal(n2);
         n = 0.5*(n1-n2);
         n/=norm(n);
-        Vec3_t c1,c2;
-        c1 = P1->x;
-        c2 = P2->x;
 
         Face * F    = P1->Faces[F1];
         Vec3_t pro1 = *F->Edges[0]->X0 + s1*F->Edges[0]->dL + t1*F->Edges[1]->dL;
