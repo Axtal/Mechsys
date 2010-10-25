@@ -1,7 +1,7 @@
 from numpy import pi, sin, cos, tan, arcsin, arccos, arctan, log, log10, exp
-from numpy import array, linspace, insert, repeat
+from numpy import array, linspace, insert, repeat, zeros
 from pylab import rcParams, gca, gcf, clf, savefig
-from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline
+from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline, title
 from matplotlib.transforms import offset_copy
 from matplotlib.patches    import FancyArrowPatch, PathPatch
 from matplotlib.patches    import Arc  as MPLArc
@@ -45,8 +45,8 @@ def Arc (xc,yc,R, alp_min=0.0, alp_max=pi, ec='red', fc='None', lw=2, ls='solid'
         ph = MPLPath (vert, cmd)
         gca().add_patch(PathPatch(ph, fc=fc, ec=ec, linewidth=lw, linestyle=ls, label=label, zorder=zorder))
 
-def Arrow (xi,yi, xf,yf, scale=20, fc='#a2e3a2', zorder=0):
-    gca().add_patch(FancyArrowPatch((xi,yi), (xf,yf), arrowstyle='simple', mutation_scale=scale, fc=fc, zorder=zorder))
+def Arrow (xi,yi, xf,yf, scale=20, fc='#a2e3a2', ec='black', zorder=0):
+    gca().add_patch(FancyArrowPatch((xi,yi), (xf,yf), arrowstyle='simple', mutation_scale=scale, ec=ec, fc=fc, zorder=zorder))
 
 if __name__=='__main__':
     SetForEps ()
