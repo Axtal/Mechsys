@@ -382,9 +382,9 @@ int main(int argc, char **argv) try
                 char str0[32];
                 char str1[32];
                 char str2[32];
-                sprintf(str0,"dP%d%ddt_num",   k,j);
-                sprintf(str1,"dP%d%ddt",       k,j);
-                sprintf(str2,"error(dP%d%ddt)",k,j);
+                sprintf(str0,"dP%zd%zddt_num",   k,j);
+                sprintf(str1,"dP%zd%zddt",       k,j);
+                sprintf(str2,"error(dP%zd%zddt)",k,j);
                 printf("%12s %12s %16s  ",str0,str1,str2);
             }
             printf("\n");
@@ -436,7 +436,7 @@ int main(int argc, char **argv) try
     printf("  max_err_diS5dt = %s%16.8e%s\n",(max_err_diS5dt>tol_diS5dt?TERM_RED:TERM_GREEN),max_err_diS5dt,TERM_RST);
     for (size_t k=0; k<3; ++k)
     for (size_t i=0; i<6; ++i)
-        printf("  max_err_dP%d%ddt = %s%16.8e%s\n",k,i,(max_err_dPdt[k][i]>tol_dPdt[k][i]?TERM_RED:TERM_GREEN),max_err_dPdt[k][i],TERM_RST);
+        printf("  max_err_dP%zd%zddt = %s%16.8e%s\n",k,i,(max_err_dPdt[k][i]>tol_dPdt[k][i]?TERM_RED:TERM_GREEN),max_err_dPdt[k][i],TERM_RST);
     printf("\n");
 
     // end

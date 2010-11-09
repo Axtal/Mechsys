@@ -209,6 +209,19 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         for (size_t k=0; k<Msh.Verts[i]->Shares.Size(); ++k)
         {
             std::pair<String,String> const & varkeys = CellTag2VarKeys (Prps, NDim, Msh.Verts[i]->Shares[k].C->Tag);
+
+
+            // TODO: design a better way to handle this (elements with variable DOFs per node)
+            String prob_name;
+            PROB.Val2Key (Prps(Msh.Verts[i]->Shares[k].C->Tag)("prob"), prob_name);
+            if (prob_name=="HydroMech")
+            {
+                if (Msh.Verts[i]->Shares[k].N<8) Nods.Last()->AddDOF (varkeys.first.CStr(), varkeys.second.CStr());
+                else                             Nods.Last()->AddDOF ("ux uy uz", "fx fy fz");
+            }
+            else
+
+
             Nods.Last()->AddDOF (varkeys.first.CStr(), varkeys.second.CStr());
         }
 

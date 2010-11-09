@@ -45,7 +45,7 @@ public:
 
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun); ///< If setting body forces, IdxEdgeOrFace is ignored
-    void GetLoc      (Array<size_t> & Loc)                               const; ///< Get location vector for mounting K/M matrices
+    virtual void GetLoc      (Array<size_t> & Loc)                               const; ///< Get location vector for mounting K/M matrices
     void CalcK       (Mat_t & K)                                         const; ///< Stiffness matrix
     void CalcM       (Mat_t & M)                                         const; ///< Mass matrix
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)              const; ///< Update state at IPs

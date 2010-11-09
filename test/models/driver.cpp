@@ -344,17 +344,26 @@ int main(int argc, char **argv) try
         // domain and solver
         FEM::Domain dom(mesh, prps, prms, inis, "driver", &out_nods);
         FEM::Solver sol(dom);
-        if (inp.Dyn) // dynamic analysis
+        dom.WriteVTU ("driver_fem_initial");
+
+        cout << dom << endl;
+
+        // hydro-mechanical analysis
+        if (inp.HM) inp.Dyn = true;
+
+        // dynamic analysis
+        if (inp.Dyn)
         {
             dom.MFuncs[-11] = &Multiplier;
-            dom.MFuncs[-22] = &Multiplier;
-            dom.MFuncs[-33] = &Multiplier;
+            dom.MFuncs[-21] = &Multiplier;
+            dom.MFuncs[-31] = &Multiplier;
             if (inp.Ray)
             {
                 sol.DampAm  = inp.Am;
                 sol.DampAk  = inp.Ak;
                 sol.DampTy  = FEM::Solver::Rayleigh_t;
             }
+            if (inp.HM) sol.DampTy = FEM::Solver::HMCoup_t;
         }
 
         // solve
@@ -397,7 +406,7 @@ int main(int argc, char **argv) try
             else
             {
                 sol.Solve    (ninc);
-                dom.WriteVTU ("driver");
+                dom.WriteVTU ("driver_fem_final");
             }
         }
     }
