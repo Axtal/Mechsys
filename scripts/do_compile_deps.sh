@@ -64,6 +64,7 @@ MUMPS=MUMPS_4.9.2
 PROC_VER=3.2.8
 PROC=procps-$PROC_VER
 SPHASH=sparsehash-1.8.1
+IGRAPH=igraph-0.5.4
 
 compile_scalapack() {
     LDIR=$MECHSYS_ROOT/pkg/$SCALAPACK_DIR/lib
@@ -144,9 +145,16 @@ download_and_compile() {
             PKG_DIR=$PKG
             LOCATION=http://google-sparsehash.googlecode.com/files/$PKG.tar.gz
             DO_PATCH=0
-            DO_MAKE=0
             DO_CONF=1
             DO_MAKE=1
+            ;;
+        igraph)
+            PKG=$IGRAPH
+            PKG_DIR=$PKG
+            LOCATION=http://sourceforge.net/projects/igraph/files/C%20library/0.5.4/igraph-0.5.4.tar.gz
+            DO_PATCH=0
+            DO_MAKE=1
+            DO_CONF=1
             ;;
         *)
             echo
@@ -192,7 +200,11 @@ download_and_compile() {
             else
                 echo "    Downloading package"
                 if [ -z "$LOCATION" ]; then
-                    echo "    Please, download <$PKG.tar.gz> first"
+                    echo
+                    echo
+                    echo "    [1;31mPlease, download <$PKG.tar.gz> first[0m"
+                    echo
+                    echo
                     return
                 else
                     wget $LOCATION
@@ -241,6 +253,7 @@ download_and_compile scalapack
 download_and_compile mumps
 download_and_compile proc
 download_and_compile sphash
+download_and_compile igraph
 
 echo
 echo "Finished ###################################################################"
