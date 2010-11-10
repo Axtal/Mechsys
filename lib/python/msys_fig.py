@@ -2,10 +2,12 @@ from numpy import pi, sin, cos, tan, arcsin, arccos, arctan, log, log10, exp
 from numpy import array, linspace, insert, repeat, zeros
 from pylab import rcParams, gca, gcf, clf, savefig
 from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline, title
-from matplotlib.transforms import offset_copy
-from matplotlib.patches    import FancyArrowPatch, PathPatch
-from matplotlib.patches    import Arc  as MPLArc
-from matplotlib.path       import Path as MPLPath
+from pylab import contour, contourf, colorbar, clabel
+from matplotlib.transforms   import offset_copy
+from matplotlib.patches      import FancyArrowPatch, PathPatch
+from matplotlib.patches      import Arc  as MPLArc
+from matplotlib.path         import Path as MPLPath
+from matplotlib.font_manager import FontProperties
 
 def SetForEps (proport=0.75, fig_width_pt=455.24):
     # fig_width_pt = 455.24411                  # Get this from LaTeX using \showthe\columnwidth
@@ -47,6 +49,13 @@ def Arc (xc,yc,R, alp_min=0.0, alp_max=pi, ec='red', fc='None', lw=2, ls='solid'
 
 def Arrow (xi,yi, xf,yf, scale=20, fc='#a2e3a2', ec='black', zorder=0):
     gca().add_patch(FancyArrowPatch((xi,yi), (xf,yf), arrowstyle='simple', mutation_scale=scale, ec=ec, fc=fc, zorder=zorder))
+
+def Contour (X,Y,Z, label, nlevels=16):
+    c1 = contourf (X,Y,Z)
+    c2 = contour  (X,Y,Z, nlevels=nlevels, colors=('k'))
+    cb = colorbar (c1)
+    cb.ax.set_ylabel (label)
+    clabel (c2, inline=0)
 
 if __name__=='__main__':
     SetForEps ()

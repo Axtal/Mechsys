@@ -887,7 +887,7 @@ inline void Domain::WriteVTU (char const * FNKey, bool DoExtrapolation) const
 
     // nodes: coordinates
     oss << "      <Points>\n";
-    oss << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+    oss << "        <DataArray type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">\n";
     size_t k = 0; oss << "        ";
     std::map<int,int> VertID2LocID;
     for (size_t i=0; i<nn; ++i)
@@ -945,7 +945,7 @@ inline void Domain::WriteVTU (char const * FNKey, bool DoExtrapolation) const
     {
         if (!(AllUKeys[i]=="ux" || AllUKeys[i]=="uy" || AllUKeys[i]=="uz"))
         {
-            oss << "        <DataArray type=\"Float32\" Name=\"" << AllUKeys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+            oss << "        <DataArray type=\"Float64\" Name=\"" << AllUKeys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
             k = 0; oss << "        ";
             for (size_t j=0; j<nn; ++j)
             {
@@ -958,7 +958,7 @@ inline void Domain::WriteVTU (char const * FNKey, bool DoExtrapolation) const
     }
 
     // data -- nodes -- IDs
-    oss << "        <DataArray type=\"Float32\" Name=\"" << "tag,id" << "\" NumberOfComponents=\"2\" format=\"ascii\">\n";
+    oss << "        <DataArray type=\"Float64\" Name=\"" << "tag,id" << "\" NumberOfComponents=\"2\" format=\"ascii\">\n";
     k = 0; oss << "        ";
     for (size_t j=0; j<nn; ++j)
     {
@@ -971,7 +971,7 @@ inline void Domain::WriteVTU (char const * FNKey, bool DoExtrapolation) const
     // data -- nodes -- displacements
     if (HasDisps)
     {
-        oss << "        <DataArray type=\"Float32\" Name=\"" << "u" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+        oss << "        <DataArray type=\"Float64\" Name=\"" << "u" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
         k = 0; oss << "        ";
         for (size_t i=0; i<nn; ++i)
         {
@@ -989,7 +989,7 @@ inline void Domain::WriteVTU (char const * FNKey, bool DoExtrapolation) const
     {
         if (!(AllEKeys[i]=="vx" || AllEKeys[i]=="vy" || AllEKeys[i]=="vz"))
         {
-            oss << "        <DataArray type=\"Float32\" Name=\"" << AllEKeys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+            oss << "        <DataArray type=\"Float64\" Name=\"" << AllEKeys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
             k = 0; oss << "        ";
             for (size_t j=0; j<nn; ++j)
             {
@@ -1012,7 +1012,7 @@ inline void Domain::WriteVTU (char const * FNKey, bool DoExtrapolation) const
             if (AllEKeys[i]=="vy") idx_vy = i;
             if (AllEKeys[i]=="vz") idx_vz = i;
         }
-        oss << "        <DataArray type=\"Float32\" Name=\"" << "v" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+        oss << "        <DataArray type=\"Float64\" Name=\"" << "v" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
         k = 0; oss << "        ";
         for (size_t j=0; j<nn; ++j)
         {
@@ -1033,7 +1033,7 @@ inline void Domain::WriteVTU (char const * FNKey, bool DoExtrapolation) const
 
     // data -- elements
     oss << "      <CellData Scalars=\"cell_scalars\">\n";
-    oss << "        <DataArray type=\"Float32\" Name=\"" << "Tag,ID" << "\" NumberOfComponents=\"2\" format=\"ascii\">\n";
+    oss << "        <DataArray type=\"Float64\" Name=\"" << "Tag,ID" << "\" NumberOfComponents=\"2\" format=\"ascii\">\n";
     k = 0; oss << "        ";
     for (size_t j=0; j<ne; ++j)
     {

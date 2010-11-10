@@ -56,6 +56,7 @@ BOOST_PYTHON_MODULE (mechsys)
 
 // String
 BPy::class_<String>("String")
+    .def("PyStr", &String::PyStr)
     .def(BPy::self_ns::str(BPy::self))
     ;
 
@@ -93,10 +94,17 @@ BPy::class_<InpFile>("InpFile")
     .def(BPy::self_ns::str(BPy::self))
     .def_readwrite("MatID",  &InpFile::MatID)
     .def_readwrite("pCam0",  &InpFile::pCam0)
+    .def_readwrite("pw0",    &InpFile::pw0)
     .def_readwrite("NInc",   &InpFile::NInc)
     .def_readwrite("CDrift", &InpFile::CDrift)
     .def_readwrite("STOL",   &InpFile::STOL)
     .def_readwrite("FEM",    &InpFile::FEM)
+    .def_readwrite("Dyn",    &InpFile::Dyn)
+    .def_readwrite("HM",     &InpFile::HM)
+    .def_readwrite("RefDat", &InpFile::RefDat)
+    .def_readwrite("RefSim", &InpFile::RefSim)
+    .def_readwrite("RefAna", &InpFile::RefAna)
+    .def_readwrite("NDiv",   &InpFile::NDiv)
     ;
 
 BPy::def("ReadMaterial", ReadMaterial);

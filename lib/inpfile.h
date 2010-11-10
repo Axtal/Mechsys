@@ -53,6 +53,7 @@ public:
     // Data
     int    MatID;       // material ID
     double pCam0;       // pCam
+    double pw0;         // initial pore-water pressure
     size_t NInc;        // general number of increments (for all load-unload paths)
     bool   CDrift;      // correct YS drift
     double STOL;        // local error tolerance
@@ -65,6 +66,10 @@ public:
     double Ak;          // Damping Ak
     bool   Ray;         // Rayleigh damping ?
     bool   HM;          // HydroMech ?
+    String RefDat;      // reference data file
+    String RefSim;      // reference simulation file
+    String RefAna;      // reference analytical solution file
+    int    NDiv;        // mesh number of divisions
 
     // path increments
     Array<PathIncs> Path;
@@ -77,6 +82,7 @@ public:
 inline InpFile::InpFile ()
     : MatID   (0),
       pCam0   (100.0),
+      pw0     (0.0),
       NInc    (10),
       CDrift  (true),
       STOL    (1.0e-5),
@@ -90,7 +96,8 @@ inline InpFile::InpFile ()
       Am      (0.02),
       Ak      (0.02),
       Ray     (false),
-      HM      (false)
+      HM      (false),
+      NDiv    (1)
 {
 }
 
@@ -106,16 +113,17 @@ inline void InpFile::Read (char const * FileName)
     size_t idxpath      = 0;
     while (!inp_file.eof())
     {
-        String line,key,equal;
+        String line,key,equal,str_val;
         double val;
         std::getline (inp_file,line);
         std::istringstream iss(line);
-        if (iss >> key >> equal >> val)
+        if (iss >> key >> equal >> str_val)
         {
+            val = atof(str_val.CStr());
             if (key[0]=='#') { line_num++; continue; }
             if (reading_path)
             {
-                if      (key=="ndat") ndat = (int)val;
+                if      (key=="ndat") ndat = atoi(str_val.CStr());
                 else if (ndat<0) throw new Fatal("InpFile::Read: Error in file <%s> @ line # %d: key 'ndat' must come before data. Key==%s is in the wrong position",FileName,line_num,key.CStr());
                 else if (key=="kcam")  { Path[idxpath].k    = Util::SQ2*val/3.; Path[idxpath].kPath=true; Path[idxpath].zPath=false; idxdat++; }
                 else if (key=="dpcam") { Path[idxpath].dp   = val*Util::SQ3;    Path[idxpath].zPath=true; Path[idxpath].kPath=false; idxdat++; }
@@ -132,7 +140,7 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="dsxy")  { Path[idxpath].dsxy = val;       idxdat++; }
                 else if (key=="dsyz")  { Path[idxpath].dsyz = val;       idxdat++; }
                 else if (key=="dszx")  { Path[idxpath].dszx = val;       idxdat++; }
-                else if (key=="ninc")  { Path[idxpath].ninc = (int)val;  idxdat++; }
+                else if (key=="ninc")  { Path[idxpath].ninc = atoi(str_val.CStr());  idxdat++; }
                 else throw new Fatal("InpFile::Read: Error in file<%s> @ line # %d: reading data of Path # %d. Key==%s is invalid",FileName,line_num,idxpath,key.CStr());
                 if (idxdat==ndat)
                 {
@@ -144,22 +152,27 @@ inline void InpFile::Read (char const * FileName)
             }
             else
             {
-                if      (key=="matid")  MatID  = (int)val;
+                if      (key=="matid")  MatID  = atoi(str_val.CStr());
                 else if (key=="pcam0")  pCam0  = val;
-                else if (key=="ninc")   NInc   = (int)val;
-                else if (key=="cdrift") CDrift = (bool)val;
+                else if (key=="pw0")    pw0    = val;
+                else if (key=="ninc")   NInc   = atoi(str_val.CStr());
+                else if (key=="cdrift") CDrift = static_cast<bool>(atoi(str_val.CStr()));
                 else if (key=="stol")   STOL   = val;
                 else if (key=="fem")    FEM    = val;
-                else if (key=="ssout")  SSOut  = (bool)val;
-                else if (key=="dyn")    Dyn    = (bool)val;
+                else if (key=="ssout")  SSOut  = static_cast<bool>(atoi(str_val.CStr()));
+                else if (key=="dyn")    Dyn    = static_cast<bool>(atoi(str_val.CStr()));
                 else if (key=="tf")     tf     = val;
                 else if (key=="dt")     dt     = val;
                 else if (key=="dtout")  dtOut  = val;
                 else if (key=="tsw")    tSW    = val;
                 else if (key=="am")     Am     = val;
                 else if (key=="ak")     Ak     = val;
-                else if (key=="ray")    Ray    = (bool)val;
-                else if (key=="hm")     HM     = (bool)val;
+                else if (key=="ray")    Ray    = static_cast<bool>(atoi(str_val.CStr()));
+                else if (key=="hm")     HM     = static_cast<bool>(atoi(str_val.CStr()));
+                else if (key=="refdat") RefDat = str_val;
+                else if (key=="refsim") RefSim = str_val;
+                else if (key=="refana") RefAna = str_val;
+                else if (key=="ndiv")   NDiv   = atoi(str_val.CStr());
                 else if (key=="npath")
                 {
                     Path.Resize ((size_t)val);
@@ -197,6 +210,7 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     os << "Input data:\n";
     os << "  matid  = " <<  IF.MatID   << "\n";
     os << "  pcam0  = " <<  IF.pCam0   << "\n";
+    os << "  pw0    = " <<  IF.pw0     << "\n";
     os << "  ninc   = " <<  IF.NInc    << "\n";
     os << "  cdrift = " <<  IF.CDrift  << "\n";
     os << "  stol   = " <<  IF.STOL    << "\n";
@@ -211,6 +225,10 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     os << "  ak     = " <<  IF.Ak      << "\n";
     os << "  ray    = " <<  IF.Ray     << "\n";
     os << "  hm     = " <<  IF.HM      << "\n";
+    os << "  refdat = " <<  IF.RefDat  << "\n";
+    os << "  refsim = " <<  IF.RefSim  << "\n";
+    os << "  refana = " <<  IF.RefAna  << "\n";
+    os << "  ndiv   = " <<  IF.NDiv    << "\n";
     return os;
 }
 

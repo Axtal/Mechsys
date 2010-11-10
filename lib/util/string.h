@@ -91,6 +91,10 @@ public:
     char const * CStr    ()                              const { return this->c_str(); }                   ///< Get C-string
     void         TextFmt (char const * NF);                                                                ///< Convert NF (ex: "%10g") to text Format (ex: "%10s")
 
+#ifdef USE_BOOST_PYTHON
+    BPy::str PyStr() const { return BPy::str(CStr()); }
+#endif
+
 private:
     int _set_msg (char const * Fmt, va_list ArgList);
 };

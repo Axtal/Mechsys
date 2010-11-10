@@ -44,13 +44,13 @@ public:
                  Array<Node*> const & Nodes); ///< Connectivity
 
     // Methods
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun); ///< If setting body forces, IdxEdgeOrFace is ignored
+    virtual void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun); ///< If setting body forces, IdxEdgeOrFace is ignored
     virtual void GetLoc      (Array<size_t> & Loc)                               const; ///< Get location vector for mounting K/M matrices
-    void CalcK       (Mat_t & K)                                         const; ///< Stiffness matrix
-    void CalcM       (Mat_t & M)                                         const; ///< Mass matrix
-    void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)              const; ///< Update state at IPs
-    void StateKeys   (Array<String> & Keys)                              const; ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
-    void StateAtIP   (SDPair & KeysVals, int IdxIP)                      const; ///< Get state at IP
+    void         CalcK       (Mat_t & K)                                         const; ///< Stiffness matrix
+    void         CalcM       (Mat_t & M)                                         const; ///< Mass matrix
+    virtual void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)              const; ///< Update state at IPs
+    void         StateKeys   (Array<String> & Keys)                              const; ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
+    void         StateAtIP   (SDPair & KeysVals, int IdxIP)                      const; ///< Get state at IP
 
     // Internal methods
     void CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, double & detJ, double & Coef) const; ///< Strain-displacement matrix. Coef: coefficient used during integration

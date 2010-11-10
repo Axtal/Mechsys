@@ -68,7 +68,7 @@ inline CamClay::CamClay (int NDim, SDPair const & Prms)
     nu  = Prms("nu");
     phi = Prms("phi");
     Mcs = Phi2M(phi,"oct");
-    wcs = pow((3.0-sin(phi))/(3.0+sin(phi)),4.0);
+    wcs = 0;//pow((3.0-sin(phiRad))/(3.0+sin(phiRad)),4.0);
 
     // constants
     I.change_dim (NCps);

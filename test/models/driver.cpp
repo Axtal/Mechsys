@@ -55,8 +55,10 @@ double T_SWITCH = 0.5;
 
 double Multiplier (double t)
 {
-    if (t>=T_SWITCH) return 1.0;
-    else return (1.0/T_SWITCH)*t;
+    if (t<T_SWITCH) return sin(PI*t/(2.0*T_SWITCH));
+    else            return 1.0;
+    //if (t>=T_SWITCH) return 1.0;
+    //else return (1.0/T_SWITCH)*t;
 }
 
 void zTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double dp, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs, double dexy=0., double deyz=0., double dezx=0.)
@@ -288,7 +290,7 @@ int main(int argc, char **argv) try
 
     // initial values
     Dict prms, inis;
-    inis.Set (-1, "sx sy sz", -inp.pCam0,-inp.pCam0,-inp.pCam0);
+    inis.Set (-1, "sx sy sz pw", -inp.pCam0,-inp.pCam0,-inp.pCam0, inp.pw0);
 
     // parse materials file
     String model_name;
@@ -312,41 +314,22 @@ int main(int argc, char **argv) try
         // mesh
         int option = 0; // Vol=0, Surf=1, Both=2
         Mesh::Structured mesh(3);
-        mesh.GenBox (true, 1,1,1, 1.0,1.0,1.0);
-        /*
-        Mesh::Generic mesh(3);
-        mesh.SetSize   (8, 1);
-        mesh.SetVert   (0, 0, 0.0, 0.0, 0.0);
-        mesh.SetVert   (1, 0, 1.0, 0.0, 0.0);
-        mesh.SetVert   (2, 0, 1.0, 1.0, 0.0);
-        mesh.SetVert   (3, 0, 0.0, 1.0, 0.0);
-        mesh.SetVert   (4, 0, 0.0, 0.0, 1.0);
-        mesh.SetVert   (5, 0, 1.0, 0.0, 1.0);
-        mesh.SetVert   (6, 0, 1.0, 1.0, 1.0);
-        mesh.SetVert   (7, 0, 0.0, 1.0, 1.0);
-        mesh.SetCell   (0, -1, Array<int>(0,1,2,3,4,5,6,7));
-        mesh.SetBryTag (0, 0, -10);
-        mesh.SetBryTag (0, 1, -11);
-        mesh.SetBryTag (0, 2, -20);
-        mesh.SetBryTag (0, 3, -22);
-        mesh.SetBryTag (0, 4, -30);
-        mesh.SetBryTag (0, 5, -33);
-        */
-        mesh.WriteVTU  ("driver_mesh",option);
+        mesh.GenBox   (true, inp.NDiv,inp.NDiv,inp.NDiv, 1.0,1.0,1.0);
+        mesh.WriteVTU ("driver_mesh",option);
 
         // properties
         Dict prps;
         prps.Set (-1, "prob geom active d3d", (inp.HM ? PROB("HydroMech") : PROB("Equilib")), GEOM("Hex20"), TRUE, TRUE);
 
         // select some nodes for output
-        Array<int> out_nods(4,5,6,7, 10,11,14,15);
+        Array<int> out_nods(8);
+        if (inp.NDiv==3) out_nods = 48,51,60,68, 0,3,12,15;
+        else             out_nods = 4,5,6,7, 10,11,14,15;
 
         // domain and solver
         FEM::Domain dom(mesh, prps, prms, inis, "driver", &out_nods);
         FEM::Solver sol(dom);
-        dom.WriteVTU ("driver_fem_initial");
-
-        cout << dom << endl;
+        dom.WriteVTU ("driver_initial");
 
         // hydro-mechanical analysis
         if (inp.HM) inp.Dyn = true;
@@ -400,13 +383,18 @@ int main(int argc, char **argv) try
                 if (pDEps[1]) bcs.Set(-21, "uy", DEps(1)); else bcs.Set(-21, "qn", DSig(1));
                 if (pDEps[2]) bcs.Set(-31, "uz", DEps(2)); else bcs.Set(-31, "qn", DSig(2));
             }
+            if (inp.HM && inp.NDiv==3)
+            {
+                bcs.Set(-31, "pw", 0.0);
+            }
             dom.SetBCs (bcs);
+            //cout << dom << endl;
             sol.SSOut = inp.SSOut;
             if (inp.Dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtOut, "driver");
             else
             {
                 sol.Solve    (ninc);
-                dom.WriteVTU ("driver_fem_final");
+                dom.WriteVTU ("driver_final");
             }
         }
     }

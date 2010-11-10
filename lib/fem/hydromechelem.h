@@ -34,6 +34,7 @@ public:
     static size_t NDt; ///< Total number of DOFs = NDu + NDp
     static Mat_t  Im;  ///< Identity column matrix (NCo,1)
     static Vec_t  Iv;  ///< Identity vector (NCo)
+    static Vec_t  zv;  ///< z-vector: pointing up along y (2) or z (3D)
 
     // Constructor
     HydroMechElem (int                  NDim,   ///< Space dimension
@@ -44,24 +45,29 @@ public:
                    Array<Node*> const & Nodes); ///< Connectivity
 
     // Methods
+    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun);
     void CalcKCM     (Mat_t & KK, Mat_t & CC, Mat_t & MM)   const;
     void GetLoc      (Array<size_t> & Loc)                  const;
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const;
 
     // Internal Methods
     void Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & Bp, Mat_t & N, Mat_t & Np, double & detJ, double & Coef) const; ///< Interpolation matrices
+    //double CalcHydroVals (double pw, )
 
     // Data
     double cval;
     double Cval;
     double chi;
-    Mat_t  kb; // == k/gammaW
+    double gamW;
+    double kwsat;
+    Mat_t  kwb;   // == kw/gammaW
 };
 
 size_t HydroMechElem::NDp = 0;
 size_t HydroMechElem::NDt = 0;
 Mat_t  HydroMechElem::Im;
 Vec_t  HydroMechElem::Iv;
+Vec_t  HydroMechElem::zv;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -82,6 +88,10 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
         set_to_zero (Iv);
         Im(0,0)=1.0;   Im(1,0)=1.0;   Im(2,0)=1.0;
         Iv(0)  =1.0;   Iv(1)  =1.0;   Iv(2)  =1.0;
+
+        zv.change_dim (NDim);
+        if (NDim==2) zv = 0.0, 1.0;
+        else         zv = 0.0, 0.0, 1.0;
     }
 
     // set initial pw values at Nodes
@@ -106,16 +116,99 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
             Con[i]->U("pw") = pw;
         }
     }
+    if (Ini.HasKey("pw")) // TODO: this should be averaged after all elements are created
+    {
+        double pw = Ini("pw");
+        for (size_t i=0; i<GE->NN; ++i) Con[i]->U("pw") = pw;
+    }
 
-    // hydraulic conductivity tensor
-    kb.change_dim(NDim,NDim);
-    set_to_zero (kb);
-    kb(0,0)=1;  kb(1,1)=1;  if (NDim==3) kb(2,2)=1;
-    double gammaW = 1.;
-    kb  /= gammaW;
-    cval = 1.0;
-    Cval = 0.0;
-    chi  = 1.0;
+    // local data
+    //if      (Ini.HasKey("gamW")) gamW = Ini("gamW");
+    //else if (Prp.HasKey("gamW")) gamW = Prp("gamW");
+    //else throw new Fatal("HydroMechElem::HydroMechElem: Either 'Ini' or 'Prp' maps must set gamW (water unit weight ~ 9.81 kN/m3)");
+    kwb.change_dim(NDim,NDim);
+    cval  = 1.;
+    Cval  = 1.;
+    chi   = 1.;
+    gamW  = 1.;
+    kwsat = 1.;
+    if (NDim==3)
+    {
+        kwb = 1., 0., 0.,
+              0., 1., 0.,
+              0., 0., 1.;
+    }
+    else
+    {
+        kwb = 1., 0.,
+              0., 1.;
+    }
+
+    // vector of current pw
+    Vec_t pwe(NDp);
+    for (size_t i=0; i<GE->NN; ++i) pwe(i) = Con[i]->U("pw");
+
+    // set F in nodes due to initial (hydraulic) values
+    double detJ, coef;
+    Mat_t  C, B, Bp, N, Np;
+    Vec_t  fe(NDp);
+    set_to_zero (fe);
+    CoordMatrix (C);
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
+        Mat_t kBp     (kwb * Bp);
+        Vec_t kBpdpwe (kBp * pwe);
+        fe += (coef) * trans(Bp)*kBpdpwe;
+    }
+    for (size_t i=0; i<GE->NN; ++i) Con[i]->F("qw") = fe(i); // TODO: should be added and averaged after all elements are created (?,almost sure)
+}
+
+inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun)
+{
+    bool has_pw   = BCs.HasKey("pw");   // water pressure
+    bool has_flux = BCs.HasKey("flux"); // normal flux to boundary
+
+    if (has_pw || has_flux)
+    {
+        // flux
+        if (has_flux)
+        {
+            double qn = BCs("flux");
+            double detJ, coef;
+            Mat_t  Cf;
+            FCoordMatrix (IdxEdgeOrFace, Cf);
+            for (size_t i=0; i<GE->NFIP; ++i)
+            {
+                CalcFaceShape (Cf, GE->FIPs[i], detJ, coef);
+                if (GTy==axs_t) // correct Coef for axisymmetric problems
+                {
+                    double radius = 0.0; // calculate radius=x at this FIP
+                    for (size_t j=0; j<GE->NFN; ++j) radius += GE->FN(j)*Con[GE->FNode(IdxEdgeOrFace,j)]->Vert.C[0];
+                    coef *= radius; // correct coef
+                }
+                for (size_t j=0; j<GE->NFN; ++j)
+                {
+                    size_t k = GE->FNode(IdxEdgeOrFace,j);
+                    Con[k]->AddToPF("qw", -coef*GE->FN(j)*qn, MFun);
+                }
+            }
+        }
+
+        // prescribed pw
+        else if (has_pw)
+        {
+            double pw = BCs("pw");
+            for (size_t j=0; j<GE->NFN; ++j)
+            {
+                size_t k = GE->FNode(IdxEdgeOrFace,j);
+                Con[k]->SetPU("pw", pw, MFun);
+            }
+        }
+    }
+
+    // other BCs => set by EquilibElem
+    EquilibElem::SetBCs (IdxEdgeOrFace, BCs, MFun);
 }
 
 inline void HydroMechElem::GetLoc (Array<size_t> & Loc) const
@@ -246,7 +339,7 @@ inline void HydroMechElem::CalcKCM (Mat_t & KK, Mat_t & CC, Mat_t & MM) const
         BtDB   = trans(B)*D*B;
         BtmNp  = trans(B)*Im*Np;
         NptNp  = trans(Np)*Np;
-        BptkBp = trans(Bp)*kb*Bp;
+        BptkBp = trans(Bp)*kwb*Bp;
         M     += (coef*rho)  * NtN;
         K     += (coef)      * BtDB;
         Q     += (coef*cval) * BtmNp;
@@ -324,7 +417,7 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         dsig -= chi*dpw*Iv;
 
         // element nodal forces
-        kBp     = kb * Bp;
+        kBp     = kwb * Bp;
         kBpdpwe = kBp * dpwe;
         dFe += (coef) * trans(B) *dsig;
         dfe += (coef) * trans(Bp)*kBpdpwe;
@@ -337,6 +430,7 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         for (size_t i=0; i<NDp; ++i) (*F_int)(loc[NDu+i]) += dfe(i);
     }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
 
