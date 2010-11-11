@@ -72,13 +72,13 @@ class ODE
 {
 public:
     ODE (double Mu) : mu(Mu) {}
-    int Fun (double t, double const Y[], double dYdt[]) const
+    int Fun (double t, double const Y[], double dYdt[])
     {
         dYdt[0] =  Y[1];
         dYdt[1] = -Y[0] - mu*Y[1]*(Y[0]*Y[0] - 1);
         return GSL_SUCCESS;
     }
-    int TgIncs (double t, double const Y[], double dt, double dY[]) const
+    int TgIncs (double t, double const Y[], double dt, double dY[])
     {
         double dYdt0 =  Y[1];
         double dYdt1 = -Y[0] - mu*Y[1]*(Y[0]*Y[0] - 1);

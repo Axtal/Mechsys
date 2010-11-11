@@ -43,11 +43,11 @@ class ODESolver
 {
 public:
     // Typedefs
-    typedef int (Instance::*pFun) (double t, double const Y[], double dYdt[]) const; ///< Callback function
-    typedef int (Instance::*pTgIncs) (double t, double const Y[], double dt, double dY[]) const; ///< Callback function
+    typedef int (Instance::*pFun) (double t, double const Y[], double dYdt[]); ///< Callback function
+    typedef int (Instance::*pTgIncs) (double t, double const Y[], double dt, double dY[]); ///< Callback function
 
     // Constructor
-    ODESolver (Instance const * p2Inst);
+    ODESolver (Instance * p2Inst);
 
     // Methods
     void Evolve (pFun p2Fun, Vec_t & T, Mat_t & Y, double tf); ///< Evolve from T[0] to tf
@@ -67,9 +67,9 @@ public:
     double mMax;   ///< Maximum change of substep size
 
 private:
-    Instance const * _p2inst;  ///< Pointer to an instance
-    pFun             _p2fun;   ///< Pointer to instance function
-    pTgIncs          _p2incs;  ///< Pointer to instance function
+    Instance * _p2inst;  ///< Pointer to an instance
+    pFun       _p2fun;   ///< Pointer to instance function
+    pTgIncs    _p2incs;  ///< Pointer to instance function
 };
 
 /** Trick to pass pointers to member functions to GSL.
@@ -86,7 +86,7 @@ int __ode_call_fun__ (double t, double const Y[], double dYdt[], void * not_used
 
 
 template<typename Instance>
-inline ODESolver<Instance>::ODESolver (Instance const * p2Inst)
+inline ODESolver<Instance>::ODESolver (Instance * p2Inst)
     : Scheme  ("RKDP89"),
       STOL    (1.0e-6),
       EPSREL  (DBL_EPSILON),
