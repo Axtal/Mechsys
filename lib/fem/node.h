@@ -323,13 +323,13 @@ std::ostream & operator<< (std::ostream & os, Node const & N)
     os << TERM_CLR4 << Util::_reset << " PU=[";
     for (size_t i=0; i<N.NPU(); ++i)
     {
-        os << N._PU.Keys[i] << "=" << N.PU(i,/*time*/0);
+        os << N._PU.Keys[i] << "=" << N._PU(N._PU.Keys[i]);
         if (i!=N.NPU()-1) os << " ";
     }
     os << "]" << TERM_CLR5 << " PF=[";
     for (size_t i=0; i<N.NPF(); ++i)
     {
-        os << N._PF.Keys[i] << "=" << N.PF(i,/*time*/0);
+        os << N._PF.Keys[i] << "=" << N._PF(N._PF.Keys[i]);
         if (i!=N.NPF()-1) os << " ";
     }
     os << "]" << TERM_RST;

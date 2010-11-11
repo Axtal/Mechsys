@@ -37,6 +37,7 @@ using std::cout;
 using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
+using Util::TRUE;
 
 double Multiplier (double t)
 {
@@ -76,7 +77,7 @@ int main(int argc, char **argv) try
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
     bcs.Set(-100, "ux uy wz", 0.0,0.0,0.0);
-    bcs.Set(-200, "fy mfunc", 1.0, 0.0);
+    bcs.Set(-200, "fy multF", 1.0, TRUE);
     dom.SetBCs (bcs);
     sol.DynSolve (/*tf*/1.8, /*dt*/0.05, /*dtOut*/0.05, "fig_11_01");
 

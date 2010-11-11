@@ -128,21 +128,22 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
     //else throw new Fatal("HydroMechElem::HydroMechElem: Either 'Ini' or 'Prp' maps must set gamW (water unit weight ~ 9.81 kN/m3)");
     kwb.change_dim(NDim,NDim);
     cval  = 1.;
-    Cval  = 1.;
+    Cval  = 0.;
     chi   = 1.;
-    gamW  = 1.;
-    kwsat = 1.;
+    gamW  = 10.;
+    kwsat = 1.0e-2;
     if (NDim==3)
     {
-        kwb = 1., 0., 0.,
-              0., 1., 0.,
-              0., 0., 1.;
+        kwb = kwsat, 0., 0.,
+              0., kwsat, 0.,
+              0., 0., kwsat;
     }
     else
     {
-        kwb = 1., 0.,
-              0., 1.;
+        kwb = kwsat, 0.,
+              0., kwsat;
     }
+    kwb /= gamW;
 
     // vector of current pw
     Vec_t pwe(NDp);
@@ -208,7 +209,7 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtB
     }
 
     // other BCs => set by EquilibElem
-    EquilibElem::SetBCs (IdxEdgeOrFace, BCs, MFun);
+    else EquilibElem::SetBCs (IdxEdgeOrFace, BCs, MFun);
 }
 
 inline void HydroMechElem::GetLoc (Array<size_t> & Loc) const

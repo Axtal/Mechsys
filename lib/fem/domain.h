@@ -397,11 +397,11 @@ inline void Domain::SetBCs (Dict const & BCs)
             bc_set[btag] = Element_t;
 
             // multiplier
-            PtBCMult calcm = &BCMultiplier;
-            if (bcs.HasKey("mfunc")) // callback specified
+            PtBCMult multF = &BCMultiplier;
+            if (bcs.HasKey("multF")) // callback specified
             {
                 MDatabase_t::const_iterator q = MFuncs.find(btag);
-                if (q!=MFuncs.end()) calcm = q->second;
+                if (q!=MFuncs.end()) multF = q->second;
                 else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",btag);
             }
 
@@ -417,7 +417,7 @@ inline void Domain::SetBCs (Dict const & BCs)
                 }
 
                 // set BCs
-                ele->SetBCs (/*idx_side(ignored)*/0, bcs, calcm);
+                ele->SetBCs (/*idx_side(ignored)*/0, bcs, multF);
                 ElesWithBC.Push (ele);
             }
         }
@@ -457,16 +457,24 @@ inline void Domain::SetBCs (Dict const & BCs)
                         eleside_t es(TgdEles[j],idx_side); // (edge/face,side) pair
                         for (size_t k=0; k<bcs.Keys.Size(); ++k)
                         {
-                            if (bcs.Keys[k]=="mfunc") continue; // multiplier function (will be set together with another key)
-                            if (AllUKeys.Has(bcs.Keys[k]) || bcs.Keys[k]=="incsup") // is U key or is inclined support
+                            if (bcs.Keys[k]=="multF") continue; // multiplier function (will be set together with another key)
+                            if (bcs.Keys[k]=="multU") continue; // multiplier function (will be set together with another key)
+                            if (bcs.Keys[k]=="incsup") // is inclined support
+                            {
+                                eleside2tag_to_ubc[es].first  = btag;
+                                eleside2tag_to_ubc[es].second = bcs; // has to be copied because of the extra parameters such as 'alpha' and so on
+                            }
+                            else if (AllUKeys.Has(bcs.Keys[k])) // is U key
                             {
                                 eleside2tag_to_ubc[es].first = btag;
-                                eleside2tag_to_ubc[es].second = bcs;
+                                eleside2tag_to_ubc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want F values
+                                if (bcs.Keys.Has("multU")) eleside2tag_to_ubc[es].second.Set ("multU", Util::TRUE); // has to keep the multiplier though
                             }
                             else // is F key or 'qn', 'qt', etc.
                             {
                                 eleside2tag_to_fbc[es].first = btag;
-                                eleside2tag_to_fbc[es].second = bcs;
+                                eleside2tag_to_fbc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want U values
+                                if (bcs.Keys.Has("multF")) eleside2tag_to_fbc[es].second.Set ("multF", Util::TRUE); // has to keep the multiplier though
                             }
                         }
                     }
@@ -489,11 +497,12 @@ inline void Domain::SetBCs (Dict const & BCs)
                     // split U bcs from F bcs
                     for (size_t k=0; k<bcs.Keys.Size(); ++k)
                     {
-                        if (bcs.Keys[k]=="mfunc") continue; // multiplier function (will be set together with another key)
+                        if (bcs.Keys[k]=="multF") continue; // multiplier function (will be set together with another key)
+                        if (bcs.Keys[k]=="multU") continue; // multiplier function (will be set together with another key)
                         if (bcs.Keys[k]=="incsup") // inclined support
                         {
                             nod2tag_to_ubc[TgdNods[j]].first  = btag;
-                            nod2tag_to_ubc[TgdNods[j]].second = bcs;
+                            nod2tag_to_ubc[TgdNods[j]].second = bcs; // has to be copied because of the extra parameters such as 'alpha' and so on
                             break;
                         }
                         else
@@ -501,12 +510,14 @@ inline void Domain::SetBCs (Dict const & BCs)
                             if (AllUKeys.Has(bcs.Keys[k])) // is U key
                             {
                                 nod2tag_to_ubc[TgdNods[j]].first = btag;
-                                nod2tag_to_ubc[TgdNods[j]].second = bcs;
+                                nod2tag_to_ubc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want F values
+                                if (bcs.Keys.Has("multU")) nod2tag_to_ubc[TgdNods[j]].second.Set ("multU", Util::TRUE); // has to keep the multiplier though
                             }
                             else if (AllFKeys.Has(bcs.Keys[k])) // is F key
                             {
                                 nod2tag_to_fbc[TgdNods[j]].first = btag;
-                                nod2tag_to_fbc[TgdNods[j]].second = bcs;
+                                nod2tag_to_fbc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want F values
+                                if (bcs.Keys.Has("multF")) nod2tag_to_fbc[TgdNods[j]].second.Set ("multF", Util::TRUE); // has to keep the multiplier though
                             }
                             else throw new Fatal("FEM::Domain::SetBCs: BC==%s with tag==%d cannot be specified to Node # %d", bcs.Keys[k].CStr(), btag, TgdNods[j]->Vert.ID);
                         }
@@ -532,16 +543,16 @@ inline void Domain::SetBCs (Dict const & BCs)
         int            idx_side = p->first.second;
         int            bc_tag   = p->second.first;
         SDPair const & bcs      = p->second.second;
-        PtBCMult       calcm    = &BCMultiplier;
+        PtBCMult       multF    = &BCMultiplier;
 
-        if (bcs.HasKey("mfunc")) // callback specified
+        if (bcs.HasKey("multF")) // callback specified
         {
             MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
-            if (q!=MFuncs.end()) calcm = q->second;
+            if (q!=MFuncs.end()) multF = q->second;
             else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",bc_tag);
         }
 
-        ele->SetBCs (idx_side, bcs, calcm);
+        ele->SetBCs (idx_side, bcs, multF);
     }
 
     // set F bcs at nodes
@@ -550,18 +561,18 @@ inline void Domain::SetBCs (Dict const & BCs)
         Node         * nod    = p->first;
         int            bc_tag = p->second.first;
         SDPair const & bcs    = p->second.second;
-        PtBCMult       calcm  = &BCMultiplier;
+        PtBCMult       multF  = &BCMultiplier;
 
-        if (bcs.HasKey("mfunc")) // callback specified
+        if (bcs.HasKey("multF")) // callback specified
         {
             MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
-            if (q!=MFuncs.end()) calcm = q->second;
+            if (q!=MFuncs.end()) multF = q->second;
             else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",bc_tag);
         }
 
         for (StrDbl_t::const_iterator q=bcs.begin(); q!=bcs.end(); ++q)
         {
-            if (q->first!="mfunc") nod->AddToPF (q->first, q->second, calcm);
+            if (q->first!="multF") nod->AddToPF (q->first, q->second, multF);
         }
     }
 
@@ -572,16 +583,16 @@ inline void Domain::SetBCs (Dict const & BCs)
         int            idx_side = p->first.second;
         int            bc_tag   = p->second.first;
         SDPair const & bcs      = p->second.second;
-        PtBCMult       calcm    = &BCMultiplier;
+        PtBCMult       multU    = &BCMultiplier;
 
-        if (bcs.HasKey("mfunc")) // callback specified
+        if (bcs.HasKey("multU")) // callback specified
         {
             MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
-            if (q!=MFuncs.end()) calcm = q->second;
+            if (q!=MFuncs.end()) multU = q->second;
             else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",bc_tag);
         }
 
-        ele->SetBCs (idx_side, bcs, calcm);
+        ele->SetBCs (idx_side, bcs, multU);
     }
 
     // set U bcs at nodes
@@ -590,12 +601,12 @@ inline void Domain::SetBCs (Dict const & BCs)
         Node         * nod    = p->first;
         int            bc_tag = p->second.first;
         SDPair const & bcs    = p->second.second;
-        PtBCMult       calcm  = &BCMultiplier;
+        PtBCMult       multU  = &BCMultiplier;
 
-        if (bcs.HasKey("mfunc")) // callback specified
+        if (bcs.HasKey("multU")) // callback specified
         {
             MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
-            if (q!=MFuncs.end()) calcm = q->second;
+            if (q!=MFuncs.end()) multU = q->second;
             else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",bc_tag);
         }
 
@@ -608,7 +619,7 @@ inline void Domain::SetBCs (Dict const & BCs)
         {
             for (StrDbl_t::const_iterator q=bcs.begin(); q!=bcs.end(); ++q)
             {
-                nod->SetPU (q->first, q->second, calcm);
+                if (q->first!="multU") nod->SetPU (q->first, q->second, multU);
             }
         }
     }

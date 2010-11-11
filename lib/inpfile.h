@@ -70,6 +70,7 @@ public:
     String RefSim;      // reference simulation file
     String RefAna;      // reference analytical solution file
     int    NDiv;        // mesh number of divisions
+    bool   O2;          // quadratic elements ?
 
     // path increments
     Array<PathIncs> Path;
@@ -97,7 +98,8 @@ inline InpFile::InpFile ()
       Ak      (0.02),
       Ray     (false),
       HM      (false),
-      NDiv    (1)
+      NDiv    (1),
+      O2      (true)
 {
 }
 
@@ -173,6 +175,7 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="refsim") RefSim = str_val;
                 else if (key=="refana") RefAna = str_val;
                 else if (key=="ndiv")   NDiv   = atoi(str_val.CStr());
+                else if (key=="o2")     O2     = static_cast<bool>(atoi(str_val.CStr()));
                 else if (key=="npath")
                 {
                     Path.Resize ((size_t)val);
@@ -229,6 +232,7 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     os << "  refsim = " <<  IF.RefSim  << "\n";
     os << "  refana = " <<  IF.RefAna  << "\n";
     os << "  ndiv   = " <<  IF.NDiv    << "\n";
+    os << "  o2     = " <<  IF.O2      << "\n";
     return os;
 }
 

@@ -105,6 +105,7 @@ BPy::class_<InpFile>("InpFile")
     .def_readwrite("RefSim", &InpFile::RefSim)
     .def_readwrite("RefAna", &InpFile::RefAna)
     .def_readwrite("NDiv",   &InpFile::NDiv)
+    .def_readwrite("O2",     &InpFile::O2)
     ;
 
 BPy::def("ReadMaterial", ReadMaterial);

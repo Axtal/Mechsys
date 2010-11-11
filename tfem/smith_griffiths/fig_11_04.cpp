@@ -40,6 +40,7 @@ using std::cout;
 using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
+using Util::TRUE;
 
 void OutFun (FEM::Solver const & Sol, void * Dat)
 {
@@ -147,7 +148,7 @@ int main(int argc, char **argv) try
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
     bcs.Set( -10, "ux uy",    0.0, 0.0);
-    bcs.Set(-100, "fy mfunc", 1.0, 0.0);
+    bcs.Set(-100, "fy multF", 1.0, TRUE);
     dom.SetBCs (bcs);
     //cout << dom << endl;
     sol.DynSolve (/*tf*/100, /*dt*/1.0, /*dtOut*/1.0, "fig_11_04");
