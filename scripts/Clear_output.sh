@@ -6,7 +6,7 @@ echo "removing all results and output files"
 for ext in $EXTENSIONS; do
     echo
     echo "[1;31m . . . removing all *.$ext files . . . [0m"
-    find . -iname "*.%ext" -exec rm {} \;
+    find . -iname "*.$ext" -exec rm {} \;
 done
 
 echo
