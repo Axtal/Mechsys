@@ -21,16 +21,4 @@ for f in $SFILES; do
 	find . -name "$f" -exec sudo rm {} \; > /dev/null 2>&1
 done
 
-echo "Removing all output files (vtk, vtu, pvd, cal, mpy, ply, and draw)"
-find . -iname "*.pvd" -exec rm {} \;
-find . -iname "*.vtk" -exec rm {} \;
-find . -iname "*.vtu" -exec rm {} \;
-find . -iname "*.cal" -exec rm {} \;
-find . -iname "*.mpy" -exec rm {} \;
-find . -iname "*.ply" -exec rm {} \;
-find . -iname "*.draw" -exec rm {} \;
-
-echo "Removing all temporary files (pyc)"
-find . -iname "*.pyc" -exec rm {} \;
-
 exit 0
