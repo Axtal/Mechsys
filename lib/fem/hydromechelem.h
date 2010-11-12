@@ -22,6 +22,7 @@
 
 // MechSys
 #include <mechsys/fem/equilibelem.h>
+#include <mechsys/models/unsatflow.h>
 
 namespace FEM
 {
@@ -44,23 +45,23 @@ public:
                    SDPair       const & Ini,    ///< Initial values
                    Array<Node*> const & Nodes); ///< Connectivity
 
+    // Destructor
+    ~HydroMechElem () { if (FMdl!=NULL) delete FMdl; for (size_t i=0; i<GE->NIP; ++i) delete FSta[i]; }
+
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun);
     void CalcKCM     (Mat_t & KK, Mat_t & CC, Mat_t & MM)   const;
     void GetLoc      (Array<size_t> & Loc)                  const;
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const;
+    void StateKeys   (Array<String> & Keys)                 const;
+    void StateAtIP   (SDPair & KeysVals, int IdxIP)         const;
 
     // Internal Methods
     void Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & Bp, Mat_t & N, Mat_t & Np, double & detJ, double & Coef) const; ///< Interpolation matrices
-    //double CalcHydroVals (double pw, )
 
     // Data
-    double cval;
-    double Cval;
-    double chi;
-    double gamW;
-    double kwsat;
-    Mat_t  kwb;   // == kw/gammaW
+    UnsatFlow              * FMdl; ///< Flow model
+    Array<UnsatFlowState*>   FSta; ///< Flow state
 };
 
 size_t HydroMechElem::NDp = 0;
@@ -116,39 +117,24 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
             Con[i]->U("pw") = pw;
         }
     }
-    if (Ini.HasKey("pw")) // TODO: this should be averaged after all elements are created
+    else if (Ini.HasKey("pw")) // TODO: this should be averaged after all elements are created
     {
         double pw = Ini("pw");
         for (size_t i=0; i<GE->NN; ++i) Con[i]->U("pw") = pw;
     }
 
-    // local data
-    //if      (Ini.HasKey("gamW")) gamW = Ini("gamW");
-    //else if (Prp.HasKey("gamW")) gamW = Prp("gamW");
-    //else throw new Fatal("HydroMechElem::HydroMechElem: Either 'Ini' or 'Prp' maps must set gamW (water unit weight ~ 9.81 kN/m3)");
-    kwb.change_dim(NDim,NDim);
-    cval  = 1.;
-    Cval  = 0.;
-    chi   = 1.;
-    gamW  = 10.;
-    kwsat = 1.0e-2;
-    if (NDim==3)
-    {
-        kwb = kwsat, 0., 0.,
-              0., kwsat, 0.,
-              0., 0., kwsat;
-    }
-    else
-    {
-        kwb = kwsat, 0.,
-              0., kwsat;
-    }
-    kwb /= gamW;
-
     // vector of current pw
     Vec_t pwe(NDp);
     for (size_t i=0; i<GE->NN; ++i) pwe(i) = Con[i]->U("pw");
 
+    // allocate flow model TODO: move this to the outside, like Mdl, otherwise we're going to allocate one Mdl per element
+    FMdl = new UnsatFlow (NDim, Prp);
+
+    // porosity of mixture
+    SDPair ini;
+    if (Ini.HasKey("n")) ini.Set("n", Ini("n"));
+
+    // allocate and initialize flow state at each IP and
     // set F in nodes due to initial (hydraulic) values
     double detJ, coef;
     Mat_t  C, B, Bp, N, Np;
@@ -157,10 +143,23 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
     CoordMatrix (C);
     for (size_t i=0; i<GE->NIP; ++i)
     {
+        // interpolation functions
         Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
-        Mat_t kBp     (kwb * Bp);
-        Vec_t kBpdpwe (kBp * pwe);
-        fe += (coef) * trans(Bp)*kBpdpwe;
+
+        // pw at IP
+        Vec_t Nppwe(Np * pwe);
+        double pw = Nppwe(0);
+
+        // init flow state
+        ini.Set       ("pc", -pw);
+        FSta.Push     (new UnsatFlowState(NDim));
+        FMdl->InitIvs (ini, FSta[i]);
+
+        // set F
+        FMdl->TgVars (FSta[i]); // set c, C, chi, and kwb
+        Mat_t kBp    (FMdl->kwb * Bp);
+        Vec_t kBppwe (kBp * pwe);
+        fe += (coef) * trans(Bp)*kBppwe;
     }
     for (size_t i=0; i<GE->NN; ++i) Con[i]->F("qw") = fe(i); // TODO: should be added and averaged after all elements are created (?,almost sure)
 }
@@ -334,19 +333,20 @@ inline void HydroMechElem::CalcKCM (Mat_t & KK, Mat_t & CC, Mat_t & MM) const
     CoordMatrix (C);
     for (size_t i=0; i<GE->NIP; ++i)
     {
-        Mdl->Stiffness (Sta[i], D);
+        FMdl -> TgVars    (FSta[i]); // set c, C, chi, and kwb
+        Mdl  -> Stiffness (Sta[i], D);
         Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
         NtN    = trans(N)*N;
         BtDB   = trans(B)*D*B;
         BtmNp  = trans(B)*Im*Np;
         NptNp  = trans(Np)*Np;
-        BptkBp = trans(Bp)*kwb*Bp;
-        M     += (coef*rho)  * NtN;
-        K     += (coef)      * BtDB;
-        Q     += (coef*cval) * BtmNp;
-        Qb    += (coef*chi)  * BtmNp;
-        S     += (coef*Cval) * NptNp;
-        H     += (coef)      * BptkBp;
+        BptkBp = trans(Bp)*(FMdl->kwb)*Bp;
+        M     += (coef*rho)       * NtN;
+        K     += (coef)           * BtDB;
+        Q     += (coef*FMdl->c)   * BtmNp;
+        Qb    += (coef*FMdl->chi) * BtmNp;
+        S     += (coef*FMdl->C)   * NptNp;
+        H     += (coef)           * BptkBp;
     }
 
     // assemble
@@ -405,20 +405,29 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     CoordMatrix (C);
     for (size_t i=0; i<GE->NIP; ++i)
     {
-        // B matrix
+        // interpolation functions
         Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
+
+        // calculate dpw at IP
+        Vec_t Npdpwe(Np * dpwe);
+        double dpw = Npdpwe(0);
 
         // strain and effective stress increments
         deps = B * dUe;
         su.Update (deps, Sta[i], dsig);
 
+        // update flow state at IP
+        double dev = deps(0)+deps(1)+deps(2);
+        FMdl->Update (dpw, dev, FSta[i]);
+
+        // updated tg variables
+        FMdl->TgVars (FSta[i]); // set c, C, chi, and kwb
+
         // total stress increments
-        Vec_t Npdpwe(Np * dpwe);
-        double dpw = Npdpwe(0);
-        dsig -= chi*dpw*Iv;
+        dsig -= (FMdl->chi)*dpw*Iv;
 
         // element nodal forces
-        kBp     = kwb * Bp;
+        kBp     = (FMdl->kwb) * Bp;
         kBpdpwe = kBp * dpwe;
         dFe += (coef) * trans(B) *dsig;
         dfe += (coef) * trans(Bp)*kBpdpwe;
@@ -430,6 +439,24 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         for (size_t i=0; i<NDu; ++i) (*F_int)(loc[i])     += dFe(i);
         for (size_t i=0; i<NDp; ++i) (*F_int)(loc[NDu+i]) += dfe(i);
     }
+}
+
+inline void HydroMechElem::StateKeys (Array<String> & Keys) const
+{
+    EquilibElem::StateKeys (Keys);
+    Keys.Push ("n");
+    Keys.Push ("pc");
+    Keys.Push ("Sw");
+    Keys.Push ("kw");
+}
+
+inline void HydroMechElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
+{
+    EquilibElem::StateAtIP (KeysVals, IdxIP);
+    KeysVals.Set ("n",  FSta[IdxIP]->n);
+    KeysVals.Set ("pc", FSta[IdxIP]->pc);
+    KeysVals.Set ("Sw", FSta[IdxIP]->Sw);
+    KeysVals.Set ("kw", FSta[IdxIP]->kwb(0,0)*FMdl->gamW);
 }
 
 

@@ -49,8 +49,8 @@ public:
     void         CalcK       (Mat_t & K)                                         const; ///< Stiffness matrix
     void         CalcM       (Mat_t & M)                                         const; ///< Mass matrix
     virtual void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)              const; ///< Update state at IPs
-    void         StateKeys   (Array<String> & Keys)                              const; ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
-    void         StateAtIP   (SDPair & KeysVals, int IdxIP)                      const; ///< Get state at IP
+    virtual void StateKeys   (Array<String> & Keys)                              const; ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
+    virtual void StateAtIP   (SDPair & KeysVals, int IdxIP)                      const; ///< Get state at IP
 
     // Internal methods
     void CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, double & detJ, double & Coef) const; ///< Strain-displacement matrix. Coef: coefficient used during integration

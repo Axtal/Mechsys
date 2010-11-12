@@ -1,7 +1,7 @@
 ID    = 0
 name  = LinElastic
 nprms = 2
-E     = 6000.0
+E     = 60.0
 nu    = 0.3
 ninis = 0
 

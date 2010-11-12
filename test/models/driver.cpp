@@ -373,9 +373,9 @@ int main(int argc, char **argv) try
             bcs.Set (-30, "uz", 0.0);
             if (inp.Dyn)
             {
-                if (pDEps[0]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-11, "ux mfunc", DEps(0), TRUE);*/ else bcs.Set(-11, "qn mfunc", DSig(0), TRUE);
-                if (pDEps[1]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-21, "uy mfunc", DEps(1), TRUE);*/ else bcs.Set(-21, "qn mfunc", DSig(1), TRUE);
-                if (pDEps[2]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-31, "uz mfunc", DEps(2), TRUE);*/ else bcs.Set(-31, "qn mfunc", DSig(2), TRUE);
+                if (pDEps[0]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-11, "ux multU", DEps(0), TRUE);*/ else bcs.Set(-11, "qn multF", DSig(0), TRUE);
+                if (pDEps[1]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-21, "uy multU", DEps(1), TRUE);*/ else bcs.Set(-21, "qn multF", DSig(1), TRUE);
+                if (pDEps[2]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-31, "uz multU", DEps(2), TRUE);*/ else bcs.Set(-31, "qn multF", DSig(2), TRUE);
             }
             else
             {
