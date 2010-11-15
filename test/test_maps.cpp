@@ -97,6 +97,29 @@ int main(int argc, char **argv) try
     }
     if (error>1.0e-15) throw new Fatal("Table read/write failed");
 
+    cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
+
+    SDPair p1, p2;
+    p1.Set ("k l m", 10., 20., 30.);
+    p1.Set ("K L M", 100., 200., 300.);
+    //p2.Set ("A B M", 11., 22., 33.); // error => values cannot be summed up (by design)
+    p2.Set ("A B", 11., 22.); // error => values cannot be summed up (by design)
+    p1 += p2;
+    Dict D1, D2, D3;
+    D1.Set (-1, "a b c", 1., 2., 3.);
+    D1.Set (-1, "M N P", 7., 8., 9.);
+    D1.Set (-2, "d e f", 4., 5., 6.);
+    D2.Set (-3, "aa bb", 11., 22.);
+    //D3.Set (-1, "MM N", 33., 44.); // error
+    D3.Set (-1, "MM NN", 33., 44.);
+    D1 += D2;
+    D1 += D3;
+    cout << "p1 : " << p1 << endl;
+    cout << "p2 : " << p2 << endl;
+    cout << "D1 =\n" << D1 << endl;
+    cout << "D2 =\n" << D2 << endl;
+    cout << "D3 =\n" << D3 << endl;
+
     cout << endl;
     return 0;
 }

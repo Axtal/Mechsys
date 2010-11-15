@@ -56,6 +56,7 @@ public:
     double       & operator() (String const & Key)       { return operator()(Key.CStr()); }
     double const & operator() (String const & Key) const { return operator()(Key.CStr()); }
     void           operator=  (SDPair const & R); ///< Assignment operator
+    void           operator+= (SDPair const & R); ///< Used to merge keys, but not sum them up
 
     // Methods
     size_t ReSet     (const char * Key, double Val); ///< Re-set value (creates if it doesn't exist). Return position in Keys of changed/set value 
@@ -120,9 +121,12 @@ public:
      *       dict(-1, "ux=1.0  uy=2.0")        OR   Case-B
      *       dict(-1, "{'ux':1.0, 'uy':2.0}")       Case-C  (Python-Dict) */
     void Set (int Key, const char * Str, ...);
+    void Set (int Key, SDPair const & P);
 
     // Operators
     SDPair const & operator() (int Key) const;
+    SDPair       & operator() (int Key);
+    void           operator+= (Dict const & R); ///< Used to merge keys
 
     // Methods
     bool HasKey (int Key) const;
@@ -361,6 +365,21 @@ inline void SDPair::operator= (SDPair const & R)
     }
 }
 
+inline void SDPair::operator+= (SDPair const & R)
+{
+    for (size_t i=0; i<R.Keys.Size(); ++i)
+    {
+        if (this->HasKey(R.Keys[i]))
+        {
+            std::ostringstream oss;
+            oss << (*this);
+            throw new Fatal("SDPair::operator+= : SDPair [%s]\n   already contain key %s (values cannot be summed up).",oss.str().c_str(),R.Keys[i].CStr());
+        }
+        // This is fine though (if addition is permitted): (*this)(R.Keys[i]) += R(R.Keys[i]);
+        else  this->Set(R.Keys[i].CStr(), R(R.Keys[i]));
+    }
+}
+
 inline size_t SDPair::ReSet (const char * Key, double Val)
 {
     StrDbl_t::iterator p = this->find(Key);
@@ -576,6 +595,12 @@ inline void Dict::Set (int Key, const char * Str, ...)
     }
 }
 
+inline void Dict::Set (int Key, SDPair const & P)
+{
+    for (size_t i=0; i<P.Keys.Size(); ++i)
+        this->Set (Key, P.Keys[i].CStr(), P(P.Keys[i]));
+}
+
 inline SDPair const & Dict::operator() (int Key) const
 {
     Dict_t::const_iterator p = this->find(Key);
@@ -586,6 +611,27 @@ inline SDPair const & Dict::operator() (int Key) const
         throw new Fatal("Dict::operator(): Dictionary: %s does not have a key = %d",oss.str().c_str(),Key);
     }
     return p->second;
+}
+
+inline SDPair & Dict::operator() (int Key)
+{
+    Dict_t::iterator p = this->find(Key);
+    if (p==this->end())
+    {
+        std::ostringstream oss;
+        oss << (*this);
+        throw new Fatal("Dict::operator(): Dictionary: %s does not have a key = %d",oss.str().c_str(),Key);
+    }
+    return p->second;
+}
+
+inline void Dict::operator+= (Dict const & R)
+{
+    for (size_t i=0; i<R.Keys.Size(); ++i)
+    {
+        if (this->HasKey(R.Keys[i])) (*this)(R.Keys[i]) += R(R.Keys[i]); // merge
+        else  this->Set(R.Keys[i], R(R.Keys[i]));
+    }
 }
 
 inline bool Dict::HasKey (int Key) const
