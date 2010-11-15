@@ -59,6 +59,7 @@ public:
     void           operator+= (SDPair const & R); ///< Used to merge keys, but not sum them up
 
     // Methods
+    void   Del       (const char * Key);             ///< Delete key (and value) from pair
     size_t ReSet     (const char * Key, double Val); ///< Re-set value (creates if it doesn't exist). Return position in Keys of changed/set value 
     size_t AddVal    (const char * Key, double Val); ///< Add value to existent one (creates if it doesn't exist). Return position in Keys of changed/set value 
     void   SetValues (double Val);                   ///< Set all values equal to Val
@@ -377,6 +378,22 @@ inline void SDPair::operator+= (SDPair const & R)
         }
         // This is fine though (if addition is permitted): (*this)(R.Keys[i]) += R(R.Keys[i]);
         else  this->Set(R.Keys[i].CStr(), R(R.Keys[i]));
+    }
+}
+
+inline void SDPair::Del (const char * Key)
+{
+    StrDbl_t::iterator p = this->find(Key);
+    if (p==this->end())
+    {
+        std::ostringstream oss;
+        oss << (*this);
+        throw new Fatal("SDPair::Del: String-Double pair: %s does not have a key = '%s'",oss.str().c_str(),Key);
+    }
+    else
+    {
+        Keys.DelVal (Key);
+        this->erase (p);
     }
 }
 

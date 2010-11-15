@@ -37,6 +37,7 @@ SET(PROGS_D # other tests
  tlaexpr
  linsolver
  test_maps
+ test_array
  test_colors
  serialize
  test_paragrid)
