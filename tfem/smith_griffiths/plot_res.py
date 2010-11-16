@@ -20,8 +20,11 @@ if opts.tst=='0':
     U = zeros(len(T))
     for i in range(len(T)): U[i] = calc_U(T[i])
 
-    plot(T,U,'b-')
-    plot(dat['Time'],dat['uy'],'ro',lw=2)
+    plot(T,U,'b-',label='Analytical')
+    plot(dat['Time'],dat['uy'],'ro',lw=2,label='FEM')
+    xlabel('Time')
+    ylabel('uy')
+    legend(loc='best')
     grid()
     show()
 

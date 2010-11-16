@@ -80,6 +80,7 @@ public:
     bool CheckErrorNods (Table const & NodSol, SDPair const & NodTol) const;                                               ///< Check error at nodes
     bool CheckErrorEles (Table const & EleSol, SDPair const & EleTol) const;                                               ///< Check error at the centre of elements
     bool CheckErrorIPs  (Table const & EleSol, SDPair const & EleTol) const;                                               ///< Check error at integration points of elements
+    void PrintBCs       (std::ostream & os, double tf=1.0) const; ///< Print boundary conditions
 
     // Internal methods
     void NodalResults  (bool OnlyOutNods=false) const;                                                        ///< Calculate extrapolated values at elments IPs' to nodes
@@ -115,6 +116,7 @@ public:
     // Nodal results
     bool          HasDisps;    ///< Has displacements (ux, ...) ?
     bool          HasVeloc;    ///< Has velocities (vx, ...) ?
+    bool          HasWDisch;   ///< Has specific water discharge (qwx, ...) ?
     Array<String> AllUKeys;    ///< All U node keys (ux, uy, H, ...)
     Array<String> AllFKeys;    ///< All F node keys (fx, fy, Q, ...)
     Array<String> AllEKeys;    ///< All element keys (sx, sy, vx, vy, ...)
@@ -164,10 +166,53 @@ std::ostream & operator<< (std::ostream & os, Domain const & D)
     return os;
 }
 
+inline void Domain::PrintBCs (std::ostream & os, double tf) const
+{
+    Array<double> T(2);
+    T = 0.0, tf;
+    for (size_t k=0; k<T.Size();    ++k)
+    {
+        String buf;
+        os    << "\n  -----------------------------------------------------------------------------\n";
+        buf.Printf("  Boundary conditions at t = %g\n",T[k]);
+        os << buf;
+        for (size_t i=0; i<Nods.Size(); ++i)
+        {
+            Node const & nod = (*Nods[i]);
+            if (nod.NPU()>0 || nod.NPF()>0 || nod.HasIncSup())
+            {
+                os << Util::_4 << nod.Vert.ID << " ";
+                if (nod.NPU()>0)
+                {
+                    os << TERM_CLR4 << "PU:{" << TERM_RST;
+                    for (size_t i=0; i<nod.NPU(); ++i)
+                    {
+                        os << nod.PUKey(i) << "=" << nod.PU(i,T[k]);
+                        if (i!=nod.NPU()-1) os << " ";
+                    }
+                    os << TERM_CLR4 << "} " << TERM_RST;
+                }
+                if (nod.NPF()>0)
+                {
+                    os << TERM_CLR5 << "PF:{" << TERM_RST;
+                    for (size_t i=0; i<nod.NPF(); ++i)
+                    {
+                        os << nod.PFKey(i) << "=" << nod.PF(i,T[k]);
+                        if (i!=nod.NPF()-1) os << " ";
+                    }
+                    os << TERM_CLR5 << "} " << TERM_RST;
+                }
+                if (nod.HasIncSup()) os << TERM_CLR1 << "INCSUP" << TERM_RST;
+                os << std::endl;
+            }
+        }
+    }
+}
+
 // Constructor and destructor
 
 inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FNKey, Array<int> const * OutV)
-    : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), HasDisps(false), HasVeloc(false)
+    : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), HasDisps(false), HasVeloc(false), HasWDisch(false)
 {
     // info
 #ifdef HAS_MPI
@@ -304,7 +349,8 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
             Eles.Last()->StateKeys (keys);
             for (size_t j=0; j<keys.Size(); ++j)
             {
-                if (keys[j]=="vx") HasVeloc = true;
+                if (keys[j]=="vx")  HasVeloc  = true;
+                if (keys[j]=="qwx") HasWDisch = true;
                 AllEKeys.XPush (keys[j]); // push only if item is not in array yet
             }
         }
@@ -1024,6 +1070,32 @@ inline void Domain::WriteVTU (char const * FNKey, bool DoExtrapolation) const
             if (AllEKeys[i]=="vz") idx_vz = i;
         }
         oss << "        <DataArray type=\"Float64\" Name=\"" << "v" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+        k = 0; oss << "        ";
+        for (size_t j=0; j<nn; ++j)
+        {
+            double cnt_x =            NodResCount[ActNods[j]][idx_vx];
+            double cnt_y =            NodResCount[ActNods[j]][idx_vy];
+            double cnt_z = (NDim==3 ? NodResCount[ActNods[j]][idx_vz] : 0.0);
+            oss << "  " << Util::_8s <<            NodResults[ActNods[j]][idx_vx] / (cnt_x>0.0 ? cnt_x : 1.0) << " ";
+            oss <<         Util::_8s <<            NodResults[ActNods[j]][idx_vy] / (cnt_y>0.0 ? cnt_y : 1.0) << " ";
+            oss <<         Util::_8s << (NDim==3 ? NodResults[ActNods[j]][idx_vz] / (cnt_z>0.0 ? cnt_z : 1.0) : 0.0);
+            k++;
+            VTU_NEWLINE (j,k,nn,6/3-1,oss);
+        }
+        oss << "        </DataArray>\n";
+    }
+
+    // data -- nodes -- specific water discharge
+    if (HasWDisch)
+    {
+        size_t idx_vx=-1, idx_vy=-1, idx_vz=-1;
+        for (size_t i=0; i<AllEKeys.Size(); ++i)
+        {
+            if (AllEKeys[i]=="qwx") idx_vx = i;
+            if (AllEKeys[i]=="qwy") idx_vy = i;
+            if (AllEKeys[i]=="qwz") idx_vz = i;
+        }
+        oss << "        <DataArray type=\"Float64\" Name=\"" << "qw" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
         k = 0; oss << "        ";
         for (size_t j=0; j<nn; ++j)
         {

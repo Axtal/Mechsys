@@ -72,7 +72,9 @@ public:
     int            EqPU      (size_t IdxPU)              const { return _eq[_U2IDOF(_PU.Keys[IdxPU])]; } ///< Get Eq number corresponding to prescribed U
     void           DelPUs    ()                                { _PU.clear(); _MPU.Resize(0); }          ///< Delete PU structure
     String const & PUKey     (size_t IdxPU)              const { return _PU.Keys[IdxPU]; }               ///< Get PU key
-    double         PU        (size_t IdxPU, double Time) const;                                          ///< Get prescribed U value given index to PF
+    double         PU        (size_t IdxPU, double Time) const;                                          ///< Get prescribed U value given index to PU
+    double         PV        (size_t IdxPU, double Time) const;                                          ///< Get prescribed V=dUdt value given index to PU
+    double         PA        (size_t IdxPU, double Time) const;                                          ///< Get prescribed A=d2Udt2 value given index to PU
 
     // Methods to set/access prescribed F values
     void           AddToPF   (String const & FKey, double Val, PtBCMult MFunc);                          ///< Add value to prescribed F
@@ -198,6 +200,16 @@ inline void Node::AddToPF (String const & FKey, double Val, PtBCMult MFunc)
 inline double Node::PU (size_t IdxPU, double Time) const
 { 
     return _PU(_PU.Keys[IdxPU]) * (*_MPU[IdxPU])(Time);
+}
+
+inline double Node::PV (size_t IdxPU, double Time) const
+{ 
+    return 0.0;
+}
+
+inline double Node::PA (size_t IdxPU, double Time) const
+{ 
+    return 0.0;
 }
 
 inline double Node::PF (size_t IdxPF, double Time) const

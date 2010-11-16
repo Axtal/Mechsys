@@ -19,9 +19,11 @@
 #ifndef MECHSYS_UNSATFLOW_H
 #define MECHSYS_UNSATFLOW_H
 
+// MechSys
+#include<mechsys/models/model.h>
 #include<mechsys/linalg/matvec.h>
 
-class UnsatFlowState
+class UnsatFlowState : public State
 {
 public:
     // static
@@ -31,7 +33,9 @@ public:
     UnsatFlowState (int NDim);
 
     // Methods
-    void Init (SDPair const & Ini);
+    void Init    (SDPair const & Ini, size_t NIvs=0);
+    void Backup  () {}
+    void Restore () {}
 
     // Data
     double n, Sw; // porosity, saturation
@@ -39,14 +43,14 @@ public:
     Mat_t  kwb;   // current conductivity divided by gammaW
 };
 
-class UnsatFlow
+class UnsatFlow : public Model
 {
 public:
     // Constructor
     UnsatFlow (int NDim, SDPair const & Prms);
 
     // Methods
-    void InitIvs (SDPair const & Ini, UnsatFlowState * Sta)     const;
+    void InitIvs (SDPair const & Ini, State * Sta)              const;
     void Update  (double Dpw, double DEv, UnsatFlowState * Sta) const;
     void TgVars  (UnsatFlowState const * Sta)                   const;
 
@@ -74,7 +78,7 @@ Mat_t UnsatFlowState::Im;
 
 
 inline UnsatFlowState::UnsatFlowState (int NDim)
-    : n(0.2), Sw(1.0), pc(0.0)
+    : State(NDim), n(0.2), Sw(1.0), pc(0.0)
 {
     if (num_rows(Im)!=(size_t)NDim)
     {
@@ -95,7 +99,7 @@ inline UnsatFlowState::UnsatFlowState (int NDim)
     kwb = kk*Im;
 }
 
-inline void UnsatFlowState::Init (SDPair const & Ini)
+inline void UnsatFlowState::Init (SDPair const & Ini, size_t NIvs)
 {
     n   = Ini("n");
     pc  = Ini("pc");
@@ -104,6 +108,7 @@ inline void UnsatFlowState::Init (SDPair const & Ini)
 }
 
 inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms)
+    : Model (NDim,Prms,"UnsatFlow")
 {
     gamW   = Prms("gamW");
     kwsat  = Prms("kwsat");
@@ -117,15 +122,19 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms)
     if (Prms.HasKey("bc_wr"))  bc_wr  = Prms("bc_wr");
 }
 
-inline void UnsatFlow::InitIvs (SDPair const & Ini, UnsatFlowState * Sta) const
+inline void UnsatFlow::InitIvs (SDPair const & Ini, State * Sta) const
 {
-    double pc = Ini("pc");
-    double Sw = (pc>0.0 ? bc_wr+(1.0-bc_wr)*pow(bc_sb/pc, bc_lam) : 1.0);
-    SDPair ini;
-    ini = Ini;
-    ini.Set   ("Sw",  Sw);
+    SDPair ini(Ini);
+    UnsatFlowState * sta = static_cast<UnsatFlowState*>(Sta);
+    double pc = -Ini("pw");
+    double Sw =  Ini("Sw");
+    double f;
+    if (pc>bc_sb) f = Sw - bc_wr - (1.0-bc_wr)*pow(bc_sb/pc,bc_lam);
+    else          f = Sw - 1.0;
+    if (fabs(f)>1.0e-7) throw new Fatal("UnsatFlow::InitIvs: Sw=%g and pc=%g are not in WR curve",Sw,pc);
+    ini.Set   ("pc",  pc);
     ini.Set   ("kwb", kwsat*pow(Sw,Mkw)/gamW);
-    Sta->Init (ini);
+    sta->Init (ini);
 }
 
 inline void UnsatFlow::Update (double Dpw, double DEv, UnsatFlowState * Sta) const
@@ -166,5 +175,22 @@ inline double UnsatFlow::_Ceps (double pc, double Sw) const
 {
     return 0.0;
 }
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
+
+
+Model * UnsatFlowMaker(int NDim, SDPair const & Prms) { return new UnsatFlow(NDim,Prms); }
+
+int UnsatFlowRegister()
+{
+    ModelFactory["UnsatFlow"] = UnsatFlowMaker;
+    MODEL.Set ("UnsatFlow", (double)MODEL.Keys.Size());
+    return 0;
+}
+
+int __UnsatFlow_dummy_int = UnsatFlowRegister();
+
 
 #endif // MECHSYS_UNSATFLOW_H

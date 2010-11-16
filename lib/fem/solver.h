@@ -41,6 +41,7 @@
 #include <mechsys/linalg/umfpack.h>
 #include <mechsys/linalg/mumps.h>
 #include <mechsys/util/stopwatch.h>
+#include <mechsys/numerical/odesolver.h>
 
 namespace FEM
 {
@@ -51,7 +52,7 @@ public:
     // enum
     enum Scheme_t  { FE_t, ME_t, NR_t };             ///< Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
     enum TScheme_t { SS11_t };                       ///< Transient time integration scheme: (Single step/O1/1st order)
-    enum DScheme_t { GN22_t };                       ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
+    enum DScheme_t { GN22_t, RK_t };                 ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
     enum Damping_t { None_t, Rayleigh_t, HMCoup_t }; ///< Damping type: none, Rayleigh type (C=alp*M+bet*K), HydroMechCoupling
 
     // typedefs
@@ -88,6 +89,7 @@ public:
     size_t          Stp;      ///< Current (sub) step
     size_t          It;       ///< Current iteration
     size_t          NEq;      ///< Total number of equations (DOFs)
+    size_t          NIv;      ///< Total number of internal variables of elements
     size_t          NLag;     ///< Number of Lagrange multipliers
     Array<long>     pEQ;      ///< prescribed equations
     Array<long>     pEQproc;  ///< prescribed equations: processor which will handle the equation (in case of shared nodes)
@@ -148,8 +150,13 @@ private:
     void _FE_update     (double tf);                 ///< (Forward-Euler)  Update Time and elements to tf
     void _ME_update     (double tf);                 ///< (Modified-Euler) Update Time and elements to tf
     void _NR_update     (double tf);                 ///< (Newton-Rhapson) Update Time and elements to tf
+    void _set_presc_UVAF(double t);                  ///< Set prescribed U,V,A,F at time t
     void _GN22_update   (double tf, double dt);      ///< (Generalized-Newmark) Update Time and elements to tf
     void _time_print    (char const * Comment=NULL); ///< Print timestep data
+    void _VUIV_to_Y     (double Y[]);
+    void _Y_to_VUIV     (double const Y[]);
+    int  _RK_func       (double t, double const Y[], double dYdt[]);
+    void _RK_update     (double tf, double dt);      ///< Runge-Kutta update
 };
 
 
@@ -270,7 +277,8 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
     // output initial state
     if (WithInfo)
     {
-        if (DScheme==GN22_t) _time_print ("Dynamic ------ GN22");
+        if      (DScheme==GN22_t) _time_print ("Dynamic ------ GN22");
+        else if (DScheme==RK_t)   _time_print ("Dynamic ------ RK");
     }
     if (IdxOut==0)
     {
@@ -281,22 +289,56 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
 
     // solve
     double tout = Time + dtOut; // time for output
-    while (Time<tf)
+    if (DScheme==GN22_t)
     {
-        // update U, F, Time and elements to tout
-        if (DScheme==GN22_t) _GN22_update (tout,dt);
+        while (Time<tf)
+        {
+            // update U, F, Time and elements to tout
+            _GN22_update (tout,dt);
 
-        // update nodes to tout
-        UpdateNodes ();
+            // update nodes to tout
+            UpdateNodes ();
 
-        // output
-        IdxOut++;
-        if (WithInfo) _time_print ();
-        Dom.OutResults (IdxOut, Time, FileKey);
-        if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
+            // output
+            IdxOut++;
+            if (WithInfo) _time_print ();
+            Dom.OutResults (IdxOut, Time, FileKey);
+            if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
-        // next tout
-        tout = Time + dtOut;
+            // next tout
+            tout = Time + dtOut;
+        }
+    }
+    else if (DScheme==RK_t)
+    {
+        // ODE
+        size_t nvars = 2*NEq + NIv;
+        Numerical::ODESolver<Solver> ode(this, &Solver::_RK_func, nvars, "RK12", 1.0e-1, dt);
+
+        // set initial state
+        ode.t = Time;
+        _VUIV_to_Y (ode.Y);
+
+        // solve
+        while (Time<tf)
+        {
+            // evolve
+            ode.Evolve (tout);
+            Time = ode.t;
+            _Y_to_VUIV (ode.Y);
+
+            // update nodes to tout
+            UpdateNodes ();
+
+            // output
+            IdxOut++;
+            if (WithInfo) _time_print ();
+            Dom.OutResults (IdxOut, Time, FileKey);
+            if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
+
+            // next tout
+            tout = Time + dtOut;
+        }
     }
 }
 
@@ -671,6 +713,7 @@ inline void Solver::Initialize (bool Transient)
     size_t nzlag = nlag_pins*2*Dom.NDim + nlag_insu*2*Dom.NDim;
 
     // find total number of non-zero entries, including duplicates
+    NIv = 0; // total number of internal variables of elements
     size_t K11_size = 0;
     size_t K12_size = 0;
     size_t K21_size = 0;
@@ -687,6 +730,7 @@ inline void Solver::Initialize (bool Transient)
             else if ( pU[loc[i]] && !pU[loc[j]]) K21_size++;
             else if ( pU[loc[i]] &&  pU[loc[j]]) K22_size++;
         }
+        NIv += Dom.ActEles[k]->NIVs();
     }
 
     // allocate triplets
@@ -1072,6 +1116,39 @@ inline void Solver::_NR_update (double tf)
     }
 }
 
+inline void Solver::_set_presc_UVAF (double t)
+{
+    // prescribed U, V, and A
+    set_to_zero(A);
+    for (size_t i=0; i<Dom.NodsWithPU.Size(); ++i)
+    {
+        Node * const nod = Dom.NodsWithPU[i];
+        for (size_t j=0; j<nod->NPU(); ++j)
+        {
+            int eq = nod->EqPU(j);
+            U(eq) = nod->PU(j, t);
+            V(eq) = nod->PV(j, t);
+            A(eq) = nod->PA(j, t);
+        }
+    }
+
+    // prescribed F
+    F = F0;
+    for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
+    {
+        Node * const nod = Dom.NodsWithPF[i];
+        for (size_t j=0; j<nod->NPF(); ++j)
+        {
+            int eq = nod->EqPF(j);
+            if (!pU[eq])
+            {
+                F(eq) = F0(eq) + nod->PF(j, t);
+            }
+        }
+    }
+    for (size_t i=0; i<Dom.ActEles.Size(); ++i) Dom.ActEles[i]->AddToF (t, F);
+}
+
 inline void Solver::_GN22_update (double tf, double dt)
 {
     // constants
@@ -1089,18 +1166,7 @@ inline void Solver::_GN22_update (double tf, double dt)
         V  = Vs + (DynTh1*dt)*A;
 
         // new F
-        for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
-        {
-            Node * const nod = Dom.NodsWithPF[i];
-            for (size_t j=0; j<nod->NPF(); ++j)
-            {
-                int eq = nod->EqPF(j);
-                if (!pU[eq]) // set dF for unknown variables only
-                {
-                    F(eq) = F0(eq) + nod->PF(j, Time+DynTh1*dt);
-                }
-            }
-        }
+        _set_presc_UVAF (Time+DynTh1*dt);
         double normF = Norm(F);
 
         // iterations
@@ -1154,6 +1220,76 @@ inline void Solver::_time_print (char const * Comment)
         printf("%s%10s  %12s  %4s  %4s%s\n",TERM_CLR2,"Time","Norm(R)","NSS","NIT",TERM_RST);
     }
     printf("%10.6f  %s%8e%s  %4zd  %4zd\n",Time,(ResidOK()?TERM_GREEN:TERM_RED),NormR,TERM_RST,Stp,It);
+}
+
+inline void Solver::_VUIV_to_Y (double Y[])
+{
+    for (size_t i=0; i<NEq; ++i)
+    {
+        Y[i]     = V(i);
+        Y[NEq+i] = U(i);
+    }
+    for (size_t i=0; i<Dom.ActEles.Size();     ++i)
+    for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j)
+        Y[2*NEq+j] = Dom.ActEles[i]->GetIV (j);
+}
+
+inline void Solver::_Y_to_VUIV (double const Y[])
+{
+    for (size_t i=0; i<NEq; ++i)
+    {
+        V(i) = Y[i];
+        U(i) = Y[NEq+i];
+    }
+    for (size_t i=0; i<Dom.ActEles.Size(); ++i)
+    for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j)
+        Dom.ActEles[i]->SetIV (j, Y[2*NEq+j]);
+}
+
+inline int Solver::_RK_func (double t, double const Y[], double dYdt[])
+{
+    // get current U and V and set elements with current IVs
+    _Y_to_VUIV (Y);
+
+    // set A(t) and V(t)
+    // F = F1 - p1 - c1 - M12*A2
+    //   = F1 - K11*U1 - K12*U2 - C11*V1 - C12*V2 - M12*A2
+    _set_presc_UVAF (t);
+    Sparse::SubMult (K11, U, F);                               // F -= K11*U1
+    Sparse::SubMult (K12, U, F);  if (DampTy!=None_t) {        // F -= K12*U2
+    Sparse::SubMult (C11, V, F);                               // F -= C11*V1
+    Sparse::SubMult (C12, V, F); }                             // F -= C12*V2
+    Sparse::SubMult (M12, A, F);                               // F -= M12*A2
+    for (size_t i=0; i<pEQ.Size(); ++i) F(pEQ[i]) = A(pEQ[i]); // F2 = A2
+    if (DampTy==None_t) AssembleKMA  (1.0, 0.0);               // A11 = M11
+    else                AssembleKCMA (1.0, 0.0, 0.0);          // A11 = M11
+    UMFPACK::Solve (A11, F, A);                                // A = inv(M11)*F
+
+    /*
+    Sparse::Matrix<double,int> AA(A11);
+    Mat_t AAA;
+    AA.GetDense(AAA);
+    std::cout << "A11 =\n" << PrintMatrix(AAA);
+    */
+
+    // set dYdt
+    for (size_t i=0; i<NEq; ++i)
+    {
+        dYdt[i]     = A(i); // dVdt
+        dYdt[NEq+i] = V(i); // dUdt
+    }
+    for (size_t i=0; i<Dom.ActEles.Size(); ++i)
+    {
+        size_t niv = Dom.ActEles[i]->NIVs();
+        if (niv>0)
+        {
+            Vec_t rate;
+            Dom.ActEles[i]->CalcIVRate (t, U, V, rate);
+            for (size_t j=0; j<niv; ++j) dYdt[2*NEq+j] = rate(j);
+        }
+    }
+
+    return GSL_SUCCESS;
 }
 
 }; // namespace FEM

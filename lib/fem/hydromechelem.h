@@ -50,6 +50,7 @@ public:
 
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun);
+    void AddToF      (double Time, Vec_t F)                 const;
     void CalcKCM     (Mat_t & KK, Mat_t & CC, Mat_t & MM)   const;
     void GetLoc      (Array<size_t> & Loc)                  const;
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const;
@@ -60,8 +61,10 @@ public:
     void Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & Bp, Mat_t & N, Mat_t & Np, double & detJ, double & Coef) const; ///< Interpolation matrices
 
     // Data
-    UnsatFlow              * FMdl; ///< Flow model
-    Array<UnsatFlowState*>   FSta; ///< Flow state
+    UnsatFlow              * FMdl;     ///< Flow model
+    Array<UnsatFlowState*>   FSta;     ///< Flow state
+    bool                     HasGrav;  ///< Has gravity ?
+    PtBCMult                 GravMult; ///< gravity multiplier
 };
 
 size_t HydroMechElem::NDp = 0;
@@ -75,7 +78,7 @@ Vec_t  HydroMechElem::zv;
 
 
 inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : EquilibElem(NDim,Cell,Mdl,Prp,Ini,Nodes)
+    : EquilibElem(NDim,Cell,Mdl,Prp,Ini,Nodes), HasGrav(false)
 {
     // set constants of this class (just once)
     if (NDp==0)
@@ -95,81 +98,90 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
         else         zv = 0.0, 0.0, 1.0;
     }
 
-    // set initial pw values at Nodes
-    if (Ini.HasKey("geostatic"))
+    // initial data
+    double pos_pw  = (Ini.HasKey("only_positive_pw") ? true : false);
+    double z_water = 0.0;
+    double z_surf  = 0.0;
+    double gamW    = Mdl->Prms("gamW");
+    bool   has_pw  = Ini.HasKey("pw");
+    bool   has_Sw  = Ini.HasKey("Sw");
+    bool   has_geo = Ini.HasKey("geostatic");
+
+    // check
+    if ((has_pw || has_Sw) && has_geo) throw new Fatal("HydroMechElem::HydroMechElem: 'geostatic' cannot be specified together with pw or Sw (in 'Inis')");
+    if (has_geo)
     {
-        if (!Ini.HasKey("gamW"))               throw new Fatal("HydroMechElem::HydroMechElem: For geostatic stresses, 'gamW' must be provided in 'Ini' dictionary");
-        if (NDim==2 && !Ini.HasKey("y_water")) throw new Fatal("HydroMechElem::HydroMechElem: For geostatic stresses in 2D, 'y_water' must be provided in 'Ini' dictionary");
-        if (NDim==3 && !Ini.HasKey("z_water")) throw new Fatal("HydroMechElem::HydroMechElem: For geostatic stresses in 3D, 'z_water' must be provided in 'Ini' dictionary");
-        bool   pos_pw  = (Ini.HasKey("only_positive_pw") ? true : false);
-        double gamW    = Ini("gamW");
-        double z_water = (NDim==2 ? Ini("y_water") : Ini("z_water"));
-        for (size_t i=0; i<GE->NN; ++i)
+        z_water = Ini("water");
+        z_surf  = Ini("surf");
+    }
+
+    // allocate flow model TODO: move this to the outside, like Mdl, otherwise we're going to allocate one Mdl per element
+    FMdl = new UnsatFlow (NDim, Mdl->Prms);
+
+    // initial porosity and density of mixture
+    double n    = Ini("n");
+    double rhoW = Mdl->Prms("rhoW");
+    double rhoS = Mdl->Prms("rhoS");
+    rho = n*rhoW + (1.0-n)*rhoS;
+    SDPair ini(Ini);
+
+    // allocate and initialize flow state at each IP
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        // pw at IP
+        if (has_geo)
         {
-            // elevation of node
-            double z = (NDim==2 ? Con[i]->Vert.C(1) : Con[i]->Vert.C(2));
+            // elevation of point
+            Vec_t X;
+            CoordsOfIP (i, X);
+            double z = (NDim==2 ? X(1) : X(2));
 
             // pore-water pressure
             double hw = z_water-z; // column of water
             double pw = (hw>0.0 ? gamW*hw : (pos_pw ? 0.0 : gamW*hw));
-
-            // set U in node
-            Con[i]->U("pw") = pw;
+            ini.Set ("pw", pw);
         }
-    }
-    else if (Ini.HasKey("pw")) // TODO: this should be averaged after all elements are created
-    {
-        double pw = Ini("pw");
-        for (size_t i=0; i<GE->NN; ++i) Con[i]->U("pw") = pw;
+
+        // init flow state
+        FSta.Push     (new UnsatFlowState(NDim));
+        FMdl->InitIvs (ini, FSta[i]);
     }
 
-    // vector of current pw
+    // pore-water pressure at nodes (extrapolated)
     Vec_t pwe(NDp);
-    for (size_t i=0; i<GE->NN; ++i) pwe(i) = Con[i]->U("pw");
+    Array<SDPair> res;
+    StateAtNodes (res);
+    for (size_t i=0; i<NDp; ++i)
+    {
+        double pw = -res[i]("pc");
+        Con[i]->U("pw") = pw;
+        pwe(i) = pw;
+    }
 
-    // allocate flow model TODO: move this to the outside, like Mdl, otherwise we're going to allocate one Mdl per element
-    FMdl = new UnsatFlow (NDim, Prp);
-
-    // porosity of mixture
-    SDPair ini;
-    if (Ini.HasKey("n")) ini.Set("n", Ini("n"));
-
-    // allocate and initialize flow state at each IP and
     // set F in nodes due to initial (hydraulic) values
     double detJ, coef;
     Mat_t  C, B, Bp, N, Np;
+    CoordMatrix (C);
     Vec_t  fe(NDp);
     set_to_zero (fe);
-    CoordMatrix (C);
     for (size_t i=0; i<GE->NIP; ++i)
     {
-        // interpolation functions
         Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
-
-        // pw at IP
-        Vec_t Nppwe(Np * pwe);
-        double pw = Nppwe(0);
-
-        // init flow state
-        ini.Set       ("pc", -pw);
-        FSta.Push     (new UnsatFlowState(NDim));
-        FMdl->InitIvs (ini, FSta[i]);
-
-        // set F
         FMdl->TgVars (FSta[i]); // set c, C, chi, and kwb
         Mat_t kBp    (FMdl->kwb * Bp);
         Vec_t kBppwe (kBp * pwe);
         fe += (coef) * trans(Bp)*kBppwe;
     }
-    for (size_t i=0; i<GE->NN; ++i) Con[i]->F("qw") = fe(i); // TODO: should be added and averaged after all elements are created (?,almost sure)
+    for (size_t i=0; i<GE->NN; ++i) Con[i]->F("qw") += fe(i);
 }
 
 inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun)
 {
-    bool has_pw   = BCs.HasKey("pw");   // water pressure
-    bool has_flux = BCs.HasKey("flux"); // normal flux to boundary
+    bool has_flux = BCs.HasKey("flux");    // normal flux to boundary
+    bool has_srcw = BCs.HasKey("srcw");    // water source term
+    bool has_pw   = BCs.HasKey("pw");      // water pressure
 
-    if (has_pw || has_flux)
+    if (has_flux || has_srcw || has_pw)
     {
         // flux
         if (has_flux)
@@ -195,6 +207,23 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtB
             }
         }
 
+        // source
+        else if (has_srcw)
+        {
+            double srcw = BCs("srcw");
+            double detJ, coef;
+            Mat_t  C, B, Bp, N, Np;
+            CoordMatrix (C);
+            for (size_t i=0; i<GE->NIP; ++i)
+            {
+                Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
+                for (size_t j=0; j<GE->NN; ++j)
+                {
+                    Con[j]->AddToPF("qw", srcw*coef*Np(0,j), MFun);
+                }
+            }
+        }
+
         // prescribed pw
         else if (has_pw)
         {
@@ -208,7 +237,39 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtB
     }
 
     // other BCs => set by EquilibElem
-    else EquilibElem::SetBCs (IdxEdgeOrFace, BCs, MFun);
+    EquilibElem::SetBCs (IdxEdgeOrFace, BCs, MFun);
+
+    // gravity
+    HasGrav  = BCs.HasKey("gravity");
+    GravMult = (HasGrav ? MFun : NULL);
+}
+
+inline void HydroMechElem::AddToF (double Time, Vec_t F) const
+{
+    if (HasGrav)
+    {
+        // get location array
+        Array<size_t> loc;
+        GetLoc (loc);
+
+        // force vector
+        Vec_t  fe(NDp);
+        set_to_zero (fe);
+        double detJ, coef;
+        Mat_t  C, B, Bp, N, Np;
+        CoordMatrix (C);
+        for (size_t i=0; i<GE->NIP; ++i)
+        {
+            Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
+            FMdl->TgVars (FSta[i]); // set c, C, chi, and kwb
+            Mat_t kw     (FMdl->kwb * FMdl->gamW);
+            Vec_t kwz    (kw * zv);
+            fe += (-coef) * trans(Bp) * kwz;
+        }
+
+        // add results to F (external forces)
+        for (size_t i=0; i<NDp; ++i) F(loc[NDu+i]) += fe(i) * GravMult(Time);
+    }
 }
 
 inline void HydroMechElem::GetLoc (Array<size_t> & Loc) const
@@ -448,6 +509,9 @@ inline void HydroMechElem::StateKeys (Array<String> & Keys) const
     Keys.Push ("pc");
     Keys.Push ("Sw");
     Keys.Push ("kw");
+    Keys.Push ("qwx");
+    Keys.Push ("qwy"); if (NDim==3)
+    Keys.Push ("qwz");
 }
 
 inline void HydroMechElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
@@ -457,6 +521,30 @@ inline void HydroMechElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
     KeysVals.Set ("pc", FSta[IdxIP]->pc);
     KeysVals.Set ("Sw", FSta[IdxIP]->Sw);
     KeysVals.Set ("kw", FSta[IdxIP]->kwb(0,0)*FMdl->gamW);
+
+    // vector of current pw
+    Vec_t pwe(NDp);
+    for (size_t i=0; i<GE->NN; ++i) pwe(i) = Con[i]->U("pw");
+
+    // relative specific discharge
+    double detJ, coef;
+    Mat_t  C, B, Bp, N, Np;
+    CoordMatrix (C);
+    Vec_t qw(NDim);
+    set_to_zero (qw);
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
+        FMdl->TgVars  (FSta[i]); // set c, C, chi, and kwb
+        Mat_t kw      (FMdl->kwb * FMdl->gamW);
+        Vec_t kwz     (kw * zv);
+        Vec_t Bppwe   (Bp * pwe);
+        Vec_t kwbBppw (FMdl->kwb * Bppwe);
+        qw += (-coef) * (kwbBppw + kwz);
+    }
+    KeysVals.Set ("qwx", qw(0));
+    KeysVals.Set ("qwy", qw(1)); if (NDim==3)
+    KeysVals.Set ("qwz", qw(2));
 }
 
 

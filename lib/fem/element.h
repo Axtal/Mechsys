@@ -124,6 +124,7 @@ public:
     virtual void BackupState  ()                                                  const;   ///< Backup element state
     virtual void RestoreState ()                                                  const;   ///< Restore element state
     virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun) {} ///< Set boundary conditions
+    virtual void AddToF       (double Time, Vec_t F)                              const {} ///< Add to (external) F vector contribution at each Time
     virtual void ClrBCs       ()                                                        {} ///< Clear boundary conditions
     virtual void GetLoc       (Array<size_t> & Loc)                               const { throw new Fatal("Element::GetLoc: Method not implemented for this element"); } ///< Get location vector for mounting K/M matrices
     virtual void CalcK        (Mat_t & K)                                         const { throw new Fatal("Element::CalcK: Method not implemented for this element"); }
@@ -137,6 +138,12 @@ public:
     virtual void StateAtIPs   (Array<SDPair> & Results)                           const;   ///< Get state (internal values: sig, eps) at all integration points
     virtual void StateAtNodes (Array<SDPair> & Results)                           const;   ///< Get state (internal values: sig, eps) at all nodes (applies extrapolation)
     virtual void Draw         (std::ostream & os, MPyPrms const & Prms)           const;   ///< TODO: Move this to a Python script. Draw element with MatPlotLib
+
+    // Methods for the Runge-Kutta method
+    virtual size_t NIVs       ()                                                            const { return 0; } ///< Number of internal variables
+    virtual double GetIV      (size_t i)                                                    const { return 0; } ///< Get internal variable
+    virtual void   SetIV      (size_t i, double Val)                                              {}            ///< Set internal variable
+    virtual void   CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const {}            ///< Calculate rate of internal variables
 
     // Methods that depend on GE
     void CoordMatrix   (Mat_t & C)                 const; ///< Matrix with coordinates of nodes
