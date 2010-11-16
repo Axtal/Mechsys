@@ -1,22 +1,25 @@
 matid  = 0
+flwid  = 6
 pcam0  = 100
-pw0    = 10
+pw0    = -1.8
+Sw0    = 1.0
 ninc   = 10
 cdrift = 1
 ssout  = 1
 refdat = camclay01.dat
 refsim = sim_nod_60.dat
 ndiv   = 1
+o2     = 0
 fem    = 1
 dyn    = 1
 hm     = 1
-tsw    = 0.05
+tsw    = 0.02
 dt     = 0.01
 dtout  = 0.02
 am     = 0.001
 ak     = 0.0
 ray    = 1
-tf     = 10
+tf     = 0.02
 npath  = 1
 
 #ndat = 3
@@ -27,12 +30,15 @@ npath  = 1
 #ndat = 1
 #  dez = -10
 
-ndat = 3
-  dsx = 0
-  dsy = 0
-  dsz = -149
+#ndat = 3
+#  dsx = 0
+#  dsy = 0
+#  dsz = -149
 
 #ndat = 3
 #  lode  = 90
 #  dpcam = 10
 #  dez   = -2
+
+ndat = 1
+  dpw = 100

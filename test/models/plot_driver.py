@@ -32,8 +32,12 @@ print "  name = ", name
 print "  prms : ", prms
 print "  inis : ", inis
 
-if inp.NDiv==3: out_nods = [48,51,60,68, 0,3,12,15]
-else:           out_nods = [4,5,6,7, 10,11,14,15]
+if inp.O2:
+    if inp.NDiv==3: out_nods = [48,51,60,68, 0,3,12,15]
+    else:           out_nods = [4,5,6,7, 10,11,14,15]
+else:
+    if inp.NDiv==3: out_nods = [0,3,12,15, 48,51,60,63]
+    else:           out_nods = [0,1,2,3, 4,5,6,7]
 
 # res file
 fem = 'driver_nod_%d.res'%out_nods[2]
@@ -73,19 +77,19 @@ elif opts.tst=='2':
 
     subplot(2,2,1)
     for k, n in enumerate(out_nods):
-        plot (res[k]['Time'], res[k]['sz'], label='Node # %d'%n)
+        plot (res[k]['Time'], -res[k]['sz'], label='Node # %d'%n)
     xlabel ('Time')
-    ylabel (r'$\sigma_z$')
+    ylabel (r'$-\sigma_z$')
     grid   ()
-    legend (loc='upper right',prop=FontProperties(size=8))
+    legend (loc='best',prop=FontProperties(size=8))
 
     subplot(2,2,2)
     for k, n in enumerate(out_nods):
-        plot (res[k]['uz'], res[k]['sz'], label='Node # %d'%n)
+        plot (res[k]['uz'], -res[k]['sz'], label='Node # %d'%n)
     xlabel (r'$u_z$')
-    ylabel (r'$\sigma_z$')
+    ylabel (r'$-\sigma_z$')
     grid   ()
-    legend (loc='upper left',prop=FontProperties(size=8))
+    legend (loc='best',prop=FontProperties(size=8))
 
     subplot(2,2,3)
     if res[0].has_key('pw'):
@@ -93,6 +97,16 @@ elif opts.tst=='2':
             plot (res[k]['Time'], res[k]['pw'], label='Node # %d'%n)
         xlabel ('Time')
         ylabel (r'$p_w$')
+        Grid   ()
+
+    subplot(2,2,4)
+    if res[0].has_key('pc'):
+        for k, n in enumerate(out_nods):
+            #plot (log(1.0+res[k]['pc']), res[k]['Sw'], label='Node # %d'%n)
+            plot (res[k]['pc'], res[k]['Sw'], label='Node # %d'%n)
+        #xlabel (r'$\log{(1+p_c)}$')
+        xlabel (r'$p_c$')
+        ylabel (r'$S_w$')
         Grid   ()
 
     show ()

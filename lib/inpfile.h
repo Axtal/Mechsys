@@ -36,9 +36,12 @@ struct PathIncs
     int    ninc;                            // number of increments for this path. -1 => use general
     double k;                               // path given Lode, k=dqoct/dpoct, and dez
     bool   kPath;                           // with k=Dq/Dp
+    double dpw, dSw;                        // increment of pore-water pressure and water saturation
+    bool   HasDpw, HasDSw;                  // has dpw or dSw ?
     PathIncs () : dsx(0.),dsy(0.),dsz(0.),dsxy(0.),dsyz(0.),dszx(0.), 
                   dex(0.),dey(0.),dez(0.),dexy(0.),deyz(0.),dezx(0.),
-                  lode(0.),dp(0.),zPath(false),ninc(-1),k(0.),kPath(false) {}
+                  lode(0.),dp(0.),zPath(false),ninc(-1),k(0.),kPath(false),
+                  dpw(0.),dSw(0.),HasDpw(false),HasDSw(false) {}
 };
 
 class InpFile
@@ -51,26 +54,28 @@ public:
     void Read (char const * FileName);
 
     // Data
-    int    MatID;       // material ID
-    double pCam0;       // pCam
-    double pw0;         // initial pore-water pressure
-    size_t NInc;        // general number of increments (for all load-unload paths)
-    bool   CDrift;      // correct YS drift
-    double STOL;        // local error tolerance
-    bool   FEM;         // use one Hex8 FEM element instead of point integration
-    bool   SSOut;       // output substeps ?
-    bool   Dyn;         // dynamic analysis ?
-    double tf,dt,dtOut; // variables for dynamic analysis
-    double tSW;         // switch time (for dynamic simulation)
-    double Am;          // Damping Am
-    double Ak;          // Damping Ak
-    bool   Ray;         // Rayleigh damping ?
-    bool   HM;          // HydroMech ?
-    String RefDat;      // reference data file
-    String RefSim;      // reference simulation file
-    String RefAna;      // reference analytical solution file
-    int    NDiv;        // mesh number of divisions
-    bool   O2;          // quadratic elements ?
+    int    MatID;       ///< material ID
+    int    FlwID;       ///< flow material ID
+    double pCam0;       ///< pCam
+    double pw0;         ///< initial pore-water pressure
+    double Sw0;         ///< initial water saturation
+    size_t NInc;        ///< general number of increments (for all load-unload paths)
+    bool   CDrift;      ///< correct YS drift
+    double STOL;        ///< local error tolerance
+    bool   FEM;         ///< use one Hex8 FEM element instead of point integration
+    bool   SSOut;       ///< output substeps ?
+    bool   Dyn;         ///< dynamic analysis ?
+    double tf,dt,dtOut; ///< variables for dynamic analysis
+    double tSW;         ///< switch time (for dynamic simulation)
+    double Am;          ///< Damping Am
+    double Ak;          ///< Damping Ak
+    bool   Ray;         ///< Rayleigh damping ?
+    bool   HM;          ///< HydroMech ?
+    String RefDat;      ///< reference data file
+    String RefSim;      ///< reference simulation file
+    String RefAna;      ///< reference analytical solution file
+    int    NDiv;        ///< mesh number of divisions
+    bool   O2;          ///< quadratic elements ?
 
     // path increments
     Array<PathIncs> Path;
@@ -82,8 +87,10 @@ public:
 
 inline InpFile::InpFile ()
     : MatID   (0),
+      FlwID   (-1),
       pCam0   (100.0),
       pw0     (0.0),
+      Sw0     (0.0),
       NInc    (10),
       CDrift  (true),
       STOL    (1.0e-5),
@@ -142,6 +149,8 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="dsxy")  { Path[idxpath].dsxy = val;       idxdat++; }
                 else if (key=="dsyz")  { Path[idxpath].dsyz = val;       idxdat++; }
                 else if (key=="dszx")  { Path[idxpath].dszx = val;       idxdat++; }
+                else if (key=="dpw")   { Path[idxpath].dpw  = val;  Path[idxpath].HasDpw=true;  idxdat++; }
+                else if (key=="dSw")   { Path[idxpath].dSw  = val;  Path[idxpath].HasDSw=true;  idxdat++; }
                 else if (key=="ninc")  { Path[idxpath].ninc = atoi(str_val.CStr());  idxdat++; }
                 else throw new Fatal("InpFile::Read: Error in file<%s> @ line # %d: reading data of Path # %d. Key==%s is invalid",FileName,line_num,idxpath,key.CStr());
                 if (idxdat==ndat)
@@ -155,8 +164,10 @@ inline void InpFile::Read (char const * FileName)
             else
             {
                 if      (key=="matid")  MatID  = atoi(str_val.CStr());
+                else if (key=="flwid")  FlwID  = atoi(str_val.CStr());
                 else if (key=="pcam0")  pCam0  = val;
                 else if (key=="pw0")    pw0    = val;
+                else if (key=="Sw0")    Sw0    = val;
                 else if (key=="ninc")   NInc   = atoi(str_val.CStr());
                 else if (key=="cdrift") CDrift = static_cast<bool>(atoi(str_val.CStr()));
                 else if (key=="stol")   STOL   = val;
@@ -197,8 +208,11 @@ std::ostream & operator<< (std::ostream & os, PathIncs const & P)
     else
     {
         os << "ds=["<<P.dsx << " "<<P.dsy << " "<<P.dsz << " "<<P.dsxy << " "<<P.dsyz << " "<<P.dszx << "] ";
-        os << "de=["<<P.dex << " "<<P.dey << " "<<P.dez << " "<<P.dexy << " "<<P.deyz << " "<<P.dezx << "]\n";
+        os << "de=["<<P.dex << " "<<P.dey << " "<<P.dez << " "<<P.dexy << " "<<P.deyz << " "<<P.dezx << "]";
     }
+    if (P.HasDpw) os << " dpw=" << P.dpw << " ";
+    if (P.HasDSw) os << " dSw=" << P.dSw << " ";
+    os << "\n";
     return os;
 }
 
@@ -212,8 +226,10 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
 {
     os << "Input data:\n";
     os << "  matid  = " <<  IF.MatID   << "\n";
+    os << "  flwid  = " <<  IF.FlwID   << "\n";
     os << "  pcam0  = " <<  IF.pCam0   << "\n";
     os << "  pw0    = " <<  IF.pw0     << "\n";
+    os << "  Sw0    = " <<  IF.Sw0     << "\n";
     os << "  ninc   = " <<  IF.NInc    << "\n";
     os << "  cdrift = " <<  IF.CDrift  << "\n";
     os << "  stol   = " <<  IF.STOL    << "\n";

@@ -1,7 +1,7 @@
 ID    = 0
 name  = LinElastic
 nprms = 2
-E     = 60.0
+E     = 60000000.0
 nu    = 0.3
 ninis = 0
 
@@ -72,3 +72,17 @@ bet5  = 5.0
 K     = 1000
 G     = 1000
 ninis = 0
+
+ID     = 6
+name   = UnsatFlow
+nprms  = 8
+rhoW   = 1.0
+rhoS   = 2.0
+gamW   = 10.0
+kwsat  = 1.0e-2
+Mkw    = 1.0
+bc_lam = 0.8
+bc_sb  = 1.8
+bc_wr  = 0.01
+ninis  = 1
+n      = 0.3

@@ -285,46 +285,71 @@ int main(int argc, char **argv) try
     // read input file
     InpFile inp;
     inp.Read (inp_fname.CStr());
-    cout << inp;
     T_SWITCH = inp.tSW;
 
     // initial values
     Dict prms, inis;
-    inis.Set (-1, "sx sy sz pw", -inp.pCam0,-inp.pCam0,-inp.pCam0, inp.pw0);
+    inis.Set (-1, "sx sy sz pw Sw", -inp.pCam0,-inp.pCam0,-inp.pCam0, inp.pw0, inp.Sw0);
 
     // parse materials file
     String model_name;
     ReadMaterial (-1, inp.MatID, mat_fname.CStr(), model_name, prms, inis);
+
+    // flow material data
+    String flw_name;
+    if (inp.FlwID>=0)
+    {
+        Dict flw_prms, flw_inis;
+        ReadMaterial (-1, inp.FlwID, mat_fname.CStr(), flw_name, flw_prms, flw_inis);
+        if (flw_name!="UnsatFlow") throw new Fatal("Flow model name must be UnsatFlow at the moment");
+        flw_prms(-1).Del("name");
+        inis += flw_inis;
+        prms += flw_prms;
+    }
+
+    // output
+    cout << inp;
     printf("\nMaterial data:\n");
     printf("  name = %s\n",model_name.CStr());
+    if (inp.FlwID>0) printf("  flow = %s\n",flw_name.CStr());
     printf("  prms : "); cout << prms << endl;
     printf("  inis : "); cout << inis << endl;
-
-    // show path
     printf("\nPath:\n");
     cout << inp.Path;
 
     // auxiliar variables
     Vec_t DEps(6), DSig(6); // total increments for one stage
     Array<bool>   pDEps(6); // prescribed strain components ?
+    bool          ppw, pSw; // prescribed water pressure and saturation ?
+    double        Dpw, DSw; // total increments of pw and Sw for one stage
 
     // FEM using one single element
     if (inp.FEM)
     {
         // mesh
+        if (!(inp.NDiv==1 || inp.NDiv==3)) throw new Fatal("NDiv must be either 1 or 3");
         int option = 0; // Vol=0, Surf=1, Both=2
         Mesh::Structured mesh(3);
-        mesh.GenBox   (true, inp.NDiv,inp.NDiv,inp.NDiv, 1.0,1.0,1.0);
+        mesh.GenBox   (inp.O2, inp.NDiv,inp.NDiv,inp.NDiv, 1.0,1.0,1.0);
         mesh.WriteVTU ("driver_mesh",option);
 
         // properties
         Dict prps;
-        prps.Set (-1, "prob geom active d3d", (inp.HM ? PROB("HydroMech") : PROB("Equilib")), GEOM("Hex20"), TRUE, TRUE);
+        prps.Set (-1, "prob geom active d3d", (inp.HM ? PROB("HydroMech") : PROB("Equilib")), 
+                                              (inp.O2 ? GEOM("Hex20")     : GEOM("Hex8")), TRUE, TRUE);
 
         // select some nodes for output
         Array<int> out_nods(8);
-        if (inp.NDiv==3) out_nods = 48,51,60,68, 0,3,12,15;
-        else             out_nods = 4,5,6,7, 10,11,14,15;
+        if (inp.O2)
+        {
+            if (inp.NDiv==3) out_nods = 48,51,60,68, 0,3,12,15;
+            else             out_nods = 4,5,6,7, 10,11,14,15;
+        }
+        else
+        {
+            if (inp.NDiv==3) out_nods = 0,3,12,15, 48,51,60,63;
+            else             out_nods = 0,1,2,3, 4,5,6,7;
+        }
 
         // domain and solver
         FEM::Domain dom(mesh, prps, prms, inis, "driver", &out_nods);
@@ -342,9 +367,9 @@ int main(int argc, char **argv) try
             dom.MFuncs[-31] = &Multiplier;
             if (inp.Ray)
             {
-                sol.DampAm  = inp.Am;
-                sol.DampAk  = inp.Ak;
-                sol.DampTy  = FEM::Solver::Rayleigh_t;
+                sol.DampAm = inp.Am;
+                sol.DampAk = inp.Ak;
+                sol.DampTy = FEM::Solver::Rayleigh_t;
             }
             if (inp.HM) sol.DampTy = FEM::Solver::HMCoup_t;
         }
@@ -365,17 +390,37 @@ int main(int argc, char **argv) try
             if (fabs(inp.Path[i].dex)>1.0e-10) { DEps(0) = inp.Path[i].dex;  pDEps[0] = true; }
             if (fabs(inp.Path[i].dey)>1.0e-10) { DEps(1) = inp.Path[i].dey;  pDEps[1] = true; }
             if (fabs(inp.Path[i].dez)>1.0e-10) { DEps(2) = inp.Path[i].dez;  pDEps[2] = true; }
+            ppw = (inp.Path[i].HasDpw);
+            pSw = (inp.Path[i].HasDSw);
+            if (ppw) Dpw = inp.Path[i].dpw;
+            if (pSw) DSw = inp.Path[i].dSw;
 
             // solve
             Dict bcs;
             bcs.Set (-10, "ux", 0.0);
             bcs.Set (-20, "uy", 0.0);
             bcs.Set (-30, "uz", 0.0);
+            if (inp.HM)
+            {
+                bcs.Set (-10, "pw", 0.0);
+                bcs.Set (-20, "pw", 0.0);
+                bcs.Set (-30, "pw", 0.0);
+            }
             if (inp.Dyn)
             {
-                if (pDEps[0]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-11, "ux multU", DEps(0), TRUE);*/ else bcs.Set(-11, "qn multF", DSig(0), TRUE);
-                if (pDEps[1]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-21, "uy multU", DEps(1), TRUE);*/ else bcs.Set(-21, "qn multF", DSig(1), TRUE);
-                if (pDEps[2]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-31, "uz multU", DEps(2), TRUE);*/ else bcs.Set(-31, "qn multF", DSig(2), TRUE);
+                if (pSw) throw new Fatal("FEM/HM: prescribed Sw is not available");
+                else if (ppw)
+                {
+                    bcs.Set(-11, "pw", Dpw);
+                    bcs.Set(-21, "pw", Dpw);
+                    bcs.Set(-31, "pw", Dpw);
+                }
+                else
+                {
+                    if (pDEps[0]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-11, "ux multU", DEps(0), TRUE);*/ else bcs.Set(-11, "qn multF", DSig(0), TRUE);
+                    if (pDEps[1]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-21, "uy multU", DEps(1), TRUE);*/ else bcs.Set(-21, "qn multF", DSig(1), TRUE);
+                    if (pDEps[2]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-31, "uz multU", DEps(2), TRUE);*/ else bcs.Set(-31, "qn multF", DSig(2), TRUE);
+                }
             }
             else
             {
@@ -383,12 +428,8 @@ int main(int argc, char **argv) try
                 if (pDEps[1]) bcs.Set(-21, "uy", DEps(1)); else bcs.Set(-21, "qn", DSig(1));
                 if (pDEps[2]) bcs.Set(-31, "uz", DEps(2)); else bcs.Set(-31, "qn", DSig(2));
             }
-            if (inp.HM && inp.NDiv==3)
-            {
-                bcs.Set(-31, "pw", 0.0);
-            }
-            dom.SetBCs (bcs);
-            //cout << dom << endl;
+            dom.SetBCs   (bcs);
+            dom.PrintBCs (cout, inp.tf);
             sol.SSOut = inp.SSOut;
             if (inp.Dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtOut, "driver");
             else
@@ -444,6 +485,7 @@ int main(int argc, char **argv) try
             set_to_zero (DEps);
             set_to_zero (DSig);
             pDEps = false,false,false, false,false,false;
+            pSw   = (inp.Path[i].HasDSw);
             bool zpath = inp.Path[i].zPath;
             bool kpath = inp.Path[i].kPath;
             if (kpath)
