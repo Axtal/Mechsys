@@ -44,11 +44,12 @@ typedef std::map<String,double> StrDbl_t;
 class SDPair : public StrDbl_t
 {
 public:
-    /** Ex:  pair("ux uy", 1.0,2.0)        OR   Case-A
-     *       pair("ux=1.0  uy=2.0")        OR   Case-B
-     *       pair("{'ux':1.0, 'uy':2.0}")       Case-C  (Python-Dict) */
-    void Set (const char * Str, ...);
-    void Set (const char * Str, va_list ArgList);
+    // Constructors
+    SDPair () {}                               ///< Default constructor
+    SDPair (SDPair const & R) { (*this) = R; } ///< Copy constructor
+
+    // Set methods
+    void Set (const char * Str, ...); ///< Set given keys and vals: Set("ux uy", 1.0,2.0). NOTE: vals must be double
 
     // Operators
     double       & operator() (char   const * Key);
@@ -88,10 +89,8 @@ typedef std::map<String,int> StrInt_t;
 class SIPair : public StrInt_t
 {
 public:
-    /** Ex:  pair("a b", 1,2)        OR   Case-A
-     *       pair("a=1  b=2")        OR   Case-B
-     *       pair("{'a':1, 'b':2}")       Case-C  (Python-Dict) */
-    void Set (const char * Str, ...);
+    // Set methods
+    void Set (const char * Str, ...); ///< Set given keys and vals: Set("a b", 1,2). NOTE: vals must be int
 
     // Operators
     int       & operator() (char const   * Key);
@@ -118,15 +117,18 @@ typedef std::map<int, SDPair> Dict_t;
 class Dict : public Dict_t
 {
 public:
-    /** Ex:  dict(-1, "ux uy", 1.0,2.0)        OR   Case-A
-     *       dict(-1, "ux=1.0  uy=2.0")        OR   Case-B
-     *       dict(-1, "{'ux':1.0, 'uy':2.0}")       Case-C  (Python-Dict) */
-    void Set (int Key, const char * Str, ...);
-    void Set (int Key, SDPair const & P);
+    // Constructors
+    Dict () {}                             ///< Default constructor
+    Dict (Dict const & R) { (*this) = R; } ///< Copy constructor
+
+    // Set methods
+    void Set (int Key, const char * Str, ...); ///< Set given key, keys, and vals: Set(-1, "ux uy", 1.0,2.0). NOTE: valus must be double
+    void Set (int Key, SDPair const & P);      ///< Set given SDPair (does merge)
 
     // Operators
     SDPair const & operator() (int Key) const;
     SDPair       & operator() (int Key);
+    void           operator=  (Dict const & R); ///< Assignment operator
     void           operator+= (Dict const & R); ///< Used to merge keys
 
     // Methods
@@ -262,73 +264,16 @@ std::ostream & operator<< (std::ostream & os, Table const & T)
 
 inline void SDPair::Set(const char * Str, ...)
 {
-    String str(Str);
-    if (str.find(":")!=String::npos) // Case-C
-    {
-        // replace ":',{}" with spaces
-        size_t pos = str.find_first_of(":',{}");
-        while (pos!=String::npos)
-        {
-            str[pos] = ' ';
-            pos      = str.find_first_of(":',{}",pos+1);
-        }
-
-        // fill map
-        std::istringstream iss(str);
-        String key;
-        double val;
-        while (iss>>key)
-        {
-            if (Keys.Find(key)<0) Keys.Push(key);
-            if (iss>>val) (*this)[key] = val;
-            else break;
-        }
-    }
-    else if (str.find("=")!=String::npos) // Case-B
-    {
-        // replace "=" with spaces
-        size_t pos = str.find_first_of("=");
-        while (pos!=String::npos)
-        {
-            str[pos] = ' ';
-            pos      = str.find_first_of("=",pos+1);
-        }
-
-        // fill map
-        std::istringstream iss(str);
-        String key;
-        double val;
-        while (iss>>key)
-        {
-            if (Keys.Find(key)<0) Keys.Push(key);
-            if (iss>>val) (*this)[key] = val;
-            else break;
-        }
-    }
-    else // Case-A
-    {
-        std::istringstream iss(Str);
-        String    key;
-        va_list   arg_list;
-        va_start (arg_list, Str);
-        while (iss>>key)
-        {
-            if (Keys.Find(key)<0) Keys.Push(key);
-            (*this)[key] = va_arg(arg_list,double);
-        }
-        va_end (arg_list);
-    }
-}
-
-inline void SDPair::Set(const char * Str, va_list ArgList)
-{
     std::istringstream iss(Str);
-    String key;
+    String    key;
+    va_list   arg_list;
+    va_start (arg_list, Str);
     while (iss>>key)
     {
-        if (Keys.Find(key)<0) Keys.Push(key);
-        (*this)[key] = va_arg(ArgList,double);
+        Keys.XPush (key);
+        (*this)[key] = va_arg(arg_list,double);
     }
+    va_end (arg_list);
 }
 
 inline double & SDPair::operator() (char const * Key)
@@ -496,62 +441,16 @@ inline void SDPair::PySet (BPy::dict const & Pairs)
 
 inline void SIPair::Set(const char * Str, ...)
 {
-    String str(Str);
-    if (str.find(":")!=String::npos) // Case-C
+    std::istringstream iss(Str);
+    String    key;
+    va_list   arg_list;
+    va_start (arg_list, Str);
+    while (iss>>key)
     {
-        // replace ":',{}" with spaces
-        size_t pos = str.find_first_of(":',{}");
-        while (pos!=String::npos)
-        {
-            str[pos] = ' ';
-            pos      = str.find_first_of(":',{}",pos+1);
-        }
-
-        // fill map
-        std::istringstream iss(str);
-        String key;
-        int    val;
-        while (iss>>key)
-        {
-            if (Keys.Find(key)<0) Keys.Push(key);
-            if (iss>>val) (*this)[key] = val;
-            else break;
-        }
+        Keys.XPush (key);
+        (*this)[key] = va_arg(arg_list,int);
     }
-    else if (str.find("=")!=String::npos) // Case-B
-    {
-        // replace "=" with spaces
-        size_t pos = str.find_first_of("=");
-        while (pos!=String::npos)
-        {
-            str[pos] = ' ';
-            pos      = str.find_first_of("=",pos+1);
-        }
-
-        // fill map
-        std::istringstream iss(str);
-        String key;
-        int    val;
-        while (iss>>key)
-        {
-            if (Keys.Find(key)<0) Keys.Push(key);
-            if (iss>>val) (*this)[key] = val;
-            else break;
-        }
-    }
-    else // Case-A
-    {
-        std::istringstream iss(Str);
-        String    key;
-        va_list   arg_list;
-        va_start (arg_list, Str);
-        while (iss>>key)
-        {
-            if (Keys.Find(key)<0) Keys.Push(key);
-            (*this)[key] = va_arg(arg_list,int);
-        }
-        va_end (arg_list);
-    }
+    va_end (arg_list);
 }
 
 inline int & SIPair::operator() (char const * Key)
@@ -596,20 +495,15 @@ inline bool SIPair::HasKey (String const & Key) const
 
 inline void Dict::Set (int Key, const char * Str, ...)
 {
-    String str(Str);
-         if (str.find(":")!=String::npos) { (*this)[Key].Set(Str); } // Case-C
-    else if (str.find("=")!=String::npos) { (*this)[Key].Set(Str); } // Case-B
-    else // Case-A
-    {
-        va_list   arg_list;
-        va_start (arg_list, Str);
-        (*this)[Key].Set(Str,arg_list);
-        va_end (arg_list);
-    }
-    if (Keys.Find(Key)<0)
-    {
-        Keys.Push(Key);
-    }
+    bool has_key = HasKey(Key);
+    SDPair & pair = (has_key ? (*this)(Key) : (*this)[Key]);
+    std::istringstream iss(Str);
+    String    skey;
+    va_list   arg_list;
+    va_start (arg_list, Str);
+    while (iss>>skey) pair.Set (skey.CStr(), va_arg(arg_list,double));
+    va_end (arg_list);
+    if (!has_key) Keys.Push (Key);
 }
 
 inline void Dict::Set (int Key, SDPair const & P)
@@ -640,6 +534,17 @@ inline SDPair & Dict::operator() (int Key)
         throw new Fatal("Dict::operator(): Dictionary: %s does not have a key = %d",oss.str().c_str(),Key);
     }
     return p->second;
+}
+
+inline void Dict::operator= (Dict const & R)
+{
+    this->clear();
+    Keys.Resize (R.Keys.Size());
+    for (size_t i=0; i<R.Keys.Size(); ++i)
+    {
+        Keys[i]          = R.Keys[i];
+        (*this)[Keys[i]] = R(Keys[i]);
+    }
 }
 
 inline void Dict::operator+= (Dict const & R)

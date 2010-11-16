@@ -34,7 +34,7 @@ int main(int argc, char **argv) try
 {
     Util::Stopwatch stopwatch;
 
-    cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
+    cout << TERM_CLR_GREEN_H << "\n// Sort /////////////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
 
     int a,b,c,d;
     a = 10;
@@ -45,7 +45,7 @@ int main(int argc, char **argv) try
     Util::Sort(a,b,c,d);
     cout << "Result:  " << a << " " << b << " " << c << " " << d << endl;
 
-    cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
+    cout << TERM_CLR_GREEN_H << "\n// Keys2Array ///////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
 
     String keys("ux uy uz  fx fy fz");
     Array<String> array;
@@ -58,7 +58,7 @@ int main(int argc, char **argv) try
     cout << "Is 'uy' in Keys ? => " << (Util::HasKey(keys,"uy") ? " YES " : " NO ") << endl;
     cout << "Array of keys = " << array << endl;
 
-    cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
+    cout << TERM_CLR_GREEN_H << "\n// Array Find ///////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
 
     Array<int> A(7); A = 1, 4, 2, 6, 0, 3, -3;
     long pos = A.Find(8);
@@ -74,7 +74,7 @@ int main(int argc, char **argv) try
     cout << "First(A)  = " << (*A.GetPtr()) << endl;
     cout << "Last(A)   = " << A.Last() << endl;
 
-    cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
+    cout << TERM_CLR_GREEN_H << "\n// Table ////////////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
 
     Table tab;
     tab.SetZero ("A B C D", /*nrows*/4);
@@ -97,29 +97,30 @@ int main(int argc, char **argv) try
     }
     if (error>1.0e-15) throw new Fatal("Table read/write failed");
 
-    cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
+    cout << TERM_CLR_GREEN_H << "\n// SDPair ///////////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
 
     SDPair p1, p2;
-    p1.Set ("k l m", 10., 20., 30.);
-    p1.Set ("K L M", 100., 200., 300.);
+    p1.Set ("k l m", 10., 20., 30.);     cout << "p1 set(k l m) : " << p1 << endl;
+    p1.Set ("K L M", 100., 200., 300.);  cout << "p1 set(K L M) : " << p1 << endl;
     //p2.Set ("A B M", 11., 22., 33.); // error => values cannot be summed up (by design)
-    p2.Set ("A B", 11., 22.); // error => values cannot be summed up (by design)
-    p1 += p2;
-    Dict D1, D2, D3;
-    D1.Set (-1, "a b c", 1., 2., 3.);
-    D1.Set (-1, "M N P", 7., 8., 9.);
-    D1.Set (-2, "d e f", 4., 5., 6.);
-    D2.Set (-3, "aa bb", 11., 22.);
-    //D3.Set (-1, "MM N", 33., 44.); // error
-    D3.Set (-1, "MM NN", 33., 44.);
-    D1 += D2;
-    D1 += D3;
-    cout << "p1 : " << p1 << endl;
-    cout << "p2 : " << p2 << endl;
-    cout << "D1 =\n" << D1 << endl;
-    cout << "D2 =\n" << D2 << endl;
-    cout << "D3 =\n" << D3 << endl;
+    p2.Set ("A B", 11., 22.); cout << "p2            : " << p2 << endl;
+    p1 += p2;                 cout << "p1 += p2      : " << p1 << endl;
+    SDPair p3(p1);            cout << "p3(p1)        : " << p3 << endl;
 
+    cout << TERM_CLR_GREEN_H << "\n// Dict /////////////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
+
+    Dict D1, D2, D3;
+    D1.Set (-1, "a b c", 1., 2., 3.);   cout << "D1 set(-1, a b c) : \n" << D1 << endl << endl;
+    D1.Set (-1, "M N P", 7., 8., 9.);   cout << "D1 set(-1, M N P) : \n" << D1 << endl << endl;
+    D1.Set (-2, "d e f", 4., 5., 6.);   cout << "D1 set(-2, d e f) : \n" << D1 << endl << endl;
+    D2.Set (-3, "aa bb", 11., 22.);     cout << "D2 set(-3, aa bb) : \n" << D2 << endl << endl;
+    //D3.Set (-1, "MM N", 33., 44.); // error
+    D3.Set (-1, "MM NN", 33., 44.);     cout << "D3 set(-1, MM NN) : \n" << D3 << endl << endl;
+    D1 += D2;                           cout << "D1 += D2 :          \n" << D1 << endl << endl;
+    D1 += D3;                           cout << "D1 += D3 :          \n" << D1 << endl << endl;
+    Dict D4(D1);                        cout << "D4(D1) :            \n" << D4 << endl << endl;
+
+    // end
     cout << endl;
     return 0;
 }

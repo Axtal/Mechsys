@@ -21,6 +21,7 @@
 #define MECHSYS_ODE_H
 
 // STL
+#include <cmath>   // for sqrt
 #include <cfloat>  // for DBL_EPSILON
 #include <cstring> // for strcmp
 
@@ -68,6 +69,13 @@ private:
     gsl_odeiv_control * _c;
     gsl_odeiv_evolve  * _e;
     gsl_odeiv_system    _sys;
+
+    // for ME
+    double * yFE;
+    double * yME;
+    double * dy1;
+    double * dy2;
+    double   stol;
 };
 
 /** Trick to pass pointers to member functions to GSL.
@@ -85,7 +93,7 @@ int __ode_call_fun__ (double time, double const y[], double dydt[], void * not_u
 
 template<typename Instance>
 inline ODESolver<Instance>::ODESolver (Instance * p2Inst, pFun p2Fun, size_t NEq, char const * Scheme, double STOL, double h, double EPSREL)
-    : t(-1.0), Y(NULL), _p2inst(p2Inst), _p2fun(p2Fun), _h(h), _ME(false)
+    : t(-1.0), Y(NULL), _p2inst(p2Inst), _p2fun(p2Fun), _h(h), _ME(false), yFE(NULL), yME(NULL), dy1(NULL), dy2(NULL), stol(STOL)
 {
     // set scheme
     gsl_odeiv_step_type const * scheme = gsl_odeiv_step_rk8pd;
@@ -109,12 +117,25 @@ inline ODESolver<Instance>::ODESolver (Instance * p2Inst, pFun p2Fun, size_t NEq
 
     // allocate array
     Y = new double [NEq];
+
+    // ME
+    if (_ME)
+    {
+        yFE = new double [NEq];
+        yME = new double [NEq];
+        dy1 = new double [NEq];
+        dy2 = new double [NEq];
+    }
 }
 
 template<typename Instance>
 inline ODESolver<Instance>::~ODESolver ()
 { 
-    if (Y!=NULL) delete [] Y; 
+    if (Y  !=NULL) delete [] Y;
+    if (yFE!=NULL) delete [] yFE;
+    if (yME!=NULL) delete [] yME;
+    if (dy1!=NULL) delete [] dy1;
+    if (dy2!=NULL) delete [] dy2;
     gsl_odeiv_evolve_free  (_e);
     gsl_odeiv_control_free (_c);
     gsl_odeiv_step_free    (_s);
@@ -138,84 +159,62 @@ inline void ODESolver<Instance>::Evolve (double tf)
     }
     else
     {
-        throw new Fatal("ODESolver::Evolve: RK12 is not ready yet");
-        /*
-        double * yFE = new double [neq];
-        double * yME = new double [neq];
-        double * dy1 = new double [neq];
-        double * dy2 = new double [neq];
-        for (int j=0; j<neq; ++j) y[j] = Y(0, j);
-
-        // solve
-        double Dt = (tf - tVec(0)) / static_cast<double>(nincs);
-        for (int i=1; i<=nincs; i++)
+        // for each pseudo time T
+        int    neq   = _sys.dimension;
+        size_t MaxSS = 2000;
+        double mMin  = 0.1;
+        double mMax  = 10.0;
+        double Dtf   = tf - t;
+        double T     = 0.0;
+        double dT    = _h;
+        size_t k     = 0;
+        for (k=0; k<MaxSS; ++k)
         {
-            // for each pseudo time T
-            double ti  = tVec(0) + i*Dt;
-            double Dti = ti - t;
-            double T   = 0.0;
-            double dT  = dTini;
-            size_t k   = 0;
-            for (k=0; k<MaxSS; ++k)
+            // exit point
+            if (T>=1.0) break;
+
+            // FE increments
+            double dt = dT*Dtf;
+            (_p2inst->*_p2fun) (t, Y, dy1);
+            for (int j=0; j<neq; ++j) yFE[j] = Y[j] + dy1[j]*dt;
+
+            // ME increments and local error
+            (_p2inst->*_p2fun) (t+dt, yFE, dy2);
+            double norm_yME = 0.0;
+            double norm_err = 0.0;
+            for (int j=0; j<neq; ++j)
             {
-                // exit point
-                if (T>=1.0) break;
-
-                // FE increments
-                double dt = dT*Dti;
-                (_p2inst->*_p2incs) (t, y, dt, dy1);
-                for (int j=0; j<neq; ++j) yFE[j] = y[j] + dy1[j];
-
-                // ME increments and local error
-                (_p2inst->*_p2incs) (t+dt, yFE, dt, dy2);
-                double norm_yME = 0.0;
-                double norm_err = 0.0;
-                for (int j=0; j<neq; ++j)
-                {
-                    yME[j]    = y[j] + 0.5*(dy1[j]+dy2[j]);
-                    norm_yME += yME[j]*yME[j];
-                    norm_err += (yME[j]-yFE[j])*(yME[j]-yFE[j]);
-                }
-
-                // local error estimate
-                double err = sqrt(norm_err)/(1.0+sqrt(norm_yME));
-
-                // step multiplier
-                double m = (err>0.0 ? 0.9*sqrt(STOL/err) : mMax);
-
-                // update
-                if (err<STOL)
-                {
-                    // update state
-                    T += dT;
-                    t += dt;
-                    for (int j=0; j<neq; ++j) y[j] = yME[j];
-
-                    // limit change on stepsize
-                    if (m>mMax) m = mMax;
-                }
-                else if (m<mMin) m = mMin;
-
-                // change next step size
-                dT = m * dT;
-
-                // check for last increment
-                if (dT>1.0-T) dT = 1.0-T;
+                yME[j]    = Y[j] + 0.5*(dy1[j]+dy2[j])*dt;
+                norm_yME += yME[j]*yME[j];
+                norm_err += (yME[j]-yFE[j])*(yME[j]-yFE[j]);
             }
-            if (k>=MaxSS) throw new Fatal("ODESolver::Evolve: Modified-Euler did not converge after %d substeps",k);
 
-            // results
-            tVec(i) = t;
-            for (int j=0; j<neq; ++j) Y(i, j) = y[j];
+            // local error estimate
+            double err = sqrt(norm_err)/(1.0+sqrt(norm_yME));
 
-            // clean up
-            delete [] y;
-            delete [] yFE;
-            delete [] yME;
-            delete [] dy1;
-            delete [] dy2;
+            // step multiplier
+            double m = (err>0.0 ? 0.9*sqrt(stol/err) : mMax);
+
+            // update
+            if (err<stol)
+            {
+                // update state
+                T += dT;
+                t += dt;
+                for (int j=0; j<neq; ++j) Y[j] = yME[j];
+
+                // limit change on stepsize
+                if (m>mMax) m = mMax;
+            }
+            else if (m<mMin) m = mMin;
+
+            // change next step size
+            dT = m * dT;
+
+            // check for last increment
+            if (dT>1.0-T) dT = 1.0-T;
         }
-        */
+        if (k>=MaxSS) throw new Fatal("ODESolver::Evolve: RK12 (Modified-Euler) did not converge after %d substeps",k);
     }
 }
 
