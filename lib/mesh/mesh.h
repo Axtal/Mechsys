@@ -209,6 +209,7 @@ public:
     void Erase      ();                                                   ///< Erase current mesh (deallocate memory)
 
     // Tag methods (can be called after the mesh is created)
+    int  TagVertex  (int Tag, double x, double y, double z=0.0, double Tol=1.0e-5);   ///< Tag a vertex. Returns the index of vertex in Verts array
     void TagLine    (double y0, double AlpRad, int Tag, double Tol=1.0e-5);           ///< Set tag for line y = y0 + tan(AlpRad)*x
     void TagHSeg    (double y, double xMin, double xMax, int Tag, double Tol=1.0e-5); ///< Set tag for horizontal segment inside xMin and xMax
     void GroundTags (int LTag=-10, int RTag=-10, int BTag=-20, double Tol=1.0e-5);    ///< Set tags for the left and right (vertical) edges and bottom (horizontal) edge
@@ -911,6 +912,21 @@ inline void Generic::Erase ()
     if (Cells   .Size()>0) Cells   .Resize(0);
     if (TgdVerts.Size()>0) TgdVerts.Resize(0);
     if (TgdCells.Size()>0) TgdCells.Resize(0);
+}
+
+inline int Generic::TagVertex (int Tag, double x, double y, double z, double Tol)
+{
+    int idx = -1;
+    for (size_t i=0; i<Verts.Size(); ++i)
+    {
+        double d = sqrt(pow(Verts[i]->C(0)-x, 2.0) +
+                        pow(Verts[i]->C(1)-y, 2.0) +
+             (NDim==3 ? pow(Verts[i]->C(2)-z, 2.0) : 0.0));
+        if (d<Tol) { idx=i; break; }
+    }
+    if (idx<0) throw new Fatal("Generic::TagVertex: Could not find Vertex at (%g,%g,%g)",x,y,z);
+    Verts[idx]->Tag = Tag;
+    return idx;
 }
 
 inline void Generic::TagLine (double y0, double AlpRad, int Tag, double Tol)
