@@ -65,7 +65,8 @@ int main(int argc, char **argv) try
 
     // solve
     ODE ode(mu);
-    Numerical::ODESolver<ODE> sol(&ode, &ODE::Fun, /*neq*/2, "RKDP89");
+    //Numerical::ODESolver<ODE> sol(&ode, &ODE::Fun, /*neq*/2, "FE", /*stol*/1.e-2, /*h*/1.0);
+    Numerical::ODESolver<ODE> sol(&ode, &ODE::Fun, /*neq*/2, "RK12", /*stol*/1.e-2, /*h*/1.0);
     sol.t    = 0.0;
     sol.Y[0] = y0ini;
     sol.Y[1] = y1ini;

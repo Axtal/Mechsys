@@ -64,6 +64,7 @@ private:
     Instance          * _p2inst;
     pFun                _p2fun;
     double              _h;
+    bool                _FE;
     bool                _ME;
     gsl_odeiv_step    * _s;
     gsl_odeiv_control * _c;
@@ -93,17 +94,18 @@ int __ode_call_fun__ (double time, double const y[], double dydt[], void * not_u
 
 template<typename Instance>
 inline ODESolver<Instance>::ODESolver (Instance * p2Inst, pFun p2Fun, size_t NEq, char const * Scheme, double STOL, double h, double EPSREL)
-    : t(-1.0), Y(NULL), _p2inst(p2Inst), _p2fun(p2Fun), _h(h), _ME(false), yFE(NULL), yME(NULL), dy1(NULL), dy2(NULL), stol(STOL)
+    : t(-1.0), Y(NULL), _p2inst(p2Inst), _p2fun(p2Fun), _h(h), _FE(false), _ME(false), yFE(NULL), yME(NULL), dy1(NULL), dy2(NULL), stol(STOL)
 {
     // set scheme
     gsl_odeiv_step_type const * scheme = gsl_odeiv_step_rk8pd;
     if (Scheme!=NULL)
     {
-        if      (strcmp(Scheme,"RK12"  )==0) { scheme = gsl_odeiv_step_rk2; _ME=true; }
+        if      (strcmp(Scheme,"FE"    )==0) { scheme = gsl_odeiv_step_rk2; _FE=true; }
+        else if (strcmp(Scheme,"RK12"  )==0) { scheme = gsl_odeiv_step_rk2; _ME=true; }
         else if (strcmp(Scheme,"RK23"  )==0) { scheme = gsl_odeiv_step_rk2;   }
         else if (strcmp(Scheme,"RKF45" )==0) { scheme = gsl_odeiv_step_rkf45; }
         else if (strcmp(Scheme,"RKDP89")==0) { scheme = gsl_odeiv_step_rk8pd; }
-        else throw new Fatal("ODESolver::ODESolver: Scheme %s is invalid. Valid ones are: RK12, RK23, RKF45, and RKDP89",Scheme);
+        else throw new Fatal("ODESolver::ODESolver: Scheme %s is invalid. Valid ones are: FE, RK12, RK23, RKF45, and RKDP89",Scheme);
     }
 
     // allocate auxiliary variables
@@ -118,7 +120,8 @@ inline ODESolver<Instance>::ODESolver (Instance * p2Inst, pFun p2Fun, size_t NEq
     // allocate array
     Y = new double [NEq];
 
-    // ME
+    // FE or ME
+    if (_FE) dy1 = new double [NEq];
     if (_ME)
     {
         yFE = new double [NEq];
@@ -130,7 +133,7 @@ inline ODESolver<Instance>::ODESolver (Instance * p2Inst, pFun p2Fun, size_t NEq
 
 template<typename Instance>
 inline ODESolver<Instance>::~ODESolver ()
-{ 
+{
     if (Y  !=NULL) delete [] Y;
     if (yFE!=NULL) delete [] yFE;
     if (yME!=NULL) delete [] yME;
@@ -148,19 +151,20 @@ inline void ODESolver<Instance>::Evolve (double tf)
     if (t<0.0) throw new Fatal("ODESolver::Evolve: Initial values (t, Y) must be set first");
 
     // solve
-    if (!_ME)
+    int neq = _sys.dimension;
+    if (_FE)
     {
         while (t<tf)
         {
-           int status = gsl_odeiv_evolve_apply (_e, _c, _s, &_sys, &t, tf, &_h, Y);
-           if (status!=GSL_SUCCESS) throw new Fatal("ODESolver::Evolve: gsl_odeiv_evolve_apply failed. status=%d",status);
-           //if (h<hmin) { h = hmin; }
+            double dt = (t+_h>tf ? tf-t : _h);
+            (_p2inst->*_p2fun) (t, Y, dy1);
+            for (int j=0; j<neq; ++j) Y[j] += dy1[j]*dt;
+            t += dt;
         }
     }
-    else
+    else if (_ME)
     {
         // for each pseudo time T
-        int    neq   = _sys.dimension;
         size_t MaxSS = 2000;
         double mMin  = 0.1;
         double mMax  = 10.0;
@@ -215,6 +219,15 @@ inline void ODESolver<Instance>::Evolve (double tf)
             if (dT>1.0-T) dT = 1.0-T;
         }
         if (k>=MaxSS) throw new Fatal("ODESolver::Evolve: RK12 (Modified-Euler) did not converge after %d substeps",k);
+    }
+    else
+    {
+        while (t<tf)
+        {
+           int status = gsl_odeiv_evolve_apply (_e, _c, _s, &_sys, &t, tf, &_h, Y);
+           if (status!=GSL_SUCCESS) throw new Fatal("ODESolver::Evolve: gsl_odeiv_evolve_apply failed. status=%d",status);
+           //if (h<hmin) { h = hmin; }
+        }
     }
 }
 
