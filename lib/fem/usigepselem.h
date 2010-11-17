@@ -50,7 +50,7 @@ public:
     // Methods
     void IncNLocDOF  (size_t & NEq)                                      const { FirstEQ = NEq;   NEq += 2*NDs; }
     void GetLoc      (Array<size_t> & Loc)                               const; ///< Get location vector for mounting K/M matrices
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun); ///< If setting body forces, IdxEdgeOrFace is ignored
+    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF); ///< If setting body forces, IdxEdgeOrFace is ignored
     void CalcK       (Mat_t & K)                                         const; ///< Stiffness
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)              const; ///< Update state at IPs
     void StateKeys   (Array<String> & Keys)                              const; ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
@@ -165,7 +165,7 @@ inline USigEpsElem::USigEpsElem (int NDim, Mesh::Cell const & Cell, Model const 
     }
 }
 
-inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun)
+inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF)
 {
     // deactivate/activate commands
     if (BCs.HasKey("deactivate")) throw new Fatal("USigEpsElem::SetBCs: 'deactivate' command failed: method not implemented yet");
@@ -238,9 +238,9 @@ inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCM
                 // set boundary conditions
                 for (size_t j=0; j<GE->NN; ++j)
                 {
-                    Con[j]->AddToPF("fx", coef*GE->N(j)*bx, MFun);
-                    Con[j]->AddToPF("fy", coef*GE->N(j)*by, MFun);  if (NDim==3)
-                    Con[j]->AddToPF("fz", coef*GE->N(j)*bz, MFun);
+                    Con[j]->AddToPF("fx", coef*GE->N(j)*bx, BCF);
+                    Con[j]->AddToPF("fy", coef*GE->N(j)*by, BCF);  if (NDim==3)
+                    Con[j]->AddToPF("fz", coef*GE->N(j)*bz, BCF);
                 }
             }
         }
@@ -314,9 +314,9 @@ inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCM
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    Con[k]->AddToPF("fx", coef*GE->FN(j)*qx, MFun);
-                    Con[k]->AddToPF("fy", coef*GE->FN(j)*qy, MFun);  if (NDim==3)
-                    Con[k]->AddToPF("fz", coef*GE->FN(j)*qz, MFun);
+                    Con[k]->AddToPF("fx", coef*GE->FN(j)*qx, BCF);
+                    Con[k]->AddToPF("fy", coef*GE->FN(j)*qy, BCF);  if (NDim==3)
+                    Con[k]->AddToPF("fz", coef*GE->FN(j)*qz, BCF);
                 }
             }
         }
@@ -332,9 +332,9 @@ inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCM
         for (size_t j=0; j<GE->NFN; ++j)
         {
             size_t k = GE->FNode(IdxEdgeOrFace,j);
-            if (has_ux) Con[k]->SetPU("ux", ux, MFun);
-            if (has_uy) Con[k]->SetPU("uy", uy, MFun);
-            if (has_uz) Con[k]->SetPU("uz", uz, MFun);
+            if (has_ux) Con[k]->SetPU("ux", ux, BCF);
+            if (has_uy) Con[k]->SetPU("uy", uy, BCF);
+            if (has_uz) Con[k]->SetPU("uz", uz, BCF);
             if (has_sup) Con[k]->SetIncSup (alpha);
         }
     }

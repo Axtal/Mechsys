@@ -203,7 +203,7 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       WarnRes  (false),
       WrnTol   (1.0e-7),
       RKScheme ("RK23"),
-      RKSTOL   (1.0e-5)
+      RKSTOL   (1.0e-2)
 {
 #if HAS_MPI
     if (FEM::Domain::PARA && MPI::COMM_WORLD.Get_rank()!=0) WithInfo = false;

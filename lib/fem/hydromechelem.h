@@ -49,7 +49,7 @@ public:
     ~HydroMechElem () { if (FMdl!=NULL) delete FMdl; for (size_t i=0; i<GE->NIP; ++i) delete FSta[i]; }
 
     // Methods
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun);
+    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF);
     void AddToF      (double Time, Vec_t F)                 const;
     void CalcKCM     (Mat_t & KK, Mat_t & CC, Mat_t & MM)   const;
     void GetLoc      (Array<size_t> & Loc)                  const;
@@ -64,7 +64,7 @@ public:
     UnsatFlow              * FMdl;     ///< Flow model
     Array<UnsatFlowState*>   FSta;     ///< Flow state
     bool                     HasGrav;  ///< Has gravity ?
-    PtBCMult                 GravMult; ///< gravity multiplier
+    BCFuncs                * GravMult; ///< gravity multiplier
 };
 
 size_t HydroMechElem::NDp = 0;
@@ -175,7 +175,7 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
     for (size_t i=0; i<GE->NN; ++i) Con[i]->F("qw") += fe(i);
 }
 
-inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun)
+inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF)
 {
     bool has_flux = BCs.HasKey("flux");    // normal flux to boundary
     bool has_srcw = BCs.HasKey("srcw");    // water source term
@@ -202,7 +202,7 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtB
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    Con[k]->AddToPF("qw", -coef*GE->FN(j)*qn, MFun);
+                    Con[k]->AddToPF("qw", -coef*GE->FN(j)*qn, BCF);
                 }
             }
         }
@@ -219,7 +219,7 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtB
                 Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
                 for (size_t j=0; j<GE->NN; ++j)
                 {
-                    Con[j]->AddToPF("qw", srcw*coef*Np(0,j), MFun);
+                    Con[j]->AddToPF("qw", srcw*coef*Np(0,j), BCF);
                 }
             }
         }
@@ -231,17 +231,17 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtB
             for (size_t j=0; j<GE->NFN; ++j)
             {
                 size_t k = GE->FNode(IdxEdgeOrFace,j);
-                Con[k]->SetPU("pw", pw, MFun);
+                Con[k]->SetPU("pw", pw, BCF);
             }
         }
     }
 
     // other BCs => set by EquilibElem
-    EquilibElem::SetBCs (IdxEdgeOrFace, BCs, MFun);
+    EquilibElem::SetBCs (IdxEdgeOrFace, BCs, BCF);
 
     // gravity
     HasGrav  = BCs.HasKey("gravity");
-    GravMult = (HasGrav ? MFun : NULL);
+    GravMult = (HasGrav ? BCF : NULL);
 }
 
 inline void HydroMechElem::AddToF (double Time, Vec_t F) const
@@ -268,7 +268,11 @@ inline void HydroMechElem::AddToF (double Time, Vec_t F) const
         }
 
         // add results to F (external forces)
-        for (size_t i=0; i<NDp; ++i) F(loc[NDu+i]) += fe(i) * GravMult(Time);
+        for (size_t i=0; i<NDp; ++i)
+        {
+            double fm = (GravMult==NULL ? 1.0 : GravMult->fm(Time));
+            F(loc[NDu+i]) += fe(i) * fm;
+        }
     }
 }
 

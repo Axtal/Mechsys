@@ -51,15 +51,6 @@ using Util::FALSE;
 using FEM::PROB;
 using FEM::GEOM;
 
-double T_SWITCH = 0.5;
-
-double Multiplier (double t)
-{
-    if (t<T_SWITCH) return sin(PI*t/(2.0*T_SWITCH));
-    else            return 1.0;
-    //if (t>=T_SWITCH) return 1.0;
-    //else return (1.0/T_SWITCH)*t;
-}
 
 void zTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double dp, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs, double dexy=0., double deyz=0., double dezx=0.)
 {
@@ -274,6 +265,18 @@ void TgIncs (Model const * Mdl, EquilibState const * Sta, double dT, Vec_t const
     }
 }
 
+
+class BCF : public FEM::BCFuncs
+{
+public:
+    BCF () : tsw(0.5) {}
+    double fm (double t) { return (t<tsw ? sin(PI*t/(2.0*tsw)) : 1.0); }
+    double u  (double t) { return (t<tsw ? pw*t/tsw : pw); }
+    double v  (double t) { return (t<tsw ? pw/tsw : 0.0); }
+    double tsw;
+    double pw;
+};
+
 int main(int argc, char **argv) try
 {
     // input filename
@@ -285,7 +288,6 @@ int main(int argc, char **argv) try
     // read input file
     InpFile inp;
     inp.Read (inp_fname.CStr());
-    T_SWITCH = inp.tSW;
 
     // initial values
     Dict prms, inis;
@@ -351,10 +353,24 @@ int main(int argc, char **argv) try
             else             out_nods = 0,1,2,3, 4,5,6,7;
         }
 
+        // boundary condition functions
+        BCF bcf;
+        bcf.tsw = inp.tSW;
+        bcf.pw  = inp.pw0; // current pw
+
         // domain and solver
         FEM::Domain dom(mesh, prps, prms, inis, "driver", &out_nods);
         FEM::Solver sol(dom);
         dom.WriteVTU ("driver_initial");
+        sol.CteTg = inp.CteTg;
+
+        // dynamic scheme
+        if (inp.RK)
+        {
+            sol.DScheme  = FEM::Solver::RK_t;
+            sol.RKScheme = inp.RKScheme;
+            sol.RKSTOL   = inp.RKSTOL;
+        }
 
         // hydro-mechanical analysis
         if (inp.HM) inp.Dyn = true;
@@ -362,9 +378,9 @@ int main(int argc, char **argv) try
         // dynamic analysis
         if (inp.Dyn)
         {
-            dom.MFuncs[-11] = &Multiplier;
-            dom.MFuncs[-21] = &Multiplier;
-            dom.MFuncs[-31] = &Multiplier;
+            dom.MFuncs[-11] = &bcf;
+            dom.MFuncs[-21] = &bcf;
+            dom.MFuncs[-31] = &bcf;
             if (inp.Ray)
             {
                 sol.DampAm = inp.Am;
@@ -395,6 +411,9 @@ int main(int argc, char **argv) try
             if (ppw) Dpw = inp.Path[i].dpw;
             if (pSw) DSw = inp.Path[i].dSw;
 
+            // set solver
+            if (ppw) sol.DScheme = FEM::Solver::RK_t; // it has to be RK because GN22 doesn't account for U BCs yet
+
             // solve
             Dict bcs;
             bcs.Set (-10, "ux", 0.0);
@@ -411,15 +430,16 @@ int main(int argc, char **argv) try
                 if (pSw) throw new Fatal("FEM/HM: prescribed Sw is not available");
                 else if (ppw)
                 {
-                    bcs.Set(-11, "pw", Dpw);
-                    bcs.Set(-21, "pw", Dpw);
-                    bcs.Set(-31, "pw", Dpw);
+                    bcf.pw += Dpw;
+                    bcs.Set(-11, "pw bcf", 0.0, TRUE);
+                    bcs.Set(-21, "pw bcf", 0.0, TRUE);
+                    bcs.Set(-31, "pw bcf", 0.0, TRUE);
                 }
                 else
                 {
-                    if (pDEps[0]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-11, "ux multU", DEps(0), TRUE);*/ else bcs.Set(-11, "qn multF", DSig(0), TRUE);
-                    if (pDEps[1]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-21, "uy multU", DEps(1), TRUE);*/ else bcs.Set(-21, "qn multF", DSig(1), TRUE);
-                    if (pDEps[2]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-31, "uz multU", DEps(2), TRUE);*/ else bcs.Set(-31, "qn multF", DSig(2), TRUE);
+                    if (pDEps[0]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-11, "ux multU", DEps(0), TRUE);*/ else bcs.Set(-11, "qn bcf", DSig(0), TRUE);
+                    if (pDEps[1]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-21, "uy multU", DEps(1), TRUE);*/ else bcs.Set(-21, "qn bcf", DSig(1), TRUE);
+                    if (pDEps[2]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-31, "uz multU", DEps(2), TRUE);*/ else bcs.Set(-31, "qn bcf", DSig(2), TRUE);
                 }
             }
             else

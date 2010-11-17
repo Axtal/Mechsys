@@ -39,14 +39,11 @@ using FEM::PROB;
 using FEM::GEOM;
 using Util::TRUE;
 
-double Multiplier (double t)
+class BCF : public FEM::BCFuncs
 {
-    if (t>1.0) return 0.0;
-    else       return 3.194*sin(Util::PI*t);
-
-    //if (t>1.0) return 0.0;
-    //else       return 3.194*Util::PI*cos(Util::PI*t);
-}
+public:
+    double fm (double t) { return (t<1.0 ? 3.194*sin(Util::PI*t) : 0.0); }
+};
 
 int main(int argc, char **argv) try
 {
@@ -66,9 +63,10 @@ int main(int argc, char **argv) try
     prps.Set(-1, "prob fra rho E A Izz", PROB("Beam"), 1.0, 1.0, 3.194, 1.0, 1.0);
 
     // domain
+    BCF bcf;
     Array<int> out_nods(1, /*justone*/true);
     FEM::Domain dom(mesh, prps, Dict(), Dict(), "fig_11_01", &out_nods);
-    dom.MFuncs[-200] = &Multiplier; // set database of callbacks
+    dom.MFuncs[-200] = &bcf; // set database of callbacks
 
     // solver
     FEM::Solver sol(dom);
@@ -77,7 +75,7 @@ int main(int argc, char **argv) try
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
     bcs.Set(-100, "ux uy wz", 0.0,0.0,0.0);
-    bcs.Set(-200, "fy multF", 1.0, TRUE);
+    bcs.Set(-200, "fy bcf",   1.0, TRUE);
     dom.SetBCs (bcs);
     sol.DynSolve (/*tf*/1.8, /*dt*/0.05, /*dtOut*/0.05, "fig_11_01");
 

@@ -61,6 +61,7 @@ public:
     double Sw0;         ///< initial water saturation
     size_t NInc;        ///< general number of increments (for all load-unload paths)
     bool   CDrift;      ///< correct YS drift
+    int    NIP;         ///< Number of integration points in element
     double STOL;        ///< local error tolerance
     bool   FEM;         ///< use one Hex8 FEM element instead of point integration
     bool   SSOut;       ///< output substeps ?
@@ -100,6 +101,7 @@ inline InpFile::InpFile ()
       Sw0      (0.0),
       NInc     (10),
       CDrift   (true),
+      NIP      (-1),
       STOL     (1.0e-5),
       FEM      (false),
       SSOut    (true),
@@ -184,6 +186,7 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="Sw0")      Sw0      = val;
                 else if (key=="ninc")     NInc     = atoi(str_val.CStr());
                 else if (key=="cdrift")   CDrift   = static_cast<bool>(atoi(str_val.CStr()));
+                else if (key=="nip")      NIP      = atoi(str_val.CStr());
                 else if (key=="stol")     STOL     = val;
                 else if (key=="fem")      FEM      = val;
                 else if (key=="ssout")    SSOut    = static_cast<bool>(atoi(str_val.CStr()));
@@ -270,6 +273,7 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     os << "  ctetg    = " << IF.CteTg    << "\n";
     os << "  ndiv     = " << IF.NDiv     << "\n";
     os << "  o2       = " << IF.O2       << "\n";
+    if (IF.NIP>=0)      os << "  nip      = " << IF.NIP      << "\n";
     if (IF.FlwID>=0)    os << "  flwid    = " << IF.FlwID    << "\n";
     if (IF.RefDat!="")  os << "  refdat   = " << IF.RefDat   << "\n";
     if (IF.RefSim!="")  os << "  refsim   = " << IF.RefSim   << "\n";

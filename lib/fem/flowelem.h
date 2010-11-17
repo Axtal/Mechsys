@@ -43,7 +43,7 @@ public:
               Array<Node*> const & Nodes); ///< Connectivity
 
     // Methods
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun); ///< If setting body forces, IdxEdgeOrFace is ignored
+    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF); ///< If setting body forces, IdxEdgeOrFace is ignored
     void ClrBCs      ();                                                        ///< Clear BCs
     void GetLoc      (Array<size_t> & Loc)                               const; ///< Get location vector for mounting K/M matrices
     void CalcK       (Mat_t & K)                                         const; ///< Stiffness matrix
@@ -88,7 +88,7 @@ inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
     }
 }
 
-inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun)
+inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF)
 {
     bool has_s    = BCs.HasKey("s");    // source term
     bool has_H    = BCs.HasKey("H");    // potential
@@ -109,7 +109,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult
                 CalcShape (C, GE->IPs[i], detJ, coef);
                 for (size_t j=0; j<GE->NN; ++j)
                 {
-                    Con[j]->AddToPF("Q", s*coef*GE->N(j), MFun);
+                    Con[j]->AddToPF("Q", s*coef*GE->N(j), BCF);
                 }
             }
         }
@@ -127,7 +127,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    Con[k]->AddToPF("Q", coef*GE->FN(j)*qn, MFun);
+                    Con[k]->AddToPF("Q", coef*GE->FN(j)*qn, BCF);
                 }
             }
         }
@@ -151,7 +151,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    Con[k]->AddToPF("Q", coef*GE->FN(j)*h*Tinf, MFun);
+                    Con[k]->AddToPF("Q", coef*GE->FN(j)*h*Tinf, BCF);
                 }
             }
         }
@@ -164,7 +164,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult
         for (size_t j=0; j<GE->NFN; ++j)
         {
             size_t k = GE->FNode(IdxEdgeOrFace,j);
-            Con[k]->SetPU("H", H, MFun);
+            Con[k]->SetPU("H", H, BCF);
         }
     }
 }

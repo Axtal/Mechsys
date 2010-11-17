@@ -44,7 +44,7 @@ public:
                  Array<Node*> const & Nodes); ///< Connectivity
 
     // Methods
-    virtual void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun); ///< If setting body forces, IdxEdgeOrFace is ignored
+    virtual void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF); ///< If setting body forces, IdxEdgeOrFace is ignored
     virtual void GetLoc      (Array<size_t> & Loc)                               const; ///< Get location vector for mounting K/M matrices
     void         CalcK       (Mat_t & K)                                         const; ///< Stiffness matrix
     void         CalcM       (Mat_t & M)                                         const; ///< Mass matrix
@@ -178,7 +178,7 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
     }
 }
 
-inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun)
+inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF)
 {
     // deactivate/activate commands
     if (BCs.HasKey("deactivate"))
@@ -219,9 +219,9 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCM
             else
             {
                 // set boundary conditions
-                Con[i]->AddToPF("fx", Fi(0+i*NDim) - Fb(0+i*NDim), MFun);
-                Con[i]->AddToPF("fy", Fi(1+i*NDim) - Fb(1+i*NDim), MFun);  if (NDim==3)
-                Con[i]->AddToPF("fz", Fi(2+i*NDim) - Fb(2+i*NDim), MFun);
+                Con[i]->AddToPF("fx", Fi(0+i*NDim) - Fb(0+i*NDim), BCF);
+                Con[i]->AddToPF("fy", Fi(1+i*NDim) - Fb(1+i*NDim), BCF);  if (NDim==3)
+                Con[i]->AddToPF("fz", Fi(2+i*NDim) - Fb(2+i*NDim), BCF);
             }
         }
 
@@ -319,9 +319,9 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCM
                 // set boundary conditions
                 for (size_t j=0; j<GE->NN; ++j)
                 {
-                    Con[j]->AddToPF("fx", coef*GE->N(j)*bx, MFun);
-                    Con[j]->AddToPF("fy", coef*GE->N(j)*by, MFun);  if (NDim==3)
-                    Con[j]->AddToPF("fz", coef*GE->N(j)*bz, MFun);
+                    Con[j]->AddToPF("fx", coef*GE->N(j)*bx, BCF);
+                    Con[j]->AddToPF("fy", coef*GE->N(j)*by, BCF);  if (NDim==3)
+                    Con[j]->AddToPF("fz", coef*GE->N(j)*bz, BCF);
                 }
             }
         }
@@ -395,9 +395,9 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCM
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    Con[k]->AddToPF("fx", coef*GE->FN(j)*qx, MFun);
-                    Con[k]->AddToPF("fy", coef*GE->FN(j)*qy, MFun);  if (NDim==3)
-                    Con[k]->AddToPF("fz", coef*GE->FN(j)*qz, MFun);
+                    Con[k]->AddToPF("fx", coef*GE->FN(j)*qx, BCF);
+                    Con[k]->AddToPF("fy", coef*GE->FN(j)*qy, BCF);  if (NDim==3)
+                    Con[k]->AddToPF("fz", coef*GE->FN(j)*qz, BCF);
                 }
             }
         }
@@ -413,9 +413,9 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCM
         for (size_t j=0; j<GE->NFN; ++j)
         {
             size_t k = GE->FNode(IdxEdgeOrFace,j);
-            if (has_ux) Con[k]->SetPU("ux", ux, MFun);
-            if (has_uy) Con[k]->SetPU("uy", uy, MFun);
-            if (has_uz) Con[k]->SetPU("uz", uz, MFun);
+            if (has_ux) Con[k]->SetPU("ux", ux, BCF);
+            if (has_uy) Con[k]->SetPU("uy", uy, BCF);
+            if (has_uz) Con[k]->SetPU("uz", uz, BCF);
             if (has_sup) Con[k]->SetIncSup (alpha);
         }
     }

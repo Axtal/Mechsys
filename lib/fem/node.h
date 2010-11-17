@@ -35,9 +35,15 @@
 namespace FEM
 {
 
-typedef double (*PtBCMult) (double Time); ///< Pointer to boundary condition multiplier
-
-static double BCMultiplier (double Time) { return 1.0; }
+/** Boundary conditions functions. */
+class BCFuncs
+{
+public:
+    virtual double u  (double Time) { return 0; } ///< Value of U component at Time
+    virtual double v  (double Time) { return 0; } ///< Value of V component at Time
+    virtual double a  (double Time) { return 0; } ///< Value of A component at Time
+    virtual double fm (double Time) { return 0; } ///< Value of f component multiplier at Time
+};
 
 class Node
 {
@@ -66,8 +72,8 @@ public:
     void           ClearU  () { _U.SetValues (0.0); }                                   ///< Clear U values only
 
     // Methods to set/access prescribed U values
-    void           SetPU     (String const & UKey, double Val, PtBCMult MFunc);                          ///< Set prescribed U
-    void           SetMPU    (size_t IdxPU, PtBCMult MultPU)   { _MPU[IdxPU] = MultPU;   }               ///< Set multiplier to PU
+    void           SetPU     (String const & UKey, double Val, BCFuncs * BCF=NULL);                      ///< Set prescribed U
+    void           SetMPU    (size_t IdxPU, BCFuncs * BCF=NULL){ _MPU[IdxPU] = BCF; }                    ///< Set multiplier to PU
     size_t         NPU       ()                          const { return _PU.Keys.Size(); }               ///< Get number of prescribed U
     int            EqPU      (size_t IdxPU)              const { return _eq[_U2IDOF(_PU.Keys[IdxPU])]; } ///< Get Eq number corresponding to prescribed U
     void           DelPUs    ()                                { _PU.clear(); _MPU.Resize(0); }          ///< Delete PU structure
@@ -77,8 +83,8 @@ public:
     double         PA        (size_t IdxPU, double Time) const;                                          ///< Get prescribed A=d2Udt2 value given index to PU
 
     // Methods to set/access prescribed F values
-    void           AddToPF   (String const & FKey, double Val, PtBCMult MFunc);                          ///< Add value to prescribed F
-    void           SetMPF    (size_t IdxPF, PtBCMult MultPF)   { _MPF[IdxPF] = MultPF;   }               ///< Set multiplier to PF
+    void           AddToPF   (String const & FKey, double Val, BCFuncs * BCF=NULL);                      ///< Add value to prescribed F
+    void           SetMPF    (size_t IdxPF, BCFuncs * BCF=NULL){ _MPF[IdxPF] = BCF; }                    ///< Set multiplier to PF
     size_t         NPF       ()                          const { return _PF.Keys.Size(); }               ///< Get number of prescribed F
     int            EqPF      (size_t IdxPF)              const { return _eq[_F2IDOF(_PF.Keys[IdxPF])]; } ///< Get Eq number corresponding to prescribed F
     void           DelPFs    ()                                { _PF.clear(); _MPF.Resize(0); }          ///< Delete PF structure
@@ -115,8 +121,8 @@ private:
     SDPair          _PU;  ///< Prescribed U
     SDPair          _PF;  ///< Prescribed F
     SDPair          _aPF; ///< Accumulated prescribed F (not erased in DelPFs)
-    Array<PtBCMult> _MPU; ///< Multipliers of PU
-    Array<PtBCMult> _MPF; ///< Multipliers of PF
+    Array<BCFuncs*> _MPU; ///< Multipliers of PU
+    Array<BCFuncs*> _MPF; ///< Multipliers of PF
 
     // Data for pins
     Array<Node*> _pin_nodes; ///< Other nodes connected to this pin
@@ -184,37 +190,41 @@ inline void Node::GetUF (Vec_t & UVec, Vec_t & FVec)
     }
 }
 
-inline void Node::SetPU (String const & UKey, double Val, PtBCMult MFunc)
+inline void Node::SetPU (String const & UKey, double Val, BCFuncs * BCF)
 {
     size_t idx_pu = _PU.ReSet (UKey.CStr(), Val);
-    if (idx_pu==_MPU.Size()) _MPU.Push (MFunc);
+    if (idx_pu==_MPU.Size()) _MPU.Push (BCF);
     _has_incsup = false;
 }
 
-inline void Node::AddToPF (String const & FKey, double Val, PtBCMult MFunc)
+inline void Node::AddToPF (String const & FKey, double Val, BCFuncs * BCF)
 {
     size_t idx_pf = _PF.AddVal (FKey.CStr(), Val);
-    if (idx_pf==_MPF.Size()) _MPF.Push (MFunc);
+    if (idx_pf==_MPF.Size()) _MPF.Push (BCF);
 }
 
 inline double Node::PU (size_t IdxPU, double Time) const
-{ 
-    return _PU(_PU.Keys[IdxPU]) * (*_MPU[IdxPU])(Time);
+{
+    if (_MPU[IdxPU]==NULL) return _PU(_PU.Keys[IdxPU]);
+    else                   return _MPU[IdxPU]->u(Time);
 }
 
 inline double Node::PV (size_t IdxPU, double Time) const
-{ 
-    return 0.0;
+{
+    if (_MPU[IdxPU]==NULL) return 0.0;
+    else                   return _MPU[IdxPU]->v(Time);
 }
 
 inline double Node::PA (size_t IdxPU, double Time) const
-{ 
-    return 0.0;
+{
+    if (_MPU[IdxPU]==NULL) return 0.0;
+    else                   return _MPU[IdxPU]->a(Time);
 }
 
 inline double Node::PF (size_t IdxPF, double Time) const
-{ 
-    return _PF(_PF.Keys[IdxPF]) * (*_MPF[IdxPF])(Time);
+{
+    if (_MPF[IdxPF]==NULL) return _PF(_PF.Keys[IdxPF]);
+    else                   return _PF(_PF.Keys[IdxPF]) * _MPF[IdxPF]->fm(Time);
 }
 
 inline void Node::AccumPF ()

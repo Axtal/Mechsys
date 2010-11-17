@@ -42,7 +42,7 @@ public:
           Array<Node*> const & Nodes); ///< Connectivity
 
     // Methods
-    void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun); ///< IdxEdgeOrFace is ignored
+    void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF); ///< IdxEdgeOrFace is ignored
     void ClrBCs       ();                                                        ///< Clear boundary conditions
     void GetLoc       (Array<size_t> & Loc)                               const; ///< Get location vector for mounting K/M matrices
     void CalcK        (Mat_t & K)                                         const; ///< Stiffness matrix
@@ -81,7 +81,7 @@ inline Beam::Beam (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair 
     rho = (Prp.HasKey("rho") ? Prp("rho") : 1.0);
 }
 
-inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun)
+inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF)
 {
     if (NDim==3) throw new Fatal("Beam::SetBCs: Method not available for 3D yet");
 
@@ -172,9 +172,9 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFu
         // add to nodes
         for (size_t j=0; j<2; ++j)
         {
-            Con[j]->AddToPF("fx", F(0+j*3), MFun);
-            Con[j]->AddToPF("fy", F(1+j*3), MFun);
-            Con[j]->AddToPF("mz", F(2+j*3), MFun);
+            Con[j]->AddToPF("fx", F(0+j*3), BCF);
+            Con[j]->AddToPF("fy", F(1+j*3), BCF);
+            Con[j]->AddToPF("mz", F(2+j*3), BCF);
         }
     }
 }

@@ -42,45 +42,11 @@ using FEM::PROB;
 using FEM::GEOM;
 using Util::TRUE;
 
-void OutFun (FEM::Solver const & Sol, void * Dat)
+class BCF : public FEM::BCFuncs
 {
-    size_t idx_nod = 17;
-    int    eq_ux   = Sol.Dom.Nods[idx_nod]->Eq("ux");
-    int    eq_uy   = Sol.Dom.Nods[idx_nod]->Eq("uy");
-    double ux      = Sol.U(eq_ux);
-    double uy      = Sol.U(eq_uy);
-    double vx      = Sol.V(eq_ux);
-    double vy      = Sol.V(eq_uy);
-    double ax      = Sol.A(eq_ux);
-    double ay      = Sol.A(eq_uy);
-    if (Sol.IdxOut==0)
-    {
-        std::ofstream of("fig_11_04.out", std::ios::out);
-        String str;
-        str.Printf ("%15s  %15s %15s  %15s %15s  %15s %15s\n", "Time","ux","uy","vx","vy","ax","ay");
-        of << str;
-        str.Printf ("%15.8e  %15.8e %15.8e  %15.8e %15.8e  %15.8e %15.8e\n", Sol.Time,ux,uy,vx,vy,ax,ay);
-        of << str;
-        //of << "Time    ux   uy     vx    vy     ax    ay\n";
-        //of << Sol.Time << " " << ux << " " << uy << " " << vx << " " << vy << " " << ax << " " << ay << endl;
-        of.close();
-    }
-    else
-    {
-        std::ofstream of("fig_11_04.out", std::ios::app);
-        String str;
-        str.Printf ("%15.8e  %15.8e %15.8e  %15.8e %15.8e  %15.8e %15.8e\n", Sol.Time,ux,uy,vx,vy,ax,ay);
-        of << str;
-        //of << Sol.Time << " " << ux << " " << uy << " " << vx << " " << vy << " " << ax << " " << ay << endl;
-        of.close();
-    }
-}
-
-double Multiplier (double t)
-{
-    double omega = 0.3;
-    return cos(omega*t);
-}
+public:
+    double fm (double t) { return cos(0.3*t); }
+};
 
 int main(int argc, char **argv) try
 {
@@ -132,12 +98,13 @@ int main(int argc, char **argv) try
     inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
 
     // domain
+    BCF bcf;
     Array<int> out_nods(17, /*justone*/true);
     FEM::Domain dom(mesh, prps, mdls, inis, "fig_11_04", &out_nods);
-    dom.MFuncs[-100] = &Multiplier; // set database of callbacks
+    dom.MFuncs[-100] = &bcf; // set database of callbacks
 
     // solver
-    FEM::Solver sol(dom, &OutFun);
+    FEM::Solver sol(dom);
     //sol.DScheme = FEM::Solver::SS22_t;
     sol.DScheme = FEM::Solver::GN22_t;
     sol.DampAm  = 0.005;
@@ -147,8 +114,8 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set( -10, "ux uy",    0.0, 0.0);
-    bcs.Set(-100, "fy multF", 1.0, TRUE);
+    bcs.Set( -10, "ux uy",  0.0, 0.0);
+    bcs.Set(-100, "fy bcf", 1.0, TRUE);
     dom.SetBCs (bcs);
     //cout << dom << endl;
     sol.DynSolve (/*tf*/100, /*dt*/1.0, /*dtOut*/1.0, "fig_11_04");

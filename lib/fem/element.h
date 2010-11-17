@@ -123,7 +123,7 @@ public:
     virtual void IncNLocDOF   (size_t & NEq)                                      const {} ///< Increment the number of local DOFs
     virtual void BackupState  ()                                                  const;   ///< Backup element state
     virtual void RestoreState ()                                                  const;   ///< Restore element state
-    virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun) {} ///< Set boundary conditions
+    virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF) {} ///< Set boundary conditions
     virtual void AddToF       (double Time, Vec_t F)                              const {} ///< Add to (external) F vector contribution at each Time
     virtual void ClrBCs       ()                                                        {} ///< Clear boundary conditions
     virtual void GetLoc       (Array<size_t> & Loc)                               const { throw new Fatal("Element::GetLoc: Method not implemented for this element"); } ///< Get location vector for mounting K/M matrices
