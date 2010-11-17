@@ -125,6 +125,8 @@ public:
     bool          WithInfo; ///< Print information ?
     bool          WarnRes;  ///< Warning if residual exceeds limit ?
     double        WrnTol;   ///< Warning tolerance
+    String        RKScheme; ///< Runge-Kutta scheme
+    double        RKSTOL;   ///< Runge-Kutta tolerance
 
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
@@ -199,7 +201,9 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       DynTh2   (0.5),
       WithInfo (true),
       WarnRes  (false),
-      WrnTol   (1.0e-7)
+      WrnTol   (1.0e-7),
+      RKScheme ("RK23"),
+      RKSTOL   (1.0e-5)
 {
 #if HAS_MPI
     if (FEM::Domain::PARA && MPI::COMM_WORLD.Get_rank()!=0) WithInfo = false;
@@ -313,7 +317,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
     {
         // ODE
         size_t nvars = 2*NEq + NIv;
-        Numerical::ODESolver<Solver> ode(this, &Solver::_RK_func, nvars, "RK12", 1.0e-1, dt);
+        Numerical::ODESolver<Solver> ode(this, &Solver::_RK_func, nvars, RKScheme.CStr(), RKSTOL, dt);
 
         // set initial state
         ode.t = Time;
@@ -1248,6 +1252,10 @@ inline void Solver::_Y_to_VUIV (double const Y[])
 
 inline int Solver::_RK_func (double t, double const Y[], double dYdt[])
 {
+    // assembly
+    if (DampTy==None_t) AssembleKMA  (1.0, 0.0);      // A11 = M11
+    else                AssembleKCMA (1.0, 0.0, 0.0); // A11 = M11
+
     // get current U and V and set elements with current IVs
     _Y_to_VUIV (Y);
 
@@ -1261,15 +1269,25 @@ inline int Solver::_RK_func (double t, double const Y[], double dYdt[])
     Sparse::SubMult (C12, V, F); }                             // F -= C12*V2
     Sparse::SubMult (M12, A, F);                               // F -= M12*A2
     for (size_t i=0; i<pEQ.Size(); ++i) F(pEQ[i]) = A(pEQ[i]); // F2 = A2
-    if (DampTy==None_t) AssembleKMA  (1.0, 0.0);               // A11 = M11
-    else                AssembleKCMA (1.0, 0.0, 0.0);          // A11 = M11
     UMFPACK::Solve (A11, F, A);                                // A = inv(M11)*F
 
     /*
-    Sparse::Matrix<double,int> AA(A11);
-    Mat_t AAA;
+    Sparse::Matrix<double,int> AA(M11);
+    Sparse::Matrix<double,int> Ab(M12);
+    Sparse::Matrix<double,int> Ac(M21);
+    Sparse::Matrix<double,int> Ad(M22);
+    Mat_t AAA, AB, AC, AD;
     AA.GetDense(AAA);
-    std::cout << "A11 =\n" << PrintMatrix(AAA);
+    Ab.GetDense(AB);
+    Ac.GetDense(AC);
+    Ad.GetDense(AD);
+    Mat_t final(AAA+AB+AC+AD);
+    std::cout << "det(final) = " << Det(final) << std::endl;
+    std::cout << "det(A11) = " << UMFPACK::Det(A11) << std::endl;
+    std::cout << "F   =\n" << PrintVector(F);
+    std::cout << "final =\n" << PrintMatrix(final,"%10g",NULL,1.0e-15,false) << std::endl;
+    std::cout << "A11 =\n" << PrintMatrix(AAA,"%10g",NULL,1.0e-15,false) << std::endl;
+    throw new Fatal("stop");
     */
 
     // set dYdt

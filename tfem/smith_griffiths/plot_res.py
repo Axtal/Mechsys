@@ -33,16 +33,13 @@ if opts.tst=='1':
     p113d = read_table("sg_11_07_p113.dat")
     p113  = read_table("sg_11_07_p113.sim")
     p114  = read_table("sg_11_07_p114.sim")
-
-    plot(res  ['Time'],res  ['uy'],'r-',lw=2)
-    plot(p113d['Time'],p113d['uy'],'bo')
-    plot(p113 ['Time'],p113 ['uy'],'b-')
-    plot(p113 ['Time'],p113 ['uy'],'b+')
-    #plot(p114 ['Time'],p114 ['uy'],'b-',lw=1)
-    #plot(p114 ['Time'],p114 ['uy'],'b+',lw=1)
-
-    #legend(['MechSys','SG:p113d','SG:p113','SG:p114'],loc='upper left')
-    legend(['MechSys','SG:p113d','SG:p113'],loc='upper left')
+    plot(res  ['Time'],res  ['uy'],'r-',lw=2,      label='MechSys')
+    plot(p113d['Time'],p113d['uy'],'bo',           label='SG:prog11.3(scan)')
+    plot(p113 ['Time'],p113 ['uy'],'b-',marker='+',label='SG:prog11.3(sim)')
+    plot(p114 ['Time'],p114 ['uy'],'g-',lw=1,      label='SG:prog11.4')
+    legend(loc='best')
+    xlabel('Time')
+    ylabel('uy')
     grid()
     show()
 

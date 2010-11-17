@@ -71,11 +71,18 @@ public:
     double Ak;          ///< Damping Ak
     bool   Ray;         ///< Rayleigh damping ?
     bool   HM;          ///< HydroMech ?
+    bool   RK;          ///< Runge-Kutta instead of GN22 ?
+    String RKScheme;    ///< Runge-Kutta scheme 
+    double RKSTOL;      ///< Runge-Kutta tolerance
+    bool   CteTg;       ///< Constant stiffness (linear) ?
     String RefDat;      ///< reference data file
     String RefSim;      ///< reference simulation file
     String RefAna;      ///< reference analytical solution file
     int    NDiv;        ///< mesh number of divisions
     bool   O2;          ///< quadratic elements ?
+    int    IdxVert1;    ///< index of vertex # 1 for output
+    int    IdxVert2;    ///< index of vertex # 1 for output
+    int    IdxVert3;    ///< index of vertex # 1 for output
 
     // path increments
     Array<PathIncs> Path;
@@ -86,27 +93,34 @@ public:
 
 
 inline InpFile::InpFile ()
-    : MatID   (0),
-      FlwID   (-1),
-      pCam0   (100.0),
-      pw0     (0.0),
-      Sw0     (0.0),
-      NInc    (10),
-      CDrift  (true),
-      STOL    (1.0e-5),
-      FEM     (false),
-      SSOut   (true),
-      Dyn     (false),
-      tf      (10.0),
-      dt      (0.1),
-      dtOut   (0.2),
-      tSW     (0.5),
-      Am      (0.02),
-      Ak      (0.02),
-      Ray     (false),
-      HM      (false),
-      NDiv    (1),
-      O2      (true)
+    : MatID    (0),
+      FlwID    (-1),
+      pCam0    (100.0),
+      pw0      (0.0),
+      Sw0      (0.0),
+      NInc     (10),
+      CDrift   (true),
+      STOL     (1.0e-5),
+      FEM      (false),
+      SSOut    (true),
+      Dyn      (false),
+      tf       (10.0),
+      dt       (0.1),
+      dtOut    (0.2),
+      tSW      (0.5),
+      Am       (0.02),
+      Ak       (0.02),
+      Ray      (false),
+      HM       (false),
+      RK       (false),
+      RKScheme ("RK23"),
+      RKSTOL   (1.0e-2),
+      CteTg    (false),
+      NDiv     (1),
+      O2       (true),
+      IdxVert1 (-1),
+      IdxVert2 (-1),
+      IdxVert3 (-1)
 {
 }
 
@@ -163,30 +177,37 @@ inline void InpFile::Read (char const * FileName)
             }
             else
             {
-                if      (key=="matid")  MatID  = atoi(str_val.CStr());
-                else if (key=="flwid")  FlwID  = atoi(str_val.CStr());
-                else if (key=="pcam0")  pCam0  = val;
-                else if (key=="pw0")    pw0    = val;
-                else if (key=="Sw0")    Sw0    = val;
-                else if (key=="ninc")   NInc   = atoi(str_val.CStr());
-                else if (key=="cdrift") CDrift = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="stol")   STOL   = val;
-                else if (key=="fem")    FEM    = val;
-                else if (key=="ssout")  SSOut  = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="dyn")    Dyn    = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="tf")     tf     = val;
-                else if (key=="dt")     dt     = val;
-                else if (key=="dtout")  dtOut  = val;
-                else if (key=="tsw")    tSW    = val;
-                else if (key=="am")     Am     = val;
-                else if (key=="ak")     Ak     = val;
-                else if (key=="ray")    Ray    = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="hm")     HM     = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="refdat") RefDat = str_val;
-                else if (key=="refsim") RefSim = str_val;
-                else if (key=="refana") RefAna = str_val;
-                else if (key=="ndiv")   NDiv   = atoi(str_val.CStr());
-                else if (key=="o2")     O2     = static_cast<bool>(atoi(str_val.CStr()));
+                if      (key=="matid")    MatID    = atoi(str_val.CStr());
+                else if (key=="flwid")    FlwID    = atoi(str_val.CStr());
+                else if (key=="pcam0")    pCam0    = val;
+                else if (key=="pw0")      pw0      = val;
+                else if (key=="Sw0")      Sw0      = val;
+                else if (key=="ninc")     NInc     = atoi(str_val.CStr());
+                else if (key=="cdrift")   CDrift   = static_cast<bool>(atoi(str_val.CStr()));
+                else if (key=="stol")     STOL     = val;
+                else if (key=="fem")      FEM      = val;
+                else if (key=="ssout")    SSOut    = static_cast<bool>(atoi(str_val.CStr()));
+                else if (key=="dyn")      Dyn      = static_cast<bool>(atoi(str_val.CStr()));
+                else if (key=="tf")       tf       = val;
+                else if (key=="dt")       dt       = val;
+                else if (key=="dtout")    dtOut    = val;
+                else if (key=="tsw")      tSW      = val;
+                else if (key=="am")       Am       = val;
+                else if (key=="ak")       Ak       = val;
+                else if (key=="ray")      Ray      = static_cast<bool>(atoi(str_val.CStr()));
+                else if (key=="hm")       HM       = static_cast<bool>(atoi(str_val.CStr()));
+                else if (key=="rk")       RK       = static_cast<bool>(atoi(str_val.CStr()));
+                else if (key=="rkscheme") RKScheme = str_val;
+                else if (key=="rkstol")   RKSTOL   = val;
+                else if (key=="ctetg")    CteTg    = static_cast<bool>(atoi(str_val.CStr()));
+                else if (key=="refdat")   RefDat   = str_val;
+                else if (key=="refsim")   RefSim   = str_val;
+                else if (key=="refana")   RefAna   = str_val;
+                else if (key=="ndiv")     NDiv     = atoi(str_val.CStr());
+                else if (key=="o2")       O2       = static_cast<bool>(atoi(str_val.CStr()));
+                else if (key=="idxvert1") IdxVert1 = atoi(str_val.CStr());
+                else if (key=="idxvert2") IdxVert2 = atoi(str_val.CStr());
+                else if (key=="idxvert3") IdxVert3 = atoi(str_val.CStr());
                 else if (key=="npath")
                 {
                     Path.Resize ((size_t)val);
@@ -225,30 +246,37 @@ std::ostream & operator<< (std::ostream & os, Array<PathIncs> const & A)
 std::ostream & operator<< (std::ostream & os, InpFile const & IF)
 {
     os << "Input data:\n";
-    os << "  matid  = " <<  IF.MatID   << "\n";
-    os << "  flwid  = " <<  IF.FlwID   << "\n";
-    os << "  pcam0  = " <<  IF.pCam0   << "\n";
-    os << "  pw0    = " <<  IF.pw0     << "\n";
-    os << "  Sw0    = " <<  IF.Sw0     << "\n";
-    os << "  ninc   = " <<  IF.NInc    << "\n";
-    os << "  cdrift = " <<  IF.CDrift  << "\n";
-    os << "  stol   = " <<  IF.STOL    << "\n";
-    os << "  fem    = " <<  IF.FEM     << "\n";
-    os << "  ssout  = " <<  IF.SSOut   << "\n";
-    os << "  dyn    = " <<  IF.Dyn     << "\n";
-    os << "  tf     = " <<  IF.tf      << "\n";
-    os << "  dt     = " <<  IF.dt      << "\n";
-    os << "  dtout  = " <<  IF.dtOut   << "\n";
-    os << "  tsw    = " <<  IF.tSW     << "\n";
-    os << "  am     = " <<  IF.Am      << "\n";
-    os << "  ak     = " <<  IF.Ak      << "\n";
-    os << "  ray    = " <<  IF.Ray     << "\n";
-    os << "  hm     = " <<  IF.HM      << "\n";
-    os << "  refdat = " <<  IF.RefDat  << "\n";
-    os << "  refsim = " <<  IF.RefSim  << "\n";
-    os << "  refana = " <<  IF.RefAna  << "\n";
-    os << "  ndiv   = " <<  IF.NDiv    << "\n";
-    os << "  o2     = " <<  IF.O2      << "\n";
+    os << "  matid    = " << IF.MatID    << "\n";
+    os << "  pcam0    = " << IF.pCam0    << "\n";
+    os << "  pw0      = " << IF.pw0      << "\n";
+    os << "  Sw0      = " << IF.Sw0      << "\n";
+    os << "  ninc     = " << IF.NInc     << "\n";
+    os << "  cdrift   = " << IF.CDrift   << "\n";
+    os << "  stol     = " << IF.STOL     << "\n";
+    os << "  fem      = " << IF.FEM      << "\n";
+    os << "  ssout    = " << IF.SSOut    << "\n";
+    os << "  dyn      = " << IF.Dyn      << "\n";
+    os << "  tf       = " << IF.tf       << "\n";
+    os << "  dt       = " << IF.dt       << "\n";
+    os << "  dtout    = " << IF.dtOut    << "\n";
+    os << "  tsw      = " << IF.tSW      << "\n";
+    os << "  am       = " << IF.Am       << "\n";
+    os << "  ak       = " << IF.Ak       << "\n";
+    os << "  ray      = " << IF.Ray      << "\n";
+    os << "  hm       = " << IF.HM       << "\n";
+    os << "  rk       = " << IF.RK       << "\n";
+    os << "  rkscheme = " << IF.RKScheme << "\n";
+    os << "  rkstol   = " << IF.RKSTOL   << "\n";
+    os << "  ctetg    = " << IF.CteTg    << "\n";
+    os << "  ndiv     = " << IF.NDiv     << "\n";
+    os << "  o2       = " << IF.O2       << "\n";
+    if (IF.FlwID>=0)    os << "  flwid    = " << IF.FlwID    << "\n";
+    if (IF.RefDat!="")  os << "  refdat   = " << IF.RefDat   << "\n";
+    if (IF.RefSim!="")  os << "  refsim   = " << IF.RefSim   << "\n";
+    if (IF.RefAna!="")  os << "  refana   = " << IF.RefAna   << "\n";
+    if (IF.IdxVert1>=0) os << "  idxvert1 = " << IF.IdxVert1 << "\n";
+    if (IF.IdxVert2>=0) os << "  idxvert2 = " << IF.IdxVert2 << "\n";
+    if (IF.IdxVert3>=0) os << "  idxvert3 = " << IF.IdxVert3 << "\n";
     return os;
 }
 
