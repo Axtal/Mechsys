@@ -54,11 +54,12 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////// Figures to draw ///
 
-    Vec3_t axis(2,0,1);
-    e.AddCube(1,Vec3_t(-5.0,0.0,0.0),0.01,2.0,1.0,30,&axis);
-    e.AddCube(1,Vec3_t(-0.0,0.0,0.0),0.01,1.4,1.0,30,&axis);
-    e.AddCube(1,Vec3_t( 5.0,0.0,0.0),0.30,1.4,1.0,30,&axis);
-    e.CamPos =  0.0,15.0,0.0;
+    e.AddCube(1,Vec3_t(-1.0,0.0,0.0),0.1,1.8,1.0,0.0,&OrthoSys::e0);
+    e.AddCube(2,Vec3_t( 1.0,0.0,0.0),0.1,1.8,1.0,0.0,&OrthoSys::e0);
+    e.Particles[0]->FixVeloc();
+    e.Particles[1]->FixVeloc();
+    e.AddRice(3,OrthoSys::O,0.2,1.8,1.0,M_PI/2.0,&OrthoSys::e1);
+    e.CamPos =  1.0,5.0,2.0;
     e.WritePOV("figure2");
 
 

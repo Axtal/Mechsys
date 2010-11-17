@@ -562,7 +562,7 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
 
     if (Cohesion)
     {
-        if (fraction<1.0) throw new Fatal("Domain::AddVoroPack: With the Cohesion all particles should be considered, plese change the fraction to 1.0");
+        //if (fraction<1.0) throw new Fatal("Domain::AddVoroPack: With the Cohesion all particles should be considered, plese change the fraction to 1.0");
 
         // define some tolerance for comparissions
         double tol1 = 1.0e-8;
@@ -758,10 +758,12 @@ inline void Domain::AddRice (int Tag, const Vec3_t & X, double R, double L, doub
     Array<Array <int> > F(0); // no faces
 
     // calculate the rotation
+    bool ThereisanAxis = true;
     if (Axis==NULL)
     {
         Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
         Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+        ThereisanAxis = false;
     }
     Quaternion_t q;
     NormalizeRotation (Angle,(*Axis),q);
@@ -776,7 +778,7 @@ inline void Domain::AddRice (int Tag, const Vec3_t & X, double R, double L, doub
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 
     // clean up
-    delete Axis;
+    if (!ThereisanAxis) delete Axis;
 }
 
 inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, double Ly, double rho, double Angle, Vec3_t * Axis)

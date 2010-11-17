@@ -133,9 +133,9 @@ int main(int argc, char **argv) try
     
     // properties of particles prior the brazilian test
     Dict B;
-    B.Set(-1,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Bn,Bt);
-    B.Set(-2,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Bn,Bt);
-    B.Set(-3,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Bn,Bt);
+    B.Set(-1,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Bn/2,Bt/4);
+    B.Set(-2,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Bn/2,Bt/4);
+    B.Set(-3,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Bn/2,Bt/4);
     d.SetProps(B);
 
     Vec3_t velocity(0.0,strf*radius/Tf,0.0);

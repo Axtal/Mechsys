@@ -75,9 +75,11 @@ public:
     double         dEfric;    ///< Energy dissipated by friction at time step
     size_t         Nc;        ///< Number of contacts
     size_t         Nsc;       ///< Number of sliding contacts
+    size_t         Nr;        ///< Number of rolling contacts (only for spheres)
     Vec3_t         Fn;        ///< Normal force between elements
     Vec3_t         Fnet;      ///< Net normal force
     Vec3_t         Ftnet;     ///< Net tangential force
+    Vec3_t         Xc;        ///< Net Position of the contact
     Mat3_t         B;         ///< Branch tensor for the study of isotropy
     ListContacts_t Lee;       ///< List of edge-edge contacts 
     ListContacts_t Lvf;       ///< List of vertex-face contacts 
@@ -180,10 +182,12 @@ inline void CInteracton::CalcForce (double dt)
     Epot   = 0.0;
     dEvis  = 0.0;
     dEfric = 0.0;
-    Nc     = 0;
-    Nsc    = 0;
+    Nc     = 0.0;
+    Nsc    = 0.0;
+    Nr     = 0.0;
     Fnet   = 0.0;
-    Ftnet   = 0.0;
+    Ftnet  = 0.0;
+    Xc     = 0.0;
     _update_disp_calc_force (P1->Edges,P2->Edges,Fdee,Lee,dt);
     _update_disp_calc_force (P1->Verts,P2->Faces,Fdvf,Lvf,dt);
     _update_disp_calc_force (P1->Faces,P2->Verts,Fdfv,Lfv,dt);
@@ -227,6 +231,7 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             // update force
             Vec3_t n = (xf-xi)/dist;
             Vec3_t x = xi+n*((P1->Props.R*P1->Props.R-P2->Props.R*P2->Props.R+dist*dist)/(2*dist));
+            Xc += x;
             Vec3_t t1,t2,x1,x2;
             Rotation(P1->w,P1->Q,t1);
             Rotation(P2->w,P2->Q,t2);
@@ -343,6 +348,7 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
     if (norm(Fdr)>eta*Mu*norm(Fn)/Kr)
     {
         Fdr = eta*Mu*norm(Fn)/Kr*tan;
+        Nr++;
     }
     Vec3_t Ft = -Kr*Fdr;
 
@@ -364,10 +370,12 @@ inline void CInteractonSphere::CalcForce(double dt)
     Epot   = 0.0;
     dEvis  = 0.0;
     dEfric = 0.0;
-    Nc     = 0;
-    Nsc    = 0;
+    Nc     = 0.0;
+    Nsc    = 0.0;
+    Nr     = 0.0;
     Fnet   = 0.0;
     Ftnet  = 0.0;
+    Xc     = 0.0;
     _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,Lvv,dt);
     if (Epot>0.0) _update_rolling_resistance(dt);
 
@@ -384,7 +392,6 @@ inline bool CInteractonSphere::UpdateContacts (double alpha)
 {
     if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*alpha) return true;
     else return false;
-    //return true;
 }
 
 inline void CInteractonSphere::UpdateParameters ()
@@ -530,7 +537,7 @@ inline void BInteracton::CalcForce(double dt)
         P2->T += T;
 
         //Breaking point
-        if (L0*fabs(delta)+norm(td)+fabs(Ant-An)*sqrt(Area/Util::PI)>L0*eps)
+        if ((L0*fabs(delta)+norm(td)+0.0*fabs(Ant-An)*L0>L0*eps)&&(eps>=0.0))
         {
             valid = false;
         }
