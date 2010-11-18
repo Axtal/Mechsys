@@ -152,7 +152,6 @@ private:
     void _FE_update     (double tf);                 ///< (Forward-Euler)  Update Time and elements to tf
     void _ME_update     (double tf);                 ///< (Modified-Euler) Update Time and elements to tf
     void _NR_update     (double tf);                 ///< (Newton-Rhapson) Update Time and elements to tf
-    void _set_presc_UVAF(double t);                  ///< Set prescribed U,V,A,F at time t
     void _GN22_update   (double tf, double dt);      ///< (Generalized-Newmark) Update Time and elements to tf
     void _time_print    (char const * Comment=NULL); ///< Print timestep data
     void _VUIV_to_Y     (double Y[]);
@@ -1145,39 +1144,6 @@ inline void Solver::_NR_update (double tf)
     }
 }
 
-inline void Solver::_set_presc_UVAF (double t)
-{
-    // prescribed U, V, and A
-    set_to_zero(A);
-    for (size_t i=0; i<Dom.NodsWithPU.Size(); ++i)
-    {
-        Node * const nod = Dom.NodsWithPU[i];
-        for (size_t j=0; j<nod->NPU(); ++j)
-        {
-            int eq = nod->EqPU(j);
-            U(eq) = nod->PU(j, t);
-            V(eq) = nod->PV(j, t);
-            A(eq) = nod->PA(j, t);
-        }
-    }
-
-    // prescribed F
-    F = F0;
-    for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
-    {
-        Node * const nod = Dom.NodsWithPF[i];
-        for (size_t j=0; j<nod->NPF(); ++j)
-        {
-            int eq = nod->EqPF(j);
-            if (!pU[eq])
-            {
-                F(eq) = F0(eq) + nod->PF(j, t);
-            }
-        }
-    }
-    for (size_t i=0; i<Dom.ActEles.Size(); ++i) Dom.ActEles[i]->AddToF (t, F);
-}
-
 inline void Solver::_GN22_update (double tf, double dt)
 {
     // constants
@@ -1188,26 +1154,37 @@ inline void Solver::_GN22_update (double tf, double dt)
 
     while (Time<tf)
     {
+        // set prescribed F
+        F = F0;
+        double tb = Time+DynTh1*dt;
+        for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
+        {
+            Node * const nod = Dom.NodsWithPF[i];
+            for (size_t j=0; j<nod->NPF(); ++j)
+            {
+                int eq = nod->EqPF(j);
+                if (!pU[eq]) F(eq) = F0(eq) + nod->PF(j, tb);
+            }
+        }
+        for (size_t i=0; i<Dom.ActEles.Size(); ++i) Dom.ActEles[i]->AddToF (tb, F);
+        double normF = Norm(F);
+
         // predictor
         Us = U + dt*V + c1*A;
         Vs = V + c2*A;
         A  = c3*(U - Us);
         V  = Vs + (DynTh1*dt)*A;
 
-        // new F
-        _set_presc_UVAF (Time+DynTh1*dt);
-        double normF = Norm(F);
-
         // iterations
         for (It=0; It<MaxIt; ++It)
         {
-            // new F and residual
+            // residual
             R = F - F_int;
-            for (size_t i=0; i<pEQ.Size(); ++i) R(pEQ[i]) = 0.0; // clear residual corresponding to supports
-            //std::cout << "F    = " << PrintVector(F,     "%8.2f");
-            //std::cout << "Fint = " << PrintVector(F_int, "%8.2f");
-            //std::cout << "R    = " << PrintVector(R,     "%8.2f");
-            //std::cout << std::endl;
+            for (size_t i=0; i<pEQ.Size(); ++i)
+            {
+                F(pEQ[i]) = 0.0; // F2 = 0
+                R(pEQ[i]) = 0.0; // R2 = 0   clear residual corresponding to supports
+            }
 
             // assemble Amat
             if (DampTy==None_t) AssembleKMA  (c3,     1.0);  // A = c3*M        + K
@@ -1218,6 +1195,17 @@ inline void Solver::_GN22_update (double tf, double dt)
             Sparse::SubMult (C11, V, R);                       // R -= C11*V
             UMFPACK::Solve  (A11, R, dU);                      // dU = inv(A11)*R
 
+            // set prescribed dU
+            for (size_t i=0; i<Dom.NodsWithPU.Size(); ++i)
+            {
+                Node * const nod = Dom.NodsWithPU[i];
+                for (size_t j=0; j<nod->NPU(); ++j)
+                {
+                    int eq = nod->EqPU(j);
+                    dU(eq) = nod->PU(j,tb) - U(eq);
+                }
+            }
+
             // update elements
             UpdateElements (dU, /*CalcFint*/true);
 
@@ -1225,6 +1213,27 @@ inline void Solver::_GN22_update (double tf, double dt)
             U += dU;
             A  = c3*(U - Us);
             V  = Vs + (DynTh1*dt)*A;
+
+            // set prescribed U, V and A
+            for (size_t i=0; i<Dom.NodsWithPU.Size(); ++i)
+            {
+                Node * const nod = Dom.NodsWithPU[i];
+                for (size_t j=0; j<nod->NPU(); ++j)
+                {
+                    int eq = nod->EqPU(j);
+                    U(eq) = nod->PU(j, tb);
+                    V(eq) = nod->PV(j, tb);
+                    A(eq) = nod->PA(j, tb);
+                }
+            }
+
+            // calculate F2
+            Sparse::AddMult (M21, A, F);                        // F2 += M21*A1
+            Sparse::AddMult (M22, A, F);  if (DampTy!=None_t) { // F2 += M22*A2
+            Sparse::AddMult (C21, V, F);                        // F2 += C21*V1
+            Sparse::AddMult (C22, V, F); }                      // F2 += C22*V2
+            Sparse::AddMult (K21, U, F);                        // F2 += K21*V1
+            Sparse::AddMult (K22, U, F);                        // F2 += K22*V2
 
             // check convergence
             NormR    = Norm(R);
@@ -1286,6 +1295,33 @@ inline int Solver::_RK_func (double t, double const Y[], double dYdt[])
     // get current U and V and set elements with current IVs (needs to be before the assembly)
     _Y_to_VUIV (Y);
 
+    // prescribed U, V, and A
+    set_to_zero (A);
+    for (size_t i=0; i<Dom.NodsWithPU.Size(); ++i)
+    {
+        Node * const nod = Dom.NodsWithPU[i];
+        for (size_t j=0; j<nod->NPU(); ++j)
+        {
+            int eq = nod->EqPU(j);
+            U(eq) = nod->PU(j, t);
+            V(eq) = nod->PV(j, t);
+            A(eq) = nod->PA(j, t);
+        }
+    }
+
+    // prescribed F
+    F = F0;
+    for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
+    {
+        Node * const nod = Dom.NodsWithPF[i];
+        for (size_t j=0; j<nod->NPF(); ++j)
+        {
+            int eq = nod->EqPF(j);
+            if (!pU[eq]) F(eq) = F0(eq) + nod->PF(j, t);
+        }
+    }
+    for (size_t i=0; i<Dom.ActEles.Size(); ++i) Dom.ActEles[i]->AddToF (t, F);
+
     // assembly
     if (DampTy==None_t) AssembleKMA  (1.0, 0.0);      // A11 = M11
     else                AssembleKCMA (1.0, 0.0, 0.0); // A11 = M11
@@ -1293,7 +1329,6 @@ inline int Solver::_RK_func (double t, double const Y[], double dYdt[])
     // set A(t) and V(t)
     // F = F1 - p1 - c1 - M12*A2
     //   = F1 - K11*U1 - K12*U2 - C11*V1 - C12*V2 - M12*A2
-    _set_presc_UVAF (t);
     Sparse::SubMult (K11, U, F);                               // F -= K11*U1
     Sparse::SubMult (K12, U, F);  if (DampTy!=None_t) {        // F -= K12*U2
     Sparse::SubMult (C11, V, F);                               // F -= C11*V1

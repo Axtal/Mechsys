@@ -22,6 +22,7 @@
 // MechSys
 #include<mechsys/models/model.h>
 #include<mechsys/linalg/matvec.h>
+#include<mechsys/numerical/odesolver.h>
 
 class UnsatFlowState : public State
 {
@@ -50,9 +51,9 @@ public:
     UnsatFlow (int NDim, SDPair const & Prms);
 
     // Methods
-    void InitIvs (SDPair const & Ini, State * Sta)              const;
-    void Update  (double Dpw, double DEv, UnsatFlowState * Sta) const;
-    void TgVars  (UnsatFlowState const * Sta)                   const;
+    void InitIvs (SDPair const & Ini, State * Sta) const;
+    void Update  (double Dpw, double DEv, UnsatFlowState * Sta);
+    void TgVars  (UnsatFlowState const * Sta) const;
 
     // Data
     double gamW;  // water unit weight
@@ -69,6 +70,9 @@ public:
 private:
     double _Cpc  (double pc, double Sw) const;
     double _Ceps (double pc, double Sw) const;
+
+    double _RK_pc, _RK_Dev, _RK_Dpc;
+    int _RK_func (double t, double const Sw[], double dSwdt[]);
 };
 
 Mat_t UnsatFlowState::Im;
@@ -137,18 +141,24 @@ inline void UnsatFlow::InitIvs (SDPair const & Ini, State * Sta) const
     sta->Init (ini);
 }
 
-inline void UnsatFlow::Update (double Dpw, double DEv, UnsatFlowState * Sta) const
+inline void UnsatFlow::Update (double Dpw, double DEv, UnsatFlowState * Sta)
 {
-    double Cpc  = _Cpc  (Sta->pc, Sta->Sw);
-    double Ceps = _Ceps (Sta->pc, Sta->Sw);
-    double dSw  = Ceps*DEv - Cpc*Dpw;
-    for (size_t i=0; i<num_rows(Sta->kwb); ++i)
-    {
-        Sta->kwb(i,i) += Mkw*kwsat*pow(Sta->Sw,Mkw-1.0)*dSw/gamW;
-    }
-    Sta->n  += DEv;
-    Sta->Sw += dSw;
+    // set variables for _RK_func
+    _RK_pc  =  Sta->pc;
+    _RK_Dev =  DEv;
+    _RK_Dpc = -Dpw;
+
+    // solve ODE
+    Numerical::ODESolver<UnsatFlow> ode(this, &UnsatFlow::_RK_func, /*neq*/1, "RKF45", /*stol*/1.e-6);
+    ode.t    = 0.0;
+    ode.Y[0] = Sta->Sw;
+    ode.Evolve (/*tf*/1.0);
+
+    // set new state
+    Sta->Sw  = ode.Y[0];
     Sta->pc += (-Dpw);
+    Sta->n  += DEv;
+    for (size_t i=0; i<num_rows(Sta->kwb); ++i) Sta->kwb(i,i) = kwsat*pow(Sta->Sw,Mkw)/gamW;
 }
 
 inline void UnsatFlow::TgVars (UnsatFlowState const * Sta) const
@@ -163,12 +173,9 @@ inline void UnsatFlow::TgVars (UnsatFlowState const * Sta) const
 
 inline double UnsatFlow::_Cpc (double pc, double Sw) const
 {
-    if (Sw<1.0)
-    {
-        if (pc<bc_sb || pc<1.0e-7) return 0.0;
-        else return -bc_lam*pow(bc_sb/pc,bc_lam)*(1.0-bc_wr)/pc;
-    }
-    else return 0.0;
+    if (Sw<=bc_wr) return 0.0;
+    if (pc<bc_sb || pc<1.0e-7) return 0.0;
+    else return -bc_lam*pow(bc_sb/pc,bc_lam)*(1.0-bc_wr)/pc;
 }
 
 inline double UnsatFlow::_Ceps (double pc, double Sw) const
@@ -176,6 +183,15 @@ inline double UnsatFlow::_Ceps (double pc, double Sw) const
     return 0.0;
 }
 
+inline int UnsatFlow::_RK_func (double t, double const Y[], double dYdt[])
+{
+    double pc   = _RK_pc + t*_RK_Dpc;
+    double Sw   = Y[0];
+    double Cpc  = _Cpc  (pc, Sw);
+    double Ceps = _Ceps (pc, Sw);
+    dYdt[0] = Ceps*_RK_Dev + Cpc*_RK_Dpc;
+    return GSL_SUCCESS;
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////

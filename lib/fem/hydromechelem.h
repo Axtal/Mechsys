@@ -50,7 +50,8 @@ public:
 
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF);
-    void AddToF      (double Time, Vec_t F)                 const;
+    void ClrBCs      ();
+    void AddToF      (double Time, Vec_t & F)               const;
     void CalcKCM     (Mat_t & KK, Mat_t & CC, Mat_t & MM)   const;
     void GetLoc      (Array<size_t> & Loc)                  const;
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const;
@@ -84,7 +85,7 @@ Vec_t  HydroMechElem::zv;
 
 
 inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : EquilibElem(NDim,Cell,Mdl,Prp,Ini,Nodes), HasGrav(false)
+    : EquilibElem(NDim,Cell,Mdl,Prp,Ini,Nodes), HasGrav(false), GravMult(NULL)
 {
     // set constants of this class (just once)
     if (NDp==0)
@@ -246,11 +247,20 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCF
     EquilibElem::SetBCs (IdxEdgeOrFace, BCs, BCF);
 
     // gravity
-    HasGrav  = BCs.HasKey("gravity");
-    GravMult = (HasGrav ? BCF : NULL);
+    if (BCs.HasKey("gravity"))
+    {
+        HasGrav  = true;
+        GravMult = BCF;
+    }
 }
 
-inline void HydroMechElem::AddToF (double Time, Vec_t F) const
+inline void HydroMechElem::ClrBCs ()
+{
+    HasGrav  = false;
+    GravMult = NULL;
+}
+
+inline void HydroMechElem::AddToF (double Time, Vec_t & F) const
 {
     if (HasGrav)
     {
@@ -530,6 +540,7 @@ inline void HydroMechElem::StateKeys (Array<String> & Keys) const
 
 inline void HydroMechElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
 {
+    if (FSta[IdxIP]->Sw<0.0) throw new Fatal("HydroMechElem::StateAtIP: Sw<0");
     EquilibElem::StateAtIP (KeysVals, IdxIP);
     KeysVals.Set ("n",  FSta[IdxIP]->n);
     KeysVals.Set ("pc", FSta[IdxIP]->pc);
