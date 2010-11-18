@@ -30,8 +30,9 @@ namespace BPy = boost::python;
 #include <mechsys/fem/fem.h>
 
 // functions overloadings
-BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_PHI2M, Phi2M, 1, 2)
-BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_M2PHI, M2Phi, 1, 2)
+BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_PHI2M,        Phi2M,        1, 2)
+BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_M2PHI,        M2Phi,        1, 2)
+BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_READMATERIAL, ReadMaterial, 6, 7)
 
 // member overloadings
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_ReadMesh,     ReadMesh,     1, 2)
@@ -111,7 +112,7 @@ BPy::class_<InpFile>("InpFile")
     .def_readwrite("O2",       &InpFile::O2)
     ;
 
-BPy::def("ReadMaterial", ReadMaterial);
+BPy::def("ReadMaterial", ReadMaterial, FUN_READMATERIAL());
 
 //////////////////////////////////////////////////////////////////////////////////// mesh /////
 

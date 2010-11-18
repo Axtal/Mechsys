@@ -105,8 +105,8 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
-    //sol.DScheme = FEM::Solver::SS22_t;
-    sol.DScheme = FEM::Solver::GN22_t;
+    sol.DScheme = FEM::Solver::RK_t;
+    //sol.DScheme = FEM::Solver::GN22_t;
     sol.DampAm  = 0.005;
     sol.DampAk  = 0.272;
     sol.DampTy  = FEM::Solver::Rayleigh_t;

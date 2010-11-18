@@ -56,6 +56,12 @@ public:
     void CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, double & detJ, double & Coef) const; ///< Strain-displacement matrix. Coef: coefficient used during integration
     void CalcN (Mat_t const & C, IntegPoint const & IP, Mat_t & N, double & detJ, double & Coef) const; ///< Shape functions matrix
 
+    // Methods for the Runge-Kutta method
+    virtual size_t NIVs       ()                                                            const;
+    virtual double GetIV      (size_t i)                                                    const;
+    virtual void   SetIV      (size_t i, double Val);
+    virtual void   CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const;
+
     // Constants
     double h;   ///< Thickness of the element
     double rho; ///< Density
@@ -619,6 +625,52 @@ inline void EquilibElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
     for (size_t k=0; k<Mdl->NIvs; ++k) KeysVals.Set(Mdl->IvNames[k].CStr(), ivs(k));
 }
 
+inline size_t EquilibElem::NIVs () const 
+{
+    return NCo*GE->NIP;
+}
+
+inline double EquilibElem::GetIV (size_t i) const 
+{
+    int iip = static_cast<int>(i) / static_cast<int>(NCo); // index of IP
+    int ico = static_cast<int>(i) % static_cast<int>(NCo); // index of component
+    return static_cast<EquilibState const*>(Sta[iip])->Sig(ico);
+}
+
+inline void EquilibElem::SetIV (size_t i, double Val) 
+{
+    int iip = static_cast<int>(i) / static_cast<int>(NCo); // index of IP
+    int ico = static_cast<int>(i) % static_cast<int>(NCo); // index of component
+    static_cast<EquilibState*>(Sta[iip])->Sig(ico) = Val;
+}
+
+inline void EquilibElem::CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const
+{
+    // resize rate
+    Rate.change_dim (NCo*GE->NIP);
+
+    // get location array
+    Array<size_t> loc;
+    GetLoc (loc);
+
+    // element nodal velocities
+    Vec_t Ve(NDu);
+    for (size_t i=0; i<loc.Size(); ++i) Ve(i) = V(loc[i]);
+
+    // calc dsigdt
+    double detJ, coef;
+    Mat_t  C, B, D;
+    Vec_t  depsdt(NCo), dsigdt(NCo);
+    CoordMatrix (C);
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        CalcB (C, GE->IPs[i], B, detJ, coef);
+        Mdl->Stiffness (Sta[i], D);
+        depsdt = B * Ve;
+        dsigdt = D * depsdt;
+        for (size_t j=0; j<NCo; ++j) Rate(j+i*NCo) = dsigdt(j);
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
 

@@ -60,6 +60,12 @@ public:
     // Internal Methods
     void Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & Bp, Mat_t & N, Mat_t & Np, double & detJ, double & Coef) const; ///< Interpolation matrices
 
+    // Methods for the Runge-Kutta method
+    virtual size_t NIVs       ()                                                            const;
+    virtual double GetIV      (size_t i)                                                    const;
+    virtual void   SetIV      (size_t i, double Val);
+    virtual void   CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const;
+
     // Data
     UnsatFlow              * FMdl;     ///< Flow model
     Array<UnsatFlowState*>   FSta;     ///< Flow state
@@ -414,6 +420,8 @@ inline void HydroMechElem::CalcKCM (Mat_t & KK, Mat_t & CC, Mat_t & MM) const
         H     += (coef)           * BptkBp;
     }
 
+    //std::cout << "S = \n" << PrintMatrix(S) << std::endl;
+
     // assemble
     MM.change_dim (NDt,NDt);
     CC.change_dim (NDt,NDt);
@@ -421,6 +429,7 @@ inline void HydroMechElem::CalcKCM (Mat_t & KK, Mat_t & CC, Mat_t & MM) const
     set_to_zero (MM);
     set_to_zero (CC);
     set_to_zero (KK);
+    bool schemeA = true;
     for (size_t i=0; i<NDu; ++i)
     {
         for (size_t j=0; j<NDu; ++j)
@@ -436,8 +445,9 @@ inline void HydroMechElem::CalcKCM (Mat_t & KK, Mat_t & CC, Mat_t & MM) const
         for (size_t j=0; j<NDu; ++j) CC(NDu+i,j) = Q(j,i);
         for (size_t j=0; j<NDp; ++j)
         {
-            CC(NDu+i,NDu+j) = S(i,j);
             KK(NDu+i,NDu+j) = H(i,j);
+            if (schemeA) CC(NDu+i,NDu+j) = S(i,j);
+            else         MM(NDu+i,NDu+j) = S(i,j);
         }
     }
 }
@@ -551,6 +561,68 @@ inline void HydroMechElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
     KeysVals.Set ("qwz", qw(2));
 }
 
+inline size_t HydroMechElem::NIVs () const 
+{
+    return NCo*GE->NIP;
+}
+
+inline double HydroMechElem::GetIV (size_t i) const 
+{
+    int iip = static_cast<int>(i) / static_cast<int>(NCo); // index of IP
+    int ico = static_cast<int>(i) % static_cast<int>(NCo); // index of component
+    return static_cast<EquilibState const*>(Sta[iip])->Sig(ico);
+}
+
+inline void HydroMechElem::SetIV (size_t i, double Val) 
+{
+    int iip = static_cast<int>(i) / static_cast<int>(NCo); // index of IP
+    int ico = static_cast<int>(i) % static_cast<int>(NCo); // index of component
+    static_cast<EquilibState*>(Sta[iip])->Sig(ico) = Val;
+}
+
+inline void HydroMechElem::CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const
+{
+    // resize rate
+    Rate.change_dim (NCo*GE->NIP);
+
+    // get location array
+    Array<size_t> loc;
+    GetLoc (loc);
+
+    // element nodal velocities
+    Vec_t Ve(NDu);
+    for (size_t i=0; i<NDu; ++i) Ve(i) = V(loc[i]);
+
+    // element dpwdt
+    Vec_t dpwedt(NDp);
+    for (size_t i=0; i<NDp; ++i) dpwedt(i) = V(loc[NDu+i]);
+
+    // calc dsigdt
+    double detJ, coef;
+    Mat_t  C, B, D, Bp, N, Np;
+    Vec_t  depsdt(NCo), dsigdt(NCo);
+    CoordMatrix (C);
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        // interpolation functions
+        Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
+
+        // calculate dpwdt at IP
+        Vec_t Npdpwedt(Np * dpwedt);
+        double dpwdt = Npdpwedt(0);
+
+        // effective stress rate
+        Mdl->Stiffness (Sta[i], D);
+        depsdt = B * Ve;
+        dsigdt = D * depsdt;
+
+        // total stress rate
+        dsigdt -= (FMdl->chi)*dpwdt*Iv;
+
+        // set rate vector
+        for (size_t j=0; j<NCo; ++j) Rate(j+i*NCo) = dsigdt(j);
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
 

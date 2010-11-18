@@ -113,7 +113,7 @@ Model * AllocModel(String const & Name, int NDim, SDPair const & Prms)
 double PyMODEL (BPy::str const & Key) { return MODEL(BPy::extract<char const *>(Key)()); }
 #endif
 
-inline void ReadMaterial (int Tag, int MatID, const char * FileName, String & ModelName, Dict & Prms, Dict & Inis)
+inline void ReadMaterial (int Tag, int MatID, const char * FileName, String & ModelName, Dict & Prms, Dict & Inis, bool WithMODEL=true)
 {
     // parse materials file
     ModelName = "__empty__";
@@ -141,7 +141,7 @@ inline void ReadMaterial (int Tag, int MatID, const char * FileName, String & Mo
                 {
                     if (key=="name") ModelName = strval;
                     else throw new Fatal("ReadMaterial: Error in file <%s> @ line # %d: 'name' must follow 'ID'. Key==%s is invalid",FileName,line_num,key.CStr());
-                    Prms.Set (Tag, "name", MODEL(ModelName));
+                    if (WithMODEL) Prms.Set (Tag, "name", MODEL(ModelName));
                 }
                 else if (nprms==0)
                 {

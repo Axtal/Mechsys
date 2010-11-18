@@ -202,7 +202,7 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       WithInfo (true),
       WarnRes  (false),
       WrnTol   (1.0e-7),
-      RKScheme ("RK23"),
+      RKScheme ("RK4I"),
       RKSTOL   (1.0e-2)
 {
 #if HAS_MPI
@@ -282,7 +282,11 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
     if (WithInfo)
     {
         if      (DScheme==GN22_t) _time_print ("Dynamic ------ GN22");
-        else if (DScheme==RK_t)   _time_print ("Dynamic ------ RK");
+        else if (DScheme==RK_t)
+        {
+            String buf("Dynamic ------ "); buf.append(RKScheme);
+            _time_print (buf.CStr());
+        }
     }
     if (IdxOut==0)
     {
@@ -316,6 +320,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
     else if (DScheme==RK_t)
     {
         // ODE
+        if (CteTg) NIv = 0;
         size_t nvars = 2*NEq + NIv;
         Numerical::ODESolver<Solver> ode(this, &Solver::_RK_func, nvars, RKScheme.CStr(), RKSTOL, dt);
 
@@ -326,13 +331,33 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
         // solve
         while (Time<tf)
         {
-            // evolve
+            // evolve from Time to tout
             ode.Evolve (tout);
-            Time = ode.t;
+
+            // update V, U and elements (if not CteTg)
             _Y_to_VUIV (ode.Y);
+
+            // update elements if not already updated by _Y_to_VUIV
+            if (CteTg)
+            {
+                double Dt = ode.t - Time;
+                for (size_t i=0; i<Dom.ActEles.Size(); ++i)
+                {
+                    size_t niv = Dom.ActEles[i]->NIVs();
+                    if (niv>0)
+                    {
+                        Vec_t rate;
+                        Dom.ActEles[i]->CalcIVRate (Time, U, V, rate);
+                        for (size_t j=0; j<niv; ++j) Dom.ActEles[i]->SetIV (j, rate(j)*Dt);
+                    }
+                }
+            }
 
             // update nodes to tout
             UpdateNodes ();
+
+            // new time
+            Time = ode.t;
 
             // output
             IdxOut++;
@@ -1233,9 +1258,12 @@ inline void Solver::_VUIV_to_Y (double Y[])
         Y[i]     = V(i);
         Y[NEq+i] = U(i);
     }
-    for (size_t i=0; i<Dom.ActEles.Size();     ++i)
-    for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j)
-        Y[2*NEq+j] = Dom.ActEles[i]->GetIV (j);
+    if (!CteTg)
+    {
+        for (size_t i=0; i<Dom.ActEles.Size();     ++i)
+        for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j)
+            Y[2*NEq+j] = Dom.ActEles[i]->GetIV (j);
+    }
 }
 
 inline void Solver::_Y_to_VUIV (double const Y[])
@@ -1245,19 +1273,22 @@ inline void Solver::_Y_to_VUIV (double const Y[])
         V(i) = Y[i];
         U(i) = Y[NEq+i];
     }
-    for (size_t i=0; i<Dom.ActEles.Size(); ++i)
-    for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j)
-        Dom.ActEles[i]->SetIV (j, Y[2*NEq+j]);
+    if (!CteTg)
+    {
+        for (size_t i=0; i<Dom.ActEles.Size(); ++i)
+        for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j)
+            Dom.ActEles[i]->SetIV (j, Y[2*NEq+j]);
+    }
 }
 
 inline int Solver::_RK_func (double t, double const Y[], double dYdt[])
 {
+    // get current U and V and set elements with current IVs (needs to be before the assembly)
+    _Y_to_VUIV (Y);
+
     // assembly
     if (DampTy==None_t) AssembleKMA  (1.0, 0.0);      // A11 = M11
     else                AssembleKCMA (1.0, 0.0, 0.0); // A11 = M11
-
-    // get current U and V and set elements with current IVs
-    _Y_to_VUIV (Y);
 
     // set A(t) and V(t)
     // F = F1 - p1 - c1 - M12*A2
@@ -1272,21 +1303,24 @@ inline int Solver::_RK_func (double t, double const Y[], double dYdt[])
     UMFPACK::Solve (A11, F, A);                                // A = inv(M11)*F
 
     /*
+    Sparse::Matrix<double,int> AA11(A11);
     Sparse::Matrix<double,int> AA(M11);
     Sparse::Matrix<double,int> Ab(M12);
     Sparse::Matrix<double,int> Ac(M21);
     Sparse::Matrix<double,int> Ad(M22);
-    Mat_t AAA, AB, AC, AD;
+    Mat_t AAA, AB, AC, AD, aa11;
     AA.GetDense(AAA);
     Ab.GetDense(AB);
     Ac.GetDense(AC);
     Ad.GetDense(AD);
+    AA11.GetDense(aa11);
     Mat_t final(AAA+AB+AC+AD);
-    std::cout << "det(final) = " << Det(final) << std::endl;
-    std::cout << "det(A11) = " << UMFPACK::Det(A11) << std::endl;
-    std::cout << "F   =\n" << PrintVector(F);
+    A11.WriteSMAT("problem");
+    //std::cout << "F   =\n" << PrintVector(F);
     std::cout << "final =\n" << PrintMatrix(final,"%10g",NULL,1.0e-15,false) << std::endl;
-    std::cout << "A11 =\n" << PrintMatrix(AAA,"%10g",NULL,1.0e-15,false) << std::endl;
+    std::cout << "A11 =\n" << PrintMatrix(aa11,"%10g",NULL,1.0e-15,false) << std::endl;
+    std::cout << "det(A11) = " << UMFPACK::Det(A11) << std::endl;
+    std::cout << "det(final) = " << Det(final) << std::endl;
     throw new Fatal("stop");
     */
 
@@ -1296,14 +1330,17 @@ inline int Solver::_RK_func (double t, double const Y[], double dYdt[])
         dYdt[i]     = A(i); // dVdt
         dYdt[NEq+i] = V(i); // dUdt
     }
-    for (size_t i=0; i<Dom.ActEles.Size(); ++i)
+    if (!CteTg)
     {
-        size_t niv = Dom.ActEles[i]->NIVs();
-        if (niv>0)
+        for (size_t i=0; i<Dom.ActEles.Size(); ++i)
         {
-            Vec_t rate;
-            Dom.ActEles[i]->CalcIVRate (t, U, V, rate);
-            for (size_t j=0; j<niv; ++j) dYdt[2*NEq+j] = rate(j);
+            size_t niv = Dom.ActEles[i]->NIVs();
+            if (niv>0)
+            {
+                Vec_t rate;
+                Dom.ActEles[i]->CalcIVRate (t, U, V, rate);
+                for (size_t j=0; j<niv; ++j) dYdt[2*NEq+j] = rate(j);
+            }
         }
     }
 

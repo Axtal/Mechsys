@@ -102,10 +102,16 @@ inline ODESolver<Instance>::ODESolver (Instance * p2Inst, pFun p2Fun, size_t NEq
     {
         if      (strcmp(Scheme,"FE"    )==0) { scheme = gsl_odeiv_step_rk2; _FE=true; }
         else if (strcmp(Scheme,"RK12"  )==0) { scheme = gsl_odeiv_step_rk2; _ME=true; }
-        else if (strcmp(Scheme,"RK23"  )==0) { scheme = gsl_odeiv_step_rk2;   }
-        else if (strcmp(Scheme,"RKF45" )==0) { scheme = gsl_odeiv_step_rkf45; }
-        else if (strcmp(Scheme,"RKDP89")==0) { scheme = gsl_odeiv_step_rk8pd; }
-        else throw new Fatal("ODESolver::ODESolver: Scheme %s is invalid. Valid ones are: FE, RK12, RK23, RKF45, and RKDP89",Scheme);
+        else if (strcmp(Scheme,"RK23"  )==0) { scheme = gsl_odeiv_step_rk2;           }
+        else if (strcmp(Scheme,"RK4"   )==0) { scheme = gsl_odeiv_step_rk4;           }
+        else if (strcmp(Scheme,"RKF45" )==0) { scheme = gsl_odeiv_step_rkf45;         }
+        else if (strcmp(Scheme,"RKCK45")==0) { scheme = gsl_odeiv_step_rkck;          }
+        else if (strcmp(Scheme,"RKDP89")==0) { scheme = gsl_odeiv_step_rk8pd;         }
+        else if (strcmp(Scheme,"RK2I"  )==0) { scheme = gsl_odeiv_step_rk2imp;        }
+        else if (strcmp(Scheme,"RK4I"  )==0) { scheme = gsl_odeiv_step_rk4imp;        }
+        else if (strcmp(Scheme,"G1"    )==0) { scheme = gsl_odeiv_step_gear1;         }
+        else if (strcmp(Scheme,"G2"    )==0) { scheme = gsl_odeiv_step_gear2;         }
+        else throw new Fatal("ODESolver::ODESolver: Scheme %s is invalid. Valid ones are: FE, RK12, RK23, RK4, RKF45, RKCK45, RKDP89, RK2I, RK4I, G1, G2",Scheme);
     }
 
     // allocate auxiliary variables
@@ -166,8 +172,8 @@ inline void ODESolver<Instance>::Evolve (double tf)
     {
         // for each pseudo time T
         size_t MaxSS = 2000;
-        double mMin  = 0.1;
-        double mMax  = 10.0;
+        double mMin  = 0.2;
+        double mMax  = 5.0;
         double Dtf   = tf - t;
         double T     = 0.0;
         double dT    = _h;

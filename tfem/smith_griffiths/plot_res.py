@@ -1,6 +1,5 @@
 import optparse
-from numpy import *
-from pylab import *
+from msys_fig      import *
 from msys_readdata import *
 
 # input
@@ -33,15 +32,21 @@ if opts.tst=='1':
     p113d = read_table("sg_11_07_p113.dat")
     p113  = read_table("sg_11_07_p113.sim")
     p114  = read_table("sg_11_07_p114.sim")
-    plot(res  ['Time'],res  ['uy'],'r-',lw=2,      label='MechSys')
-    plot(p113d['Time'],p113d['uy'],'bo',           label='SG:prog11.3(scan)')
-    plot(p113 ['Time'],p113 ['uy'],'b-',marker='+',label='SG:prog11.3(sim)')
-    plot(p114 ['Time'],p114 ['uy'],'g-',lw=1,      label='SG:prog11.4')
-    legend(loc='best')
-    xlabel('Time')
-    ylabel('uy')
-    grid()
-    show()
+    subplot(2,1,1)
+    plot   (res  ['Time'],res  ['uy'],'r-',lw=2,      label='MechSys')
+    plot   (p113d['Time'],p113d['uy'],'bo',           label='SG:prog11.3(scan)')
+    plot   (p113 ['Time'],p113 ['uy'],'b-',marker='+',label='SG:prog11.3(sim)')
+    plot   (p114 ['Time'],p114 ['uy'],'g-',lw=1,      label='SG:prog11.4')
+    legend (loc='best')
+    xlabel ('Time')
+    ylabel ('uy')
+    Grid   ()
+    subplot(2,1,2)
+    plot   (res['Time'],res['sy'],'r-',lw=2, label='MechSys')
+    xlabel ('Time')
+    ylabel ('sy')
+    Grid   ()
+    show   ()
 
 if opts.tst=='2':
     res  = read_table("fig_11_19_nod_30.res")
