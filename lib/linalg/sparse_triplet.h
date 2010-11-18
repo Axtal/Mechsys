@@ -311,7 +311,7 @@ inline void Triplet<Value_T,Index_T>::WriteSMAT (char const * FileKey, double To
     of << Rows() << "  " << Cols() << "  " << nz << std::endl;
     for (int k=0; k<Top(); ++k)
     {
-        //if (fabs(Ax(k))>Tol)
+        if (fabs(Ax(k))>Tol)
            of << Ai(k) << "  " << Aj(k) << "  " << Ax(k) << std::endl;
     }
 
