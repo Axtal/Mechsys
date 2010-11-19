@@ -140,6 +140,7 @@ public:
 
 #ifdef USE_BOOST_PYTHON
     void PySet (int Key, BPy::dict const & Pairs);
+    void PyGet (int Key, BPy::dict       & Pairs);
 #endif
 };
 
@@ -573,6 +574,12 @@ inline void Dict::PySet (int Key, BPy::dict const & Pairs)
         double       val = BPy::extract<double      >(vals.attr("next")());
         Set (Key, key, val);
     }
+}
+
+inline void Dict::PyGet (int Key, BPy::dict & Pairs)
+{
+    SDPair const & pairs = (*this)(Key);
+    for (size_t i=0; i<pairs.Keys.Size(); ++i) Pairs[pairs.Keys[i].CStr()] = pairs(pairs.Keys[i]);
 }
 #endif
 

@@ -70,6 +70,7 @@ BPy::class_<SDPair>("SDPair")
 // Dict
 BPy::class_<Dict>("Dict")
     .def("Set", &Dict::PySet)
+    .def("Get", &Dict::PyGet)
     .def(BPy::self_ns::str(BPy::self))
     ;
 
@@ -93,23 +94,41 @@ BPy::def("M2Phi",  M2Phi, FUN_M2PHI());
 BPy::class_<InpFile>("InpFile")
     .def("Read", &InpFile::Read)
     .def(BPy::self_ns::str(BPy::self))
-    .def_readwrite("MatID",    &InpFile::MatID)
-    .def_readwrite("pCam0",    &InpFile::pCam0)
-    .def_readwrite("pw0",      &InpFile::pw0)
-    .def_readwrite("NInc",     &InpFile::NInc)
-    .def_readwrite("CDrift",   &InpFile::CDrift)
-    .def_readwrite("STOL",     &InpFile::STOL)
-    .def_readwrite("FEM",      &InpFile::FEM)
-    .def_readwrite("Dyn",      &InpFile::Dyn)
-    .def_readwrite("HM",       &InpFile::HM)
-    .def_readwrite("RefDat",   &InpFile::RefDat)
-    .def_readwrite("RefSim",   &InpFile::RefSim)
-    .def_readwrite("RefAna",   &InpFile::RefAna)
-    .def_readwrite("IdxVert1", &InpFile::IdxVert1)
-    .def_readwrite("IdxVert2", &InpFile::IdxVert2)
-    .def_readwrite("IdxVert3", &InpFile::IdxVert3)
-    .def_readwrite("NDiv",     &InpFile::NDiv)
-    .def_readwrite("O2",       &InpFile::O2)
+    .def_readwrite("matid"      , &InpFile::matid     ) //   1
+    .def_readwrite("flwid"      , &InpFile::flwid     ) //   2
+    .def_readwrite("ninc"       , &InpFile::ninc      ) //   3
+    .def_readwrite("cdrift"     , &InpFile::cdrift    ) //   4
+    .def_readwrite("stol"       , &InpFile::stol      ) //   5
+    .def_readwrite("ssout"      , &InpFile::ssout     ) //   6
+    .def_readwrite("ctetg"      , &InpFile::ctetg     ) //   7
+    .def_readwrite("fem"        , &InpFile::fem       ) //   8
+    .def_readwrite("dyn"        , &InpFile::dyn       ) //   9
+    .def_readwrite("hm"         , &InpFile::hm        ) //  10
+    .def_readwrite("tf"         , &InpFile::tf        ) //  11
+    .def_readwrite("dt"         , &InpFile::dt        ) //  12
+    .def_readwrite("dtout"      , &InpFile::dtout     ) //  13
+    .def_readwrite("tsw"        , &InpFile::tsw       ) //  14
+    .def_readwrite("ndiv"       , &InpFile::ndiv      ) //  15
+    .def_readwrite("nip"        , &InpFile::nip       ) //  16
+    .def_readwrite("o2"         , &InpFile::o2        ) //  17
+    .def_readwrite("ray"        , &InpFile::ray       ) //  18
+    .def_readwrite("am"         , &InpFile::am        ) //  19
+    .def_readwrite("ak"         , &InpFile::ak        ) //  20
+    .def_readwrite("rk"         , &InpFile::rk        ) //  21
+    .def_readwrite("rkscheme"   , &InpFile::rkscheme  ) //  22
+    .def_readwrite("rkstol"     , &InpFile::rkstol    ) //  23
+    .def_readwrite("refdat"     , &InpFile::refdat    ) //  24
+    .def_readwrite("refsim"     , &InpFile::refsim    ) //  25
+    .def_readwrite("refana"     , &InpFile::refana    ) //  26
+    .def_readwrite("idxvert1"   , &InpFile::idxvert1  ) //  27
+    .def_readwrite("idxvert2"   , &InpFile::idxvert2  ) //  28
+    .def_readwrite("idxvert3"   , &InpFile::idxvert3  ) //  29
+    .def_readwrite("optdbl1"    , &InpFile::optdbl1   ) //  30
+    .def_readwrite("optdbl2"    , &InpFile::optdbl2   ) //  31
+    .def_readwrite("optdbl3"    , &InpFile::optdbl3   ) //  32
+    .def_readwrite("hasoptdbl1" , &InpFile::hasoptdbl1) //  30b
+    .def_readwrite("hasoptdbl2" , &InpFile::hasoptdbl2) //  31b
+    .def_readwrite("hasoptdbl3" , &InpFile::hasoptdbl3) //  32b
     ;
 
 BPy::def("ReadMaterial", ReadMaterial, FUN_READMATERIAL());

@@ -51,9 +51,10 @@ public:
     UnsatFlow (int NDim, SDPair const & Prms);
 
     // Methods
-    void InitIvs (SDPair const & Ini, State * Sta) const;
-    void Update  (double Dpw, double DEv, UnsatFlowState * Sta);
-    void TgVars  (UnsatFlowState const * Sta) const;
+    void   InitIvs (SDPair const & Ini, State * Sta) const;
+    void   Update  (double Dpw, double DEv, UnsatFlowState * Sta);
+    void   TgVars  (UnsatFlowState const * Sta) const;
+    double FindSw  (double pc); ///< Find Sw corresponding to pc by integrating from (pc,Sw)=(0,1) to pc (disregarding Dev)
 
     // Data
     double gamW;  // water unit weight
@@ -169,6 +170,27 @@ inline void UnsatFlow::TgVars (UnsatFlowState const * Sta) const
     C   = -Sta->n * Cpc;
     chi = Sta->Sw;
     kwb = Sta->kwb;
+}
+
+inline double UnsatFlow::FindSw (double pc)
+{
+    if (pc>0.0) // water unsaturated
+    {
+        // set variables for _RK_func
+        _RK_Dev = 0.0;
+        _RK_pc  = 0.0;
+        _RK_Dpc = pc;
+
+        // solve ODE
+        Numerical::ODESolver<UnsatFlow> ode(this, &UnsatFlow::_RK_func, /*neq*/1, "RKF45", /*stol*/1.e-6);
+        ode.t    = 0.0;
+        ode.Y[0] = 1.0; // initial Sw
+        ode.Evolve (/*tf*/1.0);
+
+        // final Sw
+        return ode.Y[0];
+    }
+    else return 1.0; // water saturated
 }
 
 inline double UnsatFlow::_Cpc (double pc, double Sw) const

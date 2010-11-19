@@ -54,36 +54,39 @@ public:
     void Read (char const * FileName);
 
     // Data
-    int    MatID;       ///< material ID
-    int    FlwID;       ///< flow material ID
-    double pCam0;       ///< pCam
-    double pw0;         ///< initial pore-water pressure
-    double Sw0;         ///< initial water saturation
-    size_t NInc;        ///< general number of increments (for all load-unload paths)
-    bool   CDrift;      ///< correct YS drift
-    int    NIP;         ///< Number of integration points in element
-    double STOL;        ///< local error tolerance
-    bool   FEM;         ///< use one Hex8 FEM element instead of point integration
-    bool   SSOut;       ///< output substeps ?
-    bool   Dyn;         ///< dynamic analysis ?
-    double tf,dt,dtOut; ///< variables for dynamic analysis
-    double tSW;         ///< switch time (for dynamic simulation)
-    double Am;          ///< Damping Am
-    double Ak;          ///< Damping Ak
-    bool   Ray;         ///< Rayleigh damping ?
-    bool   HM;          ///< HydroMech ?
-    bool   RK;          ///< Runge-Kutta instead of GN22 ?
-    String RKScheme;    ///< Runge-Kutta scheme 
-    double RKSTOL;      ///< Runge-Kutta tolerance
-    bool   CteTg;       ///< Constant stiffness (linear) ?
-    String RefDat;      ///< reference data file
-    String RefSim;      ///< reference simulation file
-    String RefAna;      ///< reference analytical solution file
-    int    NDiv;        ///< mesh number of divisions
-    bool   O2;          ///< quadratic elements ?
-    int    IdxVert1;    ///< index of vertex # 1 for output
-    int    IdxVert2;    ///< index of vertex # 1 for output
-    int    IdxVert3;    ///< index of vertex # 1 for output
+    int    matid;       ///<  1 material ID
+    int    flwid;       ///<  2 flow material ID
+    int    ninc;        ///<  3 general number of increments (for all load-unload paths)
+    bool   cdrift;      ///<  4 correct YS drift
+    double stol;        ///<  5 local error tolerance
+    bool   ssout;       ///<  6 output substeps ?
+    bool   ctetg;       ///<  7 Constant stiffness (linear) ?
+    bool   fem;         ///<  8 use one Hex8 FEM element instead of point integration
+    bool   dyn;         ///<  9 dynamic analysis ?
+    bool   hm;          ///< 10 HydroMech ?
+    double tf;          ///< 11 final time
+    double dt;          ///< 12 time step
+    double dtout;       ///< 13 output time step
+    double tsw;         ///< 14 switch time (for dynamic simulation)
+    int    ndiv;        ///< 15 mesh number of divisions
+    int    nip;         ///< 16 Number of integration points in element
+    bool   o2;          ///< 17 quadratic elements ?
+    bool   ray;         ///< 18 Rayleigh damping ?
+    double am;          ///< 19 Damping Am
+    double ak;          ///< 20 Damping Ak
+    bool   rk;          ///< 21 Runge-Kutta instead of GN22 ?
+    String rkscheme;    ///< 22 Runge-Kutta scheme 
+    double rkstol;      ///< 23 Runge-Kutta tolerance
+    String refdat;      ///< 24 reference data file
+    String refsim;      ///< 25 reference simulation file
+    String refana;      ///< 26 reference analytical solution file
+    int    idxvert1;    ///< 27 index of vertex # 1 for output
+    int    idxvert2;    ///< 28 index of vertex # 1 for output
+    int    idxvert3;    ///< 29 index of vertex # 1 for output
+    double optdbl1;     ///< 30 optional double 1
+    double optdbl2;     ///< 31 optional double 2
+    double optdbl3;     ///< 32 optional double 3
+    bool   hasoptdbl1, hasoptdbl2, hasoptdbl3;
 
     // path increments
     Array<PathIncs> Path;
@@ -94,35 +97,39 @@ public:
 
 
 inline InpFile::InpFile ()
-    : MatID    (0),
-      FlwID    (-1),
-      pCam0    (100.0),
-      pw0      (0.0),
-      Sw0      (0.0),
-      NInc     (10),
-      CDrift   (true),
-      NIP      (-1),
-      STOL     (1.0e-5),
-      FEM      (false),
-      SSOut    (true),
-      Dyn      (false),
-      tf       (10.0),
-      dt       (0.1),
-      dtOut    (0.2),
-      tSW      (0.5),
-      Am       (0.02),
-      Ak       (0.02),
-      Ray      (false),
-      HM       (false),
-      RK       (false),
-      RKScheme ("RK23"),
-      RKSTOL   (1.0e-2),
-      CteTg    (false),
-      NDiv     (1),
-      O2       (true),
-      IdxVert1 (-1),
-      IdxVert2 (-1),
-      IdxVert3 (-1)
+    : matid    (-1),     //  1
+      flwid    (-1),     //  2
+      ninc     (-1),     //  3
+      cdrift   (false),  //  4
+      stol     (-1),     //  5
+      ssout    (false),  //  6
+      ctetg    (false),  //  7
+      fem      (false),  //  8
+      dyn      (false),  //  9
+      hm       (false),  // 10
+      tf       (-1),     // 11
+      dt       (-1),     // 12
+      dtout    (-1),     // 13
+      tsw      (-1),     // 14
+      ndiv     (-1),     // 15
+      nip      (-1),     // 16
+      o2       (false),  // 17
+      ray      (false),  // 18
+      am       (-1),     // 19
+      ak       (-1),     // 20
+      rk       (false),  // 21
+      rkscheme (""),     // 22
+      rkstol   (-1),     // 23
+      refdat   (""),     // 24
+      refsim   (""),     // 25
+      refana   (""),     // 26
+      idxvert1 (-1),     // 27
+      idxvert2 (-1),     // 28
+      idxvert3 (-1),     // 29
+      optdbl1  (0),      // 30
+      optdbl2  (0),      // 31
+      optdbl3  (0),      // 32
+      hasoptdbl1(false), hasoptdbl2(false), hasoptdbl3(false)
 {
 }
 
@@ -179,38 +186,38 @@ inline void InpFile::Read (char const * FileName)
             }
             else
             {
-                if      (key=="matid")    MatID    = atoi(str_val.CStr());
-                else if (key=="flwid")    FlwID    = atoi(str_val.CStr());
-                else if (key=="pcam0")    pCam0    = val;
-                else if (key=="pw0")      pw0      = val;
-                else if (key=="Sw0")      Sw0      = val;
-                else if (key=="ninc")     NInc     = atoi(str_val.CStr());
-                else if (key=="cdrift")   CDrift   = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="nip")      NIP      = atoi(str_val.CStr());
-                else if (key=="stol")     STOL     = val;
-                else if (key=="fem")      FEM      = val;
-                else if (key=="ssout")    SSOut    = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="dyn")      Dyn      = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="tf")       tf       = val;
-                else if (key=="dt")       dt       = val;
-                else if (key=="dtout")    dtOut    = val;
-                else if (key=="tsw")      tSW      = val;
-                else if (key=="am")       Am       = val;
-                else if (key=="ak")       Ak       = val;
-                else if (key=="ray")      Ray      = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="hm")       HM       = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="rk")       RK       = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="rkscheme") RKScheme = str_val;
-                else if (key=="rkstol")   RKSTOL   = val;
-                else if (key=="ctetg")    CteTg    = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="refdat")   RefDat   = str_val;
-                else if (key=="refsim")   RefSim   = str_val;
-                else if (key=="refana")   RefAna   = str_val;
-                else if (key=="ndiv")     NDiv     = atoi(str_val.CStr());
-                else if (key=="o2")       O2       = static_cast<bool>(atoi(str_val.CStr()));
-                else if (key=="idxvert1") IdxVert1 = atoi(str_val.CStr());
-                else if (key=="idxvert2") IdxVert2 = atoi(str_val.CStr());
-                else if (key=="idxvert3") IdxVert3 = atoi(str_val.CStr());
+                if      (key=="matid")      matid    = atoi(str_val.CStr());                    //  1
+                else if (key=="flwid")      flwid    = atoi(str_val.CStr());                    //  2
+                else if (key=="ninc")       ninc     = atoi(str_val.CStr());                    //  3
+                else if (key=="cdrift")     cdrift   = static_cast<bool>(atoi(str_val.CStr())); //  4
+                else if (key=="stol")       stol     = val;                                     //  5
+                else if (key=="ssout")      ssout    = static_cast<bool>(atoi(str_val.CStr())); //  6
+                else if (key=="ctetg")      ctetg    = static_cast<bool>(atoi(str_val.CStr())); //  7
+                else if (key=="fem")        fem      = val;                                     //  8
+                else if (key=="dyn")        dyn      = static_cast<bool>(atoi(str_val.CStr())); //  9
+                else if (key=="hm")         hm       = static_cast<bool>(atoi(str_val.CStr())); // 10
+                else if (key=="tf")         tf       = val;                                     // 11
+                else if (key=="dt")         dt       = val;                                     // 12
+                else if (key=="dtout")      dtout    = val;                                     // 13
+                else if (key=="tsw")        tsw      = val;                                     // 14
+                else if (key=="ndiv")       ndiv     = atoi(str_val.CStr());                    // 15
+                else if (key=="nip")        nip      = atoi(str_val.CStr());                    // 16
+                else if (key=="o2")         o2       = static_cast<bool>(atoi(str_val.CStr())); // 17
+                else if (key=="ray")        ray      = static_cast<bool>(atoi(str_val.CStr())); // 18
+                else if (key=="am")         am       = val;                                     // 19
+                else if (key=="ak")         ak       = val;                                     // 20
+                else if (key=="rk")         rk       = static_cast<bool>(atoi(str_val.CStr())); // 21
+                else if (key=="rkscheme")   rkscheme = str_val;                                 // 22
+                else if (key=="rkstol")     rkstol   = val;                                     // 23
+                else if (key=="refdat")     refdat   = str_val;                                 // 24
+                else if (key=="refsim")     refsim   = str_val;                                 // 25
+                else if (key=="refana")     refana   = str_val;                                 // 26
+                else if (key=="idxvert1")   idxvert1 = atoi(str_val.CStr());                    // 27
+                else if (key=="idxvert2")   idxvert2 = atoi(str_val.CStr());                    // 28
+                else if (key=="idxvert3")   idxvert3 = atoi(str_val.CStr());                    // 29
+                else if (key=="optdbl1")  { optdbl1  = val;   hasoptdbl1=true; }                // 30
+                else if (key=="optdbl2")  { optdbl2  = val;   hasoptdbl2=true; }                // 31
+                else if (key=="optdbl3")  { optdbl3  = val;   hasoptdbl3=true; }                // 32
                 else if (key=="npath")
                 {
                     Path.Resize ((size_t)val);
@@ -248,39 +255,38 @@ std::ostream & operator<< (std::ostream & os, Array<PathIncs> const & A)
 
 std::ostream & operator<< (std::ostream & os, InpFile const & IF)
 {
-    os << "Input data:\n";
-    os << "  matid    = " << IF.MatID    << "\n";
-    os << "  pcam0    = " << IF.pCam0    << "\n";
-    os << "  pw0      = " << IF.pw0      << "\n";
-    os << "  Sw0      = " << IF.Sw0      << "\n";
-    os << "  ninc     = " << IF.NInc     << "\n";
-    os << "  cdrift   = " << IF.CDrift   << "\n";
-    os << "  stol     = " << IF.STOL     << "\n";
-    os << "  fem      = " << IF.FEM      << "\n";
-    os << "  ssout    = " << IF.SSOut    << "\n";
-    os << "  dyn      = " << IF.Dyn      << "\n";
-    os << "  tf       = " << IF.tf       << "\n";
-    os << "  dt       = " << IF.dt       << "\n";
-    os << "  dtout    = " << IF.dtOut    << "\n";
-    os << "  tsw      = " << IF.tSW      << "\n";
-    os << "  am       = " << IF.Am       << "\n";
-    os << "  ak       = " << IF.Ak       << "\n";
-    os << "  ray      = " << IF.Ray      << "\n";
-    os << "  hm       = " << IF.HM       << "\n";
-    os << "  rk       = " << IF.RK       << "\n";
-    os << "  rkscheme = " << IF.RKScheme << "\n";
-    os << "  rkstol   = " << IF.RKSTOL   << "\n";
-    os << "  ctetg    = " << IF.CteTg    << "\n";
-    os << "  ndiv     = " << IF.NDiv     << "\n";
-    os << "  o2       = " << IF.O2       << "\n";
-    if (IF.NIP>=0)      os << "  nip      = " << IF.NIP      << "\n";
-    if (IF.FlwID>=0)    os << "  flwid    = " << IF.FlwID    << "\n";
-    if (IF.RefDat!="")  os << "  refdat   = " << IF.RefDat   << "\n";
-    if (IF.RefSim!="")  os << "  refsim   = " << IF.RefSim   << "\n";
-    if (IF.RefAna!="")  os << "  refana   = " << IF.RefAna   << "\n";
-    if (IF.IdxVert1>=0) os << "  idxvert1 = " << IF.IdxVert1 << "\n";
-    if (IF.IdxVert2>=0) os << "  idxvert2 = " << IF.IdxVert2 << "\n";
-    if (IF.IdxVert3>=0) os << "  idxvert3 = " << IF.IdxVert3 << "\n";
+    if (IF.matid    >=0) os << "matid    = " << IF.matid    << "\n"; //   1
+    if (IF.flwid    >=0) os << "flwid    = " << IF.flwid    << "\n"; //   2
+    if (IF.ninc     >=0) os << "ninc     = " << IF.ninc     << "\n"; //   3
+    if (IF.cdrift      ) os << "cdrift   = " << IF.cdrift   << "\n"; //   4
+    if (IF.stol     >=0) os << "stol     = " << IF.stol     << "\n"; //   5
+    if (IF.ssout       ) os << "ssout    = " << IF.ssout    << "\n"; //   6
+    if (IF.ctetg       ) os << "ctetg    = " << IF.ctetg    << "\n"; //   7
+    if (IF.fem         ) os << "fem      = " << IF.fem      << "\n"; //   8
+    if (IF.dyn         ) os << "dyn      = " << IF.dyn      << "\n"; //   9
+    if (IF.hm          ) os << "hm       = " << IF.hm       << "\n"; //  10
+    if (IF.tf       >=0) os << "tf       = " << IF.tf       << "\n"; //  11
+    if (IF.dt       >=0) os << "dt       = " << IF.dt       << "\n"; //  12
+    if (IF.dtout    >=0) os << "dtout    = " << IF.dtout    << "\n"; //  13
+    if (IF.tsw      >=0) os << "tsw      = " << IF.tsw      << "\n"; //  14
+    if (IF.ndiv     >=0) os << "ndiv     = " << IF.ndiv     << "\n"; //  15
+    if (IF.nip      >=0) os << "nip      = " << IF.nip      << "\n"; //  16
+    if (IF.o2          ) os << "o2       = " << IF.o2       << "\n"; //  17
+    if (IF.ray         ) os << "ray      = " << IF.ray      << "\n"; //  18
+    if (IF.am       >=0) os << "am       = " << IF.am       << "\n"; //  19
+    if (IF.ak       >=0) os << "ak       = " << IF.ak       << "\n"; //  20
+    if (IF.rk          ) os << "rk       = " << IF.rk       << "\n"; //  21
+    if (IF.rkscheme!="") os << "rkscheme = " << IF.rkscheme << "\n"; //  22
+    if (IF.rkstol   >=0) os << "rkstol   = " << IF.rkstol   << "\n"; //  23
+    if (IF.refdat  !="") os << "refdat   = " << IF.refdat   << "\n"; //  24
+    if (IF.refsim  !="") os << "refsim   = " << IF.refsim   << "\n"; //  25
+    if (IF.refana  !="") os << "refana   = " << IF.refana   << "\n"; //  26
+    if (IF.idxvert1 >=0) os << "idxvert1 = " << IF.idxvert1 << "\n"; //  27
+    if (IF.idxvert2 >=0) os << "idxvert2 = " << IF.idxvert2 << "\n"; //  28
+    if (IF.idxvert3 >=0) os << "idxvert3 = " << IF.idxvert3 << "\n"; //  29
+    if (IF.hasoptdbl1  ) os << "optdbl1  = " << IF.optdbl1  << "\n"; //  30
+    if (IF.hasoptdbl2  ) os << "optdbl2  = " << IF.optdbl2  << "\n"; //  31
+    if (IF.hasoptdbl3  ) os << "optdbl3  = " << IF.optdbl3  << "\n"; //  32
     return os;
 }
 

@@ -147,6 +147,10 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
             double hw = z_water-z; // column of water
             double pw = (hw>0.0 ? gamW*hw : (pos_pw ? 0.0 : gamW*hw));
             ini.Set ("pw", pw);
+
+            // initial water saturation
+            double Sw = FMdl->FindSw (-pw);
+            ini.Set ("Sw", Sw);
         }
 
         // init flow state
@@ -536,40 +540,47 @@ inline void HydroMechElem::StateKeys (Array<String> & Keys) const
     Keys.Push ("qwx");
     Keys.Push ("qwy"); if (NDim==3)
     Keys.Push ("qwz");
+    Keys.Push ("H");
 }
 
 inline void HydroMechElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
 {
+    // check
     if (FSta[IdxIP]->Sw<0.0) throw new Fatal("HydroMechElem::StateAtIP: Sw<0");
+
+    // output
     EquilibElem::StateAtIP (KeysVals, IdxIP);
     KeysVals.Set ("n",  FSta[IdxIP]->n);
     KeysVals.Set ("pc", FSta[IdxIP]->pc);
     KeysVals.Set ("Sw", FSta[IdxIP]->Sw);
     KeysVals.Set ("kw", FSta[IdxIP]->kwb(0,0)*FMdl->gamW);
 
-    // vector of current pw
+    // elevation of point
+    Vec_t X;
+    CoordsOfIP (IdxIP, X);
+    double z = (NDim==2 ? X(1) : X(2)); // the Datum will be z=0 always
+
+    // total water head
+    double pw = -FSta[IdxIP]->pc;
+    KeysVals.Set ("H", z + pw/FMdl->gamW);
+
+    // vector of current pw at nodes of element
     Vec_t pwe(NDp);
     for (size_t i=0; i<GE->NN; ++i) pwe(i) = Con[i]->U("pw");
 
-    // relative specific discharge
+    // pore-water pressure gradient at IP
     double detJ, coef;
     Mat_t  C, B, Bp, N, Np;
     CoordMatrix (C);
-    Vec_t qw(NDim);
-    set_to_zero (qw);
-    for (size_t i=0; i<GE->NIP; ++i)
-    {
-        Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
-        FMdl->TgVars  (FSta[i]); // set c, C, chi, and kwb
-        Mat_t kw      (FMdl->kwb * FMdl->gamW);
-        Vec_t kwz     (kw * zv);
-        Vec_t Bppwe   (Bp * pwe);
-        Vec_t kwbBppw (FMdl->kwb * Bppwe);
-        qw += (-coef) * (kwbBppw + kwz);
-    }
-    KeysVals.Set ("qwx", qw(0));
-    KeysVals.Set ("qwy", qw(1)); if (NDim==3)
-    KeysVals.Set ("qwz", qw(2));
+    Interp (C, GE->IPs[IdxIP], B, Bp, N, Np, detJ, coef);
+    Vec_t grad_pw(Bp * pwe);
+
+    // relative specific discharge
+    grad_pw += FMdl->gamW*zv;              // grad_pw = grad_pw + gamW*z
+    Vec_t mqw(FSta[IdxIP]->kwb * grad_pw); // -qw
+    KeysVals.Set ("qwx", -mqw(0));
+    KeysVals.Set ("qwy", -mqw(1)); if (NDim==3)
+    KeysVals.Set ("qwz", -mqw(2));
 }
 
 inline size_t HydroMechElem::NIVs () const 
@@ -634,6 +645,7 @@ inline void HydroMechElem::CalcIVRate (double Time, Vec_t const & U, Vec_t const
         for (size_t j=0; j<NCo; ++j) Rate(j+i*NCo) = dsigdt(j);
     }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
 
