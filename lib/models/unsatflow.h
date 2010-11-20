@@ -57,20 +57,23 @@ public:
     double FindSw  (double pc); ///< Find Sw corresponding to pc by integrating from (pc,Sw)=(0,1) to pc (disregarding Dev)
 
     // Data
-    double gamW;  // water unit weight
-    double kwsat; // saturated (isotropic) conductivity
-    double Mkw;   // expoent of kw model
+    double gamW;  ///< water unit weight
+    double kwsat; ///< saturated (isotropic) conductivity
+    double Mkw;   ///< expoent of kw model
+    int    WRC;   ///< water retention curve model: 0:BC, 1:HZ
 
     // SWRC parameters
     double bc_lam, bc_sb, bc_wr; ///< Brooks & Corey model parameters
+    double hz_a, hz_b;           ///< Huang Zienkiewicz
 
     // Read-write variables (scratchpad)
     mutable double c, C, chi;
     mutable Mat_t  kwb;
 
 private:
-    double _Cpc  (double pc, double Sw) const;
-    double _Ceps (double pc, double Sw) const;
+    double _kw_mult (double Sw)            const;
+    double _Cpc     (double pc, double Sw) const;
+    double _Ceps    (double pc, double Sw) const;
 
     double _RK_pc, _RK_Dev, _RK_Dpc;
     int _RK_func (double t, double const Sw[], double dSwdt[]);
@@ -115,16 +118,20 @@ inline void UnsatFlowState::Init (SDPair const & Ini, size_t NIvs)
 inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms)
     : Model (NDim,Prms,"UnsatFlow")
 {
-    gamW   = Prms("gamW");
-    kwsat  = Prms("kwsat");
-    Mkw    = Prms("Mkw");
-    bc_lam = 0.8;
-    bc_sb  = 1.8;
-    bc_wr  = 0.01;
+    gamW    = Prms("gamW");
+    kwsat   = Prms("kwsat");
+    Mkw     = Prms("Mkw");
+    bc_lam  = 0.8;
+    bc_sb   = 1.8;
+    bc_wr   = 0.01;
+    hz_a    = 0.10152;
+    hz_b    = 2.4279;
+    WRC     = (Prms.HasKey("WRC") ? static_cast<int>(Prms("WRC")) : 0);
     if (Prms.HasKey("bc_lam")) bc_lam = Prms("bc_lam");
     if (Prms.HasKey("bc_sb"))  bc_sb  = Prms("bc_sb");
     if (Prms.HasKey("bc_sbb")) bc_sb  = exp(Prms("bc_sbb"))-1.0;
     if (Prms.HasKey("bc_wr"))  bc_wr  = Prms("bc_wr");
+    if (WRC<0 || WRC>1) throw new Fatal("UnsatFlow::UnsatFlow: WRC must be either 0 or 1");
 }
 
 inline void UnsatFlow::InitIvs (SDPair const & Ini, State * Sta) const
@@ -133,12 +140,14 @@ inline void UnsatFlow::InitIvs (SDPair const & Ini, State * Sta) const
     UnsatFlowState * sta = static_cast<UnsatFlowState*>(Sta);
     double pc = -Ini("pw");
     double Sw =  Ini("Sw");
+    /*
     double f;
     if (pc>bc_sb) f = Sw - bc_wr - (1.0-bc_wr)*pow(bc_sb/pc,bc_lam);
     else          f = Sw - 1.0;
     if (fabs(f)>1.0e-7) throw new Fatal("UnsatFlow::InitIvs: Sw=%g and pc=%g are not in WR curve",Sw,pc);
+    */
     ini.Set   ("pc",  pc);
-    ini.Set   ("kwb", kwsat*pow(Sw,Mkw)/gamW);
+    ini.Set   ("kwb", kwsat*_kw_mult(Sw)/gamW);
     sta->Init (ini);
 }
 
@@ -159,7 +168,8 @@ inline void UnsatFlow::Update (double Dpw, double DEv, UnsatFlowState * Sta)
     Sta->Sw  = ode.Y[0];
     Sta->pc += (-Dpw);
     Sta->n  += DEv;
-    for (size_t i=0; i<num_rows(Sta->kwb); ++i) Sta->kwb(i,i) = kwsat*pow(Sta->Sw,Mkw)/gamW;
+    double kwm = _kw_mult(Sta->Sw);
+    for (size_t i=0; i<num_rows(Sta->kwb); ++i) Sta->kwb(i,i) = kwsat*kwm/gamW;
 }
 
 inline void UnsatFlow::TgVars (UnsatFlowState const * Sta) const
@@ -193,11 +203,40 @@ inline double UnsatFlow::FindSw (double pc)
     else return 1.0; // water saturated
 }
 
+inline double UnsatFlow::_kw_mult (double Sw) const
+{
+    if (Sw<1.0)
+    {
+        if (Sw>0.0)
+        {
+            if (WRC==0)
+            {
+                double kwm = 1.0 - 2.207*pow(1.0-Sw, 1.0121);
+                if (kwm<0.0) return 0.0;
+                else         return kwm;
+            }
+            else return pow(Sw,Mkw);
+        }
+        else return 0.0;
+    }
+    else return 1.0;
+}
+
 inline double UnsatFlow::_Cpc (double pc, double Sw) const
 {
-    if (Sw<=bc_wr) return 0.0;
-    if (pc<bc_sb || pc<1.0e-7) return 0.0;
-    else return -bc_lam*pow(bc_sb/pc,bc_lam)*(1.0-bc_wr)/pc;
+    if (pc>0.0 && Sw>0.0)
+    {
+        if (WRC==0) // BC
+        {
+            if (pc>bc_sb && Sw>bc_wr) return -bc_lam*pow(bc_sb/pc,bc_lam)*(1.0-bc_wr)/pc;
+            else return 0.0;
+        }
+        else // HZ
+        {
+            return -(hz_a*hz_b*pow(pc/gamW,hz_b))/pc;
+        }
+    }
+    else return 0.0;
 }
 
 inline double UnsatFlow::_Ceps (double pc, double Sw) const
@@ -212,6 +251,7 @@ inline int UnsatFlow::_RK_func (double t, double const Y[], double dYdt[])
     double Cpc  = _Cpc  (pc, Sw);
     double Ceps = _Ceps (pc, Sw);
     dYdt[0] = Ceps*_RK_Dev + Cpc*_RK_Dpc;
+    //std::cout << Y[0] << "   " << dYdt[0] << std::endl;
     return GSL_SUCCESS;
 }
 

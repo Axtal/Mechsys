@@ -65,7 +65,7 @@ public:
     // Methods
     void Solve          (size_t NInc=1, char const * FileKey=NULL);                      ///< Solve quasi-static problem
     void TransSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve transient problem
-    void DynSolve       (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve dynamic problem
+    void DynSolve       (double tf, double dt, double dtOut, char const * FileKey=NULL, SDPair * Steps=NULL); ///< Solve dynamic problem
     void AssembleKA     ();                                                              ///< A = K11
     void AssembleKMA    (double Coef1, double Coef2);                                    ///< A = Coef1*M + Coef2*K
     void AssembleKCMA   (double Coef1, double Coef2, double Coef3);                      ///< A = Coef1*M + Coef2*C + Coef3*K
@@ -147,7 +147,7 @@ public:
 private:
     void _aug_and_set_A ();                          ///< Augment A matrix and set Lagrange multipliers if any
     void _wrn_resid     ();                          ///< Warning message for large residuals (debugging)
-    void _cal_resid     (bool WithAccel=false);      ///< Calculate residual
+    void _cal_resid     ();                          ///< Calculate residual
     void _cor_resid     (Vec_t & dU, Vec_t & dF);    ///< Correct residual
     void _FE_update     (double tf);                 ///< (Forward-Euler)  Update Time and elements to tf
     void _ME_update     (double tf);                 ///< (Modified-Euler) Update Time and elements to tf
@@ -158,6 +158,7 @@ private:
     void _Y_to_VUIV     (double const Y[]);
     int  _RK_func       (double t, double const Y[], double dYdt[]);
     void _RK_update     (double tf, double dt);      ///< Runge-Kutta update
+    double _timestep (int i, int a) const { return (i<a ? pow(2.0,i)/100.0 : pow(2.0,i-a)); }
 };
 
 
@@ -269,7 +270,7 @@ inline void Solver::TransSolve (double tf, double dt, double dtOut, char const *
 {
 }
 
-inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * FileKey)
+inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * FileKey, SDPair * Steps)
 {
     // info
     Util::Stopwatch stopwatch(/*activated*/WithInfo);
@@ -294,8 +295,27 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
 
+    // time for output
+    double tout = Time + dtOut;
+
+    // nonlinear timesteps
+    int  nl_nsml = 7;     // number fo small timestep __sets__
+    int  nl_nn   = 12;    // total number of timestep __sets__
+    int  nl_n    = 10;    // number of timesteps per __set__
+    int  nl_i    = 0;     // timestep set index
+    int  nl_k    = 0;     // current accumulated timesteps
+    int  nl_K    = 0;     // current total number of timesteps
+    bool nl_stp  = false; // use nonlinear timesteps ?
+    if (Steps!=NULL)
+    {
+        nl_nsml = static_cast<int>((*Steps)("nsml"));
+        nl_nn   = static_cast<int>((*Steps)("nn"));
+        nl_n    = static_cast<int>((*Steps)("n"));
+        nl_stp  = true;
+        dt      = _timestep (nl_i, nl_nsml);
+    }
+
     // solve
-    double tout = Time + dtOut; // time for output
     if (DScheme==GN22_t)
     {
         while (Time<tf)
@@ -314,6 +334,19 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
 
             // next tout
             tout = Time + dtOut;
+
+            // next timestep set
+            if (nl_stp)
+            {
+                nl_K++;
+                nl_k++;
+                if (nl_k==nl_n)
+                {
+                    nl_k = 0;
+                    nl_i++;
+                    dt = _timestep (nl_i, nl_nsml);
+                }
+            }
         }
     }
     else if (DScheme==RK_t)
@@ -894,7 +927,7 @@ inline void Solver::_wrn_resid ()
     }
 }
 
-inline void Solver::_cal_resid (bool WithAccel)
+inline void Solver::_cal_resid ()
 {
     // calculate residual
     R = F - F_int;
@@ -915,14 +948,6 @@ inline void Solver::_cal_resid (bool WithAccel)
     //printf("\n######################################   After   #####################################\n");
     if (WarnRes) _wrn_resid ();
 
-    if (WithAccel)
-    {
-        Sparse::SubMult (M11, A, R); // R -= M11*A
-        if (DampTy!=None_t) Sparse::SubMult (C11, V, R); // R -= C11*V
-        //std::cout << "V  = " << PrintVector(V);
-        //std::cout << "A  = " << PrintVector(A);
-        //std::cout << "R  = " << PrintVector(R);
-    }
     NormR    = Norm(R);
     MaxNormF = Util::Max (Norm(F), Norm(F_int));
 }
@@ -1206,8 +1231,18 @@ inline void Solver::_GN22_update (double tf, double dt)
                 }
             }
 
+#ifdef DO_DEBUG
+            double normdU = Norm(dU);
+            if (Util::IsNan(normdU)) throw new Fatal("Solver::_GN22_update: normdU is NaN");
+#endif
+
             // update elements
             UpdateElements (dU, /*CalcFint*/true);
+
+#ifdef DO_DEBUG
+            double normFint = Norm(F_int);
+            if (Util::IsNan(normFint)) throw new Fatal("Solver::_GN22_update: normFint is NaN");
+#endif
 
             // update state
             U += dU;
@@ -1238,6 +1273,10 @@ inline void Solver::_GN22_update (double tf, double dt)
             // check convergence
             NormR    = Norm(R);
             MaxNormF = Util::Max (normF, Norm(F_int));
+#ifdef DO_DEBUG
+            if (Util::IsNan(NormR)) throw new Fatal("Solver::_GN22_update: NormR is NaN");
+            printf("NormR = %g\n",NormR);
+#endif
             if (ResidOK()) break;
         }
         if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations",It);

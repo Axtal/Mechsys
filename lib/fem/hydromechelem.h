@@ -251,7 +251,7 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCF
     EquilibElem::SetBCs (IdxEdgeOrFace, BCs, BCF);
 
     // gravity
-    if (BCs.HasKey("gravity"))
+    if (BCs.HasKey("fgravity"))
     {
         HasGrav  = true;
         GravMult = BCF;
@@ -503,11 +503,23 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
         // strain and effective stress increments
         deps = B * dUe;
+        // TODO: The model expects __effective__ stresses => Sta[i] has to be corrected here
         su.Update (deps, Sta[i], dsig);
+
+#ifdef DO_DEBUG
+        double normdsig = Norm(dsig);
+        if (Util::IsNan(normdsig)) throw new Fatal("HydroMechElem::UpdateState: normdsig is NaN");
+#endif
 
         // update flow state at IP
         double dev = deps(0)+deps(1)+deps(2);
         FMdl->Update (dpw, dev, FSta[i]);
+
+#ifdef DO_DEBUG
+        if (Util::IsNan(FSta[i]->Sw))       throw new Fatal("HydroMechElem::UpdateState: Sw is NaN");
+        if (Util::IsNan(FSta[i]->pc))       throw new Fatal("HydroMechElem::UpdateState: pc is NaN");
+        if (Util::IsNan(FSta[i]->kwb(0,0))) throw new Fatal("HydroMechElem::UpdateState: kwb(0,0) is NaN");
+#endif
 
         // updated tg variables
         FMdl->TgVars (FSta[i]); // set c, C, chi, and kwb

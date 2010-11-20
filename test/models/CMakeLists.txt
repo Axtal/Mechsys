@@ -18,7 +18,8 @@
 
 SET(PROGS
   driver
-  eigenbases)
+  eigenbases
+  test_wrcs)
 
 SET(VTK_PROGS
   smp

@@ -1,6 +1,5 @@
 import optparse
-from msys_fig      import *
-from msys_readdata import *
+from msys_fig import *
 
 # input
 op = optparse.OptionParser()

@@ -129,6 +129,9 @@ BPy::class_<InpFile>("InpFile")
     .def_readwrite("hasoptdbl1" , &InpFile::hasoptdbl1) //  30b
     .def_readwrite("hasoptdbl2" , &InpFile::hasoptdbl2) //  31b
     .def_readwrite("hasoptdbl3" , &InpFile::hasoptdbl3) //  32b
+    .def_readwrite("nldt_nsml"  , &InpFile::nldt_nsml ) //  33
+    .def_readwrite("nldt_nn"    , &InpFile::nldt_nn   ) //  34
+    .def_readwrite("nldt_n"     , &InpFile::nldt_n    ) //  35
     ;
 
 BPy::def("ReadMaterial", ReadMaterial, FUN_READMATERIAL());
