@@ -55,17 +55,18 @@ public:
     void   Update  (double Dpw, double DEv, UnsatFlowState * Sta);
     void   TgVars  (UnsatFlowState const * Sta) const;
     double FindSw  (double pc); ///< Find Sw corresponding to pc by integrating from (pc,Sw)=(0,1) to pc (disregarding Dev)
+    double Findpc  (double Sw); ///< Find pc corresponding to Sw by integrating from (pc,Sw)=(0,1) to Sw (disregarding Dev)
 
     // Data
     double gamW;  ///< water unit weight
     double kwsat; ///< saturated (isotropic) conductivity
     double Mkw;   ///< expoent of kw model
-    int    WRC;   ///< water retention curve model: 0:BC, 1:HZ
+    int    WRC;   ///< water retention curve model: 0:BC, 1:HZ, 2:ZI
 
     // SWRC parameters
-    double bc_lam, bc_sb, bc_wr; ///< Brooks & Corey model parameters
-    double hz_a, hz_b;           ///< Huang Zienkiewicz
-    double hz_A, hz_B;           ///< Zienkiewicz-Liakopoulos
+    double bc_lam, bc_sb,  bc_wr;                      ///< Brooks & Corey model parameters
+    double hz_a,   hz_b,   hz_A,   hz_B;               ///< Huang and Zienkiewicz (Gawin, Schrefler ...)
+    double zi_del, zi_bet, zi_gam, zi_a, zi_b, zi_alp; ///< Zienkiewicz et al. 1990
 
     // Read-write variables (scratchpad)
     mutable double c, C, chi;
@@ -76,8 +77,9 @@ private:
     double _Cpc     (double pc, double Sw) const;
     double _Ceps    (double pc, double Sw) const;
 
-    double _RK_pc, _RK_Dev, _RK_Dpc;
-    int _RK_func (double t, double const Sw[], double dSwdt[]);
+    double _RK_pc, _RK_Dev, _RK_Dpc, _RK_Sw, _RK_DSw;
+    int _RK_func_Sw (double t, double const Sw[], double dSwdt[]);
+    int _RK_func_pc (double t, double const pc[], double dpcdt[]);
 };
 
 Mat_t UnsatFlowState::Im;
@@ -129,27 +131,38 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms)
     hz_b    = 2.4279;
     hz_A    = 2.207;
     hz_B    = 1.0121;
+    zi_del  = 0.0842;
+    zi_bet  = 0.7; // m
+    zi_gam  = 2.0;
+    zi_a    = 5.0; // m
+    zi_b    = 4.0;
+    zi_alp  = 0.9;
     WRC     = (Prms.HasKey("WRC") ? static_cast<int>(Prms("WRC")) : 0);
     if (Prms.HasKey("bc_lam")) bc_lam = Prms("bc_lam");
     if (Prms.HasKey("bc_sb"))  bc_sb  = Prms("bc_sb");
     if (Prms.HasKey("bc_sbb")) bc_sb  = exp(Prms("bc_sbb"))-1.0;
     if (Prms.HasKey("bc_wr"))  bc_wr  = Prms("bc_wr");
-    if (WRC<0 || WRC>1) throw new Fatal("UnsatFlow::UnsatFlow: WRC must be either 0 or 1");
+    if (WRC<0 || WRC>2) throw new Fatal("UnsatFlow::UnsatFlow: WRC must be 0(BC), 1(HZ) or 2(ZI)");
 }
 
 inline void UnsatFlow::InitIvs (SDPair const & Ini, State * Sta) const
 {
     SDPair ini(Ini);
     UnsatFlowState * sta = static_cast<UnsatFlowState*>(Sta);
-    double pc = -Ini("pw");
-    double Sw =  Ini("Sw");
-    /*
-    double f;
-    if (pc>bc_sb) f = Sw - bc_wr - (1.0-bc_wr)*pow(bc_sb/pc,bc_lam);
-    else          f = Sw - 1.0;
-    if (fabs(f)>1.0e-7) throw new Fatal("UnsatFlow::InitIvs: Sw=%g and pc=%g are not in WR curve",Sw,pc);
-    */
+    double pc, Sw;
+    if (Ini.HasKey("pw"))
+    {
+        pc = -Ini("pw");
+        Sw = const_cast<UnsatFlow*>(this)->FindSw(pc);
+    }
+    else if (Ini.HasKey("Sw"))
+    {
+        Sw = Ini("Sw");
+        pc = const_cast<UnsatFlow*>(this)->Findpc(Sw);
+    }
+    else throw new Fatal("UnsatFlow::InitIvs: Either 'pw' or 'Sw' must be given in 'inis' dictionary in order to initialize WRC");
     ini.Set   ("pc",  pc);
+    ini.Set   ("Sw",  Sw);
     ini.Set   ("kwb", kwsat*_kw_mult(Sw)/gamW);
     sta->Init (ini);
 }
@@ -162,7 +175,7 @@ inline void UnsatFlow::Update (double Dpw, double DEv, UnsatFlowState * Sta)
     _RK_Dpc = -Dpw;
 
     // solve ODE
-    Numerical::ODESolver<UnsatFlow> ode(this, &UnsatFlow::_RK_func, /*neq*/1, "RKF45", /*stol*/1.e-6);
+    Numerical::ODESolver<UnsatFlow> ode(this, &UnsatFlow::_RK_func_Sw, /*neq*/1, "RKF45", /*stol*/1.e-6);
     ode.t    = 0.0;
     ode.Y[0] = Sta->Sw;
     ode.Evolve (/*tf*/1.0);
@@ -195,7 +208,7 @@ inline double UnsatFlow::FindSw (double pc)
         _RK_Dpc = pc;
 
         // solve ODE
-        Numerical::ODESolver<UnsatFlow> ode(this, &UnsatFlow::_RK_func, /*neq*/1, "RKF45", /*stol*/1.e-6);
+        Numerical::ODESolver<UnsatFlow> ode(this, &UnsatFlow::_RK_func_Sw, /*neq*/1, "RKF45", /*stol*/1.e-6);
         ode.t    = 0.0;
         ode.Y[0] = 1.0; // initial Sw
         ode.Evolve (/*tf*/1.0);
@@ -206,19 +219,52 @@ inline double UnsatFlow::FindSw (double pc)
     else return 1.0; // water saturated
 }
 
+inline double UnsatFlow::Findpc (double Sw)
+{
+    if (Sw<1.0) // water unsaturated
+    {
+        // set variables for _RK_func_pc
+        _RK_Dev = 0.0;
+        _RK_Sw  = 1.0;
+        _RK_DSw = Sw-1.0;
+
+        // solve ODE
+        Numerical::ODESolver<UnsatFlow> ode(this, &UnsatFlow::_RK_func_pc, /*neq*/1, "RKF45", /*stol*/1.e-6);
+        ode.t    = 0.0;
+        ode.Y[0] = 0.0; // initial pc
+        ode.Evolve (/*tf*/1.0);
+
+        // final pc
+        return ode.Y[0];
+    }
+    else return 0.0; // water saturated
+}
+
 inline double UnsatFlow::_kw_mult (double Sw) const
 {
     if (Sw<1.0)
     {
         if (Sw>0.0)
         {
-            if (WRC==0)
+            if (WRC==0) // BC
+            {
+                return pow(Sw,Mkw);
+            }
+            else if (WRC==1) // HZ
             {
                 double kwm = 1.0 - hz_A*pow(1.0-Sw, hz_B);
                 if (kwm<0.0) return 0.0;
                 else         return kwm;
             }
-            else return pow(Sw,Mkw);
+            else // ZI
+            {
+                if (Sw>zi_del)
+                {
+                    double hc = pow((1.0-Sw)/(Sw-zi_del), 1.0/zi_gam)/zi_bet; // m
+                    return pow(1.0+pow(zi_a*hc, zi_b), -zi_alp);
+                }
+                else return 0.0;
+            }
         }
         else return 0.0;
     }
@@ -234,9 +280,15 @@ inline double UnsatFlow::_Cpc (double pc, double Sw) const
             if (pc>bc_sb && Sw>bc_wr) return -bc_lam*pow(bc_sb/pc,bc_lam)*(1.0-bc_wr)/pc;
             else return 0.0;
         }
-        else // HZ
+        else if (WRC==1) // HZ
         {
             return -(hz_a*hz_b*pow(pc/gamW,hz_b))/pc;
+        }
+        else // ZI
+        {
+            double hc = pc/gamW; // m
+            double K  = pow(zi_bet*hc, zi_gam);
+            return -(1.0/gamW)*(zi_gam*K*(1.0-zi_del))/(hc*pow(K+1.0,2.0));
         }
     }
     else return 0.0;
@@ -247,14 +299,26 @@ inline double UnsatFlow::_Ceps (double pc, double Sw) const
     return 0.0;
 }
 
-inline int UnsatFlow::_RK_func (double t, double const Y[], double dYdt[])
+inline int UnsatFlow::_RK_func_Sw (double t, double const Y[], double dYdt[])
 {
     double pc   = _RK_pc + t*_RK_Dpc;
     double Sw   = Y[0];
     double Cpc  = _Cpc  (pc, Sw);
     double Ceps = _Ceps (pc, Sw);
-    dYdt[0] = Ceps*_RK_Dev + Cpc*_RK_Dpc;
+    dYdt[0] = Ceps*_RK_Dev + Cpc*_RK_Dpc; // dSwdt
     //std::cout << Y[0] << "   " << dYdt[0] << std::endl;
+    return GSL_SUCCESS;
+}
+
+inline int UnsatFlow::_RK_func_pc (double t, double const Y[], double dYdt[])
+{
+    double Sw   = _RK_Sw + t*_RK_DSw;
+    double pc   = Y[0];
+    double Cpc  = _Cpc  (pc, Sw);
+    double Ceps = _Ceps (pc, Sw);
+    if (fabs(Cpc)>1.0e-7) dYdt[0] = (1.0/Cpc) * (_RK_DSw - Ceps*_RK_Dev); // dpcdt
+    else                  dYdt[0] = 1.0e+8;
+    //std::cout << "_RK_func_pc: pc = " << Y[0] << "    dpcdt = " << dYdt[0] << std::endl;
     return GSL_SUCCESS;
 }
 

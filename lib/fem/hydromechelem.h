@@ -147,10 +147,6 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
             double hw = z_water-z; // column of water
             double pw = (hw>0.0 ? gamW*hw : (pos_pw ? 0.0 : gamW*hw));
             ini.Set ("pw", pw);
-
-            // initial water saturation
-            double Sw = FMdl->FindSw (-pw);
-            ini.Set ("Sw", Sw);
         }
 
         // init flow state

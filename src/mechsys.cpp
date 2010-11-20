@@ -132,6 +132,8 @@ BPy::class_<InpFile>("InpFile")
     .def_readwrite("nldt_nsml"  , &InpFile::nldt_nsml ) //  33
     .def_readwrite("nldt_nn"    , &InpFile::nldt_nn   ) //  34
     .def_readwrite("nldt_n"     , &InpFile::nldt_n    ) //  35
+    .def_readwrite("maxit"      , &InpFile::maxit     ) //  36
+    .def_readwrite("tolr"       , &InpFile::tolr      ) //  37
     ;
 
 BPy::def("ReadMaterial", ReadMaterial, FUN_READMATERIAL());

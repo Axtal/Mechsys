@@ -39,15 +39,26 @@ using Util::FALSE;
 
 int main(int argc, char **argv) try
 {
+    // input
+    if (argc<2)
+    {
+        cout << "Usage:\n";
+        cout << "         " << argv[0] << " WRC {pcf}\n";
+        cout << "in which\n";
+        cout << "           WRC: 0 = BC\n";
+        cout << "                1 = HZ\n";
+        cout << "                2 = ZI\n";
+        return 0;
+    }
+    int    wrc  = atoi(argv[1]);
     double pc   = 0.0;
     double Sw   = 1.0;
-    double pcf  = 10.0;
+    double pcf  = 100.0;
     int    ndiv = 100;
+    if (argc>2) pcf = atof(argv[2]);
 
-    double BC_WRC = 0.;
-    double HZ_WRC = 1.;
     SDPair prms, inis;
-    prms.Set ("gamW kwsat Mkw WRC", 10.0, 4.5e-6, 2.2, HZ_WRC);
+    prms.Set ("gamW kwsat Mkw WRC", 10.0, 1.0, 2.2, (double)wrc);
     inis.Set ("pw Sw n", -pc, Sw, 0.3);
     UnsatFlow      mdl(/*ndim*/3, prms);
     UnsatFlowState sta(/*ndim*/3);

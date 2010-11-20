@@ -1,6 +1,6 @@
 from numpy import exp, log, linspace
 from pylab import plot, show, xlabel, ylabel, grid, legend, axis, subplot
-from msys_readdata import *
+from msys_fig import *
 
 fsz = {'fontsize':20}
 dat = read_table("ode1.dat")

@@ -96,7 +96,7 @@ def export_mesh(fn,outedg,is3d):
             s1  = ''    if i==0   else '     '
             s2  = ']\n' if i==nv1 else ',\n'
             if is3d: lin = '%s%s[%4d, %4d, %14.6e,%14.6e,%14.6e]%s' % (lin,s1,v.index,tag,v.co[0],v.co[1],v.co[2],s2)
-            else:    lin = '%s%s[%4d, %4d, %14.6e,%14.6e,%14.6e]%s' % (lin,s1,v.index,tag,v.co[0],v.co[1],s2)
+            else:    lin = '%s%s[%4d, %4d, %14.6e,%14.6e]%s'        % (lin,s1,v.index,tag,v.co[0],v.co[1],s2)
         fil.write(lin)
 
         # edges
@@ -227,7 +227,7 @@ def event(evt, val):
     elif evt==Draw.ESCKEY: Draw.Redraw(1)
 
 # button events
-@TC
+#@TC
 def bevent(evt):
     if evt==EVT_VTAG: # ===========================================
         obj, msh, edm = get_active_mesh()
