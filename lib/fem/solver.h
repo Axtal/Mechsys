@@ -270,7 +270,7 @@ inline void Solver::TransSolve (double tf, double dt, double dtOut, char const *
 {
 }
 
-inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * FileKey, SDPair * Steps)
+inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * FileKey, SDPair * Steps)
 {
     // info
     Util::Stopwatch stopwatch(/*activated*/WithInfo);
@@ -296,7 +296,8 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
     }
 
     // time for output
-    double tout = Time + dtOut;
+    double dtOut = DtOut;
+    double tout  = Time + dtOut;
 
     // nonlinear timesteps
     int  nl_nsml = 7;     // number fo small timestep __sets__
@@ -313,6 +314,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
         nl_n    = static_cast<int>((*Steps)("n"));
         nl_stp  = true;
         dt      = _timestep (nl_i, nl_nsml);
+        dtOut   = (dtOut<dt ? dt : dtOut);
     }
 
     // solve
@@ -345,6 +347,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
                     nl_k = 0;
                     nl_i++;
                     dt = _timestep (nl_i, nl_nsml);
+                    dtOut = (dtOut<dt ? dt : dtOut);
                 }
             }
         }
@@ -1169,8 +1172,11 @@ inline void Solver::_NR_update (double tf)
     }
 }
 
-inline void Solver::_GN22_update (double tf, double dt)
+inline void Solver::_GN22_update (double tf, double Dt)
 {
+    // timestep
+    double dt = (Time+Dt>tf ? tf-Time : Dt);
+
     // constants
     const double c1 = dt*dt*(1.0-DynTh2)/2.0;
     const double c2 = dt*(1.0-DynTh1);
@@ -1282,6 +1288,7 @@ inline void Solver::_GN22_update (double tf, double dt)
         if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations",It);
 
         // next time step
+        dt = (Time+dt>tf ? tf-Time : dt);
         Time += dt;
 
         // debug

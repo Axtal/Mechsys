@@ -65,6 +65,7 @@ public:
     // SWRC parameters
     double bc_lam, bc_sb, bc_wr; ///< Brooks & Corey model parameters
     double hz_a, hz_b;           ///< Huang Zienkiewicz
+    double hz_A, hz_B;           ///< Zienkiewicz-Liakopoulos
 
     // Read-write variables (scratchpad)
     mutable double c, C, chi;
@@ -126,6 +127,8 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms)
     bc_wr   = 0.01;
     hz_a    = 0.10152;
     hz_b    = 2.4279;
+    hz_A    = 2.207;
+    hz_B    = 1.0121;
     WRC     = (Prms.HasKey("WRC") ? static_cast<int>(Prms("WRC")) : 0);
     if (Prms.HasKey("bc_lam")) bc_lam = Prms("bc_lam");
     if (Prms.HasKey("bc_sb"))  bc_sb  = Prms("bc_sb");
@@ -211,7 +214,7 @@ inline double UnsatFlow::_kw_mult (double Sw) const
         {
             if (WRC==0)
             {
-                double kwm = 1.0 - 2.207*pow(1.0-Sw, 1.0121);
+                double kwm = 1.0 - hz_A*pow(1.0-Sw, hz_B);
                 if (kwm<0.0) return 0.0;
                 else         return kwm;
             }
