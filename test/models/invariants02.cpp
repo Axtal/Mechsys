@@ -418,7 +418,7 @@ int main(int argc, char **argv) try
     double tol_diS3dt = 1.0e-5;
     double tol_diS4dt = 1.0e-5;
     double tol_diS5dt = 1.0e-4;
-    double tol_dPdt[3][6]= {{1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6, 1.0e-7, 1.0e-7},
+    double tol_dPdt[3][6]= {{1.0e-6, 1.0e-6, 1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6},
                             {1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6, 1.0e-6, 1.0e-7},
                             {1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6, 1.0e-6, 1.0e-7}};
     printf("\n");

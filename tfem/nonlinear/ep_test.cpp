@@ -45,7 +45,7 @@ struct DbgDat
 void DbgFun (FEM::Solver const & Sol, void * Dat)
 {
     DbgDat * dat = static_cast<DbgDat*>(Dat);
-    dat->of << _6_3 << Sol.Time << _8s << Sol.U(dat->eqx) << _8s << Sol.F_int(dat->eqx) << _8s << Sol.F(dat->eqx) << endl;
+    dat->of << _6_3 << Sol.Dom.Time << _8s << Sol.U(dat->eqx) << _8s << Sol.F_int(dat->eqx) << _8s << Sol.F(dat->eqx) << endl;
 }
 
 int main(int argc, char **argv) try

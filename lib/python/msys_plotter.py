@@ -23,7 +23,7 @@ from pylab   import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, a
 from pylab   import rcParams, savefig, axes, legend, gca, title, figure, clf, annotate
 from pylab   import matplotlib as MPL
 from msys_invariants import *
-from msys_readdata   import *
+from msys_fig        import *
 from msys_linfit     import *
 
 class Plotter:

@@ -49,11 +49,14 @@ struct OutDat
 {
     std::ofstream of;
     ~OutDat () { of.close (); }
-     OutDat ()
+    OutDat (String const & FKey) : fk(FKey), nstg(1)
     {
-         of.open ("owen_hinton_02_n41.res",std::ios::out);
-         of<<_6_3<<"Time" << _8s<< "P" <<_8s<<"ur"<< _8s<<"fr_int"<<_8s<<"fr_ext\n"; // radial displacement and forces
+        String fn;   fn.Printf ("%s_n41.res", FKey.CStr());
+        of.open (fn.CStr(),std::ios::out);
+        of<<_6_3<<"Time" << _8s<< "P" <<_8s<<"ur"<< _8s<<"fr_int"<<_8s<<"fr_ext\n"; // radial displacement and forces
     }
+    String fk;
+    int    nstg;
 };
 
 void OutFun (FEM::Solver const & Sol, void * Dat)
@@ -61,7 +64,7 @@ void OutFun (FEM::Solver const & Sol, void * Dat)
     OutDat * dat = static_cast<OutDat*>(Dat);
 
     // current P
-    double P = Sol.Time*DelP;
+    double P = Sol.Dom.Time*(DelP/dat->nstg);
 
     //////////////////////////////////////////////////////////////////////////////////// Control Node /////
     
@@ -76,14 +79,14 @@ void OutFun (FEM::Solver const & Sol, void * Dat)
         double ur     = sqrt(ux*ux + uy*uy);
         double fr     = sqrt(fx*fx + fy*fy);
         double fr_int = sqrt(fx_int*fx_int + fy_int*fy_int);
-        dat->of << _6_3 << Sol.Time << _8s << P << _8s << ur << _8s << fr_int << _8s << fr << endl;
+        dat->of << _6_3 << Sol.Dom.Time << _8s << P << _8s << ur << _8s << fr_int << _8s << fr << endl;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////// Elems /////
 
     {
         // header
-        String fn;  fn.Printf("owen_hinton_02_P%g.res",P);
+        String fn;  fn.Printf("%s_P%g.res", dat->fk.CStr(), P);
         std::ofstream of(fn.CStr(), std::ios::out);
         of << _8s<<"P" << _8s<< "r" << _8s<< "sr" << _8s<< "st" << _8s<< "srt" << "\n";
 
@@ -130,11 +133,13 @@ void OutFun (FEM::Solver const & Sol, void * Dat)
 
 int main(int argc, char **argv) try
 {
+    bool two_stages = false;
+    if (argc>1) two_stages = atoi(argv[1]);
+
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
     
     String extra("\
-from pylab import *\n\
-from msys_readdata import *\n\
+from msys_fig import *\n\
 dat = read_table('owen_hinton_02_mesh.dat')\n\
 plot(dat['x'],dat['y'],'ro',lw=3)\n");
     Mesh::Structured mesh(/*NDim*/2);
@@ -162,29 +167,35 @@ plot(dat['x'],dat['y'],'ro',lw=3)\n");
     Array<int> out_verts(41, /*JustOne*/true);
     FEM::Domain dom(mesh, prps, mdls, inis, "owen_hinton_02", &out_verts);
 
+    // solver
+    OutDat dat_stg1("owen_hinton_02_stg1");  dat_stg1.nstg = (two_stages ? 2 : 1);
+    FEM::Solver sol(dom, &OutFun, &dat_stg1);
+    sol.SetScheme ("NR");
+
     // stage # 1 -----------------------------------------------------------
+    double dp = (two_stages ? DelP/2.0 : DelP);
     Dict bcs;
     bcs.Set(-10, "uy", 0.0);
     bcs.Set(-30, "ux", 0.0);
-    bcs.Set(-40, "qn", -DelP);
+    bcs.Set(-40, "qn", -dp);
     dom.SetBCs (bcs);
+    sol.Solve (NInc);
 
-    // output data
-    OutDat dat;
-
-    // solver
-    FEM::Solver sol(dom, &OutFun, &dat);
-    sol.SetScheme ("NR");
-
-    // solve
-    sol.Solve (NInc, "owen_hinton_02");
+    // stage # 2 -----------------------------------------------------------
+    if (two_stages)
+    {
+        dom.SaveState ("owen_hinton_02");
+        dom.LoadState ("owen_hinton_02");
+        OutDat dat_stg2("owen_hinton_02_stg2");  dat_stg2.nstg = (two_stages ? 2 : 1);
+        sol.OutDat = &dat_stg2;
+        dom.SetBCs (bcs);
+        sol.Solve  (NInc);
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
     // draw elements with IPs
     String ext("\
-from numpy import *\n\
-from pylab import *\n\
 A = linspace(0.0,pi/2.0,200)\n\
 X = 100.0*cos(A)\n\
 Y = 100.0*sin(A)\n\

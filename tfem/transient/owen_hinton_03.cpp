@@ -79,7 +79,7 @@ void DbgFun (FEM::Solver const & Sol, void * Dat)
         double ur     = sqrt(ux*ux + uy*uy);
         double fr     = sqrt(fx*fx + fy*fy);
         double fr_int = sqrt(fx_int*fx_int + fy_int*fy_int);
-        dat->of << _6_3 << Sol.Time << _8s << P << _8s << ur << _8s << fr_int << _8s << fr << endl;
+        dat->of << _6_3 << Sol.Dom.Time << _8s << P << _8s << ur << _8s << fr_int << _8s << fr << endl;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////// Elems /////

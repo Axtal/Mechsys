@@ -26,6 +26,12 @@
 #include <cstdarg>  // for va_list, va_start, va_end
 #include <map>
 
+// Hdf5
+#ifdef USE_HDF5
+  #include <hdf5.h>
+  #include <hdf5_hl.h>
+#endif
+
 // MechSys
 #include <mechsys/geomtype.h>
 #include <mechsys/util/maps.h>
@@ -75,12 +81,14 @@ public:
     void SetBCs         (Dict const & BCs);                                                                                ///< Set boundary conditions
     void NewNodsClearU  ();                                                                                                ///< Clear U values of StgNewNods (new nodes just activated by SetBCs)
     void PrintResults   (char const * NF="%15.6e", bool OnlySummary=false, bool WithElems=true, double Tol=1.0e-10) const; ///< Print results (Tol:tolerance to ignore zeros)
-    void WriteMPY       (char const * FileKey, MPyPrms const & Prms) const;      // TODO: WriteHDF5 file with results and then create a post-processing script (in Python?) to generate .mpy files ///< Write MeshPython file .mpy (run with: python FileKey.mpy, needs PyLab)
+    void WriteMPY       (char const * FileKey, MPyPrms const & Prms)      const; // TODO: WriteHDF5 file with results and then create a post-processing script (in Python?) to generate .mpy files ///< Write MeshPython file .mpy (run with: python FileKey.mpy, needs PyLab)
     void WriteVTU       (char const * FileKey, bool DoExtrapolation=true) const; // TODO: WriteHDF5 file with results and then create a post-processing script (in Python?) to generate .vtu files ///< Write file for ParaView
-    bool CheckErrorNods (Table const & NodSol, SDPair const & NodTol) const;                                               ///< Check error at nodes
-    bool CheckErrorEles (Table const & EleSol, SDPair const & EleTol) const;                                               ///< Check error at the centre of elements
-    bool CheckErrorIPs  (Table const & EleSol, SDPair const & EleTol) const;                                               ///< Check error at integration points of elements
-    void PrintBCs       (std::ostream & os, double tf=1.0) const; ///< Print boundary conditions
+    bool CheckErrorNods (Table const & NodSol, SDPair const & NodTol)     const;                                               ///< Check error at nodes
+    bool CheckErrorEles (Table const & EleSol, SDPair const & EleTol)     const;                                               ///< Check error at the centre of elements
+    bool CheckErrorIPs  (Table const & EleSol, SDPair const & EleTol)     const;                                               ///< Check error at integration points of elements
+    void PrintBCs       (std::ostream & os, double tf=1.0)                const; ///< Print boundary conditions
+    void SaveState      (char const * FileKey)                            const; ///< Save Nodes and Elements' state to an HDF5 file
+    void LoadState      (char const * FileKey);                                  ///< Load Nodes and Elements' state from an HDF5 file
 
     // Internal methods
     void NodalResults  (bool OnlyOutNods=false) const;                                                        ///< Calculate extrapolated values at elments IPs' to nodes
@@ -88,6 +96,7 @@ public:
     void CalcReactions (Table & NodesReactions, SDPair & SumReactions) const;                                 ///< Calculate reactions
 
     // Data
+    double                Time;        ///< Current time (t)
     Dict          const & Prps;        ///< Element properties
     Dict          const & Inis;        ///< Initial values
     int                   NDim;        ///< Space dimension
@@ -212,7 +221,7 @@ inline void Domain::PrintBCs (std::ostream & os, double tf) const
 // Constructor and destructor
 
 inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FNKey, Array<int> const * OutV)
-    : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), HasDisps(false), HasVeloc(false), HasWDisch(false)
+    : Time(0.0), Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), HasDisps(false), HasVeloc(false), HasWDisch(false)
 {
     // info
 #ifdef HAS_MPI
@@ -1300,6 +1309,152 @@ inline bool Domain::CheckErrorIPs (Table const & EleSol, SDPair const & EleTol) 
     return error;
 }
 
+inline void Domain::SaveState (char const * FileKey) const
+{
+#ifdef USE_HDF5
+    // open HDF5 file
+    String fn(FileKey);
+    fn.append(".hdf5");
+    hid_t hdf = H5Fcreate (fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+    // number of nodes and elements
+    int     nods_sz[1] = { Nods.Size() };
+    int     eles_sz[1] = { Eles.Size() };
+    double  time   [1] = { Time };
+    hsize_t unit_sz[1] = { 1 };
+    H5LTmake_dataset_int    (hdf, "/NNods", 1, unit_sz, nods_sz);
+    H5LTmake_dataset_int    (hdf, "/NEles", 1, unit_sz, eles_sz);
+    H5LTmake_dataset_double (hdf, "/Time",  1, unit_sz, time);
+
+    // define HDF5 table with node results
+    size_t ncols    = AllUKeys.Size() + AllFKeys.Size();
+    size_t row_size = sizeof(double) * ncols;
+    size_t col_offsets[ncols];
+    size_t col_sizes  [ncols];
+    hid_t  col_types  [ncols];
+    for (size_t i=0; i<ncols; ++i)
+    {
+        col_offsets[i] = i * sizeof(double);
+        col_sizes  [i] =     sizeof(double);
+        col_types  [i] = H5T_NATIVE_DOUBLE;
+    }
+    char const * col_labels[ncols];
+    for (size_t i=0; i<AllUKeys.Size(); ++i) col_labels[                i] = AllUKeys[i].CStr();
+    for (size_t i=0; i<AllFKeys.Size(); ++i) col_labels[AllUKeys.Size()+i] = AllFKeys[i].CStr();
+
+    // create HDF5 table with node results
+    H5TBmake_table ("U and F values at nodes", hdf, "/Nods", /*nfields*/ncols, /*nrecords*/Nods.Size(), row_size, col_labels, col_offsets, col_types, /*chunk_size*/10, /*fill_data*/NULL, /*compress*/false, /*data*/NULL);
+
+    // fill HDF5 table with node results
+    int    col_idx[1];
+    double dbl_dat[1];
+    size_t dbl_siz[1] = { sizeof(double) };
+    for (size_t i=0; i<Nods.Size(); ++i)
+    {
+        for (size_t j=0; j<AllUKeys.Size(); ++j)
+        {
+            col_idx[0] = j;
+            dbl_dat[0] = Nods[i]->UOrZero(AllUKeys[j]);
+            H5TBwrite_fields_index (hdf, "/Nods", /*nfields*/1, col_idx, /*row_idx*/i, /*nrecords*/1, sizeof(double), /*offset*/0, dbl_siz, dbl_dat);
+        }
+        for (size_t j=0; j<AllFKeys.Size(); ++j)
+        {
+            col_idx[0] = AllFKeys.Size() + j;
+            dbl_dat[0] = Nods[i]->FOrZero(AllFKeys[j]);
+            H5TBwrite_fields_index (hdf, "/Nods", /*nfields*/1, col_idx, /*row_idx*/i, /*nrecords*/1, sizeof(double), /*offset*/0, dbl_siz, dbl_dat);
+        }
+    }
+
+    // save elements' states
+    String  buf;
+    hsize_t sta_size[1];
+    hid_t eles = H5Gcreate (hdf, "/Eles", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    for (size_t i=0; i<Eles.Size(); ++i)
+    {
+        buf.Printf ("ele_%d",i);
+        hid_t ele = H5Gcreate (eles, buf.CStr(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        for (size_t j=0; j<Eles[i]->Sta.Size(); ++j)
+        {
+            buf.Printf ("sta_%d",j);
+            Array<double> pck;
+            Eles[i]->Sta[j]->Pack (pck);
+            sta_size[0] = pck.Size();
+            H5LTmake_dataset_double (ele, buf.CStr(), /*rank*/1, sta_size, pck.GetPtr());
+        }
+    }
+
+    // close file
+    H5Fclose (hdf);
+#else
+    throw new Fatal("Domain::SaveState: This method needs USE_HDF5 defined");
+#endif
+}
+
+inline void Domain::LoadState (char const * FileKey)
+{
+#ifdef USE_HDF5
+    // open HDF5 file
+    String fn(FileKey);
+    fn.append(".hdf5");
+    hid_t hdf = H5Fopen (fn.CStr(), H5F_ACC_RDONLY, H5P_DEFAULT);
+
+    // number of nodes and elements
+    int     nods_sz[1];
+    int     eles_sz[1];
+    double  time   [1];
+    H5LTread_dataset_int    (hdf, "/NNods", nods_sz);
+    H5LTread_dataset_int    (hdf, "/NEles", eles_sz);
+    H5LTread_dataset_double (hdf, "/Time",  time);
+    if (nods_sz[0]!=(int)Nods.Size()) throw new Fatal("Domain::LoadState(%s) Number of nodes in file (%d) is different from number of nodes in Domain (%zd)",FileKey,nods_sz[0],Nods.Size());
+    if (eles_sz[0]!=(int)Eles.Size()) throw new Fatal("Domain::LoadState(%s) Number of elemnts in file (%d) is different from number of elements in Domain (%zd)",FileKey,eles_sz[0],Eles.Size());
+    Time = time[0];
+
+    // read table with node results
+    int    col_idx[1];
+    double dbl_dat[1];
+    size_t dbl_siz[1] = { sizeof(double) };
+    for (size_t i=0; i<Nods.Size(); ++i)
+    {
+        for (size_t j=0; j<AllUKeys.Size(); ++j)
+        {
+            col_idx[0] = j;
+            H5TBread_fields_index (hdf, "/Nods", /*nfields*/1, col_idx, /*row_idx*/i, /*nrecords*/1, sizeof(double), /*offset*/0, dbl_siz, dbl_dat);
+            Nods[i]->TrySetU (AllUKeys[j], dbl_dat[0]);
+        }
+        for (size_t j=0; j<AllFKeys.Size(); ++j)
+        {
+            col_idx[0] = AllFKeys.Size() + j;
+            H5TBread_fields_index (hdf, "/Nods", /*nfields*/1, col_idx, /*row_idx*/i, /*nrecords*/1, sizeof(double), /*offset*/0, dbl_siz, dbl_dat);
+            Nods[i]->TrySetF (AllFKeys[j], dbl_dat[0]);
+        }
+    }
+
+    // read elements' states
+    String  buf;
+    hsize_t sta_size[1];
+    hid_t eles = H5Gopen (hdf, "/Eles", H5P_DEFAULT);
+    for (size_t i=0; i<Eles.Size(); ++i)
+    {
+        buf.Printf ("ele_%d",i);
+        hid_t ele = H5Gopen (eles, buf.CStr(), H5P_DEFAULT);
+        for (size_t j=0; j<Eles[i]->Sta.Size(); ++j)
+        {
+            buf.Printf ("sta_%d",j);
+            Array<double> pck(Eles[i]->Sta[j]->PckSize());
+            sta_size[0] = pck.Size();
+            H5LTread_dataset_double (ele, buf.CStr(), pck.GetPtr());
+            Eles[i]->Sta[j]->Unpack (pck);
+        }
+    }
+
+    // close file
+    H5Fclose (hdf);
+
+#else
+    throw new Fatal("Domain::LoadState: This method needs USE_HDF5 defined");
+#endif
+}
+
 // Internal methods
 
 inline void Domain::NodalResults (bool OnlyOutNods) const
@@ -1419,6 +1574,7 @@ inline void Domain::CalcReactions (Table & NodesReactions, SDPair & SumReactions
         k++;
     }
 }
+
 
 }; // namespace FEM
 

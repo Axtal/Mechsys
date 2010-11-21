@@ -31,9 +31,12 @@ class NLRodState : public State
 {
 public:
     NLRodState (int NDim) : State(NDim) {}
-    void Init    (SDPair const & Ini, size_t NIvs=0) { sa = (Ini.HasKey("sa") ? Ini("sa") : 0.0);  ea = (Ini.HasKey("ea") ? Ini("ea") : 0.0); }
-    void Backup  () { sa_bkp = sa;  ea_bkp = ea; }
-    void Restore () { sa = sa_bkp;  ea = ea_bkp; }
+    void   Init    (SDPair const & Ini, size_t NIvs=0) { sa = (Ini.HasKey("sa") ? Ini("sa") : 0.0);  ea = (Ini.HasKey("ea") ? Ini("ea") : 0.0); }
+    void   Backup  () { sa_bkp = sa;  ea_bkp = ea; }
+    void   Restore () { sa = sa_bkp;  ea = ea_bkp; }
+    size_t PckSize ()                        const { return 2; }
+    void   Pack    (Array<double>       & V) const { V.Resize(2);  V = sa, ea; }
+    void   Unpack  (Array<double> const & V)       { sa=V[0]; ea=V[1]; }
     double sa, sa_bkp; ///< Axial stress
     double ea, ea_bkp; ///< Axial strain
 };

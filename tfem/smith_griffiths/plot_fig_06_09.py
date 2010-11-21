@@ -1,7 +1,7 @@
 from numpy import array
 from pylab import *
-from msys_readdata import read_table
-from msys_plotter  import Plotter
+from msys_fig     import *
+from msys_plotter import Plotter
 
 plt = 1
 

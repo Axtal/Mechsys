@@ -208,6 +208,12 @@ int main(int argc, char **argv) try
     }
     errors.Push (dom.CheckErrorNods (nod_sol, nod_tol));
 
+
+    // save and reload
+    dom.SaveState ("activation01_endof_stg1");
+    dom.LoadState ("activation01_endof_stg1");
+
+
     for (size_t i=0; i<2; ++i)
     {
         // stage # stg -------------------------------------
@@ -223,6 +229,12 @@ int main(int argc, char **argv) try
         sol.Solve    (nincs);
         dom.WriteVTU (buf.CStr());
         //dom.PrintResults ("%15.6e", /*onlysummary*/false, /*withelems*/false);
+
+
+        // save and reload
+        dom.SaveState (buf.CStr());
+        dom.LoadState (buf.CStr());
+
 
         // check
         {
@@ -299,6 +311,12 @@ int main(int argc, char **argv) try
         sol.Solve    (nincs);
         dom.WriteVTU (buf.CStr());
         //dom.PrintResults ("%15.6e", /*onlysummary*/false, /*withelems*/false);
+
+
+        // save and reload
+        dom.SaveState (buf.CStr());
+        dom.LoadState (buf.CStr());
+
 
         // check
         {

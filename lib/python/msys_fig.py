@@ -16,6 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+import os.path
 from os.path import basename
 from numpy import pi, sin, cos, tan, arcsin, arccos, arctan, log, log10, exp
 from numpy import array, linspace, insert, repeat, zeros
@@ -83,6 +84,7 @@ def Contour (X,Y,Z, label, nlevels=16, cmap=None, fmt='%g'):
 # dat: dictionary with the following content:
 #   dat = {'sx':[1,2,3],'ex':[0,1,2]}
 def read_table(filename):
+    if not os.path.isfile(filename): raise Exception("[1;31mread_table: could not find file <[1;34m%s[0m[1;31m>[0m"%filename)
     file   = open(filename,'r')
     header = file.readline().split()
     dat    = {}
@@ -105,6 +107,7 @@ def read_table(filename):
 def read_tables(filenames):
     dat = {}
     for fn in filenames:
+        if not os.path.isfile(fn): raise Exception("[1;31mread_tables: could not find file <[1;34m%s[0m[1;31m>[0m"%filename)
         fkey      = basename(fn).replace('.dat','')
         file      = open(fn,'r')
         header    = file.readline().split()

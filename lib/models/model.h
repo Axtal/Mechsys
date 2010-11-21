@@ -34,9 +34,12 @@ class State
 {
 public:
     State (int NDim) {}
-    virtual void Init    (SDPair const & Ini, size_t NIvs=0) =0;
-    virtual void Backup  () =0;
-    virtual void Restore () =0;
+    virtual void   Init    (SDPair const & Ini, size_t NIvs=0) =0;
+    virtual void   Backup  () =0;
+    virtual void   Restore () =0;
+    virtual size_t PckSize ()                        const =0; ///< Size of pack
+    virtual void   Pack    (Array<double>       & V) const =0; ///< Pack all values into V
+    virtual void   Unpack  (Array<double> const & V)       =0; ///< Unpack all values from V
 };
 
 class Model

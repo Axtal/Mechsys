@@ -59,8 +59,8 @@ public:
     typedef void (*pOutFun) (Solver const & Sol, void * OutDat); ///< Pointer to output function
 
     // Constructor
-    Solver (Domain const & Dom, pOutFun OutFun=NULL, void * OutDat=NULL,
-                                pOutFun DbgFun=NULL, void * DbgDat=NULL); ///< Allocate solver object
+    Solver (Domain & Dom, pOutFun OutFun=NULL, void * OutDat=NULL,
+                          pOutFun DbgFun=NULL, void * DbgDat=NULL); ///< Allocate solver object
 
     // Methods
     void Solve          (size_t NInc=1, char const * FileKey=NULL);                      ///< Solve quasi-static problem
@@ -78,24 +78,23 @@ public:
     bool ResidOK        () const;                                                        ///< Check if the residual is OK
 
     // Data (read-only)
-    Domain  const & Dom;      ///< Domain
-    pOutFun         OutFun;   ///< Output function (called during output)
-    void          * OutDat;   ///< Debug data (to be used with either OutFun or DbgFun)
-    pOutFun         DbgFun;   ///< Debug function (called everytime for some internal (update) methods)
-    void          * DbgDat;   ///< Debug data (to be used with either OutFun or DbgFun)
-    double          Time;     ///< Current time (t)
-    size_t          Inc;      ///< Current increment
-    size_t          IdxOut;   ///< Counter for generating VTU files in DynSolve
-    size_t          Stp;      ///< Current (sub) step
-    size_t          It;       ///< Current iteration
-    size_t          NEq;      ///< Total number of equations (DOFs)
-    size_t          NIv;      ///< Total number of internal variables of elements
-    size_t          NLag;     ///< Number of Lagrange multipliers
-    Array<long>     pEQ;      ///< prescribed equations
-    Array<long>     pEQproc;  ///< prescribed equations: processor which will handle the equation (in case of shared nodes)
-    Array<bool>     pU;       ///< prescribed U
-    double          NormR;    ///< Euclidian norm of residual (R)
-    double          MaxNormF; ///< Max(Norm(F), Norm(Fint))
+    Domain      & Dom;      ///< Domain
+    pOutFun       OutFun;   ///< Output function (called during output)
+    void        * OutDat;   ///< Debug data (to be used with either OutFun or DbgFun)
+    pOutFun       DbgFun;   ///< Debug function (called everytime for some internal (update) methods)
+    void        * DbgDat;   ///< Debug data (to be used with either OutFun or DbgFun)
+    size_t        Inc;      ///< Current increment
+    size_t        IdxOut;   ///< Counter for generating VTU files in DynSolve
+    size_t        Stp;      ///< Current (sub) step
+    size_t        It;       ///< Current iteration
+    size_t        NEq;      ///< Total number of equations (DOFs)
+    size_t        NIv;      ///< Total number of internal variables of elements
+    size_t        NLag;     ///< Number of Lagrange multipliers
+    Array<long>   pEQ;      ///< prescribed equations
+    Array<long>   pEQproc;  ///< prescribed equations: processor which will handle the equation (in case of shared nodes)
+    Array<bool>   pU;       ///< prescribed U
+    double        NormR;    ///< Euclidian norm of residual (R)
+    double        MaxNormF; ///< Max(Norm(F), Norm(Fint))
 
     // Data (read-write)
     Scheme_t      Scheme;   ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
@@ -144,34 +143,36 @@ public:
     Vec_t Us, Vs;       ///< starred variables (for GN22)
     Vec_t TmpVec;       ///< Temporary vector (for parallel Allreduce)
 
+    // Auxiliary methods
+    static double Timestep (int i, int a=7, double L=100.0, int sch=0, double m=2.0)
+    { return (i<a ? pow(2.0,i)/L : (sch==0 ? pow(2.0,i-a) : pow(2.0,a)/L+m*(i-a))); }
+
 private:
-    void _aug_and_set_A ();                          ///< Augment A matrix and set Lagrange multipliers if any
-    void _wrn_resid     ();                          ///< Warning message for large residuals (debugging)
-    void _cal_resid     ();                          ///< Calculate residual
-    void _cor_resid     (Vec_t & dU, Vec_t & dF);    ///< Correct residual
-    void _FE_update     (double tf);                 ///< (Forward-Euler)  Update Time and elements to tf
-    void _ME_update     (double tf);                 ///< (Modified-Euler) Update Time and elements to tf
-    void _NR_update     (double tf);                 ///< (Newton-Rhapson) Update Time and elements to tf
-    void _GN22_update   (double tf, double dt);      ///< (Generalized-Newmark) Update Time and elements to tf
-    void _time_print    (char const * Comment=NULL); ///< Print timestep data
-    void _VUIV_to_Y     (double Y[]);
-    void _Y_to_VUIV     (double const Y[]);
-    int  _RK_func       (double t, double const Y[], double dYdt[]);
-    void _RK_update     (double tf, double dt);      ///< Runge-Kutta update
-    double _timestep (int i, int a) const { return (i<a ? pow(2.0,i)/100.0 : pow(2.0,i-a)); }
+    void   _aug_and_set_A ();                          ///< Augment A matrix and set Lagrange multipliers if any
+    void   _wrn_resid     ();                          ///< Warning message for large residuals (debugging)
+    void   _cal_resid     ();                          ///< Calculate residual
+    void   _cor_resid     (Vec_t & dU, Vec_t & dF);    ///< Correct residual
+    void   _FE_update     (double tf);                 ///< (Forward-Euler)  Update Time and elements to tf
+    void   _ME_update     (double tf);                 ///< (Modified-Euler) Update Time and elements to tf
+    void   _NR_update     (double tf);                 ///< (Newton-Rhapson) Update Time and elements to tf
+    void   _GN22_update   (double tf, double dt);      ///< (Generalized-Newmark) Update Time and elements to tf
+    void   _time_print    (char const * Comment=NULL); ///< Print timestep data
+    void   _VUIV_to_Y     (double Y[]);
+    void   _Y_to_VUIV     (double const Y[]);
+    int    _RK_func       (double t, double const Y[], double dYdt[]);
+    void   _RK_update     (double tf, double dt);      ///< Runge-Kutta update
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDat, pOutFun TheDbgFun, void * TheDbgDat)
+inline Solver::Solver (Domain & TheDom, pOutFun TheOutFun, void * TheOutDat, pOutFun TheDbgFun, void * TheDbgDat)
     : Dom      (TheDom),
       OutFun   (TheOutFun),
       OutDat   (TheOutDat),
       DbgFun   (TheDbgFun),
       DbgDat   (TheDbgDat),
-      Time     (0.0),
       Inc      (0),
       IdxOut   (0),
       Stp      (0),
@@ -227,7 +228,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey)
     }
     if (IdxOut==0)
     {
-        Dom.OutResults (IdxOut, Time, FileKey);
+        Dom.OutResults (IdxOut, Dom.Time, FileKey);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
@@ -236,7 +237,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey)
     if (IncsW.Size()!=NInc) SetIncsW (NInc);
 
     // solve
-    double t0 = Time;     // current time
+    double t0 = Dom.Time; // current time
     double tf = t0 + 1.0; // final time
     double Dt = tf - t0;  // total time increment
     double dt, tout;      // timestep and time for output
@@ -244,7 +245,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey)
     {
         // timestep
         dt   = IncsW[Inc]*Dt; // timestep
-        tout = Time + dt;     // time for output
+        tout = Dom.Time + dt; // time for output
 
         // update U, F, Time and elements to tout
         if      (Scheme==FE_t) _FE_update (tout);
@@ -257,12 +258,12 @@ inline void Solver::Solve (size_t NInc, char const * FileKey)
         // output
         IdxOut++;
         if (WithInfo) _time_print ();
-        if (Scheme!=ME_t) Dom.OutResults (IdxOut, Time, FileKey);
-        else if (!SSOut)  Dom.OutResults (IdxOut, Time, FileKey);
+        if (Scheme!=ME_t) Dom.OutResults (IdxOut, Dom.Time, FileKey);
+        else if (!SSOut)  Dom.OutResults (IdxOut, Dom.Time, FileKey);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
         // next tout
-        tout = Time + dt;
+        tout = Dom.Time + dt;
     }
 }
 
@@ -290,37 +291,41 @@ inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * F
     }
     if (IdxOut==0)
     {
-        Dom.OutResults (IdxOut, Time, FileKey);
+        Dom.OutResults (IdxOut, Dom.Time, FileKey);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
 
     // time for output
     double dtOut = DtOut;
-    double tout  = Time + dtOut;
+    double tout  = Dom.Time + dtOut;
 
     // nonlinear timesteps
-    int  nl_nsml = 7;     // number fo small timestep __sets__
-    int  nl_nn   = 12;    // total number of timestep __sets__
-    int  nl_n    = 10;    // number of timesteps per __set__
-    int  nl_i    = 0;     // timestep set index
-    int  nl_k    = 0;     // current accumulated timesteps
-    int  nl_K    = 0;     // current total number of timesteps
-    bool nl_stp  = false; // use nonlinear timesteps ?
+    int    nl_nsml = 7;     // number fo small timestep __sets__
+    int    nl_sch  = 0;     // scheme for larger timesteps
+    double nl_ll   = 100.0; // denominator
+    double nl_m    = 2.0;   // multiplier for larger timesteps in sch==1
+    int    nl_n    = 10;    // number of timesteps per __set__
+    int    nl_i    = 0;     // timestep set index
+    int    nl_k    = 0;     // current accumulated timesteps
+    int    nl_K    = 0;     // current total number of timesteps
+    bool   nl_stp  = false; // use nonlinear timesteps ?
     if (Steps!=NULL)
     {
         nl_nsml = static_cast<int>((*Steps)("nsml"));
-        nl_nn   = static_cast<int>((*Steps)("nn"));
         nl_n    = static_cast<int>((*Steps)("n"));
+        if (Steps->HasKey("sch")) nl_sch = static_cast<int>((*Steps)("sch"));
+        if (Steps->HasKey("ll" )) nl_ll  = (*Steps)("ll");
+        if (Steps->HasKey("m"  )) nl_m   = (*Steps)("m");
         nl_stp  = true;
-        dt      = _timestep (nl_i, nl_nsml);
+        dt      = Timestep (nl_i, nl_nsml, nl_ll, nl_sch, nl_m);
         dtOut   = (dtOut<dt ? dt : dtOut);
     }
 
     // solve
     if (DScheme==GN22_t)
     {
-        while (Time<tf)
+        while (Dom.Time<tf)
         {
             // update U, F, Time and elements to tout
             _GN22_update (tout,dt);
@@ -331,11 +336,11 @@ inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * F
             // output
             IdxOut++;
             if (WithInfo) _time_print ();
-            Dom.OutResults (IdxOut, Time, FileKey);
+            Dom.OutResults (IdxOut, Dom.Time, FileKey);
             if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
             // next tout
-            tout = Time + dtOut;
+            tout = Dom.Time + dtOut;
 
             // next timestep set
             if (nl_stp)
@@ -346,7 +351,7 @@ inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * F
                 {
                     nl_k = 0;
                     nl_i++;
-                    dt = _timestep (nl_i, nl_nsml);
+                    dt    = Timestep (nl_i, nl_nsml, nl_ll, nl_sch, nl_m);
                     dtOut = (dtOut<dt ? dt : dtOut);
                 }
             }
@@ -360,11 +365,11 @@ inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * F
         Numerical::ODESolver<Solver> ode(this, &Solver::_RK_func, nvars, RKScheme.CStr(), RKSTOL, dt);
 
         // set initial state
-        ode.t = Time;
+        ode.t = Dom.Time;
         _VUIV_to_Y (ode.Y);
 
         // solve
-        while (Time<tf)
+        while (Dom.Time<tf)
         {
             // evolve from Time to tout
             ode.Evolve (tout);
@@ -375,14 +380,14 @@ inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * F
             // update elements if not already updated by _Y_to_VUIV
             if (CteTg)
             {
-                double Dt = ode.t - Time;
+                double Dt = ode.t - Dom.Time;
                 for (size_t i=0; i<Dom.ActEles.Size(); ++i)
                 {
                     size_t niv = Dom.ActEles[i]->NIVs();
                     if (niv>0)
                     {
                         Vec_t rate;
-                        Dom.ActEles[i]->CalcIVRate (Time, U, V, rate);
+                        Dom.ActEles[i]->CalcIVRate (Dom.Time, U, V, rate);
                         for (size_t j=0; j<niv; ++j) Dom.ActEles[i]->SetIV (j, rate(j)*Dt);
                     }
                 }
@@ -392,16 +397,16 @@ inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * F
             UpdateNodes ();
 
             // new time
-            Time = ode.t;
+            Dom.Time = ode.t;
 
             // output
             IdxOut++;
             if (WithInfo) _time_print ();
-            Dom.OutResults (IdxOut, Time, FileKey);
+            Dom.OutResults (IdxOut, Dom.Time, FileKey);
             if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
             // next tout
-            tout = Time + dtOut;
+            tout = Dom.Time + dtOut;
         }
     }
 }
@@ -1047,7 +1052,7 @@ inline void Solver::_cor_resid (Vec_t & dU, Vec_t & dF)
 
 inline void Solver::_FE_update (double tf)
 {
-    double dt = (tf-Time)/nSS;
+    double dt = (tf-Dom.Time)/nSS;
     for (Stp=0; Stp<nSS; ++Stp)
     {
         // calculate tangent increments
@@ -1057,9 +1062,9 @@ inline void Solver::_FE_update (double tf)
         UpdateElements (dU, /*CalcFint*/true);
 
         // update U, F, and Time
-        U    += dU;
-        F    += dF;
-        Time += dt;
+        U        += dU;
+        F        += dF;
+        Dom.Time += dt;
 
         // debug
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
@@ -1078,7 +1083,7 @@ inline void Solver::_ME_update (double tf)
     // for each pseudo time T
     double T   = 0.0;
     double dT  = (dTlast>0.0 ? dTlast : dTini);
-    double Dt  = tf-Time;
+    double Dt  = tf-Dom.Time;
     for (Stp=0; Stp<MaxSS; ++Stp)
     {
         // exit point
@@ -1119,16 +1124,16 @@ inline void Solver::_ME_update (double tf)
         if (error<STOL)
         {
             UpdateElements (dU_me, /*CalcFint*/true);
-            T    += dT;
-            U     = U_me;
-            F     = F_me;
-            Time += dt;
+            T        += dT;
+            U         = U_me;
+            F         = F_me;
+            Dom.Time += dt;
             //_cal_resid ();
             //_cor_resid (dU_me, dF_me);
             if (m>mMax) m = mMax;
             if (SSOut || (DbgFun!=NULL)) UpdateNodes ();
             if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
-            if (SSOut) Dom.OutResults (IdxOut, Time, NULL);
+            if (SSOut) Dom.OutResults (IdxOut, Dom.Time, NULL);
         }
         else if (m<mMin) m = mMin;
 
@@ -1149,7 +1154,7 @@ inline void Solver::_ME_update (double tf)
 inline void Solver::_NR_update (double tf)
 {
     It = 0;
-    double dt = (tf-Time)/nSS;
+    double dt = (tf-Dom.Time)/nSS;
     for (Stp=0; Stp<nSS; ++Stp)
     {
         // calculate tangent increments
@@ -1159,9 +1164,9 @@ inline void Solver::_NR_update (double tf)
         UpdateElements (dU, /*CalcFint*/true);
 
         // update U, F, and Time
-        U    += dU;
-        F    += dF;
-        Time += dt;
+        U        += dU;
+        F        += dF;
+        Dom.Time += dt;
 
         // residual
         _cal_resid ();
@@ -1175,7 +1180,7 @@ inline void Solver::_NR_update (double tf)
 inline void Solver::_GN22_update (double tf, double Dt)
 {
     // timestep
-    double dt = (Time+Dt>tf ? tf-Time : Dt);
+    double dt = (Dom.Time+Dt>tf ? tf-Dom.Time : Dt);
 
     // constants
     const double c1 = dt*dt*(1.0-DynTh2)/2.0;
@@ -1183,11 +1188,11 @@ inline void Solver::_GN22_update (double tf, double Dt)
     const double c3 = 2.0/(dt*dt*DynTh2);
     const double c4 = 2.0*DynTh1/(dt*DynTh2);
 
-    while (Time<tf)
+    while (Dom.Time<tf)
     {
         // set prescribed F
         F = F0;
-        double tb = Time+DynTh1*dt;
+        double tb = Dom.Time+DynTh1*dt;
         for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
         {
             Node * const nod = Dom.NodsWithPF[i];
@@ -1288,8 +1293,8 @@ inline void Solver::_GN22_update (double tf, double Dt)
         if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations (TolR=%g). NormR = %g",It,TolR,NormR);
 
         // next time step
-        dt = (Time+dt>tf ? tf-Time : dt);
-        Time += dt;
+        dt = (Dom.Time+dt>tf ? tf-Dom.Time : dt);
+        Dom.Time += dt;
 
         // debug
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
@@ -1303,7 +1308,7 @@ inline void Solver::_time_print (char const * Comment)
         printf("\n%s--- Stage solution --- %s -----------------------------------------%s\n",TERM_CLR1,Comment,TERM_RST);
         printf("%s%10s  %12s  %4s  %4s%s\n",TERM_CLR2,"Time","Norm(R)","NSS","NIT",TERM_RST);
     }
-    printf("%10.6f  %s%8e%s  %4zd  %4zd\n",Time,(ResidOK()?TERM_GREEN:TERM_RED),NormR,TERM_RST,Stp,It);
+    printf("%10.6f  %s%8e%s  %4zd  %4zd\n",Dom.Time,(ResidOK()?TERM_GREEN:TERM_RED),NormR,TERM_RST,Stp,It);
 }
 
 inline void Solver::_VUIV_to_Y (double Y[])

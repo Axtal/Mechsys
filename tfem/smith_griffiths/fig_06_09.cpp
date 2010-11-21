@@ -50,7 +50,7 @@ struct OutDat
 void OutFun (FEM::Solver const & Sol, void * Dat)
 {
     OutDat * dat = static_cast<OutDat*>(Dat);
-    dat->of << _6_3 << Sol.Time << _8s << Sol.U(dat->eqx) << _8s << Sol.F_int(dat->eqx) << _8s << Sol.F(dat->eqx) << endl;
+    dat->of << _6_3 << Sol.Dom.Time << _8s << Sol.U(dat->eqx) << _8s << Sol.F_int(dat->eqx) << _8s << Sol.F(dat->eqx) << endl;
 }
 
 int main(int argc, char **argv) try

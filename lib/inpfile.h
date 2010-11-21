@@ -90,8 +90,11 @@ public:
     int    nldt_nsml;   ///< 33 nonlinear timesteps Nsml
     int    nldt_nn;     ///< 34 nonlinear timesteps N
     int    nldt_n;      ///< 35 nonlinear timesteps n
-    int    maxit;       ///< 36 max num of iterations
-    double tolr;        ///< 37 tolerance for residual
+    double nldt_ll;     ///< 36 nonlinear timesteps denominator
+    int    nldt_sch;    ///< 37 nonlinear timesteps scheme (0 or 1)
+    double nldt_m;      ///< 38 nonlinear timesteps multiplier for larger timesteps in sch==1
+    int    maxit;       ///< 39 max num of iterations
+    double tolr;        ///< 40 tolerance for residual
 
     // path increments
     Array<PathIncs> Path;
@@ -138,8 +141,11 @@ inline InpFile::InpFile ()
       nldt_nsml (-1),     // 33
       nldt_nn   (-1),     // 34
       nldt_n    (-1),     // 35
-      maxit     (-1),     // 36
-      tolr      (-1)      // 37
+      nldt_ll   (-1),     // 36
+      nldt_sch  (-1),     // 37
+      nldt_m    (-1),     // 38
+      maxit     (-1),     // 39
+      tolr      (-1)      // 40
 {
 }
 
@@ -231,8 +237,11 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="nldt_nsml")  nldt_nsml = atoi(str_val.CStr());                    // 33
                 else if (key=="nldt_nn")    nldt_nn   = atoi(str_val.CStr());                    // 34
                 else if (key=="nldt_n")     nldt_n    = atoi(str_val.CStr());                    // 35
-                else if (key=="maxit")      maxit     = atoi(str_val.CStr());                    // 36
-                else if (key=="tolr")       tolr      = val;                                     // 37
+                else if (key=="nldt_ll")    nldt_ll   = val;                                     // 36
+                else if (key=="nldt_sch")   nldt_sch  = atoi(str_val.CStr());                    // 37
+                else if (key=="nldt_m")     nldt_m    = val;                                     // 38
+                else if (key=="maxit")      maxit     = atoi(str_val.CStr());                    // 39
+                else if (key=="tolr")       tolr      = val;                                     // 40
                 else if (key=="npath")
                 {
                     Path.Resize ((size_t)val);
@@ -305,8 +314,11 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     if (IF.nldt_nsml >0) os << "nldt_nsml = " << IF.nldt_nsml << "\n"; //  33
     if (IF.nldt_nn   >0) os << "nldt_nn   = " << IF.nldt_nn   << "\n"; //  34
     if (IF.nldt_n    >0) os << "nldt_n    = " << IF.nldt_n    << "\n"; //  35
-    if (IF.maxit     >0) os << "maxit     = " << IF.maxit     << "\n"; //  36
-    if (IF.tolr     >=0) os << "tolr      = " << IF.tolr      << "\n"; //  37
+    if (IF.nldt_ll   >0) os << "nldt_ll   = " << IF.nldt_ll   << "\n"; //  36
+    if (IF.nldt_sch  >0) os << "nldt_sch  = " << IF.nldt_sch  << "\n"; //  37
+    if (IF.nldt_m    >0) os << "nldt_m    = " << IF.nldt_m    << "\n"; //  38
+    if (IF.maxit     >0) os << "maxit     = " << IF.maxit     << "\n"; //  39
+    if (IF.tolr     >=0) os << "tolr      = " << IF.tolr      << "\n"; //  40
     return os;
 }
 

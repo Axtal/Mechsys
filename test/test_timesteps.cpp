@@ -21,69 +21,32 @@
 #include <fstream>
 
 // MechSys
-#include <mechsys/numerical/odesolver.h>
-#include <mechsys/util/numstreams.h>
-#include <mechsys/util/fatal.h>
+#include <mechsys/fem/solver.h>
 
 using std::cout;
 using std::endl;
 using Util::_8s;
 
-/* Solving:
- *             x''(t) + \mu x'(t) (x(t)^2 - 1) + x(t) = 0
- * Using:
- *             x' = y
- *             y' = -x + \mu y (1-x^2)
- */
-
-class ODE
-{
-public:
-    ODE (double Mu) : mu(Mu) {}
-    int Fun (double t, double const Y[], double dYdt[])
-    {
-        dYdt[0] =  Y[1];
-        dYdt[1] = -Y[0] - mu*Y[1]*(Y[0]*Y[0] - 1);
-        return GSL_SUCCESS;
-    }
-    double mu;
-};
-
 int main(int argc, char **argv) try
 {
-    // data
-    double mu    = 2.0;
-    double y0ini = 0.0;
-    double y1ini = 3.0;
-    double tf    = 10.209022;
-    double dtOut = 0.1;
+    int    a   = 7;
+    int    b   = 12;
+    double L   = 100.0;
+    double m   = 2.0;
+    if (argc>1) a = atoi(argv[1]);
+    if (argc>2) b = atoi(argv[2]);
+    if (argc>3) L = atof(argv[3]);
+    if (argc>4) m = atof(argv[4]);
 
-    // output file
-    std::ofstream of("test_ode1.dat", std::ios::out);
-    of << _8s<<"t" << _8s<<"y0"  << _8s<<"y1"  << endl;
-    of << _8s<<0.0 << _8s<<y0ini << _8s<<y1ini << endl;
-
-    // solve
-    ODE ode(mu);
-    //Numerical::ODESolver<ODE> sol(&ode, &ODE::Fun, /*neq*/2, "FE", /*stol*/1.e-2, /*h*/1.0);
-    Numerical::ODESolver<ODE> sol(&ode, &ODE::Fun, /*neq*/2, "RK12", /*stol*/1.e-2, /*h*/1.0);
-    sol.t    = 0.0;
-    sol.Y[0] = y0ini;
-    sol.Y[1] = y1ini;
-    double tout = 0.0 + dtOut;
-    while (sol.t<tf)
-    {
-        sol.Evolve (tout);
-        of << _8s<<sol.t << _8s<<sol.Y[0] << _8s<<sol.Y[1] << endl;
-        tout += dtOut;
-    }
-
-    // close file
+    std::ofstream of("test_timesteps.res", std::ios::out);
+    of << _8s<< "i" << _8s<< "dt_sch0" << _8s<<"dt_sch1" << endl;
+    for (int i=0; i<b; ++i)
+        of << _8s<< i << _8s<< FEM::Solver::Timestep(i,a,L,/*sch*/0,m)
+                      << _8s<< FEM::Solver::Timestep(i,a,L,/*sch*/1,m) << endl;
     of.close();
-    cout << "\nFile <" << TERM_CLR_BLUE_H << "test_ode1.res" << TERM_RST << "> written" << endl;
-    cout << endl;
 
-    // end
+    cout << "\nFile <" << TERM_CLR_BLUE_H << "test_timesteps.res" << TERM_RST << "> written" << endl;
+    cout << endl;
     return 0;
 }
 MECHSYS_CATCH

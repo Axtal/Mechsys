@@ -289,20 +289,17 @@ int main(int argc, char **argv) try
     InpFile inp;
     inp.Read (inp_fname.CStr());
 
-    // initial values
+    // parse materials file (with initial values)
     Dict prms, inis;
-    inis.Set (-1, "sx sy sz pw Sw", -inp.pCam0,-inp.pCam0,-inp.pCam0, inp.pw0, inp.Sw0);
-
-    // parse materials file
     String model_name;
-    ReadMaterial (-1, inp.MatID, mat_fname.CStr(), model_name, prms, inis);
+    ReadMaterial (-1, inp.matid, mat_fname.CStr(), model_name, prms, inis);
 
     // flow material data
     String flw_name;
-    if (inp.FlwID>=0)
+    if (inp.flwid>=0)
     {
         Dict flw_prms, flw_inis;
-        ReadMaterial (-1, inp.FlwID, mat_fname.CStr(), flw_name, flw_prms, flw_inis);
+        ReadMaterial (-1, inp.flwid, mat_fname.CStr(), flw_name, flw_prms, flw_inis);
         if (flw_name!="UnsatFlow") throw new Fatal("Flow model name must be UnsatFlow at the moment");
         flw_prms(-1).Del("name");
         inis += flw_inis;
@@ -313,7 +310,7 @@ int main(int argc, char **argv) try
     cout << inp;
     printf("\nMaterial data:\n");
     printf("  name = %s\n",model_name.CStr());
-    if (inp.FlwID>0) printf("  flow = %s\n",flw_name.CStr());
+    if (inp.flwid>0) printf("  flow = %s\n",flw_name.CStr());
     printf("  prms : "); cout << prms << endl;
     printf("  inis : "); cout << inis << endl;
     printf("\nPath:\n");
@@ -326,75 +323,75 @@ int main(int argc, char **argv) try
     double        Dpw, DSw; // total increments of pw and Sw for one stage
 
     // FEM using one single element
-    if (inp.FEM)
+    if (inp.fem)
     {
         // mesh
-        if (!(inp.NDiv==1 || inp.NDiv==3)) throw new Fatal("NDiv must be either 1 or 3");
+        if (!(inp.ndiv==1 || inp.ndiv==3)) throw new Fatal("NDiv must be either 1 or 3");
         int option = 0; // Vol=0, Surf=1, Both=2
         Mesh::Structured mesh(3);
-        mesh.GenBox   (inp.O2, inp.NDiv,inp.NDiv,inp.NDiv, 1.0,1.0,1.0);
+        mesh.GenBox   (inp.o2, inp.ndiv,inp.ndiv,inp.ndiv, 1.0,1.0,1.0);
         mesh.WriteVTU ("driver_mesh",option);
 
         // properties
         Dict prps;
-        prps.Set (-1, "prob geom active d3d", (inp.HM ? PROB("HydroMech") : PROB("Equilib")), 
-                                              (inp.O2 ? GEOM("Hex20")     : GEOM("Hex8")), TRUE, TRUE);
+        prps.Set (-1, "prob geom active d3d", (inp.hm ? PROB("HydroMech") : PROB("Equilib")), 
+                                              (inp.o2 ? GEOM("Hex20")     : GEOM("Hex8")), TRUE, TRUE);
 
         // select some nodes for output
         Array<int> out_nods(8);
-        if (inp.O2)
+        if (inp.o2)
         {
-            if (inp.NDiv==3) out_nods = 48,51,60,68, 0,3,12,15;
+            if (inp.ndiv==3) out_nods = 48,51,60,68, 0,3,12,15;
             else             out_nods = 4,5,6,7, 10,11,14,15;
         }
         else
         {
-            if (inp.NDiv==3) out_nods = 0,3,12,15, 48,51,60,63;
+            if (inp.ndiv==3) out_nods = 0,3,12,15, 48,51,60,63;
             else             out_nods = 0,1,2,3, 4,5,6,7;
         }
 
         // boundary condition functions
         BCF bcf;
-        bcf.tsw = inp.tSW;
-        bcf.pw  = inp.pw0; // current pw
+        bcf.tsw = inp.tsw;
+        bcf.pw  = (inis(-1).HasKey("pw") ? inis(-1)("pw") : 0.0); // current pw
 
         // domain and solver
         FEM::Domain dom(mesh, prps, prms, inis, "driver", &out_nods);
         FEM::Solver sol(dom);
         dom.WriteVTU ("driver_initial");
-        sol.CteTg = inp.CteTg;
+        sol.CteTg = inp.ctetg;
 
         // dynamic scheme
-        if (inp.RK)
+        if (inp.rk)
         {
             sol.DScheme  = FEM::Solver::RK_t;
-            sol.RKScheme = inp.RKScheme;
-            sol.RKSTOL   = inp.RKSTOL;
+            sol.RKScheme = inp.rkscheme;
+            sol.RKSTOL   = inp.rkstol;
         }
 
         // hydro-mechanical analysis
-        if (inp.HM) inp.Dyn = true;
+        if (inp.hm) inp.dyn = true;
 
         // dynamic analysis
-        if (inp.Dyn)
+        if (inp.dyn)
         {
             dom.MFuncs[-11] = &bcf;
             dom.MFuncs[-21] = &bcf;
             dom.MFuncs[-31] = &bcf;
-            if (inp.Ray)
+            if (inp.ray)
             {
-                sol.DampAm = inp.Am;
-                sol.DampAk = inp.Ak;
+                sol.DampAm = inp.am;
+                sol.DampAk = inp.ak;
                 sol.DampTy = FEM::Solver::Rayleigh_t;
             }
-            if (inp.HM) sol.DampTy = FEM::Solver::HMCoup_t;
+            if (inp.hm) sol.DampTy = FEM::Solver::HMCoup_t;
         }
 
         // solve
         for (size_t i=0; i<inp.Path.Size(); ++i)
         {
             // number of increments
-            int ninc = (inp.Path[i].ninc<0 ? inp.NInc : inp.Path[i].ninc);
+            int ninc = (inp.Path[i].ninc<0 ? inp.ninc : inp.Path[i].ninc);
 
             // set prescribed increments
             set_to_zero (DEps);
@@ -419,13 +416,13 @@ int main(int argc, char **argv) try
             bcs.Set (-10, "ux", 0.0);
             bcs.Set (-20, "uy", 0.0);
             bcs.Set (-30, "uz", 0.0);
-            if (inp.HM)
+            if (inp.hm)
             {
                 bcs.Set (-10, "pw", 0.0);
                 bcs.Set (-20, "pw", 0.0);
                 bcs.Set (-30, "pw", 0.0);
             }
-            if (inp.Dyn)
+            if (inp.dyn)
             {
                 if (pSw) throw new Fatal("FEM/HM: prescribed Sw is not available");
                 else if (ppw)
@@ -450,8 +447,8 @@ int main(int argc, char **argv) try
             }
             dom.SetBCs   (bcs);
             dom.PrintBCs (cout, inp.tf);
-            sol.SSOut = inp.SSOut;
-            if (inp.Dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtOut, "driver");
+            sol.SSOut = inp.ssout;
+            if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout, "driver");
             else
             {
                 sol.Solve    (ninc);
@@ -499,7 +496,7 @@ int main(int argc, char **argv) try
         for (size_t i=0; i<inp.Path.Size(); ++i)
         {
             // number of increments
-            int ninc = (inp.Path[i].ninc<0 ? inp.NInc : inp.Path[i].ninc);
+            int ninc = (inp.Path[i].ninc<0 ? inp.ninc : inp.Path[i].ninc);
 
             // set prescribed increments
             set_to_zero (DEps);
@@ -561,7 +558,7 @@ int main(int argc, char **argv) try
                     deps = fabs(1.0-aint)*deps; // remaining of deps to be applied
 
                     // drift correction
-                    if (inp.CDrift) mdl->CorrectDrift (&sta);
+                    if (inp.cdrift) mdl->CorrectDrift (&sta);
 
                     // output
                     sta.Output (oss, /*header*/false, "%17.8e");
@@ -608,10 +605,10 @@ int main(int argc, char **argv) try
                     double error = eps_err + sig_err + ivs_err;
 
                     // step multiplier
-                    double m = (error>0.0 ? 0.9*sqrt(inp.STOL/error) : mMax);
+                    double m = (error>0.0 ? 0.9*sqrt(inp.stol/error) : mMax);
 
                     // update
-                    if (error<inp.STOL)
+                    if (error<inp.stol)
                     {
                         // update state
                         T += dT;
@@ -620,7 +617,7 @@ int main(int argc, char **argv) try
                         sta.Ivs = sta_ME.Ivs;
 
                         // drift correction
-                        if (inp.CDrift) mdl->CorrectDrift (&sta);
+                        if (inp.cdrift) mdl->CorrectDrift (&sta);
 
                         // update stress path in model
                         mdl->UpdatePath (&sta, Vec_t(0.5*(deps_1+deps_2)), Vec_t(0.5*(dsig_1+dsig_2)));
@@ -629,7 +626,7 @@ int main(int argc, char **argv) try
                         if (m>mMax) m = mMax;
 
                         // output
-                        if (inp.SSOut) sta.Output (oss, /*header*/false, "%17.8e");
+                        if (inp.ssout) sta.Output (oss, /*header*/false, "%17.8e");
                     }
                     else if (m<mMin) m = mMin;
 
@@ -643,7 +640,7 @@ int main(int argc, char **argv) try
                 cout << j << " ";
 
                 // output
-                if (!inp.SSOut) sta.Output (oss, /*header*/false, "%17.8e");
+                if (!inp.ssout) sta.Output (oss, /*header*/false, "%17.8e");
             }
             cout << "\n";
         }

@@ -55,11 +55,14 @@ struct DbgDat
 void DbgFun (FEM::Solver const & Sol, void * Dat)
 {
     DbgDat * dat = static_cast<DbgDat*>(Dat);
-    dat->of << _6_3 << Sol.Time << _8s << Sol.U(dat->eqx) << _8s << Sol.F_int(dat->eqx) << _8s << Sol.F(dat->eqx) << endl;
+    dat->of << _6_3 << Sol.Dom.Time << _8s << Sol.U(dat->eqx) << _8s << Sol.F_int(dat->eqx) << _8s << Sol.F(dat->eqx) << endl;
 }
 
 int main(int argc, char **argv) try
 {
+    bool two_stages = false;
+    if (argc>1) two_stages = atoi(argv[1]);
+
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
     double l = 5.;
@@ -100,12 +103,24 @@ int main(int argc, char **argv) try
     sol.IncsW = 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
 
     // stage # 1 -----------------------------------------------------------
+    double duy = (two_stages ? -1.3 : -2.6);
     Dict bcs;
     bcs.Set(-100, "ux uy", 0.0,0.0);
     bcs.Set(-200, "ux",    0.0);
-    bcs.Set(-300, "ux uy", 0.0, -2.6);
+    bcs.Set(-300, "ux uy", 0.0, duy);
     dom.SetBCs (bcs);
     sol.Solve  (sol.IncsW.Size());
+
+    // save and reload state
+    dom.SaveState ("owen_hinton_01");
+    dom.LoadState ("owen_hinton_01");
+
+    // stage # 2 -----------------------------------------------------------
+    if (two_stages)
+    {
+        dom.SetBCs (bcs);
+        sol.Solve  (sol.IncsW.Size());
+    }
 
     return 0;
 }

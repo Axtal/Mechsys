@@ -60,6 +60,8 @@ public:
     double       & F       (char   const * FKey  )       { return _F(FKey);           } ///< Get/Set F value
     double         UOrZero (String const & UKey  ) const { return _U.ValOrZero(UKey); } ///< U value or zero if U key does not exist
     double         FOrZero (String const & FKey  ) const { return _F.ValOrZero(FKey); } ///< F value or zero if F key does not exist
+    void           TrySetU (String const & UKey, double Val) { if (_U.HasKey(UKey)) _U(UKey)=Val; } ///< Try to set U if key exists
+    void           TrySetF (String const & FKey, double Val) { if (_F.HasKey(FKey)) _F(FKey)=Val; } ///< Try to set F if key exists
     int            Eq      (char   const * UKey  ) const { return _eq[_U2IDOF(UKey)]; } ///< Get Equation number
     int            Eq      (String const & UKey  ) const { return _eq[_U2IDOF(UKey)]; } ///< Get Equation number
     int            Eq      (size_t         IdxDOF) const { return _eq[IdxDOF];        } ///< Get Equation number given index of DOF

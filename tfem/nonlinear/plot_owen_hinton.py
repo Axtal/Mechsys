@@ -1,11 +1,14 @@
-from numpy import array
-from pylab import *
-from msys_readdata import read_table
-from msys_plotter import Plotter
+import optparse
+from msys_fig import *
 
-plt = 0
+# input
+op = optparse.OptionParser()
+op.add_option('--tst',  '-t', dest='tst',  default='0', help='test number')
+op.add_option('--twos', '-w', dest='twos', default='0', help='two stages')
+opts, args = op.parse_args()
+two_stages = int(opts.twos)
 
-if plt==0:
+if opts.tst=='0':
     res = read_table("owen_hinton_01.res")
     u    = array(res['u'])
     fint = array(res['fint'])
@@ -32,58 +35,55 @@ if plt==0:
     grid()
     show()
 
-elif plt==1:
+elif opts.tst=='1':
     # 8, 12, 14, 18
     P   = 18
-    res = read_table("owen_hinton_02_P%d.res"%P)
     dat = read_table("owen_hinton_02_P%d.dat"%P)
-
-    plot(res['r'],res['st'],'b-',lw=2)
-    plot(res['r'],res['st'],'bo')
     plot(dat['r'],dat['st'],'r*')
 
-    grid()
+    if two_stages:
+        #rs1 = read_table("owen_hinton_02_stg1_P%d.res"%P)
+        rs2 = read_table("owen_hinton_02_stg2_P%d.res"%P)
+        #plot (rs1['r'],rs1['st'],'b-',marker='o',lw=2)
+        plot (rs2['r'],rs2['st'],'g-',marker='o',lw=2)
+    else:
+        res = read_table("owen_hinton_02_P%d.res"%P)
+        plot (res['r'],res['st'],'b-',marker='o',lw=2)
+
+    Grid()
     show()
 
-elif plt==2:
-    res  = read_table("owen_hinton_02_n41.res")
-    dat  = read_table("owen_hinton_02_pu.dat")
-    da0  = read_table("jiang.dat")
-    ud   = array(dat['u'])
-    u    = array(res['ur'])
-    fint = array(res['fr_int'])
-    fext = array(res['fr_ext'])
+elif opts.tst=='2':
+    rs1 = read_table("owen_hinton_02_stg1_n41.res")
+    dat = read_table("owen_hinton_02_pu.dat")
+    da0 = read_table("jiang.dat")
+    if two_stages:
+        rs2 = read_table("owen_hinton_02_stg2_n41.res")
 
     subplot(1,2,1)
-    plot(u,fext,'r-',lw=2,label='Fext')
-    plot(u,fext,'ro')
-    plot(u,fint,'b-',lw=2,label='Fint')
-    plot(u,fint,'b*')
-    xlabel('u'); ylabel('force')
-    legend(loc='upper left')
-    grid()
+    if two_stages:
+        plot (rs2['ur'],rs2['fr_ext'],'b-',lw=2,marker='.', label='MechSys: Fext (stg2)')
+        plot (rs2['ur'],rs2['fr_int'],'c-',lw=2,marker='+', label='MechSys: Fint (stg2)')
+    plot   (rs1['ur'],rs1['fr_ext'],'r-',lw=2,marker='o', label='MechSys: Fext (stg1)')
+    plot   (rs1['ur'],rs1['fr_int'],'m-',lw=2,marker='*', label='MechSys: Fint (stg1)')
+    xlabel ('u')
+    ylabel ('force')
+    legend (loc='best')
+    Grid   ()
 
     subplot(1,2,2)
-    plot(u,res['P'],'r-',lw=2)
-    plot(da0['u'],da0['p'],'gd')
-    plot(ud/100,dat['p'],'bo')
-    xlabel('u'); ylabel('P')
-    grid()
+    if two_stages:
+        plot (rs2['ur'],rs2['P'],'c-',lw=2, label='MechSys: stg2')
+    plot   (rs1['ur'],rs1['P'],'r-',lw=2,   label='MechSys: stg1')
+    plot   (da0['u'],da0['p'],'gd',         label='Jiang')
+    plot   (dat['u']/100,dat['p'],'bo',     label='OH')
+    xlabel ('u')
+    ylabel ('P')
+    legend (loc='best')
+    Grid   ()
+    show   ()
 
-    show()
-
-elif plt==3:
-    p          = Plotter()
-    p.fc_ty    = ['VM']
-    p.fc_np    = 40
-    p.fc_phi   = 0
-    p.fc_cu    = 12.0
-    p.rst_phi  = False
-    p.rst_circ = False
-    p.plot ("owen_hinton_02_ele_4_-1.res", draw_fl=True, draw_ros=True)
-    show()
-
-elif plt==4:
+elif opts.tst=='3':
     dat = read_table("owen_hinton_02_mesh.dat")
     for i in range(1,5):
         print (dat['x'][i]-dat['x'][i-1])/10.

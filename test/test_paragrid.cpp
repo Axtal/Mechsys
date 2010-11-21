@@ -67,7 +67,7 @@ int main(int argc, char **argv) try
     // end
     MPI::Finalize();
 #else
-    throw new Fatal("test_paragrid: this test needs MPI");
+    cout << "this test needs MPI" << endl;
 #endif
     return 0;
 }

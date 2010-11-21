@@ -34,9 +34,12 @@ public:
     UnsatFlowState (int NDim);
 
     // Methods
-    void Init    (SDPair const & Ini, size_t NIvs=0);
-    void Backup  () {}
-    void Restore () {}
+    void   Init    (SDPair const & Ini, size_t NIvs=0);
+    void   Backup  () { throw new Fatal("UnsatFlowState::Backup: this method is not available yet"); }
+    void   Restore () { throw new Fatal("UnsatFlowState::Restore: this method is not available yet"); }
+    size_t PckSize () const { return 1+1+1+num_rows(kwb)*num_rows(kwb); }
+    void   Pack    (Array<double>       & V) const;
+    void   Unpack  (Array<double> const & V);
 
     // Data
     double n, Sw; // porosity, saturation
@@ -116,6 +119,38 @@ inline void UnsatFlowState::Init (SDPair const & Ini, size_t NIvs)
     pc  = Ini("pc");
     Sw  = Ini("Sw");
     kwb = Ini("kwb")*Im;
+}
+
+inline void UnsatFlowState::Pack (Array<double> & V) const
+{
+    V.Resize (PckSize());
+    V[0] = n;
+    V[1] = Sw;
+    V[2] = pc;
+    size_t nrow = num_rows(kwb);
+    size_t k    = 3;
+    for (size_t i=0; i<nrow; ++i)
+    for (size_t j=0; j<nrow; ++j)
+    {
+        V[k] = kwb(i,j);
+        k++;
+    }
+}
+
+inline void UnsatFlowState::Unpack (Array<double> const & V)
+{
+    if (V.Size()!=PckSize()) throw new Fatal("UnsatFlowState::Unpack: Size of given vector (%zd) is different of correct size of Pack (%zd)",V.Size(),PckSize());
+    n  = V[0];
+    Sw = V[1];
+    pc = V[2];
+    size_t nrow = num_rows(kwb);
+    size_t k    = 3;
+    for (size_t i=0; i<nrow; ++i)
+    for (size_t j=0; j<nrow; ++j)
+    {
+        kwb(i,j) = V[k];
+        k++;
+    }
 }
 
 inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms)

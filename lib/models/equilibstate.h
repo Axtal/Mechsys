@@ -39,9 +39,12 @@ public:
     EquilibState (int NDim);
 
     // Methods
-    void Init    (SDPair const & Ini, size_t NIvs=0);
-    void Backup  () { SigBkp=Sig; EpsBkp=Eps; IvsBkp=Ivs; LdgBkp=Ldg; }
-    void Restore () { Sig=SigBkp; Eps=EpsBkp; Ivs=IvsBkp; Ldg=LdgBkp; }
+    void   Init    (SDPair const & Ini, size_t NIvs=0);
+    void   Backup  () { SigBkp=Sig; EpsBkp=Eps; IvsBkp=Ivs; LdgBkp=Ldg; }
+    void   Restore () { Sig=SigBkp; Eps=EpsBkp; Ivs=IvsBkp; Ldg=LdgBkp; }
+    size_t PckSize () const { return 2*size(Sig)+size(Ivs)+1; }
+    void   Pack    (Array<double>       & V) const;
+    void   Unpack  (Array<double> const & V);
 
     // Auxiliar methods
     void Output (std::ostream & os, bool WithHeader=false, char const * NF="%13g") const;
@@ -135,6 +138,34 @@ inline void EquilibState::Init (SDPair const & Ini, size_t NIvs)
     }
 }
 
+inline void EquilibState::Pack (Array<double> & V) const
+{
+    size_t ncp = size(Sig);
+    size_t niv = size(Ivs);
+    V.Resize (2*ncp + niv + 1);
+    for (size_t i=0; i<ncp; ++i)
+    {
+        V[    i] = Sig(i);
+        V[ncp+i] = Eps(i);
+    }
+    for (size_t i=0; i<niv; ++i) V[2*ncp+i] = Ivs(i);
+    V[2*ncp + niv] = static_cast<double>(Ldg);
+}
+
+inline void EquilibState::Unpack (Array<double> const & V)
+{
+    if (V.Size()!=PckSize()) throw new Fatal("EquilibState::Unpack: Size of given vector (%zd) is different of correct size of Pack (%zd)",V.Size(),PckSize());
+    size_t ncp = size(Sig);
+    size_t niv = size(Ivs);
+    for (size_t i=0; i<ncp; ++i)
+    {
+        Sig(i) = V[    i];
+        Eps(i) = V[ncp+i];
+    }
+    for (size_t i=0; i<niv; ++i) Ivs(i) = V[2*ncp+i];
+    Ldg = static_cast<bool>(V[2*ncp + niv]);
+}
+
 inline void EquilibState::Output (std::ostream & os, bool WithHeader, char const * NF) const
 {
     size_t ncp = size(Sig);
@@ -190,5 +221,6 @@ inline void EquilibState::operator= (EquilibState const & A)
     Ivs = A.Ivs;  IvsBkp = A.IvsBkp;
     Ldg = A.Ldg;  LdgBkp = A.LdgBkp;
 }
+
 
 #endif // MECHSYS_EQUILIBSTATE_H

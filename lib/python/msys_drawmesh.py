@@ -57,6 +57,8 @@ class DrawMesh:
         self.dblue   = ( 45/255.0,  0/255.0,160/255.0)
         self.orange  = (241/255.0,125/255.0,  0/255.0)
         self.lyellow = (234/255.0,228/255.0,179/255.0)
+        #self.purple  = '#9b8de3'
+        self.purple  = '#c5a9f3'
 
         # drawing limits (bounding box)
         allx      = [v[2] for v in self.V]
@@ -177,7 +179,7 @@ class DrawMesh:
                     eid  = side_id[1]
                     txt  = '%s %d' % (txt,eid)
                 if len(txt)>0: ax.text(xc,yc, txt,  ha='left',  backgroundcolor=self.lgreen,fontsize=self.fsz2)
-                if with_ids:   ax.text(xc,yc, c[0], ha='right', backgroundcolor=self.orange,fontsize=self.fsz1)
+                if with_ids:   ax.text(xc,yc, c[0], ha='right', backgroundcolor=self.purple,fontsize=self.fsz1)
                 # edge tags
                 if with_tags:
                     nnod = len(con)

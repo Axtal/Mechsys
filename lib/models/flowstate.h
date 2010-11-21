@@ -35,9 +35,12 @@ public:
 	FlowState (int NDim);
 
 	// Methods
-	void Init    (SDPair const & Ini, size_t NIvs=0);
-    void Backup  () { VelBkp=Vel; GraBkp=Gra; IvsBkp=Ivs; }
-    void Restore () { Vel=VelBkp; Gra=GraBkp; Ivs=IvsBkp; }
+	void   Init    (SDPair const & Ini, size_t NIvs=0);
+    void   Backup  () { VelBkp=Vel; GraBkp=Gra; IvsBkp=Ivs; }
+    void   Restore () { Vel=VelBkp; Gra=GraBkp; Ivs=IvsBkp; }
+    size_t PckSize () const { return 2*size(Vel)+size(Ivs); }
+    void   Pack    (Array<double>       & V) const;
+    void   Unpack  (Array<double> const & V);
 
 	// Data
 	Vec_t Vel, VelBkp; ///< Velocity
@@ -87,5 +90,32 @@ inline void FlowState::Init (SDPair const & Ini, size_t NIvs)
         IvsBkp = Ivs;
     }
 }
+
+inline void FlowState::Pack (Array<double> & V) const
+{
+    size_t nrw = size(Vel);
+    size_t niv = size(Ivs);
+    V.Resize (2*nrw + niv);
+    for (size_t i=0; i<nrw; ++i)
+    {
+        V[    i] = Vel(i);
+        V[nrw+i] = Gra(i);
+    }
+    for (size_t i=0; i<niv; ++i) V[2*nrw+i] = Ivs(i);
+}
+
+inline void FlowState::Unpack (Array<double> const & V)
+{
+    if (V.Size()!=PckSize()) throw new Fatal("FlowState::Unpack: Size of given vector (%zd) is different of correct size of Pack (%zd)",V.Size(),PckSize());
+    size_t nrw = size(Vel);
+    size_t niv = size(Ivs);
+    for (size_t i=0; i<nrw; ++i)
+    {
+        Vel(i) = V[    i];
+        Gra(i) = V[nrw+i];
+    }
+    for (size_t i=0; i<niv; ++i) Ivs(i) = V[2*nrw+i];
+}
+
 
 #endif // MECHSYS_FLOWSTATE_H

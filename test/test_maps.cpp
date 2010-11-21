@@ -83,9 +83,9 @@ int main(int argc, char **argv) try
     tab("C") = 2.0, 2.1, 2.2, 2.3;
     tab("D") = 3.0, 3.1, 3.2, 3.3;
     tab.Write ("table_sandbox.dat", /*NF*/"%4.1f");
-    cout << "File <table_sandbox.dat> written" << endl;
+    cout << "File <table_sandbox.res> written" << endl;
     Table tab2;
-    tab2.Read ("table_sandbox.dat");
+    tab2.Read ("table_sandbox.res");
     cout << "Reading back Table from file:\n" << tab2 << endl;
     double error = 0.0;
     for (size_t i=0; i<4; ++i)

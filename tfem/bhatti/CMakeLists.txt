@@ -28,9 +28,7 @@ SET(TESTS
   ex_04_11
   ex_05_03
   ex_06_22
-  ex_07_07
-  ex_07_09
-  ex_08_01)
+  ex_07_07)
 
 FOREACH(var ${TESTS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

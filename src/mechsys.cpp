@@ -132,8 +132,11 @@ BPy::class_<InpFile>("InpFile")
     .def_readwrite("nldt_nsml"  , &InpFile::nldt_nsml ) //  33
     .def_readwrite("nldt_nn"    , &InpFile::nldt_nn   ) //  34
     .def_readwrite("nldt_n"     , &InpFile::nldt_n    ) //  35
-    .def_readwrite("maxit"      , &InpFile::maxit     ) //  36
-    .def_readwrite("tolr"       , &InpFile::tolr      ) //  37
+    .def_readwrite("nldt_ll"    , &InpFile::nldt_ll   ) //  36
+    .def_readwrite("nldt_sch"   , &InpFile::nldt_sch  ) //  37
+    .def_readwrite("nldt_m"     , &InpFile::nldt_m    ) //  38
+    .def_readwrite("maxit"      , &InpFile::maxit     ) //  39
+    .def_readwrite("tolr"       , &InpFile::tolr      ) //  40
     ;
 
 BPy::def("ReadMaterial", ReadMaterial, FUN_READMATERIAL());
@@ -192,7 +195,7 @@ BPy::class_<FEM::Domain>("FEM_Domain", "FEM domain", BPy::init<Mesh::Generic con
     ;
 
 // Solver
-BPy::class_<FEM::Solver>("FEM_Solver", "FEM solver", BPy::init<FEM::Domain const &>())
+BPy::class_<FEM::Solver>("FEM_Solver", "FEM solver", BPy::init<FEM::Domain &>())
     .def("Solve",     &FEM::Solver::Solve,    SO_Solve())
     .def("DynSolve",  &FEM::Solver::DynSolve, SO_DynSolve())
     .def("SetScheme", &FEM::Solver::SetScheme)
