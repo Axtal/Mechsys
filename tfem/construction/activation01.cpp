@@ -210,8 +210,10 @@ int main(int argc, char **argv) try
 
 
     // save and reload
+#ifdef USE_HDF5
     dom.SaveState ("activation01_endof_stg1");
     dom.LoadState ("activation01_endof_stg1");
+#endif
 
 
     for (size_t i=0; i<2; ++i)
@@ -232,8 +234,10 @@ int main(int argc, char **argv) try
 
 
         // save and reload
+#ifdef USE_HDF5
         dom.SaveState (buf.CStr());
         dom.LoadState (buf.CStr());
+#endif
 
 
         // check
@@ -314,8 +318,10 @@ int main(int argc, char **argv) try
 
 
         // save and reload
+#ifdef USE_HDF5
         dom.SaveState (buf.CStr());
         dom.LoadState (buf.CStr());
+#endif
 
 
         // check

@@ -82,7 +82,7 @@ int main(int argc, char **argv) try
     tab("B") = 1.0, 1.1, 1.2, 1.3;
     tab("C") = 2.0, 2.1, 2.2, 2.3;
     tab("D") = 3.0, 3.1, 3.2, 3.3;
-    tab.Write ("table_sandbox.dat", /*NF*/"%4.1f");
+    tab.Write ("table_sandbox.res", /*NF*/"%4.1f");
     cout << "File <table_sandbox.res> written" << endl;
     Table tab2;
     tab2.Read ("table_sandbox.res");
