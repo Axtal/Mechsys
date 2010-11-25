@@ -24,171 +24,112 @@
 #include <list>
 #include <map>
 
-// Blitz++
-#include <blitz/tinyvec-et.h>
-
 // CGAL
-#include <CGAL/Cartesian.h>
-#include <CGAL/algorithm.h>
-#include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Alpha_shape_2.h>
+#include <CGAL/Alpha_shape_3.h>
+#include <CGAL/Delaunay_triangulation_2.h>
+#include <CGAL/Delaunay_triangulation_3.h>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 
 // MechSys
 #include <mechsys/util/array.h>
 #include <mechsys/util/fatal.h>
-#include <mechsys/util/lineparser.h>
-#include <mechsys/linalg/vector.h>
-#include <mechsys/linalg/matrix.h>
-#include <mechsys/linalg/laexpr.h>
 #include <mechsys/mesh/mesh.h>
-
-using LinAlg::Vector;
-using LinAlg::Matrix;
-using blitz::TinyVector;
 
 namespace Mesh
 {
 
-/** CGAL Structures. */
-typedef CGAL::Cartesian<double>                                              CGAL_K;
-typedef CGAL::Alpha_shape_vertex_base_2<CGAL_K>                              CGAL_AV;
-typedef CGAL::Triangulation_face_base_2<CGAL_K>                              CGAL_TF;
-typedef CGAL::Alpha_shape_face_base_2<CGAL_K,CGAL_TF>                        CGAL_AF;
-typedef CGAL::Triangulation_default_data_structure_2<CGAL_K,CGAL_AV,CGAL_AF> CGAL_TDS;
-typedef CGAL::Delaunay_triangulation_2<CGAL_K,CGAL_TDS>                      CGAL_DT;
-typedef CGAL::Alpha_shape_2<CGAL_DT>                                         CGAL_AlphaShape2;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel                      CGAL_K;
+typedef CGAL::Alpha_shape_vertex_base_2<CGAL_K>                                  CGAL_VB_2;
+typedef CGAL::Triangulation_face_base_2<CGAL_K>                                  CGAL_TF_2;
+typedef CGAL::Alpha_shape_face_base_2<CGAL_K,CGAL_TF_2>                          CGAL_FB_2;
+typedef CGAL::Triangulation_default_data_structure_2<CGAL_K,CGAL_VB_2,CGAL_FB_2> CGAL_TDS_2;
+typedef CGAL::Delaunay_triangulation_2<CGAL_K,CGAL_TDS_2>                        CGAL_DT_2;
+typedef CGAL::Alpha_shape_2<CGAL_DT_2>                                           CGAL_ALPHA_SHAPE_2;
+typedef CGAL::Alpha_shape_vertex_base_3<CGAL_K>                                  CGAL_VB_3;
+typedef CGAL::Alpha_shape_cell_base_3<CGAL_K>                                    CGAL_FB_3;
+typedef CGAL::Triangulation_data_structure_3<CGAL_VB_3,CGAL_FB_3>                CGAL_TDS_3;
+typedef CGAL::Delaunay_triangulation_3<CGAL_K,CGAL_TDS_3>                        CGAL_DT_3;
+typedef CGAL::Alpha_shape_3<CGAL_DT_3>                                           CGAL_ALPHA_SHAPE_3;
 
 class AlphaShape : public virtual Mesh::Generic
 {
 public:
-	// Constructor
-	AlphaShape (bool Is3D) : Mesh::Generic(Is3D) {}
+    // Constructor
+    AlphaShape (int NDim) : Mesh::Generic(NDim) {}
 
-	// Set Methods
-	void ResetCloud    ();                               ///< Reset cloud of points
-	void AddCloudPoint (double X, double Y, double Z=0); ///< Add new point to the list of points i of input PSLG. SetCloudSize MUST be called first.
-
-	// Methods
-	size_t Generate (double Alpha=-1, bool Regular=false);
+    // Methods
+    void ResetCloud    ();                                    ///< Reset cloud of points
+    void AddCloudPoint (double X, double Y, double Z=0);      ///< Add new point to the list of points i of input PSLG. SetCloudSize MUST be called first.
+    void Generate      (double Alpha=-1, bool Regular=false); ///< Generate
 
 private:
-	// Data
-	std::list<CGAL_K::Point_2> _pts_in_2; ///< List of input points (2D)
-	std::list<CGAL_K::Point_3> _pts_in_3; ///< List of input points (3D)
-
-	// Overloaded private methods
-	void   _vtk_con          (size_t i, String & Connect) const;
-	size_t _edge_to_lef_vert (size_t EdgeLocalID)         const { return 0; }
-	size_t _edge_to_rig_vert (size_t EdgeLocalID)         const { return 1; }
-	void   _face_to_verts    (size_t FaceLocalID, Array<size_t> & Verts) const {}
-	void   _face_to_edges    (size_t FaceLocalID, Array<size_t> & Edges) const {}
-
-}; // class AlphaShape
+    // Data
+    std::list<CGAL_K::Point_2> _pts_2d; ///< List of input points (2D)
+    std::list<CGAL_K::Point_3> _pts_3d; ///< List of input points (3D)
+};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-/* public */
-
-inline void AlphaShape::ResetCloud()
+inline void AlphaShape::ResetCloud ()
 {
-	_pts_in_2.clear();
-	_pts_in_3.clear();
+    _pts_2d.clear();
+    _pts_3d.clear();
 }
 
-inline void AlphaShape::AddCloudPoint(double X, double Y, double Z)
+inline void AlphaShape::AddCloudPoint (double X, double Y, double Z)
 {
-	if (_is_3d) _pts_in_3.push_back(CGAL_K::Point_3(X,Y,Z));
-	else        _pts_in_2.push_back(CGAL_K::Point_2(X,Y));
+    if (NDim==3) _pts_3d.push_back (CGAL_K::Point_3(X,Y,Z));
+    else         _pts_2d.push_back (CGAL_K::Point_2(X,Y));
 }
 
-inline size_t AlphaShape::Generate(double Alpha, bool Regular)
+inline void AlphaShape::Generate (double Alpha, bool Regular)
 {
-	if (_is_3d)
-	{
-		throw new Fatal("AlphaShape::Generate: 3D: Feature not implemented yet.");
-		return 0;
-	}
-	else
-	{
-		// Alpha-shape structure
-		CGAL_AlphaShape2 as(_pts_in_2.begin(), _pts_in_2.end(), 0, (Regular ? CGAL_AlphaShape2::REGULARIZED : CGAL_AlphaShape2::GENERAL));
+    if (NDim==3)
+    {
+        // Alpha-shape structure
+        CGAL_ALPHA_SHAPE_3 as(_pts_3d.begin(), _pts_3d.end(), /*alpha*/0, (Regular ? CGAL_ALPHA_SHAPE_3::REGULARIZED : CGAL_ALPHA_SHAPE_3::GENERAL));
 
-		// Find optimal alpha
-		double alp = Alpha;
-		if (alp<0) alp = (*as.find_optimal_alpha(1));
+        // Find optimal alpha
+        double alp = Alpha;
+        if (alp<0) alp = (*as.find_optimal_alpha(1));
 
-		// Generate alpha shape
-		as.set_alpha (alp);
+        // Generate alpha shape
+        as.set_alpha (alp);
+        if (as.number_of_solid_components()!=1) throw new Fatal("AlphaShape::Generate: There is a problem with AlphaShape 3D");
+    }
+    else
+    {
+        // Alpha-shape structure
+        CGAL_ALPHA_SHAPE_2 as(_pts_2d.begin(), _pts_2d.end(), /*alpha*/0, (Regular ? CGAL_ALPHA_SHAPE_2::REGULARIZED : CGAL_ALPHA_SHAPE_2::GENERAL));
 
-		// Erase old mesh
-		Erase ();
+        // Find optimal alpha
+        double alp = Alpha;
+        if (alp<0) alp = (*as.find_optimal_alpha(1));
 
-		// Set Vertices
-		size_t id = 0;
-		_verts    .Resize (0);
-		_verts_bry.Resize (0);
-		std::map<CGAL_AlphaShape2::Vertex_handle,size_t> vs;
-		for (CGAL_AlphaShape2::Alpha_shape_vertices_iterator it=as.alpha_shape_vertices_begin(); it!=as.alpha_shape_vertices_end(); ++it)
-		{
-			// Set _verts
-			_verts.Push (new Vertex);
-			_verts[id]->MyID    = id;
-			_verts[id]->OnBry   = true;
-			_verts[id]->EdgesID = -1;
-			_verts[id]->FacesID = -1;
-			_verts[id]->Dupl    = false;
-			_verts[id]->C.Resize(2);
-			_verts[id]->C = (*it)->point().x(), (*it)->point().y();
+        // Generate alpha shape
+        as.set_alpha (alp);
 
-			// Set _verts_bry
-			_verts_bry.Push (_verts[id]);
+        // Erase old mesh
+        Erase ();
 
-			// Set vs
-			vs[(*it)] = id++;
-		}
+        // Set Vertices
+        size_t id = 0;
+        std::map<CGAL_ALPHA_SHAPE_2::Vertex_handle,size_t> vs;
+        for (CGAL_ALPHA_SHAPE_2::Alpha_shape_vertices_iterator it=as.alpha_shape_vertices_begin(); it!=as.alpha_shape_vertices_end(); ++it)
+        {
+            PushVert (-100, (*it)->point().x(), (*it)->point().y());
+            vs[(*it)] = id++;
+        }
 
-		// Set Elements
-		id = 0;
-		for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i];
-		_elems    .Resize (0);
-		_elems_bry.Resize (0);
-		for (CGAL_AlphaShape2::Alpha_shape_edges_iterator it=as.alpha_shape_edges_begin(); it!=as.alpha_shape_edges_end(); ++it)
-		{
-			// Set _elems
-			_elems.Push (new Elem);
-			_elems[id]->MyID        = id;
-			_elems[id]->Tag         = 0;
-			_elems[id]->OnBry       = false;
-			_elems[id]->VTKCellType = VTK_LINE;
-			_elems[id]->V.Resize (2);
-
-			// Set _elems_bry
-			_elems_bry.Push (_elems[id]);
-
-			// Set connectivity
-			_elems[id]->V[0] = _verts[vs[it->first->vertex(as.ccw(it->second))]];
-			_elems[id]->V[1] = _verts[vs[it->first->vertex(as. cw(it->second))]];
-
-			// Next ID
-			id++;
-		}
-		return _elems.Size();
-	}
-}
-
-
-/* private */
-
-inline void AlphaShape::_vtk_con(size_t i, String & Connect) const
-{
-	if (_is_3d) throw new Fatal("AlphaShape::_vtk_con: 3D unstructured elements are not available (yet).");
-	else
-	{
-		Connect.Printf("%d %d",ElemCon(i,0),
-		                       ElemCon(i,1));
-	}
+        // Set Elements
+        for (CGAL_ALPHA_SHAPE_2::Alpha_shape_edges_iterator it=as.alpha_shape_edges_begin(); it!=as.alpha_shape_edges_end(); ++it)
+        {
+            PushCell (-1, Array<int>((int)vs[it->first->vertex(as.ccw(it->second))], (int)vs[it->first->vertex(as.cw(it->second))]));
+        }
+    }
 }
 
 }; // namespace Mesh

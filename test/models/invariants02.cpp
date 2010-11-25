@@ -419,7 +419,7 @@ int main(int argc, char **argv) try
     double tol_diS4dt = 1.0e-5;
     double tol_diS5dt = 1.0e-4;
     double tol_dPdt[3][6]= {{1.0e-6, 1.0e-6, 1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6},
-                            {1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6, 1.0e-6, 1.0e-7},
+                            {1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6, 1.0e-6, 1.0e-6},
                             {1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6, 1.0e-6, 1.0e-7}};
     printf("\n");
     printf("  max_err_dpdt   = %s%16.8e%s\n",(max_err_dpdt  >tol_dpdt  ?TERM_RED:TERM_GREEN),max_err_dpdt,  TERM_RST);

@@ -205,7 +205,7 @@ int main(int argc, char **argv) try
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     double tol       = 1.0e-11;
-    double tol_det   = 1.0e-9;
+    double tol_det   = 1.0e-8; // TODO: 1.0e-9 is too small in the powermac
     double error     = 0.0;
     double error_det = 0.0;
 

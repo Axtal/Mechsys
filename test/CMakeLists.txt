@@ -20,11 +20,10 @@ SET(PROGS_A # tests requiring FLTK
   tplotxy
   )
 
-SET(PROGS_B # tests requiring CGAL
-    )
-  #alphashape01)
+#SET(PROGS_B # tests requiring CGAL
 
 SET(PROGS_C # tests requiring GSL
+  alphashape01
   quadrature
   monte_carlo
   test_numdiff1
