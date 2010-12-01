@@ -18,8 +18,8 @@
 
 import os.path
 from os.path import basename
-from numpy import pi, sin, cos, tan, arcsin, arccos, arctan, log, log10, exp
-from numpy import array, linspace, insert, repeat, zeros
+from numpy import pi, sin, cos, tan, arcsin, arccos, arctan, log, log10, exp, sqrt
+from numpy import array, linspace, insert, repeat, zeros, matrix
 from pylab import rcParams, gca, gcf, clf, savefig
 from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline, title
 from pylab import contour, contourf, colorbar, clabel
@@ -39,7 +39,7 @@ def SetForEps (proport=0.75, fig_width_pt=455.24):
     params = {'backend':         'ps',
               'axes.labelsize':  10,
               'text.fontsize':   10,
-              'legend.fontsize': 9,
+              'legend.fontsize': 8,
               'xtick.labelsize': 8,
               'ytick.labelsize': 8,
               'text.usetex':     False,
@@ -78,6 +78,13 @@ def Contour (X,Y,Z, label, nlevels=16, cmap=None, fmt='%g'):
     cb.ax.set_ylabel (label)
     clabel (c2, inline=0)
 
+def GetClr (idx=0): # color
+    C = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8']
+    return C[idx % len(C)]
+
+def GetLst (idx=0): # linestyle
+    L = ['solid', 'dashed', 'dash_dot', 'dotted']
+    return L[idx % len(L)]
 
 # Read file with table
 # ====================

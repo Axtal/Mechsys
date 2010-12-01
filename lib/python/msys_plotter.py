@@ -18,10 +18,6 @@
 
 import os, subprocess
 from os.path import basename
-from numpy   import exp, sqrt, matrix, zeros, log, cos, pi, sin, tan, linspace, polyfit
-from pylab   import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, axis, text, contour, show
-from pylab   import rcParams, savefig, axes, legend, gca, title, figure, clf, annotate
-from pylab   import matplotlib as MPL
 from msys_invariants import *
 from msys_fig        import *
 from msys_linfit     import *
@@ -47,6 +43,8 @@ class Plotter:
         self.fc_phi    = -1                                       # friction angle for FC
         self.fc_c      = 0.0                                      # cohesion for FC
         self.fc_np     = 40                                       # number of points for drawing failure line
+        self.mark_max  = False                                    # mark max (failure) point ?
+        self.mark_lst  = False                                    # mark residual (failure) point ?
         self.oct_norm  = False                                    # normalize plot in octahedral plane by p ?
         self.rst_phi   = True                                     # show fc_phi in Rosette
         self.rst_circ  = True                                     # draw circle in Rosette
@@ -67,17 +65,7 @@ class Plotter:
         self.lnplus1   = False                                    # plot ln(p+1) instead of ln(p) ?
         self.oct_sxyz  = False                                    # use Sx,Sy,Sz in oct plane instead of S1,S2,S3
         self.fsz       = 8                                        # fontsize
-        self.LDnl_cbar = 0.0
-        self.LDnl_pa   = 1.0
-        self.LDnl_m    = 0.0
-        self.LDnl_eta1 = 1.0
 
-        # matplotlib's structures
-        self.PH = MPL.path.Path
-        self.PP = MPL.patches
-        self.PC = MPL.patches.PathPatch
-        # colors
-        self.lgray = (180/255.,180/255.,180/255.)
 
     # Plot results
     # ============
@@ -154,8 +142,8 @@ class Plotter:
         if self.only_one==0 or self.only_one<0:
             if self.only_one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot (Ed, Y, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            plot (Ed[imaQP], Y[imaQP], '^', color=clr)
-            #plot (Ed[-1],    Y[-1],    '^', color=clr)
+            if self.mark_max: plot (Ed[imaQP], Y[imaQP], '^', color=clr)
+            if self.mark_lst: plot (Ed[-1],    Y[-1],    '^', color=clr)
             xlabel (r'$\varepsilon_d$ [%]');  ylabel(Ylbl);  grid(True)
             if txtmax: text (Ed[imaQP], Y[imaQP], '%.2f'%Y[imaQP], fontsize=8)
             if txtlst: text (Ed[-1],    Y[-1],    '%.2f'%Y[-1],    fontsize=8)
@@ -209,8 +197,8 @@ class Plotter:
             if draw_ros: self.oct_rosette(min(Sa)/pcoef,max(Sa)/pcoef,min(Sb)/pcoef,max(Sb)/pcoef)
             if draw_fl:  self.oct_fline  (min(Sa)/pcoef,max(Sa)/pcoef,min(Sb)/pcoef,max(Sb)/pcoef)
             plot (Sa/pcoef, Sb/pcoef, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
-            plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, '^', color=clr)
+            if self.mark_max: plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
+            if self.mark_lst: plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, '^', color=clr)
             axis ('equal')
             #axis ('off')
 
@@ -289,15 +277,15 @@ class Plotter:
         l4 = (-cr*r*cos(pi/6.0) , cr*r*sin(pi/6.0)) # line: 4 = neg 1 end points
         lo = (-cr*r*cos(pi/3.0) , cr*r*sin(pi/3.0)) # line: origin of cylindrical system
         # main lines
-        plot([0.0,l1[0]],[0.0,l1[1]],'k-', color=self.lgray)
-        plot([0.0,l2[0]],[0.0,l2[1]],'k-', color=self.lgray)
-        plot([0.0,l3[0]],[0.0,l3[1]],'k-', color=self.lgray)
+        plot([0.0,l1[0]],[0.0,l1[1]],'k-', color='grey')
+        plot([0.0,l2[0]],[0.0,l2[1]],'k-', color='grey')
+        plot([0.0,l3[0]],[0.0,l3[1]],'k-', color='grey')
         # reference
-        plot([0.0,l4[0]],[0.0, l4[1]],'k-', color=self.lgray)
-        plot([0.0,lo[0]],[0.0, lo[1]],'k-', color=self.lgray)
-        plot([0.0,-l4[0]],[0.0, l4[1]],'k-', color=self.lgray)
-        plot([0.0,-lo[0]],[0.0, lo[1]],'k-', color=self.lgray)
-        plot([-cr*r,cr*r],[0.0,0.0],'k-', color=self.lgray)
+        plot([0.0, l4[0]],[0.0, l4[1]],'k-', color='grey')
+        plot([0.0, lo[0]],[0.0, lo[1]],'k-', color='grey')
+        plot([0.0,-l4[0]],[0.0, l4[1]],'k-', color='grey')
+        plot([0.0,-lo[0]],[0.0, lo[1]],'k-', color='grey')
+        plot([-cr*r,cr*r],[0.0,0.0],   'k-', color='grey')
         # text
         if self.oct_sxyz: k1,k2,k3 = 'z','y','x'
         else:             k1,k2,k3 = '1','3','2'
@@ -313,6 +301,7 @@ class Plotter:
             M = phi_calc_M (self.fc_phi, 'oct')
             R = M if self.oct_norm else self.fc_poct*M
             self.draw_arc(gca(), 0.,0.,R, 0.85*pi/2., 1.05*(pi/2.+pi/3.), self.lgray)
+
 
     # Plot failure line in p-q plane
     # ==============================
@@ -337,6 +326,7 @@ class Plotter:
                     f[i,j] = self.failure_crit (sig, self.fc_ty[k])
                     if self.fc_t<0.0: q[i,j] = -q[i,j]
             contour (p, q, f, [0.0], linewidths=1, colors=self.fc_clr[k], linestyles=self.fc_ls[k], label=self.fc_ty[k])
+
 
     # Plot failure line in octahedral plane
     # =====================================
@@ -371,6 +361,7 @@ class Plotter:
                     f[i,j]  = self.failure_crit (sig, self.fc_ty[k])
             contour (sa, sb, f, [0.0], linewidths=1, colors=self.fc_clr[k], linestyles=self.fc_ls[k], label=self.fc_ty[k])
 
+
     # Plot failure line in s1-s3, s2-s3 plane
     # =======================================
     def s123_fline(self, s3):
@@ -394,6 +385,7 @@ class Plotter:
                     sig    = matrix([[s1], [s2], [s3], [0.0]])
                     f[i,j] = self.failure_crit (sig, self.fc_ty[k])
             contour (x, y, f, [0.0], linewidths=1, colors=self.fc_clr[k], linestyles=self.fc_ls[k], label=self.fc_ty[k])
+
 
     # Plot failure line in sxyz plane
     # ===============================
@@ -424,9 +416,11 @@ class Plotter:
                     f[i,j] = self.failure_crit (sig, self.fc_ty[k])
             contour (x, y, f, [0.0], linewidths=1, colors=self.fc_clr[k], linestyles=self.fc_ls[k], label=self.fc_ty[k])
 
+
     # Failure criterion
     # =================
     def failure_crit(self, sig, fc_ty):
+        sphi = sin(self.fc_phi*pi/180.0)
         if fc_ty=='VM':
             p, q = sig_calc_p_q(sig)
             if self.fc_psa: k = sqrt(2.0)*self.fc_cu
@@ -442,12 +436,10 @@ class Plotter:
             p, q = sig_calc_p_q (sig)
             t    = sig_calc_t   (sig)
             th   = arcsin(t)/3.0
-            sphi = sin(self.fc_phi*pi/180.0)
             cbar = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
             g    = sqrt(2.0)*sphi/(sqrt(3.0)*cos(th)-sphi*sin(th))
             f    = q - (p + cbar)*g
         elif fc_ty=='MN':
-            #sphi     = sin(self.fc_phi*pi/180.0)
             #cbar     = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
             #kmn      = (9.0-sphi**2.0)/(1.0-sphi**2.0)
             #sig0     = cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
@@ -469,7 +461,6 @@ class Plotter:
             I1,I2,I3 = char_invs(sig)
             f        = I1*I2 - kmn*I3
         elif fc_ty=='LD':
-            sphi     = sin(self.fc_phi*pi/180.0)
             cbar     = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
             kld      = ((3.0-sphi)**3.0)/((1.0+sphi)*((1.0-sphi)**2))
             sig0     = cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
@@ -478,47 +469,29 @@ class Plotter:
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
             I1,I2,I3 = char_invs(sig_)
             f        = I1**3.0 - kld*I3
-        elif fc_ty=='LDnl':
-            sig0     = self.LDnl_cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
-            sig_     = sig+sig0
-            l        = sig_calc_s123(sig_)
-            if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
-            I1,I2,I3 = char_invs(sig_)
-            f        = (I1**3.0/I3 - 27.)*(-I1/self.LDnl_pa)**self.LDnl_m - self.LDnl_eta1
+        elif fc_ty=='AS':
+            p, q, t = sig_calc_pqt (sig, 'cam')
+            Rcs     = (1.0+sphi)/(1.0-sphi)
+            Mcs     = (3.0*Rcs-3.0)/(Rcs+2.0)
+            wcs     = ((Rcs+2.0)/(2.0*Rcs+1.0))**4.0
+            M       = Mcs*(2.0*wcs/(1.0+wcs+(wcs-1.0)*t))**0.25;
+            f       = q/p - M
         else: raise Exception('failure_crit: fc_ty==%s is invalid' % fc_ty)
         return f
 
-    # Show figure
-    # ===========
-    def show(self): show()
 
-    # Set figure for eps
-    # ==================
-    def set_fig_for_eps(self, small=False, multiplot=False):
-        fig_width_pt  = 246.0 if not multiplot else 492.0 # Get this from LaTeX using \showthe\columnwidth
-        inches_per_pt = 1.0/72.27                         # Convert pt to inch
-        fig_width     = fig_width_pt*inches_per_pt  # width in inches
-        fig_height    = fig_width*self.proport      # height in inches
-        fig_size      = [fig_width,fig_height]
-        if small:
-            params = {'backend':         'ps',
-                      'axes.labelsize':  8,
-                      'text.fontsize':   8,
-                      'legend.fontsize': 8,
-                      'xtick.labelsize': 6,
-                      'ytick.labelsize': 6,
-                      'text.usetex':     False,
-                      'figure.figsize': fig_size}
-        else:
-            params = {'backend':         'ps',
-                      'axes.labelsize':  10,
-                      'text.fontsize':   10,
-                      'legend.fontsize': 10,
-                      'xtick.labelsize': 8,
-                      'ytick.labelsize': 8,
-                      'text.usetex':     False,
-                      'figure.figsize': fig_size}
-        rcParams.update(params)
+    # Failure criterion names
+    # =======================
+    def failure_crit_names (self, fc_ty):
+        if   fc_ty=='VM':   return 'von Mises'
+        elif fc_ty=='DP':   return 'Drucker-Prager'
+        elif fc_ty=='MC':   return 'Mohr-Coulomb'
+        elif fc_ty=='MN':   return 'Matsuoka-Nakai'
+        elif fc_ty=='MNnl': return 'Matsuoka-Nakai (non-linear)'
+        elif fc_ty=='LD':   return 'Lade-Duncan'
+        elif fc_ty=='AS':   return 'Argyris-Sheng'
+        else: raise Exception('failure_crit_names: fc_ty==%s is invalid' % fc_ty)
+
 
     # FC legend
     # =========
@@ -528,19 +501,6 @@ class Plotter:
             lines.append (plot([0],[0],linestyle=self.fc_ls[k],color=self.fc_clr[k]))
         legend (lines, self.fc_ty, loc=loc, prop={'size':9})
 
-    # Draw arc
-    # ========
-    def draw_arc(self, ax, xc,yc,R, alp_min,alp_max, eclr, fclr='None', lwd=1, res=200):
-        A   = linspace(alp_min,alp_max,res)
-        dat = [(self.PH.MOVETO, (xc+R*cos(alp_min),yc+R*sin(alp_min)))]
-        for a in A[1:]:
-            x = xc + R*cos(a)
-            y = yc + R*sin(a)
-            dat.append((self.PH.LINETO, (x,y)))
-        cmd,vert = zip(*dat)
-        ph = self.PH (vert, cmd)
-        pc = self.PC (ph, facecolor=fclr, edgecolor=eclr, linewidth=lwd)
-        ax.add_patch (pc)
 
     # Ref curve model
     # ===============
@@ -553,6 +513,7 @@ class Plotter:
         c2  = exp(-c*bet)
         c3  = 1.0-c2
         return A*x - log(c3+c2*exp(c1*x))/bet
+
 
     # Find phi
     # ========
@@ -698,21 +659,6 @@ class Plotter:
         return Sig, Eps
 
 
-    # Save and crop EPS
-    # =================
-    def save_eps(self, filekey):
-        # save
-        savefig (filekey+'.eps', bbox_inches='tight')
-
-        # crop
-        #subprocess.check_call (['ps2eps', '-q', '-l', '-f', '%s.eps'%filekey])
-        #subprocess.check_call (['ps2eps', '-q', '-l', '-f', '%s.eps'%filekey])
-
-        # rename
-        #os.rename ('%s.eps.eps'%filekey, '%s.eps'%filekey)
-
-        print "<[1;34m%s.eps[0m> created"%filekey
-
     # Plot node
     # =========
     def plot_node(self, filename):
@@ -744,3 +690,72 @@ class Plotter:
             plot   (dat['uz'],dat['fz'],'r-',linewidth=lwd)
             xlabel (r'$u_z$')
             ylabel (r'$f_z$');  grid(True)
+
+
+    # Plot failure criteria
+    # =====================
+    def plot_fc (self, types=['MC', 'MN'], phis=[30.0], clrs=None, lsts=None, fmt='%g', lwd=1, fsz=6, np=40, r=None, samin=None, samax=None, sbmin=None, sbmax=None):
+        # draw rosette
+        r   = 1.*phi_calc_M(max(phis),'oct') if r==None else r
+        cf  = 0.2
+        cr  = 1.1
+        l1  = (             0.0  , cr*r            ) # line: 1 end points
+        l2  = (-cr*r*cos(pi/6.0) ,-cr*r*sin(pi/6.0)) # line: 2 end points
+        l3  = ( cr*r*cos(pi/6.0) ,-cr*r*sin(pi/6.0)) # line: 3 end points
+        l4  = (-cr*r*cos(pi/6.0) , cr*r*sin(pi/6.0)) # line: 4 = neg 1 end points
+        lo  = (-cr*r*cos(pi/3.0) , cr*r*sin(pi/3.0)) # line: origin of cylindrical system
+        # main lines
+        plot([0.0,l1[0]],[0.0,l1[1]],'k-', color='grey', zorder=0)
+        plot([0.0,l2[0]],[0.0,l2[1]],'k-', color='grey', zorder=0)
+        plot([0.0,l3[0]],[0.0,l3[1]],'k-', color='grey', zorder=0)
+        # reference
+        plot([0.0, l4[0]],[0.0, l4[1]],'--', color='grey', zorder=-1)
+        plot([0.0, lo[0]],[0.0, lo[1]],'--', color='grey', zorder=-1)
+        plot([0.0,-l4[0]],[0.0, l4[1]],'--', color='grey', zorder=-1)
+        plot([0.0,-lo[0]],[0.0, lo[1]],'--', color='grey', zorder=-1)
+        plot([-cr*r,cr*r],[0.0,0.0],   '--', color='grey', zorder=-1)
+        # text
+        text(l1[0],l1[1],r'$-\sigma_1,\theta=+30^\circ$', ha='center', fontsize=fsz)
+        text(l2[0],l2[1],r'$-\sigma_3$',                  ha='right',  fontsize=fsz)
+        text(l3[0],l3[1],r'$-\sigma_2$',                  ha='left',   fontsize=fsz)
+        text(lo[0],lo[1],r'$\theta=0^\circ$',             ha='center', fontsize=fsz)
+        text(l4[0],l4[1],r'$\theta=-30^\circ$',           ha='left',   fontsize=fsz)
+        # contour
+        f     = zeros ((np,np))
+        sa    = zeros ((np,np))
+        sb    = zeros ((np,np))
+        sc    = 1.0
+        samin = -1.2*r if samin==None else samin
+        samax =  1.2*r if samax==None else samax
+        sbmin = -1.2*r if sbmin==None else sbmin
+        sbmax =  1.2*r if sbmax==None else sbmax
+        dsa   = (samax-samin)/np
+        dsb   = (sbmax-sbmin)/np
+        for phi in phis:
+            self.fc_phi = phi
+            for k, ty in enumerate(types):
+                clr = GetClr(k) if clrs==None else clrs[k]
+                lst = GetLst(k) if lsts==None else lsts[k]
+                for i in range(np):
+                    for j in range(np):
+                        sa[i,j] = samin + i*dsa
+                        sb[i,j] = sbmin + j*dsb
+                        s123    = oct_calc_s123 (sa[i,j], sb[i,j], sc)
+                        sig     = matrix([[s123[0]],[s123[1]],[s123[2]],[0.0]])
+                        f[i,j]  = self.failure_crit (sig, ty)
+                contour (sa,sb,f, [0.0], colors=clr, linestyles=lst, linewidths=lwd)
+            q = phi_calc_M(phi,'oct')*sc
+            s = '$\phi=' + fmt + '^\circ$'
+            text (0.0, q, s%phi, fontsize=fsz)
+        l, t = [], []
+        for k, ty in enumerate(types):
+            clr = GetClr(k) if clrs==None else clrs[k]
+            lst = GetLst(k) if lsts==None else lsts[k]
+            l.append (plot([0],[0], linestyle=lst, color=clr))
+            t.append (self.failure_crit_names(ty))
+        legend (l,t, bbox_to_anchor=(0,0,1,1), loc=3, ncol=2, mode='expand', borderaxespad=0.,
+                handlelength=3, prop={'size':8})
+        gca().set_xticks([])
+        gca().set_yticks([])
+        gca().set_frame_on(False)
+        axis('equal')
