@@ -1213,10 +1213,10 @@ inline void Structured::GenQPlateHole (double r, double R, double L, int Nx1, in
     blks[3].SetNx(Ny2);  blks[3].SetNy(Ny1);
     blks[4].SetNx(Nx2);  blks[4].SetNy(Ny2);
 
-    blks[0].AddArcCtr (1, 0.0, 0.0, R);
-    blks[0].AddArcCtr (3, 0.0, 0.0, r);
-    blks[1].AddArcCtr (1, 0.0, 0.0, R);
-    blks[1].AddArcCtr (3, 0.0, 0.0, r);
+    blks[0].AddArcCtr(1, 0.0, 0.0, R);  blks[0].AddArcCtr(3, 0.0, 0.0, r);
+    blks[1].AddArcCtr(1, 0.0, 0.0, R);  blks[1].AddArcCtr(3, 0.0, 0.0, r);
+    blks[2].AddArcCtr(3, 0.0, 0.0, R);
+    blks[3].AddArcCtr(3, 0.0, 0.0, R);
 
     NDim = 2;
     Generate (blks,O2);
