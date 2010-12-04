@@ -181,15 +181,14 @@ public:
     ~Structured () { Erase(); }
 
     // Methods
-    void Generate  (Array<Block> const & Blks, bool O2=false);                      ///< Boundary marks are set first for Faces, then Edges, then Vertices (if any)
-    void GenBox    (bool O2=true, int Nx=2,      int Ny=2,      int Nz=2,
-                               double Lx=1.0, double Ly=1.0, double Lz=1.0);        ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
-    void GenQRing  (bool O2=true, int Nx=2, int Ny=2, double r=1.0, double R=2.0,
-                    size_t Nb=2, double Ax=1.0, bool NonLin=false,
-                    char const * WeightsX=NULL);                                    ///< Generate a quarter of a ring
-    void GenQRing  (bool O2, int Nx, int Ny, int Nz, double r, double R, double t); ///< Generate a quarter of a 3D ring (t=thickness)
-    void GenQDisk  (bool O2, int Nx1, int Nx2, int Ny, double r, double R);         ///< Generate a quarter of a disk
-    void ShapeFunc (double r, double s, double t);                                  ///< Calculate shape function. Return results on N
+    void Generate      (Array<Block> const & Blks, bool O2=false);                                                ///< Boundary marks are set first for Faces, then Edges, then Vertices (if any)
+    void GenBox        (bool O2=true, int Nx=2, int Ny=2, int Nz=2, double Lx=1.0, double Ly=1.0, double Lz=1.0); ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
+    void GenQRing      (bool O2=true, int Nx=2, int Ny=2, double r=1.0, double R=2.0,
+                        size_t Nb=2, double Ax=1.0, bool NonLin=false, char const * WeightsX=NULL); ///< Generate a quarter of a ring
+    void GenQRing      (bool O2, int Nx, int Ny, int Nz, double r, double R, double t);             ///< Generate a quarter of a 3D ring (t=thickness)
+    void GenQDisk      (bool O2, int Nx1, int Nx2, int Ny, double r, double R);                     ///< Generate a quarter of a disk
+    void GenQPlateHole (double r, double R, double L, int Nx1, int Nx2, int Ny1, int Ny2, bool O2); ///< Generate a quarter of a square plate with inner hole
+    void ShapeFunc     (double r, double s, double t);                                              ///< Calculate shape function. Return results on N
 
     // Data
     Vec_t N; ///< Shape functions
@@ -1105,6 +1104,119 @@ inline void Structured::GenQDisk (bool O2, int Nx1, int Nx2, int Ny, double r, d
     blks[1].AddArcCtr (3, 0.0, 0.0, r);
     blks[2].AddArcCtr (1, 0.0, 0.0, R);
     blks[2].AddArcCtr (3, 0.0, 0.0, r);
+
+    NDim = 2;
+    Generate (blks,O2);
+}
+
+inline void Structured::GenQPlateHole (double r, double R, double L, int Nx1, int Nx2, int Ny1, int Ny2, bool O2)
+{
+    /*         ____________________________
+     *        |    Ny1   |                 |
+     *        |          |                 |
+     *        |     3    |       4         |Ny2
+     *        |__        |                 |
+     *        |   `--,__ |                 |
+     *        |    1    `,A ______ q_______|
+     *        |__      d/  `,              |
+     *            `--,/      \B,C          |
+     *                `-   0  \    2       |Ny1
+     *   _________   |  \      |           |
+     *  c |          |   |     |           |
+     *   _|____      |   |_Nx1_|____Nx2____|
+     *               | |             p
+     *        |---a--| ||   |  |           |
+     *                 ||   |  |           |
+     *        |---b----||   |  |           |
+     *                  |   |  |           |
+     *        |----r----|   |  |           |
+     *                      |  |           |
+     *        |------m------|  |           |
+     *                         |           |
+     *        |-------R--------|           |
+     *                                     |
+     *        |-------------L--------------|     */
+
+    if (R-r<0.0) throw new Fatal("Mesh::Structured:GenQPlateHole: R=%g must be greater than r=%g",R,r);
+    if (L-R<0.0) throw new Fatal("Mesh::Structured:GenQPlateHole: L=%g must be greater than R=%g",L,R);
+
+    Array<Block> blks(5);
+    double m = r + (R-r)/2.0;
+    double a = r*cos(Util::PI/4.0);
+    double b = r*cos(Util::PI/8.0);
+    double c = r*sin(Util::PI/8.0);
+    double A = R*cos(Util::PI/4.0);
+    double B = R*cos(Util::PI/8.0);
+    double C = R*sin(Util::PI/8.0);
+    double d = m*cos(Util::PI/4.0);
+    double p = R + (L-R)/2.0;
+    double q = A + (L-A)/2.0;
+
+    blks[0].Set (2, -1, 8,
+                 0. , r   , 0.0 , 
+                 0. , R   , 0.0 , 
+                 0. , A   , A   , 
+                 0. , a   , a   , 
+                 0. , m   , 0.0 , 
+                 0. , B   , C   , 
+                 0. , d   , d   , 
+                 0. , b   , c   , 
+                 -10., 0., 0., -14.);
+
+    blks[1].Set (2, -1, 8,
+                 0. , a   , a   , 
+                 0. , A   , A   , 
+                 0. , 0.0 , R   , 
+                 0. , 0.0 , r   , 
+                 0. , d   , d   , 
+                 0. , C   , B   , 
+                 0. , 0.0 , m   , 
+                 0. , c   , b   , 
+                 0., 0., -13., -14.);
+
+    blks[2].Set (2, -1, 8,
+                 0. , R    , 0.0 , 
+                 0. , L    , 0.0 , 
+                 0. , L    , A   , 
+                 0. , A    , A   , 
+                 0. , p    , 0.0 , 
+                 0. , L    , A/2., 
+                 0. , q    , A   , 
+                 0. , B    , C   , 
+                 -10., -11., 0., 0.);
+
+    blks[3].Set (2, -1, 8,
+                 0. , A    , A   , 
+                 0. , A    , L   , 
+                 0. , 0.0  , L   , 
+                 0. , 0.0  , R   , 
+                 0. , A    , q   , 
+                 0. , A/2. , L   , 
+                 0. , 0.0  , p   , 
+                 0. , C    , B   , 
+                 0., -12., -13., 0.);
+
+    blks[4].Set (2, -1, 8,
+                 0. , A    , A   , 
+                 0. , L    , A   , 
+                 0. , L    , L   , 
+                 0. , A    , L   , 
+                 0. , q    , A   , 
+                 0. , L    , q   , 
+                 0. , q    , L   , 
+                 0. , A    , q   , 
+                 0., -11., -12., 0.);
+
+    blks[0].SetNx(Nx1);  blks[0].SetNy(Ny1);
+    blks[1].SetNx(Nx1);  blks[1].SetNy(Ny1);
+    blks[2].SetNx(Nx2);  blks[2].SetNy(Ny1);
+    blks[3].SetNx(Ny2);  blks[3].SetNy(Ny1);
+    blks[4].SetNx(Nx2);  blks[4].SetNy(Ny2);
+
+    blks[0].AddArcCtr (1, 0.0, 0.0, R);
+    blks[0].AddArcCtr (3, 0.0, 0.0, r);
+    blks[1].AddArcCtr (1, 0.0, 0.0, R);
+    blks[1].AddArcCtr (3, 0.0, 0.0, r);
 
     NDim = 2;
     Generate (blks,O2);

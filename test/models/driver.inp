@@ -1,8 +1,4 @@
 matid    = 0
-flwid    = 6
-pcam0    = 100
-pw0      = -1.8
-Sw0      = 1.0
 ninc     = 10
 cdrift   = 1
 ssout    = 1
@@ -11,9 +7,8 @@ refsim   = sim_nod_60.dat
 ndiv     = 1
 o2       = 0
 nip      = 8
-fem      = 1
-dyn      = 1
-hm       = 1
+fem      = 0
+dyn      = 0
 tsw      = 0.02
 dt       = 0.01
 dtout    = 0.02
@@ -26,10 +21,10 @@ rkscheme = RK23
 rkstol   = 1.0
 npath    = 1
 
-#ndat = 3
-#  kcam = 3
-#  lode = 30
-#  dez  = -10
+ndat = 3
+  kcam = 3
+  lode = 30
+  dez  = -10
 
 #ndat = 1
 #  dez = -10
@@ -43,6 +38,3 @@ npath    = 1
 #  lode  = 90
 #  dpcam = 10
 #  dez   = -2
-
-ndat = 1
-  dpw = 100

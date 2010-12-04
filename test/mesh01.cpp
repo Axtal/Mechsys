@@ -94,9 +94,29 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_qdisk2d.mpy> generated\n";
     }
 
+    // 5) mesh01_qplatehole
+    {
+        String extra("\
+from msys_fig import *\n\
+Arc (0., 0., 2.5, 0., pi/2., zorder=10)\n\
+Arc (0., 0., 3.5, 0., pi/2., zorder=10)\n");
+        bool   o2  = false;
+        double r   = 2.5;
+        double R   = 3.5;
+        double L   = 5.0;
+        int    nx1 = 3;
+        int    nx2 = 5;
+        int    ny1 = 2;
+        int    ny2 = 1;
+        Mesh::Structured mesh(2);
+        mesh.GenQPlateHole (r,R,L,nx1,nx2,ny1,ny2,o2);
+        mesh.WriteMPY ("mesh01_qplatehole", /*tags*/true, /*ids*/false, /*shares*/false, extra.CStr());
+        cout << " File <mesh01_qplatehole.mpy> generated\n";
+    }
+
     //////////////////////////////////////// 3D: structured //////////////////////////////////////////////////
     
-    // 5) mesh01_blk_box
+    // 6) mesh01_blk_box
     {
         /*
                           4----------------7
@@ -136,7 +156,7 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_blk_box.vtu> generated\n";
     }
 
-    // 6) mesh01_hex_box
+    // 7) mesh01_hex_box
     {
         Mesh::Structured mesh(/*NDim*/3);
         mesh.GenBox  (/*O2*/true);
@@ -144,7 +164,7 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_hex_box.vtu> generated\n";
     }
 
-    // 7) mesh01_qring3d
+    // 8) mesh01_qring3d
     {
         bool   o2 = true;
         double r  = 2.5;
@@ -161,7 +181,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////// 2D: unstructured ////////////////////////////////////////////////
     
-    // 8) mesh01_tri
+    // 9) mesh01_tri
     {
         /*           -20
               -4@-----------@-3
@@ -202,7 +222,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////// 3D: unstructured ////////////////////////////////////////////////
     
-    // 9) mesh01_1tet
+    // 10) mesh01_1tet
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.Set    (4,4,1,0);
@@ -220,7 +240,7 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_1tet.vtu> generated\n";
     }
 
-    // 10) mesh01_tet_box
+    // 11) mesh01_tet_box
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.GenBox  (/*O2*/true,/*V*/0.1);
@@ -228,7 +248,7 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_tet_box.vtu> generated\n";
     }
 
-    // 11) mesh01_tet_hole
+    // 12) mesh01_tet_hole
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.Set    (16, 12, 1, 1);                      // 16 points, 12 facets, 1 region, 1 hole

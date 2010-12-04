@@ -471,10 +471,9 @@ class Plotter:
             f        = I1**3.0 - kld*I3
         elif fc_ty=='AS':
             p, q, t = sig_calc_pqt (sig, 'cam')
-            Rcs     = (1.0+sphi)/(1.0-sphi)
-            Mcs     = (3.0*Rcs-3.0)/(Rcs+2.0)
-            wcs     = ((Rcs+2.0)/(2.0*Rcs+1.0))**4.0
-            M       = Mcs*(2.0*wcs/(1.0+wcs+(wcs-1.0)*t))**0.25;
+            Mcs     = 6.0*sphi/(3.0-sphi)
+            om      = ((3.0-sphi)/(3.0+sphi))**4.0
+            M       = Mcs*(2.0*om/(1.0+om-(1.0-om)*t))**0.25;
             f       = q/p - M
         else: raise Exception('failure_crit: fc_ty==%s is invalid' % fc_ty)
         return f
@@ -694,7 +693,7 @@ class Plotter:
 
     # Plot failure criteria
     # =====================
-    def plot_fc (self, types=['MC', 'MN'], phis=[30.0], clrs=None, lsts=None, fmt='%g', lwd=1, fsz=6, np=40, r=None, samin=None, samax=None, sbmin=None, sbmax=None):
+    def plot_fc (self, types=['MC', 'MN'], phis=[30.0], clrs=None, lsts=None, fmt='%g', lwd=1, fsz=10, np=40, r=None, samin=None, samax=None, sbmin=None, sbmax=None, positive=False):
         # draw rosette
         r   = 1.*phi_calc_M(max(phis),'oct') if r==None else r
         cf  = 0.2
@@ -715,11 +714,16 @@ class Plotter:
         plot([0.0,-lo[0]],[0.0, lo[1]],'--', color='grey', zorder=-1)
         plot([-cr*r,cr*r],[0.0,0.0],   '--', color='grey', zorder=-1)
         # text
-        text(l1[0],l1[1],r'$-\sigma_1,\theta=+30^\circ$', ha='center', fontsize=fsz)
-        text(l2[0],l2[1],r'$-\sigma_3$',                  ha='right',  fontsize=fsz)
-        text(l3[0],l3[1],r'$-\sigma_2$',                  ha='left',   fontsize=fsz)
-        text(lo[0],lo[1],r'$\theta=0^\circ$',             ha='center', fontsize=fsz)
-        text(l4[0],l4[1],r'$\theta=-30^\circ$',           ha='left',   fontsize=fsz)
+        if positive:
+            text(l1[0],l1[1],r'$\sigma_1,\theta=+30^\circ$', ha='center', fontsize=fsz)
+            text(l2[0],l2[1],r'$\sigma_2$',                  ha='right',  fontsize=fsz)
+            text(l3[0],l3[1],r'$\sigma_3$',                  ha='left',   fontsize=fsz)
+        else:
+            text(l1[0],l1[1],r'$-\sigma_1,\theta=+30^\circ$', ha='center', fontsize=fsz)
+            text(l2[0],l2[1],r'$-\sigma_3$',                  ha='right',  fontsize=fsz)
+            text(l3[0],l3[1],r'$-\sigma_2$',                  ha='left',   fontsize=fsz)
+        text(lo[0],lo[1],r'$\theta=0^\circ$',   ha='center', fontsize=fsz)
+        text(l4[0],l4[1],r'$\theta=-30^\circ$', ha='center', fontsize=fsz)
         # contour
         f     = zeros ((np,np))
         sa    = zeros ((np,np))
@@ -744,9 +748,10 @@ class Plotter:
                         sig     = matrix([[s123[0]],[s123[1]],[s123[2]],[0.0]])
                         f[i,j]  = self.failure_crit (sig, ty)
                 contour (sa,sb,f, [0.0], colors=clr, linestyles=lst, linewidths=lwd)
-            q = phi_calc_M(phi,'oct')*sc
+            sphi = sin(phi*pi/180.0)
+            q = sc * 2.0*sqrt(2.0)*sphi/(3.0+sphi)
             s = '$\phi=' + fmt + '^\circ$'
-            text (0.0, q, s%phi, fontsize=fsz)
+            text (0.0, -q, s%phi, fontsize=fsz, va='top')
         l, t = [], []
         for k, ty in enumerate(types):
             clr = GetClr(k) if clrs==None else clrs[k]

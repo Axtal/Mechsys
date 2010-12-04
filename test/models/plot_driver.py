@@ -2,7 +2,6 @@ import optparse
 from mechsys         import String, Dict, InpFile, ReadMaterial
 from msys_plotter    import *
 from msys_invariants import *
-from msys_readdata   import *
 from msys_fig        import *
 
 # input
@@ -18,25 +17,22 @@ opts, args = op.parse_args()
 inp = InpFile()
 inp.Read (opts.inp)
 
-# default initial values
-inis = Dict()
-inis.Set (-1, {'sx':-inp.pCam0, 'sy':-inp.pCam0, 'sz':-inp.pCam0, 'pw':inp.pw0})
-
 # parse materials file
+inis = Dict()
 prms = Dict()
 name = String()
-ReadMaterial (-1, inp.MatID, opts.mat, name, prms, inis)
+ReadMaterial (-1, inp.matid, opts.mat, name, prms, inis)
 print inp
 print "Material data:"
 print "  name = ", name
 print "  prms : ", prms
 print "  inis : ", inis
 
-if inp.O2:
-    if inp.NDiv==3: out_nods = [48,51,60,68, 0,3,12,15]
+if inp.o2:
+    if inp.ndiv==3: out_nods = [48,51,60,68, 0,3,12,15]
     else:           out_nods = [4,5,6,7, 10,11,14,15]
 else:
-    if inp.NDiv==3: out_nods = [0,3,12,15, 48,51,60,63]
+    if inp.ndiv==3: out_nods = [0,3,12,15, 48,51,60,63]
     else:           out_nods = [0,1,2,3, 4,5,6,7]
 
 # res file
@@ -53,9 +49,9 @@ if opts.tst=='1':
     p.oct_sxyz = True
     p.fsz      = 14
 
-    dat = inp.RefDat.PyStr()
-    sim = inp.RefSim.PyStr()
-    ana = inp.RefAna.PyStr()
+    dat = inp.refdat.PyStr()
+    sim = inp.refsim.PyStr()
+    ana = inp.refana.PyStr()
 
     if not dat=='': p.plot (dat,marker='o',clr='k', label='Dat')
     if not sim=='': p.plot (sim,marker='-',clr='g', label='Sim')

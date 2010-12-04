@@ -299,9 +299,8 @@ int main(int argc, char **argv) try
     if (inp.flwid>=0)
     {
         Dict flw_prms, flw_inis;
-        ReadMaterial (-1, inp.flwid, mat_fname.CStr(), flw_name, flw_prms, flw_inis);
+        ReadMaterial (-1, inp.flwid, mat_fname.CStr(), flw_name, flw_prms, flw_inis, /*withModel*/false);
         if (flw_name!="UnsatFlow") throw new Fatal("Flow model name must be UnsatFlow at the moment");
-        flw_prms(-1).Del("name");
         inis += flw_inis;
         prms += flw_prms;
     }
@@ -353,7 +352,8 @@ int main(int argc, char **argv) try
         // boundary condition functions
         BCF bcf;
         bcf.tsw = inp.tsw;
-        bcf.pw  = (inis(-1).HasKey("pw") ? inis(-1)("pw") : 0.0); // current pw
+        if (inis.HasKey(-1)) bcf.pw = (inis(-1).HasKey("pw") ? inis(-1)("pw") : 0.0); // current pw
+        else                 bcf.pw = 0.0;
 
         // domain and solver
         FEM::Domain dom(mesh, prps, prms, inis, "driver", &out_nods);
