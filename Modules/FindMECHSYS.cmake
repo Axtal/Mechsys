@@ -16,13 +16,13 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-SET(MECHSYS_INCLUDE_SEARCH_PATH
-  $ENV{MECHSYS_ROOT}/mechsys
-  $ENV{HOME}/mechsys)
-
-SET(MECHSYS_MODULES_SEARCH_PATH
-  $ENV{MECHSYS_ROOT}/mechsys
-  $ENV{HOME}/mechsys)
+if(EXISTS $ENV{MECHSYS_ROOT})
+    SET(MECHSYS_INCLUDE_SEARCH_PATH $ENV{MECHSYS_ROOT}/mechsys)
+    SET(MECHSYS_MODULES_SEARCH_PATH $ENV{MECHSYS_ROOT}/mechsys)
+else(EXISTS $ENV{MECHSYS_ROOT})
+    SET(MECHSYS_INCLUDE_SEARCH_PATH $ENV{HOME}/mechsys)
+    SET(MECHSYS_MODULES_SEARCH_PATH $ENV{HOME}/mechsys)
+endif(EXISTS $ENV{MECHSYS_ROOT})
 
 FIND_PATH(MECHSYS_MECHSYS_H mechsys/gui/wxmyapp.h   ${MECHSYS_INCLUDE_SEARCH_PATH})
 FIND_PATH(MECHSYS_MODULES   Modules/FindBLITZ.cmake ${MECHSYS_MODULES_SEARCH_PATH})
