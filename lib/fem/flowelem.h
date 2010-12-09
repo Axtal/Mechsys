@@ -58,7 +58,7 @@ public:
     // Data
     bool                 HasConv; // Has convection ?
     std::map<int,double> Bry2h;   // Map: boundary (edge/face) ID ==> to convection coefficient (h)
-    double               m;       // Coefficient for mass matrix
+    double               rho;     // Coefficient for mass matrix
 };
 
 
@@ -66,7 +66,7 @@ public:
 
 
 inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : Element(NDim,Cell,Mdl,Prp,Ini,Nodes), HasConv(false)
+    : Element(NDim,Cell,Mdl,Prp,Ini,Nodes), HasConv(false), rho(1.0)
 {
     // check
     if (GE==NULL)  throw new Fatal("FlowElem::FlowElem: GE (geometry element) must be defined");
@@ -78,7 +78,7 @@ inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
     else throw new Fatal("FlowElem::FlowElem: For NDim=%d, geometry type (GTy) must be equal to 'd%dd'. GTy=%s is invalid",NDim,NDim,GTypeToStr(GTy).CStr());
 
     // properties
-    m = (Prp.HasKey("m") ? Prp("m") : 0.0);
+    if (Prp.HasKey("rho")) rho = Prp("rho");
 
     // allocate and initialize state at each IP
     for (size_t i=0; i<GE->NIP; ++i)
@@ -240,7 +240,7 @@ inline void FlowElem::CalcM (Mat_t & M) const
         {
             for (size_t k=0; k<GE->NN; ++k)
             {
-                M(j,k) += m*coef*GE->N(j)*GE->N(k);
+                M(j,k) += rho*coef*GE->N(j)*GE->N(k);
             }
         }
     }

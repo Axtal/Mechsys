@@ -51,7 +51,7 @@ class Solver
 public:
     // enum
     enum Scheme_t  { FE_t, ME_t, NR_t };             ///< Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
-    enum TScheme_t { SS11_t };                       ///< Transient time integration scheme: (Single step/O1/1st order)
+    enum TScheme_t { TH_t };                         ///< Transient time integration scheme: Theta
     enum DScheme_t { GN22_t, RK_t };                 ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
     enum Damping_t { None_t, Rayleigh_t, HMCoup_t }; ///< Damping type: none, Rayleigh type (C=alp*M+bet*K), HydroMechCoupling
 
@@ -64,7 +64,7 @@ public:
 
     // Methods
     void Solve          (size_t NInc=1, char const * FileKey=NULL);                      ///< Solve quasi-static problem
-    void TransSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve transient problem
+    void TransSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL, SDPair * Steps=NULL); ///< Solve transient problem
     void DynSolve       (double tf, double dt, double dtOut, char const * FileKey=NULL, SDPair * Steps=NULL); ///< Solve dynamic problem
     void AssembleKA     ();                                                              ///< A = K11
     void AssembleKMA    (double Coef1, double Coef2);                                    ///< A = Coef1*M + Coef2*K
@@ -74,6 +74,7 @@ public:
     void UpdateElements (Vec_t const & dU, bool CalcFint);                               ///< Update elements
     void Initialize     (bool Transient=false);                                          ///< Initialize global matrices and vectors
     void SetScheme      (char const * StrScheme);                                        ///< Set solution scheme: 'FE', 'ME', 'NR'
+    void SetTransScheme (char const * StrScheme);                                        ///< Set transient scheme: 'TH'
     void SetIncsW       (size_t NInc, bool NonLinWei=false);                             ///< Set weights for quasi-static problem (If Weights.Size()==0: generate weights)
     bool ResidOK        () const;                                                        ///< Check if the residual is OK
 
@@ -113,7 +114,7 @@ public:
     bool          CorR;     ///< Correct residual ?
     size_t        MaxIt;    ///< Max iterations (for Newton-Rhapson)
     TScheme_t     TScheme;  ///< Transient scheme
-    double        Theta;    ///< Transient scheme constant
+    double        TransTh;  ///< Transient scheme constant (theta)
     DScheme_t     DScheme;  ///< Dynamic scheme
     Damping_t     DampTy;   ///< Damping type
     double        DampAm;   ///< Rayleigh damping Am coefficient (C = Am*M + Ak*K)
@@ -155,6 +156,7 @@ private:
     void   _FE_update     (double tf);                 ///< (Forward-Euler)  Update Time and elements to tf
     void   _ME_update     (double tf);                 ///< (Modified-Euler) Update Time and elements to tf
     void   _NR_update     (double tf);                 ///< (Newton-Rhapson) Update Time and elements to tf
+    void   _TH_update     (double tf, double dt);      ///< (theta) Transient: update Time and elements to tf
     void   _GN22_update   (double tf, double dt);      ///< (Generalized-Newmark) Update Time and elements to tf
     void   _time_print    (char const * Comment=NULL); ///< Print timestep data
     void   _VUIV_to_Y     (double Y[]);
@@ -192,8 +194,8 @@ inline Solver::Solver (Domain & TheDom, pOutFun TheOutFun, void * TheOutDat, pOu
       TolR     (1.0e-7),
       CorR     (true),
       MaxIt    (20),
-      TScheme  (SS11_t),
-      Theta    (2./3.),
+      TScheme  (TH_t),
+      TransTh  (1./2.),
       DScheme  (GN22_t),
       DampTy   (None_t),
       DampAm   (0.005),
@@ -267,8 +269,87 @@ inline void Solver::Solve (size_t NInc, char const * FileKey)
     }
 }
 
-inline void Solver::TransSolve (double tf, double dt, double dtOut, char const * FileKey)
+inline void Solver::TransSolve (double tf, double dt, double DtOut, char const * FileKey, SDPair * Steps)
 {
+    // info
+    Util::Stopwatch stopwatch(/*activated*/WithInfo);
+
+    // initialize global matrices and vectors
+    Initialize (/*Transient*/true);
+
+    // output initial state
+    if (WithInfo)
+    {
+        if (TScheme==TH_t) _time_print ("Transient ------ TH(theta)");
+    }
+    if (IdxOut==0)
+    {
+        Dom.OutResults (IdxOut, Dom.Time, FileKey);
+        if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
+        if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
+    }
+
+    // time for output
+    double dtOut = DtOut;
+    double tout  = Dom.Time + dtOut;
+
+    // nonlinear timesteps
+    int    nl_nsml = 7;     // number fo small timestep __sets__
+    int    nl_sch  = 0;     // scheme for larger timesteps
+    double nl_ll   = 100.0; // denominator
+    double nl_m    = 2.0;   // multiplier for larger timesteps in sch==1
+    int    nl_n    = 10;    // number of timesteps per __set__
+    int    nl_i    = 0;     // timestep set index
+    int    nl_k    = 0;     // current accumulated timesteps
+    int    nl_K    = 0;     // current total number of timesteps
+    bool   nl_stp  = false; // use nonlinear timesteps ?
+    if (Steps!=NULL)
+    {
+        nl_nsml = static_cast<int>((*Steps)("nsml"));
+        nl_n    = static_cast<int>((*Steps)("n"));
+        if (Steps->HasKey("sch")) nl_sch = static_cast<int>((*Steps)("sch"));
+        if (Steps->HasKey("ll" )) nl_ll  = (*Steps)("ll");
+        if (Steps->HasKey("m"  )) nl_m   = (*Steps)("m");
+        nl_stp  = true;
+        dt      = Timestep (nl_i, nl_nsml, nl_ll, nl_sch, nl_m);
+        dtOut   = (dtOut<dt ? dt : dtOut);
+    }
+
+    // solve
+    if (TScheme==TH_t)
+    {
+        while (Dom.Time<tf)
+        {
+            // update U, F, Time and elements to tout
+            _TH_update (tout,dt);
+
+            // update nodes to tout
+            UpdateNodes ();
+
+            // output
+            IdxOut++;
+            if (WithInfo) _time_print ();
+            Dom.OutResults (IdxOut, Dom.Time, FileKey);
+            if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
+
+            // next tout
+            tout = Dom.Time + dtOut;
+
+            // next timestep set
+            if (nl_stp)
+            {
+                nl_K++;
+                nl_k++;
+                if (nl_k==nl_n)
+                {
+                    nl_k = 0;
+                    nl_i++;
+                    dt    = Timestep (nl_i, nl_nsml, nl_ll, nl_sch, nl_m);
+                    dtOut = (dtOut<dt ? dt : dtOut);
+                }
+            }
+        }
+    }
 }
 
 inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * FileKey, SDPair * Steps)
@@ -865,6 +946,12 @@ inline void Solver::SetScheme (char const * StrScheme)
     else throw new Fatal("Solver::SetScheme: Key '%s' is invalid. The following keys are availabe: 'FE', 'ME', 'NR'",StrScheme);
 }
 
+inline void Solver::SetTransScheme (char const * StrScheme)
+{
+    if (strcmp(StrScheme,"TH")==0) TScheme = TH_t;
+    else throw new Fatal("Solver::SetTransScheme: Key '%s' is invalid. The following keys are availabe: 'TH'",StrScheme);
+}
+
 inline void Solver::SetIncsW (size_t NInc, bool NonLinWei)
 {
     IncsW.Resize (NInc);
@@ -1171,6 +1258,117 @@ inline void Solver::_NR_update (double tf)
         // residual
         _cal_resid ();
         _cor_resid (dU, dF);
+
+        // debug
+        if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
+    }
+}
+
+inline void Solver::_TH_update (double tf, double Dt)
+{
+    // timestep
+    double dt = (Dom.Time+Dt>tf ? tf-Dom.Time : Dt);
+
+    while (Dom.Time<tf)
+    {
+        // set prescribed F
+        F = dt*F0;
+        double tb = Dom.Time + dt;
+        for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
+        {
+            Node * const nod = Dom.NodsWithPF[i];
+            for (size_t j=0; j<nod->NPF(); ++j)
+            {
+                int eq = nod->EqPF(j);
+                if (!pU[eq])
+                    F(eq) = dt*( F0(eq) + TransTh*nod->PF(j,tb) + (1.0-TransTh)*nod->PF(j,Dom.Time) );
+            }
+        }
+        //for (size_t i=0; i<Dom.ActEles.Size(); ++i)
+        //{
+            //Dom.ActEles[i]->AddToF (Dom.Time+dt,     TransTh,  F);
+            //Dom.ActEles[i]->AddToF (Dom.Time,   (1.0-TransTh), F);
+        //}
+        double normF = Norm(F);
+
+        // iterations
+        for (It=0; It<MaxIt; ++It)
+        {
+            // residual
+            R = F - F_int;
+            for (size_t i=0; i<pEQ.Size(); ++i)
+            {
+                F(pEQ[i]) = 0.0; // F2 = 0
+                R(pEQ[i]) = 0.0; // R2 = 0   clear residual corresponding to supports
+            }
+
+            // assemble Amat
+            AssembleKMA (1.0, TransTh*dt); // A = M + th*dt*K
+
+            // solve for dU
+            Sparse::SubMult (dt, K11, U, R);   // R -= dt*K11*U
+            UMFPACK::Solve  (    A11, R, dU);  // dU = inv(A11)*R
+
+            // set prescribed dU
+            for (size_t i=0; i<Dom.NodsWithPU.Size(); ++i)
+            {
+                Node * const nod = Dom.NodsWithPU[i];
+                for (size_t j=0; j<nod->NPU(); ++j)
+                {
+                    int eq = nod->EqPU(j);
+                    dU(eq) = nod->PU(j,tb) - U(eq);
+                }
+            }
+
+#ifdef DO_DEBUG
+            double normdU = Norm(dU);
+            if (Util::IsNan(normdU)) throw new Fatal("Solver::_TH_update: normdU is NaN");
+            printf("Norm(dU) = %g     ",normdU);
+#endif
+
+            // update elements
+            UpdateElements (dU, /*CalcFint*/true);
+
+#ifdef DO_DEBUG
+            double normFint = Norm(F_int);
+            if (Util::IsNan(normFint)) throw new Fatal("Solver::_TH_update: normFint is NaN");
+#endif
+
+            // update state
+            U += dU;
+            //V  = dU/dt;
+
+            // set prescribed U
+            for (size_t i=0; i<Dom.NodsWithPU.Size(); ++i)
+            {
+                Node * const nod = Dom.NodsWithPU[i];
+                for (size_t j=0; j<nod->NPU(); ++j)
+                {
+                    int eq = nod->EqPU(j);
+                    U(eq) = nod->PU(j, tb);
+                    V(eq) = nod->PV(j, tb);
+                }
+            }
+
+            // calculate F2
+            Sparse::AddMult (M21, V, F); // F2 += M21*V1
+            Sparse::AddMult (K21, U, F); // F2 += K21*U1
+            Sparse::AddMult (K22, U, F); // F2 += K22*U2
+
+            // check convergence
+            NormR    = Norm(R);
+            MaxNormF = Util::Max (normF, Norm(F_int));
+#ifdef DO_DEBUG
+            if (Util::IsNan(NormR)) throw new Fatal("Solver::_TH_update: NormR is NaN");
+            printf("NormR = %g\n",NormR);
+#endif
+            if (ResidOK()) break;
+        }
+        if (It>=MaxIt) throw new Fatal("Solver::_TH_update: Transient theta method (TH) did not converge after %d iterations (TolR=%g). NormR = %g",It,TolR,NormR);
+
+        // next time step
+        dt = (Dom.Time+dt>tf ? tf-Dom.Time : dt);
+        Dom.Time += dt;
 
         // debug
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);

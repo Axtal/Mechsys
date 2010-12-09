@@ -25,6 +25,7 @@
 #include <mechsys/fem/element.h>
 #include <mechsys/fem/rod.h>
 #include <mechsys/fem/beam.h>
+#include <mechsys/fem/flowelem.h>
 #include <mechsys/fem/equilibelem.h>
 #include <mechsys/fem/hydromechelem.h>
 #include <mechsys/fem/usigelem.h>
@@ -41,6 +42,7 @@
 #include <mechsys/fem/domain.h>
 #include <mechsys/fem/solver.h>
 #include <mechsys/models/model.h>
+#include <mechsys/models/linflow.h>
 #include <mechsys/models/linelastic.h>
 #include <mechsys/models/nlelastic.h>
 #include <mechsys/models/elastoplastic.h>

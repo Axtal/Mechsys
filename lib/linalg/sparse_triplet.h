@@ -123,6 +123,14 @@ void SubMult (Sparse::Triplet<Value_T,Index_T> const & M, Vec_t const & X, Vec_t
         Y(M.Ai(k)) -= M.Ax(k) * X(M.Aj(k)); // Y -= M*X
 }
 
+/** Subtract multiplication: Y -= s*M*X */
+template<typename Value_T, typename Index_T>
+void SubMult (double s, Sparse::Triplet<Value_T,Index_T> const & M, Vec_t const & X, Vec_t & Y)
+{
+    for (int k=0; k<M.Top(); ++k)
+        Y(M.Ai(k)) -= s * M.Ax(k) * X(M.Aj(k)); // Y -= M*X
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
