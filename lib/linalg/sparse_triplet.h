@@ -303,11 +303,6 @@ inline Value_T const * Triplet<Value_T,Index_T>::GetAxPtr() const
 template<typename Value_T, typename Index_T>
 inline void Triplet<Value_T,Index_T>::WriteSMAT (char const * FileKey, double Tol) const
 {
-    // open file
-    String fn(FileKey);
-    fn.append(".smat");
-    std::ofstream of(fn.CStr(), std::ios::out);
-
     // find the number of really non-zero values
     size_t nz = 0;
     for (int k=0; k<Top(); ++k)
@@ -316,14 +311,18 @@ inline void Triplet<Value_T,Index_T>::WriteSMAT (char const * FileKey, double To
     }
 
     // output
-    of << Rows() << "  " << Cols() << "  " << nz << std::endl;
+    std::ostringstream oss;
+    oss << Rows() << "  " << Cols() << "  " << nz << std::endl;
     for (int k=0; k<Top(); ++k)
     {
         if (fabs(Ax(k))>Tol)
-           of << Ai(k) << "  " << Aj(k) << "  " << Ax(k) << std::endl;
+           oss << Ai(k) << "  " << Aj(k) << "  " << Ax(k) << std::endl;
     }
 
-    // close file
+    // write to file
+    String fn(FileKey);  fn.append(".smat");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
     of.close();
 }
 

@@ -22,6 +22,7 @@
 
 // Std Lib
 #include <iostream>
+#include <sstream>   // for istringstream, ostringstream
 #include <cstring>   // for strcmp
 #include <cmath>     // for sqrt, pow
 #include <algorithm> // for min, max
@@ -146,6 +147,35 @@ inline String PrintMatrix (Mat_t const & M, char const * Fmt="%13g", Array<long>
         }
     }
     return lin;
+}
+
+/** Write SMatrix for vismatrix. */
+inline void WriteSMAT (Mat_t const & M, char const * FileKey, double Tol=1.0e-14)
+{
+    // find the number of really non-zero values
+    size_t m  = num_rows(M);
+    size_t n  = num_cols(M);
+    size_t nz = 0;
+    for (size_t i=0; i<m; ++i)
+    for (size_t j=0; j<n; ++j)
+    {
+        if (fabs(M(i,j)>Tol)) nz++;
+    }
+
+    // output
+    std::ostringstream oss;
+    oss << m << "  " << n << "  " << nz << std::endl;
+    for (size_t i=0; i<m; ++i)
+    for (size_t j=0; j<n; ++j)
+    {
+        if (fabs(M(i,j)>Tol)) oss << i << "  " << j << "  " << M(i,j) << std::endl;
+    }
+
+    // write to file
+    String fn(FileKey);  fn.append(".smat");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
 }
 
 /** Compare two vectors. */
