@@ -53,12 +53,15 @@ public:
     void StateAtIP   (SDPair & KeysVals, int IdxIP)                      const; ///< State at IP
 
     // Internal methods
-    void CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, double & detJ, double & Coef) const; ///< Strain-displacement matrix. Coef: coefficient used during integration
+    void Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & N, double & detJ, double & Coef) const; ///< Strain-displacement matrix. Coef: coefficient used during integration
 
     // Data
     bool                 HasConv; // Has convection ?
+    bool                 HasPer;  // Hsa convection along perimeter ? (line elements only)
     std::map<int,double> Bry2h;   // Map: boundary (edge/face) ID ==> to convection coefficient (h)
     double               rho;     // Coefficient for mass matrix
+    double               hPer;    // h*Perimeter (if HasPer==true) (line elements only)
+    double               A;       // cross-sectional area (line elements only)
 };
 
 
@@ -66,7 +69,7 @@ public:
 
 
 inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : Element(NDim,Cell,Mdl,Prp,Ini,Nodes), HasConv(false), rho(1.0)
+    : Element(NDim,Cell,Mdl,Prp,Ini,Nodes), HasConv(false), HasPer(false), rho(1.0), hPer(0.0), A(1.0)
 {
     // check
     if (GE==NULL)  throw new Fatal("FlowElem::FlowElem: GE (geometry element) must be defined");
@@ -79,6 +82,7 @@ inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
 
     // properties
     if (Prp.HasKey("rho")) rho = Prp("rho");
+    if (Prp.HasKey("A"))   A   = Prp("A");
 
     // allocate and initialize state at each IP
     for (size_t i=0; i<GE->NIP; ++i)
@@ -94,6 +98,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs 
     bool has_H    = BCs.HasKey("H");    // potential
     bool has_flux = BCs.HasKey("flux"); // flux
     bool has_conv = BCs.HasKey("conv"); // convection
+    bool has_per  = BCs.HasKey("per");  // perimeter (length) in which convection is applied (line element only)
 
     if (has_s || has_flux || has_conv)
     {
@@ -138,8 +143,28 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs 
             // data
             double h    = BCs("h");    // convection coefficient
             double Tinf = BCs("Tinf"); // temperature of surrounding environment
-            HasConv     = true;        // has convection
-            Bry2h[IdxEdgeOrFace] = h;  // Map: bry => h
+
+            // convection along perimeter
+            if (has_per)
+            {
+                hPer   = h * BCs("per");
+                HasPer = true;
+                if (GE->NN==2)
+                {
+                    Vec3_t dl(Con[1]->Vert.C - Con[0]->Vert.C);
+                    double l = norm(dl);
+                    Con[0]->AddToPF("Q", hPer*l*Tinf/2.0, BCF);
+                    Con[1]->AddToPF("Q", hPer*l*Tinf/2.0, BCF);
+                }
+                else throw new Fatal("FlowElem::SetBCs: per (perimiter) must be used for convection in Line elments only");
+            }
+
+            // convection at boundaries
+            else
+            {
+                Bry2h[IdxEdgeOrFace] = h;    // Map: bry => h
+                HasConv              = true; // has convection
+            }
 
             // add to pF
             double detJ, coef;
@@ -184,7 +209,7 @@ inline void FlowElem::GetLoc (Array<size_t> & Loc) const
 inline void FlowElem::CalcK (Mat_t & K) const
 {
     double detJ, coef;
-    Mat_t C, D, B;
+    Mat_t C, D, B, N;
     int nrows = Con.Size(); // number of rows in local K matrix
     K.change_dim (nrows,nrows);
     set_to_zero  (K);
@@ -192,10 +217,20 @@ inline void FlowElem::CalcK (Mat_t & K) const
     for (size_t i=0; i<GE->NIP; ++i)
     {
         Mdl->Stiffness (Sta[i], D);
-        CalcB (C, GE->IPs[i], B, detJ, coef);
+        Interp (C, GE->IPs[i], B, N, detJ, coef);
         Mat_t BtDB(trans(B)*D*B);
-        K += coef * BtDB;
+        K += (A*coef) * BtDB;
+
+        // convection along perimeter (line elements)
+        if (HasPer)
+        {
+            CalcShape (C, GE->IPs[i], detJ, coef);
+            Mat_t NtN(trans(N)*N);
+            K += (hPer*coef) * NtN;
+        }
     }
+
+    // convection at boundaries
     if (HasConv)
     {
         for (std::map<int,double>::const_iterator p=Bry2h.begin(); p!=Bry2h.end(); ++p)
@@ -206,7 +241,6 @@ inline void FlowElem::CalcK (Mat_t & K) const
             // add to K
             Mat_t FC;
             FCoordMatrix (idx_bry, FC);
-            //Mat_t Kh(nrows,nrows);  set_to_zero(Kh);
             for (size_t i=0; i<GE->NFIP; ++i)
             {
                 CalcFaceShape (FC, GE->FIPs[i], detJ, coef);
@@ -221,7 +255,6 @@ inline void FlowElem::CalcK (Mat_t & K) const
                 }
             }
         }
-        
     }
 }
 
@@ -240,15 +273,16 @@ inline void FlowElem::CalcM (Mat_t & M) const
         {
             for (size_t k=0; k<GE->NN; ++k)
             {
-                M(j,k) += rho*coef*GE->N(j)*GE->N(k);
+                M(j,k) += (A*rho*coef)*GE->N(j)*GE->N(k);
             }
         }
     }
 }
 
-inline void FlowElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, double & detJ, double & Coef) const
+inline void FlowElem::Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & N, double & detJ, double & Coef) const
 {
     // deriv of shape func w.r.t natural coordinates
+    GE->Shape  (IP.r, IP.s, IP.t);
     GE->Derivs (IP.r, IP.s, IP.t);
 
     // Jacobian and its determinant
@@ -266,6 +300,10 @@ inline void FlowElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, 
     int nrows = Con.Size(); // number of rows in local K matrix
     B.change_dim (NDim,nrows);
     B = Ji * GE->dNdR; // B = dNdX = Inv(J) * dNdR
+
+    // N matrix
+    N.change_dim (1,nrows);
+    for (size_t j=0; j<GE->NN; ++j) N(0,j) = GE->N(j);
 }
 
 inline void FlowElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
@@ -282,14 +320,14 @@ inline void FlowElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     // update state at each IP
     FlowUpdate fu(Mdl);
     double detJ, coef;
-    Mat_t  C, B;
+    Mat_t  C, B, N;
     Vec_t  dFe(nrows), dvel(NDim), dgra(NDim);
     set_to_zero (dFe);
     CoordMatrix (C);
     for (size_t i=0; i<GE->NIP; ++i)
     {
         // B matrix
-        CalcB (C, GE->IPs[i], B, detJ, coef);
+        Interp (C, GE->IPs[i], B, N, detJ, coef);
 
         // velocity and gradient increments
         dgra = B * dUe;
@@ -297,7 +335,14 @@ inline void FlowElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
         // element nodal forces
         Vec_t Btdvel(trans(B)*dvel);
-        dFe -= coef * (Btdvel); // '-=' because dvel is -k*dgra
+        dFe -= (A*coef) * (Btdvel); // '-=' because dvel is -k*dgra
+
+        // convection along perimeter (line elements)
+        if (HasPer)
+        {
+            Mat_t NtN(trans(N)*N);
+            dFe += (hPer*coef) * NtN * dUe;
+        }
     }
 
     // add contribution to dFe due to convection term

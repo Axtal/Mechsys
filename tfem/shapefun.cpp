@@ -54,8 +54,8 @@ double CalcShape (double x, void * prms)
 
 int main(int argc, char **argv) try
 {
-    Array<String> names(5);
-    names = "Tri3", "Tri6", "Tri15", "Quad4", "Quad8";
+    Array<String> names(6);
+    names = "Lin2", "Tri3", "Tri6", "Tri15", "Quad4", "Quad8";
 
     bool has_error = false;
     for (size_t iname=0; iname<names.Size(); ++iname)
@@ -67,7 +67,15 @@ int main(int argc, char **argv) try
 
         // natural coordinates of nodes
         size_t ndim = 2;
-        if (names[iname]=="Tri3")
+        if (names[iname]=="Lin2")
+        {
+            p.R.Resize (2);
+            p.S.Resize (2);
+            //       0    1
+            p.R = -1.0, 1.0;
+            p.S =  0.0, 0.0;
+        }
+        else if (names[iname]=="Tri3")
         {
             p.R.Resize (3);
             p.S.Resize (3);

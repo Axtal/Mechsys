@@ -159,7 +159,7 @@ inline void WriteSMAT (Mat_t const & M, char const * FileKey, double Tol=1.0e-14
     for (size_t i=0; i<m; ++i)
     for (size_t j=0; j<n; ++j)
     {
-        if (fabs(M(i,j)>Tol)) nz++;
+        if (fabs(M(i,j))>Tol) nz++;
     }
 
     // output
@@ -168,7 +168,7 @@ inline void WriteSMAT (Mat_t const & M, char const * FileKey, double Tol=1.0e-14
     for (size_t i=0; i<m; ++i)
     for (size_t j=0; j<n; ++j)
     {
-        if (fabs(M(i,j)>Tol)) oss << i << "  " << j << "  " << M(i,j) << std::endl;
+        if (fabs(M(i,j))>Tol) oss << i << "  " << j << "  " << M(i,j) << std::endl;
     }
 
     // write to file

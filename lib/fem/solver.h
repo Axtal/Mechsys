@@ -163,6 +163,7 @@ private:
     void   _Y_to_VUIV     (double const Y[]);
     int    _RK_func       (double t, double const Y[], double dYdt[]);
     void   _RK_update     (double tf, double dt);      ///< Runge-Kutta update
+    void   _debug_print_matrices (bool Stop=true);     ///< Debug method
 };
 
 
@@ -1028,7 +1029,9 @@ inline void Solver::_cal_resid ()
     R = F - F_int;
 
     //printf("\n######################################   Before   ####################################\n");
-    //_wrn_resid ();
+#ifdef DO_DEBUG
+    _wrn_resid ();
+#endif
     
     // number of the first equation corresponding to Lagrange multipliers
     int eqlag = NEq - NLag;
@@ -1271,9 +1274,9 @@ inline void Solver::_TH_update (double tf, double Dt)
 
     while (Dom.Time<tf)
     {
-        // set prescribed F
-        F = dt*F0;
-        double tb = Dom.Time + dt;
+        // calculate W1 and F1
+        set_to_zero (W);
+        double t1 = Dom.Time + dt;
         for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
         {
             Node * const nod = Dom.NodsWithPF[i];
@@ -1281,90 +1284,67 @@ inline void Solver::_TH_update (double tf, double Dt)
             {
                 int eq = nod->EqPF(j);
                 if (!pU[eq])
-                    F(eq) = dt*( F0(eq) + TransTh*nod->PF(j,tb) + (1.0-TransTh)*nod->PF(j,Dom.Time) );
+                {
+                    W(eq) = (F0(eq) + nod->PF(j,t1)*TransTh + F(eq)*(1.0-TransTh)) * dt;
+                }
             }
         }
-        //for (size_t i=0; i<Dom.ActEles.Size(); ++i)
-        //{
-            //Dom.ActEles[i]->AddToF (Dom.Time+dt,     TransTh,  F);
-            //Dom.ActEles[i]->AddToF (Dom.Time,   (1.0-TransTh), F);
-        //}
-        double normF = Norm(F);
 
-        // iterations
-        for (It=0; It<MaxIt; ++It)
+        // set W2 with prescribed DeltaU = U(n+1) - U(n)
+        for (size_t i=0; i<Dom.NodsWithPU.Size(); ++i)
         {
-            // residual
-            R = F - F_int;
-            for (size_t i=0; i<pEQ.Size(); ++i)
+            Node * const nod = Dom.NodsWithPU[i];
+            for (size_t j=0; j<nod->NPU(); ++j)
             {
-                F(pEQ[i]) = 0.0; // F2 = 0
-                R(pEQ[i]) = 0.0; // R2 = 0   clear residual corresponding to supports
+                int eq = nod->EqPU(j);
+                W(eq) = nod->PU(j, t1) - U(eq);
             }
-
-            // assemble Amat
-            AssembleKMA (1.0, TransTh*dt); // A = M + th*dt*K
-
-            // solve for dU
-            Sparse::SubMult (dt, K11, U, R);   // R -= dt*K11*U
-            UMFPACK::Solve  (    A11, R, dU);  // dU = inv(A11)*R
-
-            // set prescribed dU
-            for (size_t i=0; i<Dom.NodsWithPU.Size(); ++i)
-            {
-                Node * const nod = Dom.NodsWithPU[i];
-                for (size_t j=0; j<nod->NPU(); ++j)
-                {
-                    int eq = nod->EqPU(j);
-                    dU(eq) = nod->PU(j,tb) - U(eq);
-                }
-            }
-
-#ifdef DO_DEBUG
-            double normdU = Norm(dU);
-            if (Util::IsNan(normdU)) throw new Fatal("Solver::_TH_update: normdU is NaN");
-            printf("Norm(dU) = %g     ",normdU);
-#endif
-
-            // update elements
-            UpdateElements (dU, /*CalcFint*/true);
-
-#ifdef DO_DEBUG
-            double normFint = Norm(F_int);
-            if (Util::IsNan(normFint)) throw new Fatal("Solver::_TH_update: normFint is NaN");
-#endif
-
-            // update state
-            U += dU;
-            //V  = dU/dt;
-
-            // set prescribed U
-            for (size_t i=0; i<Dom.NodsWithPU.Size(); ++i)
-            {
-                Node * const nod = Dom.NodsWithPU[i];
-                for (size_t j=0; j<nod->NPU(); ++j)
-                {
-                    int eq = nod->EqPU(j);
-                    U(eq) = nod->PU(j, tb);
-                    V(eq) = nod->PV(j, tb);
-                }
-            }
-
-            // calculate F2
-            Sparse::AddMult (M21, V, F); // F2 += M21*V1
-            Sparse::AddMult (K21, U, F); // F2 += K21*U1
-            Sparse::AddMult (K22, U, F); // F2 += K22*U2
-
-            // check convergence
-            NormR    = Norm(R);
-            MaxNormF = Util::Max (normF, Norm(F_int));
-#ifdef DO_DEBUG
-            if (Util::IsNan(NormR)) throw new Fatal("Solver::_TH_update: NormR is NaN");
-            printf("NormR = %g\n",NormR);
-#endif
-            if (ResidOK()) break;
         }
-        if (It>=MaxIt) throw new Fatal("Solver::_TH_update: Transient theta method (TH) did not converge after %d iterations (TolR=%g). NormR = %g",It,TolR,NormR);
+
+        // solve
+        double c1 = dt*TransTh;
+        AssembleKMA     (1.0, c1);         // A11 = M + dt*th*K
+        Sparse::SubMult (dt, K11, U, W);   // W1 -=    dt*K11*U1(n)
+        Sparse::SubMult (dt, K12, U, W);   // W1 -=    dt*K12*U2(n)
+        Sparse::SubMult (    M12, W, W);   // W1 -=       M12*W2
+        Sparse::SubMult (c1, K12, W, W);   // W1 -= dt*th*K12*W2
+        UMFPACK::Solve  (A11, W, dU);      // dU  = inv(A11)*W
+        UpdateElements  (dU, /*CalcFint*/true);
+
+        U += dU;
+        V  = dU/dt;
+
+        Sparse::AddMult (M21, V, F); // F2 += M21*V1
+        Sparse::AddMult (M22, V, F); // F2 += M22*V2
+        Sparse::AddMult (K21, U, F); // F2 += K21*U1
+        Sparse::AddMult (K22, U, F); // F2 += K22*U2
+        std::cout << "F      = " << PrintVector(F);
+
+        Sparse::SubMult (M11, V, F);
+        Sparse::SubMult (M12, V, F);
+        Sparse::SubMult (M21, V, F);
+        Sparse::SubMult (M22, V, F);
+
+        set_to_zero(R);
+        Sparse::AddMult (K11, dU, R);
+        Sparse::AddMult (K12, dU, R);
+        Sparse::AddMult (K21, dU, R);
+        Sparse::AddMult (K22, dU, R);
+
+#ifdef DO_DEBUG
+        double normdU   = Norm(dU);
+        double normFint = Norm(F_int);
+        if (Util::IsNan(normdU))   throw new Fatal("Solver::_TH_update: normdU is NaN");
+        if (Util::IsNan(normFint)) throw new Fatal("Solver::_TH_update: normFint is NaN");
+        printf("normdU = %g,  normFint = %g\n", normdU, normFint);
+        std::cout << "W      = " << PrintVector(W);
+        std::cout << "U      = " << PrintVector(U);
+        std::cout << "dU     = " << PrintVector(dU);
+        std::cout << "F      = " << PrintVector(F);
+        std::cout << "R      = " << PrintVector(R);
+        std::cout << "F_int  = " << PrintVector(F_int);
+        _debug_print_matrices ();
+#endif
 
         // next time step
         dt = (Dom.Time+dt>tf ? tf-Dom.Time : dt);
@@ -1586,28 +1566,6 @@ inline int Solver::_RK_func (double t, double const Y[], double dYdt[])
     for (size_t i=0; i<pEQ.Size(); ++i) F(pEQ[i]) = A(pEQ[i]); // F2 = A2
     UMFPACK::Solve (A11, F, A);                                // A = inv(M11)*F
 
-    /*
-    Sparse::Matrix<double,int> AA11(A11);
-    Sparse::Matrix<double,int> AA(M11);
-    Sparse::Matrix<double,int> Ab(M12);
-    Sparse::Matrix<double,int> Ac(M21);
-    Sparse::Matrix<double,int> Ad(M22);
-    Mat_t AAA, AB, AC, AD, aa11;
-    AA.GetDense(AAA);
-    Ab.GetDense(AB);
-    Ac.GetDense(AC);
-    Ad.GetDense(AD);
-    AA11.GetDense(aa11);
-    Mat_t final(AAA+AB+AC+AD);
-    A11.WriteSMAT("problem");
-    //std::cout << "F   =\n" << PrintVector(F);
-    std::cout << "final =\n" << PrintMatrix(final,"%10g",NULL,1.0e-15,false) << std::endl;
-    std::cout << "A11 =\n" << PrintMatrix(aa11,"%10g",NULL,1.0e-15,false) << std::endl;
-    std::cout << "det(A11) = " << UMFPACK::Det(A11) << std::endl;
-    std::cout << "det(final) = " << Det(final) << std::endl;
-    throw new Fatal("stop");
-    */
-
     // set dYdt
     for (size_t i=0; i<NEq; ++i)
     {
@@ -1630,6 +1588,40 @@ inline int Solver::_RK_func (double t, double const Y[], double dYdt[])
 
     return GSL_SUCCESS;
 }
+
+inline void Solver::_debug_print_matrices (bool Stop)
+{
+    Sparse::Matrix<double,int> MM11(M11), MM12(M12), MM21(M21), MM22(M22);
+    Sparse::Matrix<double,int> KK11(K11), KK12(K12), KK21(K21), KK22(K22);
+    Mat_t mm11, mm12, mm21, mm22, mm;
+    Mat_t kk11, kk12, kk21, kk22, kk;
+    MM11.GetDense(mm11); MM12.GetDense(mm12); MM21.GetDense(mm21); MM22.GetDense(mm22);
+    KK11.GetDense(kk11); KK12.GetDense(kk12); KK21.GetDense(kk21); KK22.GetDense(kk22);
+    mm = mm11 + mm12 + mm21 + mm22;
+    kk = kk11 + kk12 + kk21 + kk22;
+    A11.WriteSMAT("A11");
+    WriteSMAT    (mm,"M");
+    WriteSMAT    (kk,"K");
+    std::cout << std::endl << std::endl;
+    printf("det(A11) = %g\n", UMFPACK::Det(A11));
+    printf("det(M)   = %g\n", Det(mm));
+    printf("det(K)   = %g\n", Det(kk));
+    if (DampTy!=None_t)
+    {
+        Sparse::Matrix<double,int> CC11(C11), CC12(C12), CC21(C21), CC22(C22);
+        Mat_t cc11, cc12, cc21, cc22, cc;
+        CC11.GetDense(cc11); CC12.GetDense(cc12); CC21.GetDense(cc21); CC22.GetDense(cc22);
+        cc = cc11 + cc12 + cc21 + cc22;
+        printf("det(C)   = %g\n", Det(cc));
+        WriteSMAT(cc,"C");  printf("Matrix <%sC.smat%s> written\n",TERM_CLR_BLUE_H,TERM_RST);
+    }
+    printf("Matrix <%sA11.smat%s> written\n",TERM_CLR_BLUE_H,TERM_RST);
+    printf("Matrix <%sM.smat%s> written\n",TERM_CLR_BLUE_H,TERM_RST);
+    printf("Matrix <%sK.smat%s> written\n",TERM_CLR_BLUE_H,TERM_RST);
+    std::cout << std::endl;
+    if (Stop) throw new Fatal("Solver::_debug_print_matrices   STOP");
+}
+
 
 }; // namespace FEM
 
