@@ -51,7 +51,11 @@ int main(int argc, char **argv) try
         blks[1].SetNy (3);
         Mesh::Structured mesh(/*NDim*/2);
         mesh.Generate (blks,/*O2*/true);
+        mesh.TagSegsLine (/*tag*/-100, /*x0*/0.5, /*y0*/1./3., /*AlpDeg*/ 0.0);
+        mesh.TagSegsLine (/*tag*/-200, /*x0*/0.5, /*y0*/1./3., /*AlpDeg*/90.0);
+        mesh.WriteMPY ("mesh01_quad");
         mesh.WriteVTU ("mesh01_quad");
+        cout << " File <mesh01_quad.mpy> generated\n";
         cout << " File <mesh01_quad.vtu> generated\n";
     }
 
@@ -59,7 +63,9 @@ int main(int argc, char **argv) try
     {
         Mesh::Structured mesh(/*NDim*/2);
         mesh.GenQRing (/*O2*/true,/*Nx*/4,/*Ny*/1,/*r*/100.,/*R*/200.,/*Nb*/6);
-        mesh.WriteMPY ("mesh01_quad_ring", /*OnlyMesh*/false);
+        mesh.TagVertsLine (/*Tag*/-11, /*x0*/0., /*y0*/0., /*AlpDeg*/45.);
+        mesh.TagVertsLine (/*Tag*/-12, /*x0*/0., /*y0*/0., /*AlpDeg*/90.);
+        mesh.WriteMPY ("mesh01_quad_ring");
         mesh.WriteVTU ("mesh01_quad_ring", /*VolSurfOrBoth*/0);
         cout << " File <mesh01_quad_ring.vtu> generated\n";
     }

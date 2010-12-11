@@ -1276,6 +1276,7 @@ inline void Solver::_TH_update (double tf, double Dt)
     {
         // calculate W1 and F1
         set_to_zero (W);
+        double t0 = Dom.Time;
         double t1 = Dom.Time + dt;
         for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
         {
@@ -1285,7 +1286,7 @@ inline void Solver::_TH_update (double tf, double Dt)
                 int eq = nod->EqPF(j);
                 if (!pU[eq])
                 {
-                    W(eq) = (F0(eq) + nod->PF(j,t1)*TransTh + F(eq)*(1.0-TransTh)) * dt;
+                    W(eq) = (F0(eq) + nod->PF(j,t1)*TransTh + nod->PF(j,t0)*(1.0-TransTh)) * dt;
                 }
             }
         }
@@ -1309,42 +1310,10 @@ inline void Solver::_TH_update (double tf, double Dt)
         Sparse::SubMult (    M12, W, W);   // W1 -=       M12*W2
         Sparse::SubMult (c1, K12, W, W);   // W1 -= dt*th*K12*W2
         UMFPACK::Solve  (A11, W, dU);      // dU  = inv(A11)*W
-        UpdateElements  (dU, /*CalcFint*/true);
+        UpdateElements  (dU, /*CalcFint*/false);
 
+        // update
         U += dU;
-        V  = dU/dt;
-
-        Sparse::AddMult (M21, V, F); // F2 += M21*V1
-        Sparse::AddMult (M22, V, F); // F2 += M22*V2
-        Sparse::AddMult (K21, U, F); // F2 += K21*U1
-        Sparse::AddMult (K22, U, F); // F2 += K22*U2
-        std::cout << "F      = " << PrintVector(F);
-
-        Sparse::SubMult (M11, V, F);
-        Sparse::SubMult (M12, V, F);
-        Sparse::SubMult (M21, V, F);
-        Sparse::SubMult (M22, V, F);
-
-        set_to_zero(R);
-        Sparse::AddMult (K11, dU, R);
-        Sparse::AddMult (K12, dU, R);
-        Sparse::AddMult (K21, dU, R);
-        Sparse::AddMult (K22, dU, R);
-
-#ifdef DO_DEBUG
-        double normdU   = Norm(dU);
-        double normFint = Norm(F_int);
-        if (Util::IsNan(normdU))   throw new Fatal("Solver::_TH_update: normdU is NaN");
-        if (Util::IsNan(normFint)) throw new Fatal("Solver::_TH_update: normFint is NaN");
-        printf("normdU = %g,  normFint = %g\n", normdU, normFint);
-        std::cout << "W      = " << PrintVector(W);
-        std::cout << "U      = " << PrintVector(U);
-        std::cout << "dU     = " << PrintVector(dU);
-        std::cout << "F      = " << PrintVector(F);
-        std::cout << "R      = " << PrintVector(R);
-        std::cout << "F_int  = " << PrintVector(F_int);
-        _debug_print_matrices ();
-#endif
 
         // next time step
         dt = (Dom.Time+dt>tf ? tf-Dom.Time : dt);

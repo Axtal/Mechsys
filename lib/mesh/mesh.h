@@ -209,11 +209,12 @@ public:
     void Erase      ();                                                   ///< Erase current mesh (deallocate memory)
 
     // Tag methods (can be called after the mesh is created)
-    void TagVertex  (int Tag, int Idx);                                               ///< Tag a vertex given its iVert
-    int  TagVertex  (int Tag, double x, double y, double z=0.0, double Tol=1.0e-5);   ///< Tag a vertex. Returns the index of vertex in Verts array
-    void TagLine    (double y0, double AlpRad, int Tag, double Tol=1.0e-5);           ///< Set tag for line y = y0 + tan(AlpRad)*x
-    void TagHSeg    (double y, double xMin, double xMax, int Tag, double Tol=1.0e-5); ///< Set tag for horizontal segment inside xMin and xMax
-    void GroundTags (int LTag=-10, int RTag=-10, int BTag=-20, double Tol=1.0e-5);    ///< Set tags for the left and right (vertical) edges and bottom (horizontal) edge
+    void TagVertex    (int Tag, int Idx);                                                ///< Tag a vertex given its iVert
+    int  TagVertex    (int Tag, double x, double y, double z=0.0, double Tol=1.0e-5);    ///< Tag a vertex. Returns the index of vertex in Verts array
+    void TagVertsLine (int Tag, double x0, double y0, double AlpDeg, double Tol=1.0e-5); ///< Tag vertices along Line y = y0 + tan(AlpRad)*x
+    void TagSegsLine  (int Tag, double x0, double y0, double AlpDeg, double Tol=1.0e-5); ///< Tag segments/edges along line y = y0 + tan(AlpRad)*x
+    void TagHorzSegs  (int Tag, double y, double xMin, double xMax, double Tol=1.0e-5);  ///< Tag horizontal segment/edge inside xMin and xMax
+    void GroundTags   (int LTag=-10, int RTag=-10, int BTag=-20, double Tol=1.0e-5);     ///< Set tags for the left and right (vertical) edges and bottom (horizontal) edge
 
     // Push methods
     int PushVert (int Tag, double X, double Y, double Z=0); ///< Push vertex
@@ -806,7 +807,7 @@ inline void Generic::SetBryTag (int i, int iEdgeFace, int Tag)
     {
         if (Cells[i]==NULL) throw new Fatal("Generic::SetBryTag: This method must be called after SetCell which allocates Cells");
         Cells[i]->BryTags[iEdgeFace] = Tag;
-        if (TgdCells.Find(Cells[i])<0) TgdCells.Push (Cells[i]);
+        TgdCells.XPush (Cells[i]);
     }
 }
 
@@ -937,33 +938,96 @@ inline int Generic::TagVertex (int Tag, double x, double y, double z, double Tol
     return idx;
 }
 
-inline void Generic::TagLine (double y0, double AlpRad, int Tag, double Tol)
+inline void Generic::TagVertsLine (int Tag, double x0, double y0, double AlpDeg, double Tol)
 {
-    if (NDim==3) throw new Fatal("Generic::TagLine: This method is only available for 2D meshes");
-    if ((AlpRad < -Util::PI/2.0) || (AlpRad > Util::PI/2.0)) throw new Fatal("Generic::TagLine: This method only works for non-vertical lines ( -pi/2 < AlpRad < pi/2 )");
-    double m = tan(AlpRad);
-    for (size_t i=0; i<Cells.Size(); ++i)
+    bool found = false;
+    if (NDim==3) throw new Fatal("Generic::TagVertsLine: This method is only available for 2D meshes");
+    if ((AlpDeg > -90.0) && (AlpDeg < 90.0))
     {
-        size_t nverts = Cells[i]->V.Size();
-        size_t nbrys  = NVertsToNEdges2D[nverts];
-        for (size_t j=0; j<nbrys; ++j)
+        double m = tan(AlpDeg*Util::PI/180.0);
+        for (size_t i=0; i<Verts.Size(); ++i)
         {
-            BRYKEY(nverts,i,j)
-            double xa = Verts[vert_a]->C(0);
-            double ya = Verts[vert_a]->C(1);
-            double xb = Verts[vert_b]->C(0);
-            double yb = Verts[vert_b]->C(1);
-            double err_a = fabs(ya - (y0 + m*xa));
-            double err_b = fabs(yb - (y0 + m*xb));
-            if ((err_a<=Tol) && (err_b<=Tol)) // two vertices are on (y=c+m*x) line
+            double x   = Verts[i]->C(0);
+            double y   = Verts[i]->C(1);
+            double err = y - (y0 + m*(x-x0));
+            if (fabs(err)<Tol)
             {
-                SetBryTag (i, j, Tag);
+                Verts[i]->Tag = Tag;
+                TgdVerts.XPush (Verts[i]);
+                found = true;
             }
         }
     }
+    else
+    {
+        for (size_t i=0; i<Verts.Size(); ++i)
+        {
+            double x   = Verts[i]->C(0);
+            double err = x - x0;
+            if (fabs(err)<Tol)
+            {
+                Verts[i]->Tag = Tag;
+                TgdVerts.XPush (Verts[i]);
+                found = true;
+            }
+        }
+    }
+    if (!found) throw new Fatal("Generic::TagVertsLine: Could not find any vertex along line passing through (%g,%g)",x0,y0);
 }
 
-inline void Generic::TagHSeg (double y, double xMin, double xMax, int Tag, double Tol)
+inline void Generic::TagSegsLine (int Tag, double x0, double y0, double AlpDeg, double Tol)
+{
+    bool found = false;
+    if (NDim==3) throw new Fatal("Generic::TagSegsLine: This method is only available for 2D meshes");
+    if ((AlpDeg > -90.0) && (AlpDeg < 90.0))
+    {
+        double m = tan(AlpDeg*Util::PI/180.0);
+        for (size_t i=0; i<Cells.Size(); ++i)
+        {
+            size_t nverts = Cells[i]->V.Size();
+            size_t nbrys  = NVertsToNEdges2D[nverts];
+            for (size_t j=0; j<nbrys; ++j)
+            {
+                BRYKEY(nverts,i,j)
+                double xa    = Verts[vert_a]->C(0);
+                double ya    = Verts[vert_a]->C(1);
+                double xb    = Verts[vert_b]->C(0);
+                double yb    = Verts[vert_b]->C(1);
+                double err_a = ya - (y0 + m*(xa-x0));
+                double err_b = yb - (y0 + m*(xb-x0));
+                if ((fabs(err_a)<Tol) && (fabs(err_b)<Tol))
+                {
+                    SetBryTag (i, j, Tag);
+                    found = true;
+                }
+            }
+        }
+    }
+    else
+    {
+        for (size_t i=0; i<Cells.Size(); ++i)
+        {
+            size_t nverts = Cells[i]->V.Size();
+            size_t nbrys  = NVertsToNEdges2D[nverts];
+            for (size_t j=0; j<nbrys; ++j)
+            {
+                BRYKEY(nverts,i,j)
+                double xa    = Verts[vert_a]->C(0);
+                double xb    = Verts[vert_b]->C(0);
+                double err_a = xa-x0;
+                double err_b = xb-x0;
+                if ((fabs(err_a)<Tol) && (fabs(err_b)<Tol))
+                {
+                    SetBryTag (i, j, Tag);
+                    found = true;
+                }
+            }
+        }
+    }
+    if (!found) throw new Fatal("Generic::TagSegsLine: Could not find any edge on line passing through (%g,%g)",x0,y0);
+}
+
+inline void Generic::TagHorzSegs (int Tag, double y, double xMin, double xMax, double Tol)
 {
     if (NDim==3) throw new Fatal("Generic::TagHSeg: This method is only available for 2D meshes");
     for (size_t i=0; i<Cells.Size(); ++i)
