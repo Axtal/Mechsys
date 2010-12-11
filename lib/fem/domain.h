@@ -403,6 +403,16 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
 
     // print header of output files
     OutResults (/*idxout*/0, /*time*/0, /*vtufname*/NULL, /*headeronly*/true);
+
+    // write file with IDs of output nodes
+    if (FNKey!=NULL && OutV!=NULL)
+    {
+        String buf(FNKey);  buf.append("_out_nods.res");
+        std::ofstream of(buf.CStr(), std::ios::out);
+        for (size_t i=0; i<OutNods.Size(); ++i) of << OutNods[i]->Vert.ID << " ";
+        of << std::endl;
+        of.close();
+    }
 }
 
 inline Domain::~Domain()
