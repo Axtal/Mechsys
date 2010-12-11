@@ -51,6 +51,7 @@ namespace FEM
 typedef std::map<Node*,Array<double> >  Res_t;      ///< Maps node to results at nodes
 typedef std::map<int, Array<Element*> > Tag2Eles_t; ///< Maps tag to elements
 
+typedef void (*pVTUfunc) (Vec3_t const & X, double Time, SDPair & KeysVals); ///< Callback to be called in WriteVTU
 
 class Domain
 {
@@ -72,7 +73,8 @@ public:
             Dict const          & Mdls,       ///< Model names and parameters
             Dict const          & Inis,       ///< Initial values
             char const          * FNKey=NULL, ///< Filename key to be used during the output of results
-            Array<int>    const * OutV=NULL); ///< IDs or Tags of vertices to generate output
+            Array<int>    const * OutV=NULL,  ///< IDs or Tags of vertices to generate output
+            pVTUfunc              pVTU=NULL); ///< Pointer to function to be called in WriteVTU (ex.: solution values)
 
     // Destructor
     ~Domain ();
@@ -101,6 +103,7 @@ public:
     Dict          const & Inis;        ///< Initial values
     int                   NDim;        ///< Space dimension
     Models_t              Mdls;        ///< Models
+    pVTUfunc              VTUfunc;     ///< Pointer to function to be called in WriteVTU
     std::map<int,Node*>   VertID2Node; ///< Map vertex ID to Node
     Array<Node*>          Nods;        ///< (Allocated memory) Nodes
     Array<Element*>       Eles;        ///< (Allocated memory) Elements
@@ -220,8 +223,8 @@ inline void Domain::PrintBCs (std::ostream & os, double tf) const
 
 // Constructor and destructor
 
-inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FNKey, Array<int> const * OutV)
-    : Time(0.0), Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), HasDisps(false), HasVeloc(false), HasWDisch(false)
+inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FNKey, Array<int> const * OutV, pVTUfunc pVTU)
+    : Time(0.0), Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), VTUfunc(pVTU), HasDisps(false), HasVeloc(false), HasWDisch(false)
 {
     // info
 #ifdef HAS_MPI
@@ -1128,6 +1131,27 @@ inline void Domain::WriteVTU (char const * FNKey, bool DoExtrapolation) const
             VTU_NEWLINE (j,k,nn,6/3-1,oss);
         }
         oss << "        </DataArray>\n";
+    }
+
+    // extra values from callback (solution?)
+    if (VTUfunc!=NULL)
+    {
+        SDPair pairs;
+        (*VTUfunc) (Vec3_t(0,0,0),0, pairs);
+        for (size_t i=0; i<pairs.Keys.Size(); ++i)
+        {
+            oss << "        <DataArray type=\"Float64\" Name=\"" << pairs.Keys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+            k = 0; oss << "        ";
+            for (size_t j=0; j<nn; ++j)
+            {
+                SDPair p;
+                (*VTUfunc) (Nods[j]->Vert.C, Time, p);
+                oss << (k==0?"  ":" ") << p(pairs.Keys[i]);
+                k++;
+                VTU_NEWLINE (j,k,nn,6-1,oss);
+            }
+            oss << "        </DataArray>\n";
+        }
     }
 
     // data -- nodes -- end
