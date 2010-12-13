@@ -93,12 +93,13 @@ public:
     void LoadState      (char const * FileKey);                                  ///< Load Nodes and Elements' state from an HDF5 file
 
     // Internal methods
-    void NodalResults  (bool OnlyOutNods=false) const;                                                        ///< Calculate extrapolated values at elments IPs' to nodes
-    void OutResults    (size_t IdxOut, double Time, char const * VTUFName=NULL, bool HeaderOnly=false) const; ///< Do output results
-    void CalcReactions (Table & NodesReactions, SDPair & SumReactions) const;                                 ///< Calculate reactions
+    void NodalResults  (bool OnlyOutNods=false) const;                        ///< Calculate extrapolated values at elments IPs' to nodes
+    void OutResults    (char const * VTUFName=NULL, bool HeaderOnly=false);   ///< Do output results
+    void CalcReactions (Table & NodesReactions, SDPair & SumReactions) const; ///< Calculate reactions
 
     // Data
     double                Time;        ///< Current time (t)
+    size_t                IdxOut;      ///< Index for output of Time files (VTU)
     Dict          const & Prps;        ///< Element properties
     Dict          const & Inis;        ///< Initial values
     int                   NDim;        ///< Space dimension
@@ -224,7 +225,7 @@ inline void Domain::PrintBCs (std::ostream & os, double tf) const
 // Constructor and destructor
 
 inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FNKey, Array<int> const * OutV, pVTUfunc pVTU)
-    : Time(0.0), Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), VTUfunc(pVTU), HasDisps(false), HasVeloc(false), HasWDisch(false)
+    : Time(0.0), IdxOut(0), Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), VTUfunc(pVTU), HasDisps(false), HasVeloc(false), HasWDisch(false)
 {
     // info
 #ifdef HAS_MPI
@@ -405,7 +406,7 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     }
 
     // print header of output files
-    OutResults (/*idxout*/0, /*time*/0, /*vtufname*/NULL, /*headeronly*/true);
+    OutResults (/*vtufname*/NULL, /*headeronly*/true);
 
     // write file with IDs of output nodes
     if (FNKey!=NULL && OutV!=NULL)
@@ -1536,8 +1537,11 @@ inline void Domain::NodalResults (bool OnlyOutNods) const
     }
 }
 
-inline void Domain::OutResults (size_t IdxOut, double Time, char const * VTUFName, bool HeaderOnly) const
+inline void Domain::OutResults (char const * VTUFName, bool HeaderOnly)
 {
+    // next index of files
+    IdxOut++;
+
     // VTU
     if (VTUFName!=NULL)
     {

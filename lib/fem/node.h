@@ -56,8 +56,13 @@ public:
     size_t         NDOF    ()                      const { return _eq.Size();         } ///< Get the number of DOFs
     double         U       (char   const * UKey  ) const { return _U(UKey);           } ///< Get U value
     double         F       (char   const * FKey  ) const { return _F(FKey);           } ///< Get F value
+    double       & U       (String const & UKey  )       { return _U(UKey);           } ///< Get/Set U value
+    double       & F       (String const & FKey  )       { return _F(FKey);           } ///< Get/Set F value
     double       & U       (char   const * UKey  )       { return _U(UKey);           } ///< Get/Set U value
     double       & F       (char   const * FKey  )       { return _F(FKey);           } ///< Get/Set F value
+    double       & V       (size_t         IdxDOF)       { return _V(UKey(IdxDOF));   } ///< Get/Set V value given IdxDOF
+    double       & U       (size_t         IdxDOF)       { return _U(UKey(IdxDOF));   } ///< Get/Set U value given IdxDOF
+    double       & F       (size_t         IdxDOF)       { return _F(FKey(IdxDOF));   } ///< Get/Set F value given IdxDOF
     double         UOrZero (String const & UKey  ) const { return _U.ValOrZero(UKey); } ///< U value or zero if U key does not exist
     double         FOrZero (String const & FKey  ) const { return _F.ValOrZero(FKey); } ///< F value or zero if F key does not exist
     void           TrySetU (String const & UKey, double Val) { if (_U.HasKey(UKey)) _U(UKey)=Val; } ///< Try to set U if key exists
@@ -68,6 +73,7 @@ public:
     int          & Eq      (size_t         IdxDOF)       { return _eq[IdxDOF];        } ///< Get/Set Equation number given index of DOF
     String const & UKey    (size_t         IdxDOF) const { return _U.Keys[IdxDOF];    } ///< Get U key
     String const & FKey    (size_t         IdxDOF) const { return _F.Keys[IdxDOF];    } ///< Get F key
+    bool           pU      (size_t         IdxDOF) const { return _pU[IdxDOF];        } ///< Prescribed U ?
     void           SetUF   (Vec_t const & UVec, Vec_t const & FVec);                    ///< Set internal U and F values given global vectors
     void           GetUF   (Vec_t       & UVec, Vec_t       & FVec);                    ///< Get U and F values and store into UVec and FVec vectors
     void           Clear   ();                                                          ///< Clear all values but keep structure of DOFs
@@ -83,6 +89,9 @@ public:
     double         PU        (size_t IdxPU, double Time) const;                                          ///< Get prescribed U value given index to PU
     double         PV        (size_t IdxPU, double Time) const;                                          ///< Get prescribed V=dUdt value given index to PU
     double         PA        (size_t IdxPU, double Time) const;                                          ///< Get prescribed A=d2Udt2 value given index to PU
+    double         PUIdxDOF  (size_t IdxDOF, double Time) const { return PU(_PU.IdxKey(UKey(IdxDOF)),Time); } ///< Get prescribed U given index of DOF
+    double         PVIdxDOF  (size_t IdxDOF, double Time) const { return PV(_PU.IdxKey(UKey(IdxDOF)),Time); } ///< Get prescribed V given index of DOF
+    double         PAIdxDOF  (size_t IdxDOF, double Time) const { return PA(_PU.IdxKey(UKey(IdxDOF)),Time); } ///< Get prescribed A given index of DOF
 
     // Methods to set/access prescribed F values
     void           AddToPF   (String const & FKey, double Val, BCFuncs * BCF=NULL);                      ///< Add value to prescribed F
@@ -92,6 +101,7 @@ public:
     void           DelPFs    ()                                { _PF.clear(); _MPF.Resize(0); }          ///< Delete PF structure
     String const & PFKey     (size_t IdxPF)              const { return _PF.Keys[IdxPF]; }               ///< Get PF key
     double         PF        (size_t IdxPF, double Time) const;                                          ///< Get prescribed F value given index to PF
+    double         PFOrZero  (size_t IdxDOF, double Time) const { int idxpf=_PF.IdxKey(FKey(IdxDOF)); return (idxpf<0 ? 0.0 : PF(idxpf,Time)); } ///< Get prescribed F given index of DOF
     void           AccumPF   ();                                                                         ///< Accumulate prescribed F (to calculate Reactions later). Copy from _PF into _aPF.
     void           Reactions (std::map<String,double> & R) const;                                        ///< Calculate reactions
 
@@ -113,11 +123,13 @@ public:
 
 private:
     // Data at every node
+    SDPair     _V;      ///< V = dUdt
     SDPair     _U;      ///< U values mapped by keys: "ux", "uy", etc.
     SDPair     _F;      ///< F values mapped by keys: "fx", "fy", etc.
     SIPair     _U2IDOF; ///< Maps: UKey to index of DOF
     SIPair     _F2IDOF; ///< Maps: FKey to index of DOF
     Array<int> _eq;     ///< Equation numbers (of each DOF)
+    Array<bool> _pU;    ///< Prescribed U ?
 
     // Data at nodes with prescribed values
     SDPair          _PU;  ///< Prescribed U
@@ -149,11 +161,13 @@ inline void Node::AddDOF (char const * StrU, char const * StrF)
     {
         if (!_U.HasKey(u_key)) // add only if not found
         {
+            _V.Set      (u_key.CStr(), 0.0);
             _U.Set      (u_key.CStr(), 0.0);
             _F.Set      (f_key.CStr(), 0.0);
             _U2IDOF.Set (u_key.CStr(), _eq.Size());
             _F2IDOF.Set (f_key.CStr(), _eq.Size());
             _eq.Push    (-1);
+            _pU.Push    (false);
         }
         else
         {
@@ -167,6 +181,7 @@ inline void Node::Clear ()
     _U .SetValues (0.0);
     _F .SetValues (0.0);
     _eq.SetValues (-1);
+    _pU.SetValues (false);
     DelPUs ();
     DelPFs ();
     _has_incsup = false;
@@ -197,6 +212,7 @@ inline void Node::SetPU (String const & UKey, double Val, BCFuncs * BCF)
     size_t idx_pu = _PU.ReSet (UKey.CStr(), Val);
     if (idx_pu==_MPU.Size()) _MPU.Push (BCF);
     _has_incsup = false;
+    _pU[_U2IDOF(UKey)] = true;
 }
 
 inline void Node::AddToPF (String const & FKey, double Val, BCFuncs * BCF)

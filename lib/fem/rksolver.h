@@ -81,7 +81,6 @@ public:
     // Auxiliary data
     Array<int>    Eq1_to_V1;
     Array<int>    Eq1_to_U1;
-    Array<int>    Eq2_to_F2;
     Vec_t         A,V,U,F;
 
     // Triplets
@@ -132,7 +131,7 @@ inline void RKSolver::SteadySolve (int NInc, char const * FKey)
     K22.AllocSpace (NEq,NEq,K22_size);
 
     // allocate ode solver
-    Numerical::ODESolver<RKSolver> ode(this, &RKSolver::SteadyFunc, NEq, RKScheme.CStr(), STOL, 1.0);
+    Numerical::ODESolver<RKSolver> ode(this, &RKSolver::SteadyFunc, NEq-pEQ.Size(), RKScheme.CStr(), STOL, 1.0/NInc);
 
     // set initial values
     ode.t    = 0.0; // pseudo-time (0 <= ode.t <= 1)
@@ -146,11 +145,9 @@ inline void RKSolver::SteadySolve (int NInc, char const * FKey)
             Eq1_to_U1[eq]        = rkeq++;
             ode.Y[Eq1_to_U1[eq]] = Dom.ActNods[i]->U(j); // U1
         }
-        else
-        {
-            Eq2_to_F2[eq]        = rkeq++;
-            ode.Y[Eq2_to_F2[eq]] = Dom.ActNods[i]->F(j); // F2
-        }
+        // fill vectors with initial values
+        U(eq) = Dom.ActNods[i]->U(j);
+        F(eq) = Dom.ActNods[i]->F(j);
     }
 
     // first output
@@ -166,20 +163,43 @@ inline void RKSolver::SteadySolve (int NInc, char const * FKey)
         ode.Evolve (tout);
         Dom.Time = Time0 + ode.t;
 
-        // update nodes
+        // collect results into U,F and update nodes
         for (size_t i=0; i<Dom.ActNods.Size();     ++i)
         for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
         {
             int eq = Dom.ActNods[i]->Eq(j);
             if (!Dom.ActNods[i]->pU(j))
             {
-                Dom.ActNods[i]->U(j)  = ode.Y[Eq1_to_U1[eq]];                // U1
-                Dom.ActNods[i]->F(j) += ode.t*Dom.ActNods[i]->PFOrZero(j,0); // F1
+                // fill vectors
+                U(eq)  = ode.Y[Eq1_to_U1[eq]];                // U1
+                F(eq) += ode.t*Dom.ActNods[i]->PFOrZero(j,0); // F1
+                // set node
+                Dom.ActNods[i]->U(j) = U(eq); // U1
+                Dom.ActNods[i]->F(j) = F(eq); // F1
             }
             else
             {
-                Dom.ActNods[i]->U(j) += ode.t*Dom.ActNods[i]->PUIdxDOF(j,0); // U2
-                Dom.ActNods[i]->F(j)  = ode.Y[Eq2_to_F2[eq]];                // F2
+                // fill vectors
+                U(eq) += ode.t*Dom.ActNods[i]->PUIdxDOF(j,0); // U2
+                F(eq)  = 0.0;                                 // F2
+                // set node
+                Dom.ActNods[i]->U(j) = U(eq); // U2
+            }
+        }
+
+        // calculate F2
+        AssembleK       ();
+        Sparse::AddMult (K21, U, F); // F2 += K21*U1
+        Sparse::AddMult (K22, U, F); // F2 += K22*U2
+
+        // update F2 in nodes
+        for (size_t i=0; i<Dom.NodsWithPU.Size();     ++i)
+        for (size_t j=0; j<Dom.NodsWithPU[i]->NDOF(); ++j)
+        {
+            if (Dom.NodsWithPU[i]->pU(j))
+            {
+                int eq = Dom.NodsWithPU[i]->Eq(j);
+                Dom.NodsWithPU[i]->F(j) = F(eq); // F2
             }
         }
 
@@ -202,26 +222,21 @@ inline int RKSolver::SteadyFunc (double t, double const Y[], double dYdt[])
             F(eq) = Dom.ActNods[i]->PFOrZero(j,0); // DF1
             V(eq) = 0.0;                           // dU1dT
         }
-        else
-        {
-            U(eq) = Dom.ActNods[i]->PUIdxDOF(j,0); // DU2
-            F(eq) = Y[Eq2_to_F2[eq]];              // F2
-            V(eq) = 0.0;                           // dF2dT
-        }
+        else U(eq) = Dom.ActNods[i]->PUIdxDOF(j,0); // DU2
     }
 
     AssembleK       ();
     Sparse::SubMult (K12, U, F);  // DF1 -= K12*DU2
     UMFPACK::Solve  (K11, F, V);  // V1   = inv(K11)*DF1 == dU1dT
-    Sparse::AddMult (K21, V, V);  // V2  += K21*V1
-    Sparse::AddMult (K22, U, V);  // V2  += K22*U1 == dF2dT
 
     for (size_t i=0; i<Dom.ActNods.Size();     ++i)
     for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
     {
-        int eq = Dom.ActNods[i]->Eq(j);
-        if (!pU[eq]) dYdt[Eq1_to_U1[eq]] = V(eq); // dU1dT
-        else         dYdt[Eq2_to_F2[eq]] = V(eq); // dF2dT
+        if (!Dom.ActNods[i]->pU(j))
+        {
+            int eq = Dom.ActNods[i]->Eq(j);
+            dYdt[Eq1_to_U1[eq]] = V(eq); // dU1dT
+        }
     }
 
     return GSL_SUCCESS;
@@ -254,9 +269,9 @@ inline void RKSolver::TransSolve (double tf, double dt, double dtOut, char const
     for (size_t i=0; i<Dom.ActNods.Size();     ++i)
     for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
     {
-        int eq = Dom.ActNods[i]->Eq(j);
         if (!Dom.ActNods[i]->pU(j))
         {
+            int eq = Dom.ActNods[i]->Eq(j);
             Eq1_to_U1[eq]        = rkeq++;
             ode.Y[Eq1_to_U1[eq]] = Dom.ActNods[i]->U(j); // U1
         }
@@ -274,20 +289,46 @@ inline void RKSolver::TransSolve (double tf, double dt, double dtOut, char const
         ode.Evolve (tout);
         Dom.Time = ode.t;
 
-        // update nodes
+        // collect results into V,U,F and update nodes
         for (size_t i=0; i<Dom.ActNods.Size();     ++i)
         for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
         {
             int eq = Dom.ActNods[i]->Eq(j);
             if (!Dom.ActNods[i]->pU(j))
             {
-                Dom.ActNods[i]->U(j) = ode.Y[Eq1_to_U1[eq]];              // U1
-                Dom.ActNods[i]->F(j) = Dom.ActNods[i]->PFOrZero(j,ode.t); // F1
+                // fill vectors
+                U(eq) = ode.Y[Eq1_to_U1[eq]];              // U1
+                F(eq) = Dom.ActNods[i]->PFOrZero(j,ode.t); // F1
+                // set node
+                Dom.ActNods[i]->U(j) = U(eq); // U1
+                Dom.ActNods[i]->F(j) = F(eq); // F1
             }
             else
             {
-                Dom.ActNods[i]->U(j) = Dom.ActNods[i]->PUIdxDOF(j,ode.t); // U2
-                Dom.ActNods[i]->F(j) = F(eq);                             // F2
+                // fill vectors
+                V(eq) = Dom.ActNods[i]->PVIdxDOF(j,ode.t); // V2
+                U(eq) = Dom.ActNods[i]->PUIdxDOF(j,ode.t); // U2
+                F(eq) = 0.0;                               // F2
+                // set node
+                Dom.ActNods[i]->U(j) = U(eq); // U2
+            }
+        }
+
+        // calculate F2 TODO: should calculate V1 here
+        AssembleKM      ();
+        Sparse::AddMult (M21, V, F);  // F2 += M21*V1
+        Sparse::AddMult (M22, V, F);  // F2 += M22*V2
+        Sparse::AddMult (K21, U, F);  // F2 += K21*U1
+        Sparse::AddMult (K22, U, F);  // F2 += K22*U2
+
+        // update F2 in nodes
+        for (size_t i=0; i<Dom.NodsWithPU.Size();     ++i)
+        for (size_t j=0; j<Dom.NodsWithPU[i]->NDOF(); ++j)
+        {
+            if (Dom.NodsWithPU[i]->pU(j))
+            {
+                int eq = Dom.NodsWithPU[i]->Eq(j);
+                Dom.NodsWithPU[i]->F(j) = F(eq); // F2
             }
         }
 
@@ -325,8 +366,11 @@ inline int RKSolver::TransFunc (double t, double const Y[], double dYdt[])
     for (size_t i=0; i<Dom.ActNods.Size();     ++i)
     for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
     {
-        int eq = Dom.ActNods[i]->Eq(j);
-        if (!Dom.ActNods[i]->pU(j)) dYdt[Eq1_to_U1[eq]] = V(eq); // V1
+        if (!Dom.ActNods[i]->pU(j))
+        {
+            int eq = Dom.ActNods[i]->Eq(j);
+            dYdt[Eq1_to_U1[eq]] = V(eq); // V1
+        }
     }
 
     return GSL_SUCCESS;
@@ -367,9 +411,9 @@ inline void RKSolver::DynSolve (double tf, double dt, double dtOut, char const *
     for (size_t i=0; i<Dom.ActNods.Size();     ++i)
     for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
     {
-        int eq = Dom.ActNods[i]->Eq(j);
         if (!Dom.ActNods[i]->pU(j))
         {
+            int eq = Dom.ActNods[i]->Eq(j);
             Eq1_to_V1[eq]        = rkeq++;
             Eq1_to_U1[eq]        = rkeq++;
             ode.Y[Eq1_to_V1[eq]] = Dom.ActNods[i]->V(j); // V1
@@ -389,22 +433,52 @@ inline void RKSolver::DynSolve (double tf, double dt, double dtOut, char const *
         ode.Evolve (tout);
         Dom.Time = ode.t;
 
-        // update nodes
+        // collect results into A,V,U,F and update nodes
         for (size_t i=0; i<Dom.ActNods.Size();     ++i)
         for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
         {
             int eq = Dom.ActNods[i]->Eq(j);
             if (!Dom.ActNods[i]->pU(j))
             {
-                Dom.ActNods[i]->V(j) = ode.Y[Eq1_to_V1[eq]];              // V1
-                Dom.ActNods[i]->U(j) = ode.Y[Eq1_to_U1[eq]];              // U1
-                Dom.ActNods[i]->F(j) = Dom.ActNods[i]->PFOrZero(j,ode.t); // F1
+                // fill vectors
+                V(eq) = ode.Y[Eq1_to_V1[eq]];              // V1
+                U(eq) = ode.Y[Eq1_to_U1[eq]];              // U1
+                F(eq) = Dom.ActNods[i]->PFOrZero(j,ode.t); // F1
+                // set node
+                Dom.ActNods[i]->V(j) = V(eq); // V1
+                Dom.ActNods[i]->U(j) = U(eq); // U1
+                Dom.ActNods[i]->F(j) = F(eq); // F1
             }
             else
             {
-                Dom.ActNods[i]->V(j) = Dom.ActNods[i]->PVIdxDOF(j,ode.t); // V2
-                Dom.ActNods[i]->U(j) = Dom.ActNods[i]->PUIdxDOF(j,ode.t); // U2
-                Dom.ActNods[i]->F(j) = F(eq);                             // F2
+                // fill vectors
+                A(eq) = Dom.ActNods[i]->PAIdxDOF(j,ode.t); // A2
+                V(eq) = Dom.ActNods[i]->PVIdxDOF(j,ode.t); // V2
+                U(eq) = Dom.ActNods[i]->PUIdxDOF(j,ode.t); // U2
+                F(eq) = 0.0;                               // F2
+                // set node
+                Dom.ActNods[i]->V(j) = V(eq); // V2
+                Dom.ActNods[i]->U(j) = U(eq); // U2
+            }
+        }
+
+        // calculate F2 TODO: should calculate A1 here
+        AssembleKCM     ();
+        Sparse::AddMult (M21, A, F);                       // F2 += M21*A1
+        Sparse::AddMult (M22, A, F); if (DampTy!=None_t) { // F2 += M22*A2
+        Sparse::AddMult (C21, V, F);                       // F2 += C21*V1
+        Sparse::AddMult (C22, V, F); }                     // F2 += C22*V2
+        Sparse::AddMult (K21, U, F);                       // F2 += K21*U1
+        Sparse::AddMult (K22, U, F);                       // F2 += K22*U2
+
+        // update F2 in nodes
+        for (size_t i=0; i<Dom.NodsWithPU.Size();     ++i)
+        for (size_t j=0; j<Dom.NodsWithPU[i]->NDOF(); ++j)
+        {
+            if (Dom.NodsWithPU[i]->pU(j))
+            {
+                int eq = Dom.NodsWithPU[i]->Eq(j);
+                Dom.NodsWithPU[i]->F(j) = F(eq); // F2
             }
         }
 
@@ -446,9 +520,9 @@ inline int RKSolver::DynFunc (double t, double const Y[], double dYdt[])
     for (size_t i=0; i<Dom.ActNods.Size();     ++i)
     for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
     {
-        int eq = Dom.ActNods[i]->Eq(j);
         if (!Dom.ActNods[i]->pU(j))
         {
+            int eq = Dom.ActNods[i]->Eq(j);
             dYdt[Eq1_to_V1[eq]] = A(eq); // A1
             dYdt[Eq1_to_U1[eq]] = V(eq); // V1
         }
@@ -519,7 +593,6 @@ inline void RKSolver::Initialize ()
     // RK maps
     Eq1_to_V1.Resize (NEq);   Eq1_to_V1.SetValues (-1);
     Eq1_to_U1.Resize (NEq);   Eq1_to_U1.SetValues (-1);
-    Eq2_to_F2.Resize (NEq);   Eq2_to_F2.SetValues (-1);
 
     // info
     if (WithInfo)

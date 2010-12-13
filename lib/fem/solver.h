@@ -85,7 +85,6 @@ public:
     pOutFun       DbgFun;   ///< Debug function (called everytime for some internal (update) methods)
     void        * DbgDat;   ///< Debug data (to be used with either OutFun or DbgFun)
     size_t        Inc;      ///< Current increment
-    size_t        IdxOut;   ///< Counter for generating VTU files in DynSolve
     size_t        Stp;      ///< Current (sub) step
     size_t        It;       ///< Current iteration
     size_t        NEq;      ///< Total number of equations (DOFs)
@@ -177,7 +176,6 @@ inline Solver::Solver (Domain & TheDom, pOutFun TheOutFun, void * TheOutDat, pOu
       DbgFun   (TheDbgFun),
       DbgDat   (TheDbgDat),
       Inc      (0),
-      IdxOut   (0),
       Stp      (0),
       It       (0),
       Scheme   (ME_t),
@@ -229,9 +227,9 @@ inline void Solver::Solve (size_t NInc, char const * FileKey)
         else if (Scheme==ME_t) _time_print ("Quasi-static --- ME");
         else if (Scheme==NR_t) _time_print ("Quasi-static --- NR");
     }
-    if (IdxOut==0)
+    if (Dom.IdxOut==0)
     {
-        Dom.OutResults (IdxOut, Dom.Time, FileKey);
+        Dom.OutResults (FileKey);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
@@ -259,10 +257,9 @@ inline void Solver::Solve (size_t NInc, char const * FileKey)
         UpdateNodes ();
 
         // output
-        IdxOut++;
         if (WithInfo) _time_print ();
-        if (Scheme!=ME_t) Dom.OutResults (IdxOut, Dom.Time, FileKey);
-        else if (!SSOut)  Dom.OutResults (IdxOut, Dom.Time, FileKey);
+        if (Scheme!=ME_t) Dom.OutResults (FileKey);
+        else if (!SSOut)  Dom.OutResults (FileKey);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
         // next tout
@@ -283,9 +280,9 @@ inline void Solver::TransSolve (double tf, double dt, double DtOut, char const *
     {
         if (TScheme==TH_t) _time_print ("Transient ------ TH(theta)");
     }
-    if (IdxOut==0)
+    if (Dom.IdxOut==0)
     {
-        Dom.OutResults (IdxOut, Dom.Time, FileKey);
+        Dom.OutResults (FileKey);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
@@ -328,9 +325,8 @@ inline void Solver::TransSolve (double tf, double dt, double DtOut, char const *
             UpdateNodes ();
 
             // output
-            IdxOut++;
             if (WithInfo) _time_print ();
-            Dom.OutResults (IdxOut, Dom.Time, FileKey);
+            Dom.OutResults (FileKey);
             if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
             // next tout
@@ -371,9 +367,9 @@ inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * F
             _time_print (buf.CStr());
         }
     }
-    if (IdxOut==0)
+    if (Dom.IdxOut==0)
     {
-        Dom.OutResults (IdxOut, Dom.Time, FileKey);
+        Dom.OutResults (FileKey);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
@@ -416,9 +412,8 @@ inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * F
             UpdateNodes ();
 
             // output
-            IdxOut++;
             if (WithInfo) _time_print ();
-            Dom.OutResults (IdxOut, Dom.Time, FileKey);
+            Dom.OutResults (FileKey);
             if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
             // next tout
@@ -482,9 +477,8 @@ inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * F
             Dom.Time = ode.t;
 
             // output
-            IdxOut++;
             if (WithInfo) _time_print ();
-            Dom.OutResults (IdxOut, Dom.Time, FileKey);
+            Dom.OutResults (FileKey);
             if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
             // next tout
@@ -1223,7 +1217,7 @@ inline void Solver::_ME_update (double tf)
             if (m>mMax) m = mMax;
             if (SSOut || (DbgFun!=NULL)) UpdateNodes ();
             if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
-            if (SSOut) Dom.OutResults (IdxOut, Dom.Time, NULL);
+            if (SSOut) Dom.OutResults (NULL);
         }
         else if (m<mMin) m = mMin;
 
