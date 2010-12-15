@@ -225,6 +225,7 @@ inline void ODESolver<Instance>::Evolve (double tf)
             if (dT>1.0-T) dT = 1.0-T;
         }
         if (k>=MaxSS) throw new Fatal("ODESolver::Evolve: RK12 (Modified-Euler) did not converge after %d substeps",k);
+        //printf("ODESolver::RK12: STOL=%g,  number of sub steps = %zd\n",stol,k);
     }
     else
     {

@@ -66,7 +66,7 @@ public:
     Damping_t     DampTy;   ///< Damping type
     double        DampAm;   ///< Rayleigh damping Am coefficient (C = Am*M + Ak*K)
     double        DampAk;   ///< Rayleigh damping Ak coefficient (C = Am*M + Ak*K)
-    String        RKScheme; ///< Runge-Kutta scheme
+    String        Scheme;   ///< Runge-Kutta scheme
     double        STOL;     ///< Error tolerance for RK scheme
 
     // Data (read-only)
@@ -81,7 +81,7 @@ public:
     // Auxiliary data
     Array<int>    Eq1_to_V1;
     Array<int>    Eq1_to_U1;
-    Vec_t         A,V,U,F;
+    Vec_t         A,V,U,F,Fi;
 
     // Triplets
     size_t K11_size, K12_size, K21_size, K22_size; ///< Size of triplets
@@ -110,7 +110,7 @@ inline RKSolver::RKSolver (Domain & dom)
       DampTy   (None_t),
       DampAm   (0.01),
       DampAk   (0.01),
-      RKScheme ("RK4I"),
+      Scheme   ("RK23"),
       STOL     (1.0e-3),
       Dom      (dom)
 {
@@ -125,13 +125,14 @@ inline void RKSolver::SteadySolve (int NInc, char const * FKey)
     V  .change_dim (NEq);
     U  .change_dim (NEq);
     F  .change_dim (NEq);
+    Fi .change_dim (NEq);
     K11.AllocSpace (NEq,NEq,K11_size+pEQ.Size()+NnzLag); // augmented
     K12.AllocSpace (NEq,NEq,K12_size);
     K21.AllocSpace (NEq,NEq,K21_size);
     K22.AllocSpace (NEq,NEq,K22_size);
 
     // allocate ode solver
-    Numerical::ODESolver<RKSolver> ode(this, &RKSolver::SteadyFunc, NEq-pEQ.Size(), RKScheme.CStr(), STOL, 1.0/NInc);
+    Numerical::ODESolver<RKSolver> ode(this, &RKSolver::SteadyFunc, NEq-pEQ.Size(), Scheme.CStr(), STOL, 1.0/NInc);
 
     // set initial values
     ode.t    = 0.0; // pseudo-time (0 <= ode.t <= 1)
@@ -251,6 +252,7 @@ inline void RKSolver::TransSolve (double tf, double dt, double dtOut, char const
     V  .change_dim (NEq);
     U  .change_dim (NEq);
     F  .change_dim (NEq);
+    Fi .change_dim (NEq);
     K11.AllocSpace (NEq,NEq,K11_size);
     K12.AllocSpace (NEq,NEq,K12_size);
     K21.AllocSpace (NEq,NEq,K21_size);
@@ -261,7 +263,7 @@ inline void RKSolver::TransSolve (double tf, double dt, double dtOut, char const
     M22.AllocSpace (NEq,NEq,K22_size);
 
     // allocate ode solver
-    Numerical::ODESolver<RKSolver> ode(this, &RKSolver::TransFunc, NEq-pEQ.Size(), RKScheme.CStr(), STOL, dt);
+    Numerical::ODESolver<RKSolver> ode(this, &RKSolver::TransFunc, NEq-pEQ.Size(), Scheme.CStr(), STOL, dt);
 
     // set initial values
     ode.t    = Dom.Time;
@@ -386,6 +388,7 @@ inline void RKSolver::DynSolve (double tf, double dt, double dtOut, char const *
     V  .change_dim (NEq);
     U  .change_dim (NEq);
     F  .change_dim (NEq);
+    Fi .change_dim (NEq);
     K11.AllocSpace (NEq,NEq,K11_size);
     K12.AllocSpace (NEq,NEq,K12_size);
     K21.AllocSpace (NEq,NEq,K21_size);
@@ -403,7 +406,7 @@ inline void RKSolver::DynSolve (double tf, double dt, double dtOut, char const *
     }
 
     // allocate ode solver
-    Numerical::ODESolver<RKSolver> ode(this, &RKSolver::DynFunc, 2*(NEq-pEQ.Size()), RKScheme.CStr(), STOL, dt);
+    Numerical::ODESolver<RKSolver> ode(this, &RKSolver::DynFunc, 2*(NEq-pEQ.Size()), Scheme.CStr(), STOL, dt);
 
     // set initial values
     ode.t    = Dom.Time;
@@ -481,6 +484,15 @@ inline void RKSolver::DynSolve (double tf, double dt, double dtOut, char const *
                 Dom.NodsWithPU[i]->F(j) = F(eq); // F2
             }
         }
+
+        // calculate internal force
+        set_to_zero(Fi);
+        for (size_t i=0; i<Dom.ActEles.Size(); ++i)
+        {
+            Dom.ActEles[i]->SetFint (&Fi);
+        }
+        std::cout << "Fe = " << PrintVector(F);
+        std::cout << "Fi = " << PrintVector(Fi);
 
         // output
         if (WithInfo) printf("%10.6f\n",Dom.Time);
@@ -597,8 +609,9 @@ inline void RKSolver::Initialize ()
     // info
     if (WithInfo)
     {
-        printf("%s  Num of DOFs (NEq)  = %zd%s\n", TERM_CLR2, NEq, TERM_RST);
-        printf("%s  Num of non-zeros   = %zd%s\n", TERM_CLR2, K11_size+pEQ.Size()+NnzLag, TERM_RST);
+        printf("%s  Num of DOFs (NEq)     = %zd%s\n", TERM_CLR2, NEq, TERM_RST);
+        printf("%s  Num of non-zeros      = %zd%s\n", TERM_CLR2, K11_size+pEQ.Size()+NnzLag, TERM_RST);
+        printf("%s  Num of Int vals (NIV) = %zd%s\n", TERM_CLR2, NIv, TERM_RST);
     }
 }
 

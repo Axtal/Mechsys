@@ -30,6 +30,7 @@
 #include <mechsys/fem/equilibelem.h>
 #include <mechsys/fem/domain.h>
 #include <mechsys/fem/solver.h>
+#include <mechsys/fem/rksolver.h>
 #include <mechsys/models/linelastic.h>
 #include <mechsys/models/elastoplastic.h>
 #include <mechsys/util/maps.h>
@@ -94,9 +95,10 @@ int main(int argc, char **argv) try
     FEM::Domain dom(mesh, prps, mdls, inis, "fig_11_19", &out_nods);
 
     // solver
-    FEM::Solver sol(dom);
+    FEM::RKSolver sol(dom);
+    //FEM::Solver sol(dom);
     //sol.DScheme = FEM::Solver::RK_t;
-    sol.DScheme = FEM::Solver::GN22_t;
+    //sol.DScheme = FEM::Solver::GN22_t;
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;

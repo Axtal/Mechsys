@@ -49,6 +49,7 @@ public:
     void         CalcK       (Mat_t & K)                                         const; ///< Stiffness matrix
     void         CalcM       (Mat_t & M)                                         const; ///< Mass matrix
     virtual void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)              const; ///< Update state at IPs
+    virtual void SetFint     (Vec_t * Fint=NULL)                                 const; ///< Set Fint=K*Ue or set nodes if Fint==NULL
     virtual void StateKeys   (Array<String> & Keys)                              const; ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
     virtual void StateAtIP   (SDPair & KeysVals, int IdxIP)                      const; ///< Get state at IP
 
@@ -165,23 +166,7 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
     }
 
     // set F in nodes due to initial stresses
-    double detJ, coef;
-    Mat_t  C, B;
-    Vec_t  Fe(NDu);
-    CoordMatrix (C);
-    set_to_zero (Fe);
-    for (size_t i=0; i<GE->NIP; ++i)
-    {
-        CalcB (C, GE->IPs[i], B, detJ, coef);
-        Vec_t const & sig = static_cast<EquilibState const *>(Sta[i])->Sig;
-        Fe += (coef) * trans(B)*sig;
-    }
-    for (size_t i=0; i<GE->NN; ++i)
-    {
-        Con[i]->F("fx") += Fe(0+i*NDim);
-        Con[i]->F("fy") += Fe(1+i*NDim);  if (NDim==3)
-        Con[i]->F("fz") += Fe(2+i*NDim);
-    }
+    SetFint ();
 }
 
 inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF)
@@ -594,6 +579,41 @@ inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
     // add results to Fint (internal forces)
     if (F_int!=NULL) for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += dFe(i);
+}
+
+inline void EquilibElem::SetFint (Vec_t * Fint) const
+{
+    // element force
+    double detJ, coef;
+    Mat_t  C, B;
+    Vec_t  Fe(NDu);
+    CoordMatrix (C);
+    set_to_zero (Fe);
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        CalcB (C, GE->IPs[i], B, detJ, coef);
+        Vec_t const & sig = static_cast<EquilibState const *>(Sta[i])->Sig;
+        Fe += (coef) * trans(B)*sig;
+    }
+
+    // set nodes
+    if (Fint==NULL)
+    {
+        for (size_t i=0; i<GE->NN; ++i)
+        {
+            Con[i]->F("fx") += Fe(0+i*NDim);
+            Con[i]->F("fy") += Fe(1+i*NDim);  if (NDim==3)
+            Con[i]->F("fz") += Fe(2+i*NDim);
+        }
+    }
+
+    // return Fint
+    else
+    {
+        Array<size_t> loc;
+        GetLoc (loc);
+        for (size_t i=0; i<loc.Size(); ++i) (*Fint)(loc[i]) += Fe(i);
+    }
 }
 
 inline void EquilibElem::StateKeys (Array<String> & Keys) const

@@ -29,7 +29,7 @@
 #include <mechsys/fem/elems/quad8.h>
 #include <mechsys/fem/equilibelem.h>
 #include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
+#include <mechsys/fem/rksolver.h>
 #include <mechsys/models/linelastic.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/util.h>
@@ -104,16 +104,12 @@ int main(int argc, char **argv) try
     dom.MFuncs[-100] = &bcf; // set database of callbacks
 
     // solver
-    FEM::Solver sol(dom);
-    sol.DScheme = FEM::Solver::RK_t;
-    //sol.DScheme = FEM::Solver::GN22_t;
-    sol.DampAm  = 0.005;
-    sol.DampAk  = 0.272;
-    sol.DampTy  = FEM::Solver::Rayleigh_t;
-    //sol.CteTg   = true;
-
-    sol.RKScheme = "RK4I";
-    sol.RKSTOL   = 1.0e-3;
+    FEM::RKSolver sol(dom);
+    sol.DampAm = 0.005;
+    sol.DampAk = 0.272;
+    sol.DampTy = FEM::RKSolver::Rayleigh_t;
+    sol.Scheme = "RK4I";
+    sol.STOL   = 1.0e-3;
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;

@@ -28,7 +28,7 @@
 #include <mechsys/mesh/structured.h>
 #include <mechsys/fem/beam.h>
 #include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
+#include <mechsys/fem/rksolver.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/util.h>
 #include <mechsys/util/fatal.h>
@@ -69,9 +69,7 @@ int main(int argc, char **argv) try
     dom.MFuncs[-200] = &bcf; // set database of callbacks
 
     // solver
-    FEM::Solver sol(dom);
-    //sol.DScheme = FEM::Solver::GN22_t;
-    sol.DScheme = FEM::Solver::RK_t;
+    FEM::RKSolver sol(dom);
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;

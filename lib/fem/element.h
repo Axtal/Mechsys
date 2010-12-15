@@ -133,6 +133,7 @@ public:
     virtual void CalcK        (Vec_t const & U, double Alpha, double dt, Mat_t & KK, Vec_t & dF) const { throw new Fatal("Element::CalcK (with U, Alpha, Dt => HydroMech): Method not implemented for this element"); }
     virtual void CalcKCM      (Mat_t & KK, Mat_t & CC, Mat_t & MM)                const { throw new Fatal("Element::CalcKCM: Method not implemented for this element"); }
     virtual void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)              const {}
+    virtual void SetFint      (Vec_t * Fint=NULL)                                 const {} ///< Calculate Fi = K*U
     virtual void StateKeys    (Array<String> & Keys)                              const {} ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
     virtual void StateAtIP    (SDPair & KeysVals, int IdxIP)                      const {} ///< Get state at IP
     virtual void StateAtIPs   (Array<SDPair> & Results)                           const;   ///< Get state (internal values: sig, eps) at all integration points

@@ -42,6 +42,7 @@
 #include <mechsys/fem/elems/tet10.h>
 #include <mechsys/fem/domain.h>
 #include <mechsys/fem/solver.h>
+#include <mechsys/fem/rksolver.h>
 #include <mechsys/models/model.h>
 #include <mechsys/models/linflow.h>
 #include <mechsys/models/linelastic.h>

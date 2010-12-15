@@ -68,6 +68,7 @@ public:
     double ValOrZero (String const & Key) const { return ValOrZero(Key.CStr()); }
     bool   HasKey    (char const   * Key) const;
     bool   HasKey    (String const & Key) const;
+    long   IdxKey    (String const & Key) const { return Keys.Find(Key); } ///< Returns the index of key if found, otherwise returns -1
     void   Val2Key   (double Val, String & Key, double Tol=1.0e-15) const;
     void   clear     () { Keys.Clear(); StrDbl_t::clear(); }
 
