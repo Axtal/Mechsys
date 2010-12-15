@@ -1396,4 +1396,54 @@ inline double M2Phi (double M, char const * Type="oct")
     return asin(sphi)*180.0/Util::PI;
 }
 
+
+///////////////////////////////////////////////////////////////////////// Python functions ///////////////////////
+
+
+#ifdef USE_BOOST_PYTHON
+
+inline void Vec2List (Vec_t const & V, BPy::list & L)
+{
+    for (size_t i=0; i<size(V); ++i) L.append(V(i));
+}
+
+inline void List2Vec (BPy::list const & L, Vec_t & V)
+{
+    size_t m = BPy::len(L);
+    if (m>0)
+    {
+        V.change_dim (m);
+        for (size_t i=0; i<m; ++i) V(i) = BPy::extract<double>(L[i])();
+    }
+}
+
+inline void Mat2List (Mat_t const & M, BPy::list & L)
+{
+    size_t m = num_rows(M);
+    size_t n = num_cols(M);
+    for (size_t i=0; i<m; ++i)
+    {
+        BPy::list row;
+        for (size_t j=0; j<n; ++j) row.append(M(i,j));
+        L.append(row);
+    }
+}
+
+inline void List2Mat (BPy::list const & L, Mat_t & M)
+{
+    size_t m = BPy::len(L);
+    if (m>0)
+    {
+        size_t n = BPy::len(BPy::extract<BPy::list>(L[0])());
+        M.change_dim (m,n);
+        for (size_t i=0; i<m; ++i)
+        {
+            BPy::list const & row = BPy::extract<BPy::list>(L[i])();
+            for (size_t j=0; j<n; ++j) M(i,j) = BPy::extract<double>(row[j])();
+        }
+    }
+}
+
+#endif
+
 #endif // MECHSYS_MATVEC_H

@@ -25,6 +25,7 @@ namespace BPy = boost::python;
 
 // MechSys
 #include <mechsys/inpfile.h>
+#include <mechsys/linalg/jacobirot.h>
 
 // MechSys -- FEM
 #include <mechsys/fem/fem.h>
@@ -33,6 +34,7 @@ namespace BPy = boost::python;
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_PHI2M,        Phi2M,        1, 2)
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_M2PHI,        M2Phi,        1, 2)
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_READMATERIAL, ReadMaterial, 6, 7)
+BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_JACOBIROT,    PyJacobiRot,  3, 4)
 
 // member overloadings
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_ReadMesh,     ReadMesh,     1, 2)
@@ -85,9 +87,10 @@ BPy::register_exception_translator<Fatal *>(&PyExceptTranslator);
 
 /////////////////////////////////////////////////////////////////////////////////// linalg ////
 
-BPy::def("pqth2L", Pypqth2L);
-BPy::def("Phi2M",  Phi2M, FUN_PHI2M());
-BPy::def("M2Phi",  M2Phi, FUN_M2PHI());
+BPy::def("pqth2L",    Pypqth2L);
+BPy::def("Phi2M",     Phi2M,       FUN_PHI2M());
+BPy::def("M2Phi",     M2Phi,       FUN_M2PHI());
+BPy::def("JacobiRot", PyJacobiRot, FUN_JACOBIROT());
 
 ///////////////////////////////////////////////////////////////////////////////// InpFile /////
 
