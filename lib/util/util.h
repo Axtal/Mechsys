@@ -40,8 +40,6 @@ const double SQ3    = sqrt(3.0);         ///< \f$ \sqrt{3} \f$
 const double SQ6    = sqrt(6.0);         ///< \f$ \sqrt{6} \f$
 const double SQ2BY3 = sqrt(2.0/3.0);     ///< \f$ \sqrt{2/3} \f$
 const double PI     = 4.0*atan(1.0);     ///< \f$ \pi \f$
-const double TRUE   = 1.0;
-const double FALSE  = 0.0;
 
 inline bool IsNan(double Val)
 {

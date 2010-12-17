@@ -20,10 +20,10 @@ SET(PROGS_A # tests requiring FLTK
   tplotxy
   )
 
-#SET(PROGS_B # tests requiring CGAL
+SET(PROGS_B # tests requiring CGAL
+  alphashape01)
 
 SET(PROGS_C # tests requiring GSL
-  alphashape01
   quadrature
   monte_carlo
   test_numdiff1
@@ -96,13 +96,15 @@ IF(TETGEN_FOUND AND TRIANGLE_FOUND)
 	ENDFOREACH(var)
 ENDIF(TETGEN_FOUND AND TRIANGLE_FOUND)
 
-IF(wxWidgets_FOUND AND USE_WXW)
+IF(wxWidgets_FOUND AND A_USE_WXW)
 	FOREACH(var ${PROGS_G})
 		ADD_EXECUTABLE        (${var} "${var}.cpp")
 		TARGET_LINK_LIBRARIES (${var} ${LIBS})
 		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 	ENDFOREACH(var)
-ENDIF(wxWidgets_FOUND AND USE_WXW)
+ELSE(wxWidgets_FOUND AND A_USE_WXW)
+    message("PROGS_G will not be compiled. Missing = ${MISSING}")
+ENDIF(wxWidgets_FOUND AND A_USE_WXW)
 
 
 if (A_USE_VTK)

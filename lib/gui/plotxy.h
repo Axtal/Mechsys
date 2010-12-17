@@ -71,7 +71,7 @@ public:
 #if defined(USE_FLTK)
     PlotXY (int xmin, int ymin, int width, int height, char const * Title=NULL, char const * Xlbl=NULL, char const * Ylbl=NULL); // Screen coordinates
 #elif defined(USE_WXWIDGETS)
-    PlotXY (wxFrame * Parent, char const * Title=NULL, char const * Xlbl=NULL, char const * Ylbl=NULL);
+    PlotXY (wxWindow * Parent, char const * Title=NULL, char const * Xlbl=NULL, char const * Ylbl=NULL);
 #endif
 
     /* Destructor. */
@@ -193,7 +193,7 @@ private:
 inline PlotXY::PlotXY (int xmin, int ymin, int width, int height, char const * Title, char const * Xlbl, char const * Ylbl)
     : Fl_Group (xmin,ymin,width,height,0),
 #elif defined(USE_WXWIDGETS)
-inline PlotXY::PlotXY (wxFrame * Parent, char const * Title, char const * Xlbl, char const * Ylbl)
+inline PlotXY::PlotXY (wxWindow * Parent, char const * Title, char const * Xlbl, char const * Ylbl)
     : wxWindow (Parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE),
 #endif
       EqSF      (false),
