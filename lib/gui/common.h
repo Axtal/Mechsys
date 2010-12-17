@@ -385,7 +385,10 @@ class Fonts : public Fonts_t
 {
 public:
     // Constructor
-    Fonts()
+    Fonts () : _initialized(false) {}
+
+    // Initialize
+    void Initialize ()
     {
         (*this)["arial_10_n"]    = FontType("arial",   10, false, false);
         (*this)["arial_10_b"]    = FontType("arial",   10, true,  false);
@@ -395,11 +398,14 @@ public:
         (*this)["courier_10_b"]  = FontType("courier", 10, true,  false);
         (*this)["courier_10_i"]  = FontType("courier", 10, false, true);
         (*this)["courier_10_bi"] = FontType("courier", 10, true,  true);
+        _initialized = true;
     }
 
     // Operators
     FontType operator() (char const * Name)
     {
+        if (_initialized) Initialize();
+
         Fonts_t::const_iterator p = this->find(Name);
 
         // add new font
@@ -440,6 +446,8 @@ public:
         }
         else return p->second;
     }
+private:
+    bool _initialized;
 };
 
 // Allocate fonts
