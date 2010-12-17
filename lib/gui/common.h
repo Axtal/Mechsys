@@ -33,6 +33,7 @@
   #include <wx/pen.h>
   #include <wx/font.h>
   #include <wx/gdicmn.h>
+  #include <wx/dcbuffer.h>
 #else
   #error MechSys:gui/common.h: Either USE_FLTK or USE_WXWIDGETS must be defined
 #endif
@@ -40,6 +41,36 @@
 // MechSys
 #include <mechsys/util/string.h>
 #include <mechsys/util/fatal.h>
+#include <mechsys/util/array.h>
+
+#ifdef USE_WXWIDGETS
+
+  #define CREATE_WXPANEL(PNL, SZR, M, N)                                      \
+        wxScrolled<wxPanel> * PNL = new wxScrolled<wxPanel> (this, wxID_ANY); \
+        wxFlexGridSizer * SZR = new wxFlexGridSizer (M,N,0,0);                \
+        PNL->SetSizer (new wxBoxSizer(wxVERTICAL));                           \
+        PNL->SetScrollbars(10,10,0,0);                                        \
+        PNL->GetSizer()->Add (SZR,0,wxALIGN_LEFT|wxALL|wxEXPAND);             \
+        PNL->GetSizer()->Fit (PNL);                                           \
+        PNL->GetSizer()->SetSizeHints (PNL);
+
+  #define ADD_WXREALNUMINPUT(PNL, SZR, ID, VAR, CTRL, LBL)                                             \
+        CTRL = new WxRealNumInput (PNL, ID, VAR);                                                      \
+        SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
+        SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
+  #define ADD_WXCHECKBOX(PNL, SZR, ID, VAR, CTRL, LBL)                                                 \
+        CTRL = new wxCheckBox (PNL, ID, wxEmptyString);                                                \
+        CTRL->SetValue (static_cast<bool>(VAR));                                                       \
+        SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
+        SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
+  #define ADD_WXTEXTCTRL(PNL, SZR, ID, VAR, CTRL, LBL)                                                 \
+        CTRL = new wxTextCtrl (PNL, ID, VAR);                                                          \
+        SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
+        SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
+#endif
 
 namespace GUI
 {

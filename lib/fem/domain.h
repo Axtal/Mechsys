@@ -537,13 +537,13 @@ inline void Domain::SetBCs (Dict const & BCs)
                             {
                                 eleside2tag_to_ubc[es].first = btag;
                                 eleside2tag_to_ubc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want F values
-                                if (bcs.Keys.Has("bcf")) eleside2tag_to_ubc[es].second.Set ("bcf", Util::TRUE); // has to keep the multiplier though
+                                if (bcs.Keys.Has("bcf")) eleside2tag_to_ubc[es].second.Set ("bcf", 1.0); // has to keep the multiplier though
                             }
                             else // is F key or 'qn', 'qt', etc.
                             {
                                 eleside2tag_to_fbc[es].first = btag;
                                 eleside2tag_to_fbc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want U values
-                                if (bcs.Keys.Has("bcf")) eleside2tag_to_fbc[es].second.Set ("bcf", Util::TRUE); // has to keep the multiplier though
+                                if (bcs.Keys.Has("bcf")) eleside2tag_to_fbc[es].second.Set ("bcf", 1.0); // has to keep the multiplier though
                             }
                         }
                     }
@@ -580,13 +580,13 @@ inline void Domain::SetBCs (Dict const & BCs)
                             {
                                 nod2tag_to_ubc[TgdNods[j]].first = btag;
                                 nod2tag_to_ubc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want F values
-                                if (bcs.Keys.Has("bcf")) nod2tag_to_ubc[TgdNods[j]].second.Set ("bcf", Util::TRUE); // has to keep the multiplier though
+                                if (bcs.Keys.Has("bcf")) nod2tag_to_ubc[TgdNods[j]].second.Set ("bcf", 1.0); // has to keep the multiplier though
                             }
                             else if (AllFKeys.Has(bcs.Keys[k])) // is F key
                             {
                                 nod2tag_to_fbc[TgdNods[j]].first = btag;
                                 nod2tag_to_fbc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want F values
-                                if (bcs.Keys.Has("bcf")) nod2tag_to_fbc[TgdNods[j]].second.Set ("bcf", Util::TRUE); // has to keep the multiplier though
+                                if (bcs.Keys.Has("bcf")) nod2tag_to_fbc[TgdNods[j]].second.Set ("bcf", 1.0); // has to keep the multiplier though
                             }
                             else throw new Fatal("FEM::Domain::SetBCs: BC==%s with tag==%d cannot be specified to Node # %d", bcs.Keys[k].CStr(), btag, TgdNods[j]->Vert.ID);
                         }

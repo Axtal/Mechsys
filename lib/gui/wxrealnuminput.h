@@ -56,21 +56,21 @@ private:
 typedef void (wxEvtHandler::*WxRealNumInput_Event_Fun)(WxRealNumInput_Event&);
 
 BEGIN_DECLARE_EVENT_TYPES()
-    DECLARE_EVENT_TYPE(WxEVT_REALNUM_CHANGED, 801)
+    DECLARE_EVENT_TYPE(EVT_REALNUM_CHANGED, 801)
 END_DECLARE_EVENT_TYPES()
 
 // Macros for handling events
 #define EVT_REALNUM_CHANGED(id, fn)                                               \
     DECLARE_EVENT_TABLE_ENTRY                                                     \
     (                                                                             \
-        WxEVT_REALNUM_CHANGED                                                   , \
+        EVT_REALNUM_CHANGED                                                     , \
         id                                                                      , \
         -1                                                                      , \
         (wxObjectEventFunction)(wxEventFunction)(WxRealNumInput_Event_Fun) & fn , \
         (wxObject*) NULL                                                          \
     ),
 
-DEFINE_EVENT_TYPE       (WxEVT_REALNUM_CHANGED)
+DEFINE_EVENT_TYPE       (EVT_REALNUM_CHANGED)
 IMPLEMENT_DYNAMIC_CLASS (WxRealNumInput_Event, wxNotifyEvent)
 
 
@@ -80,10 +80,17 @@ IMPLEMENT_DYNAMIC_CLASS (WxRealNumInput_Event, wxNotifyEvent)
 class WxRealNumInput : public wxTextCtrl
 {
 public:
-    // Constructor
+    // Constructors
     WxRealNumInput(wxWindow * Parent, wxWindowID Id, const wxString & Str, const wxPoint & Pos=wxDefaultPosition, const wxSize & Size=wxDefaultSize, int Style=0)
         : wxTextCtrl(Parent, Id, Str, Pos, Size, Style|wxTE_PROCESS_ENTER)
     {}
+
+    WxRealNumInput(wxWindow * Parent, wxWindowID Id, double Val, const wxPoint & Pos=wxDefaultPosition, const wxSize & Size=wxDefaultSize, int Style=0)
+        : wxTextCtrl(Parent, Id, wxEmptyString, Pos, Size, Style|wxTE_PROCESS_ENTER)
+    {
+        wxString str;  str.Printf("%g",Val);
+        SetValue (str);
+    }
 
     // Events
     void OnChar      (wxKeyEvent     & Event);
@@ -93,6 +100,7 @@ public:
 
     // Methods
     double GetVal () const { double val; GetValue().ToDouble(&val); return val; }
+    void   SetVal (double Val) { wxString str; str.Printf("%g",Val); SetValue(str); }
 private:
     // Event table
     DECLARE_EVENT_TABLE()
@@ -158,7 +166,7 @@ inline bool WxRealNumInput::_validate_value(double & OutValue)
 
 inline void WxRealNumInput::_send_realnum_changed_event(double Val)
 {
-    WxRealNumInput_Event event(WxEVT_REALNUM_CHANGED, GetId());
+    WxRealNumInput_Event event(EVT_REALNUM_CHANGED, GetId());
     event.SetEventObject (this);
     event.SetValue       (Val);
     GetEventHandler()->ProcessEvent(event);

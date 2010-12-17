@@ -21,6 +21,8 @@
 #include <sstream>
 #include <fstream>
 
+#define USE_WXWIDGETS
+
 // MechSys
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/linalg/umfpack.h>
@@ -46,10 +48,9 @@ using Util::SQ2;
 using Util::SQ3;
 using Util::SQ6;
 using Util::PI;
-using Util::TRUE;
-using Util::FALSE;
 using FEM::PROB;
 using FEM::GEOM;
+const double True = 1.0;
 
 
 void zTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double dp, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs, double dexy=0., double deyz=0., double dezx=0.)
@@ -334,7 +335,7 @@ int main(int argc, char **argv) try
         // properties
         Dict prps;
         prps.Set (-1, "prob geom active d3d", (inp.hm ? PROB("HydroMech") : PROB("Equilib")), 
-                                              (inp.o2 ? GEOM("Hex20")     : GEOM("Hex8")), TRUE, TRUE);
+                                              (inp.o2 ? GEOM("Hex20")     : GEOM("Hex8")), True, True);
 
         // select some nodes for output
         Array<int> out_nods(8);
@@ -428,15 +429,15 @@ int main(int argc, char **argv) try
                 else if (ppw)
                 {
                     bcf.pw += Dpw;
-                    bcs.Set(-11, "pw bcf", 0.0, TRUE);
-                    bcs.Set(-21, "pw bcf", 0.0, TRUE);
-                    bcs.Set(-31, "pw bcf", 0.0, TRUE);
+                    bcs.Set(-11, "pw bcf", 0.0, True);
+                    bcs.Set(-21, "pw bcf", 0.0, True);
+                    bcs.Set(-31, "pw bcf", 0.0, True);
                 }
                 else
                 {
-                    if (pDEps[0]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-11, "ux multU", DEps(0), TRUE);*/ else bcs.Set(-11, "qn bcf", DSig(0), TRUE);
-                    if (pDEps[1]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-21, "uy multU", DEps(1), TRUE);*/ else bcs.Set(-21, "qn bcf", DSig(1), TRUE);
-                    if (pDEps[2]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-31, "uz multU", DEps(2), TRUE);*/ else bcs.Set(-31, "qn bcf", DSig(2), TRUE);
+                    if (pDEps[0]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-11, "ux multU", DEps(0), True);*/ else bcs.Set(-11, "qn bcf", DSig(0), True);
+                    if (pDEps[1]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-21, "uy multU", DEps(1), True);*/ else bcs.Set(-21, "qn bcf", DSig(1), True);
+                    if (pDEps[2]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-31, "uz multU", DEps(2), True);*/ else bcs.Set(-31, "qn bcf", DSig(2), True);
                 }
             }
             else

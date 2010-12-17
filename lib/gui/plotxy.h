@@ -36,8 +36,7 @@
 
 // wxWidgets
 #ifdef USE_WXWIDGETS
-  #include <wx/frame.h>
-  #include <wx/dcbuffer.h>
+  #include <wx/window.h>
 #endif
 
 // MechSys
