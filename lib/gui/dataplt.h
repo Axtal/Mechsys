@@ -53,9 +53,9 @@ public:
 
     // Methods
     void OnLoad    (wxCommandEvent & Event);
-    void OnSelData (wxCommandEvent & Event) { _replot (); }
-    void OnMultq   (wxCommandEvent & Event) { _replot (); }
-    void OnPltAll  (wxCommandEvent & Event) { _replot (); }
+    void OnSelData (wxCommandEvent & Event) { _init_plots (); }
+    void OnMultq   (wxCommandEvent & Event) { _init_plots (); }
+    void OnPltAll  (wxCommandEvent & Event) { _init_plots (); }
 
     // Controls
     wxAuiManager   Aui;
@@ -72,7 +72,7 @@ public:
     DECLARE_EVENT_TABLE()
 
 private:
-    void _replot ();
+    void _init_plots ();
 };
 
 
@@ -113,14 +113,6 @@ inline DataPLT::DataPLT (wxFrame * Parent)
     qpev->ShowLastY = false;
     eved->ShowLastY = false;
     evlp->ShowLastY = false;
-    GUI::CurveProps & c0 = qped->AddCurve ("load data please");
-    GUI::CurveProps & c1 = qpev->AddCurve ("load data please");
-    GUI::CurveProps & c2 = eved->AddCurve ("load data please");
-    GUI::CurveProps & c3 = evlp->AddCurve ("load data please");
-    c0.Typ = GUI::CT_BOTH;  c0.Psz = 6;
-    c1.Typ = GUI::CT_BOTH;  c1.Psz = 6;
-    c2.Typ = GUI::CT_BOTH;  c2.Psz = 6;
-    c3.Typ = GUI::CT_BOTH;  c3.Psz = 6;
 
     // control panel
     wxPanel         * pnl = new wxPanel    (this, wxID_ANY);
@@ -155,19 +147,32 @@ inline void DataPLT::OnLoad (wxCommandEvent & Event)
     wxFileDialog fd(this, "Choose data file", "", "", "*.dat", wxFD_MULTIPLE);
     if (fd.ShowModal()==wxID_OK)
     {
+        // get filenames
         wxArrayString paths, fnames;
         fd .GetPaths     (paths);
         fd .GetFilenames (fnames);
-        ed .Resize       (paths.size());
-        ev .Resize       (paths.size());
-        p  .Resize       (paths.size());
-        q  .Resize       (paths.size());
-        t  .Resize       (paths.size());
-        lp .Resize       (paths.size());
-        qp .Resize       (paths.size());
-        mqp.Resize       (paths.size());
+
+        // disconnect plots
+        qped->DelCurves ();
+        qpev->DelCurves ();
+        eved->DelCurves ();
+        evlp->DelCurves ();
+        cbx_data->Clear ();
+
+        // resize data arrays
+        ed .Resize (paths.size());
+        ev .Resize (paths.size());
+        p  .Resize (paths.size());
+        q  .Resize (paths.size());
+        t  .Resize (paths.size());
+        lp .Resize (paths.size());
+        qp .Resize (paths.size());
+        mqp.Resize (paths.size());
+
+        // load data
         for (size_t i=0; i<paths.size(); ++i)
         {
+            // read tabular data
             Table dat;
             dat.Read (paths[i]);
             bool   old_data_file_xyz = false;
@@ -185,6 +190,8 @@ inline void DataPLT::OnLoad (wxCommandEvent & Event)
                 else if (dat.Keys[j]=="sxy") { has_sxy=true; }
             }
             if (nrow==0) throw new Fatal("DataPLT::OnLoad: Could not find (sx,sy,sz,sxy) columns in file %s",fnames[i].ToStdString().c_str());
+
+            // set pointers to sub arrays of data
             Array<double> const * sx;
             Array<double> const * sy;
             Array<double> const * sz;
@@ -231,6 +238,8 @@ inline void DataPLT::OnLoad (wxCommandEvent & Event)
                 if (has_sxy) exy = &dat("exy");
                 n = 100.0;
             }
+
+            // resize sub arrays
             ed [i].Resize (nrow);
             ev [i].Resize (nrow);
             p  [i].Resize (nrow);
@@ -239,6 +248,8 @@ inline void DataPLT::OnLoad (wxCommandEvent & Event)
             lp [i].Resize (nrow);
             qp [i].Resize (nrow);
             mqp[i].Resize (nrow);
+
+            // calculate invariants
             Vec_t sig(4), eps(4);
             for (size_t j=0; j<nrow; ++j)
             {
@@ -252,67 +263,42 @@ inline void DataPLT::OnLoad (wxCommandEvent & Event)
                 mqp[i][j] = (t[i][j]<0.0 ? -qp[i][j] : qp[i][j]);
             }
         }
-        cbx_data->Clear        ();
+
+        // refresh cbx => replot
         cbx_data->Set          (fnames);
         cbx_data->SetSelection (0);
     }
 }
 
-inline void DataPLT::_replot ()
+inline void DataPLT::_init_plots ()
 {
-    bool mul = mult_q ->GetValue();
-    if (plt_all->GetValue())
+    // filenames
+    wxArrayString fnames = cbx_data->GetStrings ();
+
+    // disconnect plots
+    qped->DelCurves ();
+    qpev->DelCurves ();
+    eved->DelCurves ();
+    evlp->DelCurves ();
+
+    // reconnect plots
+    bool   mul = mult_q ->GetValue();
+    bool   all = plt_all->GetValue();
+    size_t ini = (all ? 0         : cbx_data->GetSelection());
+    size_t num = (all ? ed.Size() : ini+1);
+    for (size_t i=ini; i<num; ++i)
     {
-        qped->DelCurves ();
-        qpev->DelCurves ();
-        eved->DelCurves ();
-        evlp->DelCurves ();
-        for (size_t i=0; i<ed.Size(); ++i)
-        {
-            GUI::CurveProps & c0 = qped->AddCurve (&ed[i], (mul ? &mqp[i] : &qp[i]), "");
-            GUI::CurveProps & c1 = qpev->AddCurve (&ev[i], (mul ? &mqp[i] : &qp[i]), "");
-            GUI::CurveProps & c2 = eved->AddCurve (&ed[i], &ev[i], "");
-            GUI::CurveProps & c3 = evlp->AddCurve (&lp[i], &ev[i], "");
-            c0.Typ = GUI::CT_BOTH;  c0.Psz = 6;
-            c1.Typ = GUI::CT_BOTH;  c1.Psz = 6;
-            c2.Typ = GUI::CT_BOTH;  c2.Psz = 6;
-            c3.Typ = GUI::CT_BOTH;  c3.Psz = 6;
-        }
+        GUI::CurveProps & c0 = qped->AddCurve (&ed[i], (mul ? &mqp[i] : &qp[i]), fnames[i].ToStdString().c_str());
+        GUI::CurveProps & c1 = qpev->AddCurve (&ev[i], (mul ? &mqp[i] : &qp[i]), fnames[i].ToStdString().c_str());
+        GUI::CurveProps & c2 = eved->AddCurve (&ed[i],                  &ev[i],  fnames[i].ToStdString().c_str());
+        GUI::CurveProps & c3 = evlp->AddCurve (&lp[i],                  &ev[i],  fnames[i].ToStdString().c_str());
+        c0.Typ=GUI::CT_BOTH;  c0.Psz=4;  c0.Pen.Set((all ? GUI::LinClr(i) : "black"), (i>5 ? "dash" : "solid"), 1);
+        c1.Typ=GUI::CT_BOTH;  c1.Psz=4;  c1.Pen.Set((all ? GUI::LinClr(i) : "black"), (i>5 ? "dash" : "solid"), 1);
+        c2.Typ=GUI::CT_BOTH;  c2.Psz=4;  c2.Pen.Set((all ? GUI::LinClr(i) : "black"), (i>5 ? "dash" : "solid"), 1);
+        c3.Typ=GUI::CT_BOTH;  c3.Psz=4;  c3.Pen.Set((all ? GUI::LinClr(i) : "black"), (i>5 ? "dash" : "solid"), 1);
     }
-    else
-    {
-        int i = cbx_data->GetSelection();
-        if (ed.Size()>i)
-        {
-            char const * str = cbx_data->GetStringSelection().ToStdString().c_str();
-            if (qped->C.Size()>1)
-            {
-                qped->DelCurves ();
-                qpev->DelCurves ();
-                eved->DelCurves ();
-                evlp->DelCurves ();
-                GUI::CurveProps & c0 = qped->AddCurve (&ed[i], (mul ? &mqp[i] : &qp[i]), str);
-                GUI::CurveProps & c1 = qpev->AddCurve (&ev[i], (mul ? &mqp[i] : &qp[i]), str);
-                GUI::CurveProps & c2 = eved->AddCurve (&ed[i], &ev[i], str);
-                GUI::CurveProps & c3 = evlp->AddCurve (&lp[i], &ev[i], str);
-                c0.Typ = GUI::CT_BOTH;  c0.Psz = 6;
-                c1.Typ = GUI::CT_BOTH;  c1.Psz = 6;
-                c2.Typ = GUI::CT_BOTH;  c2.Psz = 6;
-                c3.Typ = GUI::CT_BOTH;  c3.Psz = 6;
-            }
-            else
-            {
-                qped->SetXY (0, &ed[i], (mul ? &mqp[i] : &qp[i]));
-                qpev->SetXY (0, &ev[i], (mul ? &mqp[i] : &qp[i]));
-                eved->SetXY (0, &ed[i], &ev[i]);
-                evlp->SetXY (0, &lp[i], &ev[i]);
-                snprintf    (qped->C[0].Nam, 256, "%s", str);
-                snprintf    (qpev->C[0].Nam, 256, "%s", str);
-                snprintf    (eved->C[0].Nam, 256, "%s", str);
-                snprintf    (evlp->C[0].Nam, 256, "%s", str);
-            }
-        }
-    }
+
+    // redraw
     qped->Redraw ();
     qpev->Redraw ();
     eved->Redraw ();

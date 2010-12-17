@@ -43,6 +43,9 @@ class Plotter:
         self.fc_phi    = -1                                       # friction angle for FC
         self.fc_c      = 0.0                                      # cohesion for FC
         self.fc_np     = 40                                       # number of points for drawing failure line
+        self.fc_a      = [0., 0., 1.]                             # anisotropic fc: bedding planes normal
+        self.fc_R      = -1                                       # anisotropic fc: R
+        self.fc_alp    = 0.1                                      # anisotropic fc: coefficient
         self.mark_max  = False                                    # mark max (failure) point ?
         self.mark_lst  = False                                    # mark residual (failure) point ?
         self.oct_norm  = False                                    # normalize plot in octahedral plane by p ?
@@ -65,7 +68,7 @@ class Plotter:
         self.lnplus1   = False                                    # plot ln(p+1) instead of ln(p) ?
         self.oct_sxyz  = False                                    # use Sx,Sy,Sz in oct plane instead of S1,S2,S3
         self.fsz       = 8                                        # fontsize
-
+        self.Imat      = matrix(diag(ones(3)))                    # identity matrix 3x3
 
     # Plot results
     # ============
@@ -475,6 +478,24 @@ class Plotter:
             om      = ((3.0-sphi)/(3.0+sphi))**4.0
             M       = Mcs*(2.0*om/(1.0+om-(1.0-om)*t))**0.25;
             f       = q/p - M
+        elif fc_ty=='AMP':
+            #R    = 2.0*sqrt(2.0)*tan(self.fc_phi*pi/180.0)/3.0
+            #R    = R*0.7
+            l, Q = sig_calc_rot (sig)
+            if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return 1.0e+8
+            I1,I2,I3 = char_invs(sig)
+            a    = matrix(self.fc_a).T
+            nsmp = matrix(sqrt(I3/(I2*l))).T
+            namp = self.fc_alp*Q.T*a + nsmp
+            namp = namp / norm(namp)
+            Pamp = namp*namp.T
+            Qamp = self.Imat - Pamp
+            tamp = diag(l) * namp
+            pamp = Pamp*tamp
+            qamp = Qamp*tamp
+            ss   = norm(pamp)
+            tt   = norm(qamp)
+            return tt - self.fc_R*ss
         else: raise Exception('failure_crit: fc_ty==%s is invalid' % fc_ty)
         return f
 
@@ -489,6 +510,7 @@ class Plotter:
         elif fc_ty=='MNnl': return 'Matsuoka-Nakai (non-linear)'
         elif fc_ty=='LD':   return 'Lade-Duncan'
         elif fc_ty=='AS':   return 'Argyris-Sheng'
+        elif fc_ty=='AMP':  return 'AMP'
         else: raise Exception('failure_crit_names: fc_ty==%s is invalid' % fc_ty)
 
 
@@ -693,7 +715,7 @@ class Plotter:
 
     # Plot failure criteria
     # =====================
-    def plot_fc (self, types=['MC', 'MN'], phis=[30.0], clrs=None, lsts=None, fmt='%g', lwd=1, fsz=10, np=40, r=None, samin=None, samax=None, sbmin=None, sbmax=None, positive=False):
+    def plot_fc (self, types=['MC', 'MN'], phis=[30.0], lwds=None, clrs=None, lsts=None, fmt='%g', lwd=1, fsz=10, np=40, r=None, samin=None, samax=None, sbmin=None, sbmax=None, positive=False):
         # draw rosette
         r   = 1.*phi_calc_M(max(phis),'oct') if r==None else r
         cf  = 0.2
@@ -740,6 +762,7 @@ class Plotter:
             for k, ty in enumerate(types):
                 clr = GetClr(k) if clrs==None else clrs[k]
                 lst = GetLst(k) if lsts==None else lsts[k]
+                lwd = 1         if lwds==None else lwds[k]
                 for i in range(np):
                     for j in range(np):
                         sa[i,j] = samin + i*dsa

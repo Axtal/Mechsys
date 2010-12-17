@@ -157,6 +157,18 @@ public:
 // Allocate colours
 Colours Clr;
 
+// Line colors
+Array<String> __lin_clr;
+int __init_lin_clr ()
+{
+    __lin_clr.Resize (10);
+    __lin_clr = "red", "blue", "dgreen", "magenta", "dblue", "green", "orange", "cyan", "pink", "yellow";
+    return 0;
+}
+int __dummy_init_lin_clr = __init_lin_clr();
+
+inline char const * LinClr (int Idx=0) { return __lin_clr[Idx % __lin_clr.Size()].CStr(); }
+
 
 //////////////////////////////////////////////////////////////////////////////////////// Line types /////
 

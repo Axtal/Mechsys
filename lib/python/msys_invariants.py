@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-from numpy import sqrt, matrix, arcsin, sin, pi, array
+from numpy import sqrt, matrix, arcsin, sin, pi, array, diag
 import numpy.linalg as npyla
 
 # Calculate ev and ed
@@ -260,6 +260,15 @@ def sig_calc_s123(sig,with_projs=False,do_sort=False):
         if do_sort: s123.sort()#reverse=True)
         return s123
 
+# Calculate principal stresses and rotation matrix
+# ================================================
+# sig is a column matrix (4x1) in Mandel's basis
+def sig_calc_rot(sig):
+    sq2  = sqrt(2.0)
+    smat = matrix([[ sig[0,0]     , sig[3,0]/sq2 ,     0.0  ],
+                   [ sig[3,0]/sq2 , sig[1,0]     ,     0.0  ],
+                   [     0.0      ,     0.0      , sig[2,0] ]])
+    return npyla.eig(smat)
 
 # Calculate principal strains
 # ===========================
