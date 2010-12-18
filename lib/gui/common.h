@@ -70,6 +70,10 @@
         SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
         SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
 
+  //#define ADD_WXWGETS(WGETS, PNL, SZR, ID, VAR, CTRL, LBL) \
+        //CTRL = new WGETS (PNL, ID, VAR);                   \
+        //SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
 #endif
 
 namespace GUI

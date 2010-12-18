@@ -50,6 +50,7 @@ public:
 
     // Set methods
     void Set (const char * Str, ...); ///< Set given keys and vals: Set("ux uy", 1.0,2.0). NOTE: vals must be double
+    void SetZero (Array<String> const & keys); ///< Create pair with all keys set to zero
 
     // Operators
     double       & operator() (char   const * Key);
@@ -125,6 +126,7 @@ public:
     // Set methods
     void Set (int Key, const char * Str, ...); ///< Set given key, keys, and vals: Set(-1, "ux uy", 1.0,2.0). NOTE: valus must be double
     void Set (int Key, SDPair const & P);      ///< Set given SDPair (does merge)
+    void SetZero (int Key, Array<String> const & keys); ///< Create dictionary with all keys set to zero
 
     // Operators
     SDPair const & operator() (int Key) const;
@@ -276,6 +278,15 @@ inline void SDPair::Set(const char * Str, ...)
         (*this)[key] = va_arg(arg_list,double);
     }
     va_end (arg_list);
+}
+
+inline void SDPair::SetZero (Array<String> const & keys)
+{
+    for (size_t i=0; i<keys.Size(); ++i)
+    {
+        Keys.XPush (keys[i]);
+        (*this)[keys[i]] = 0.0;
+    }
 }
 
 inline double & SDPair::operator() (char const * Key)
@@ -512,6 +523,13 @@ inline void Dict::Set (int Key, SDPair const & P)
 {
     for (size_t i=0; i<P.Keys.Size(); ++i)
         this->Set (Key, P.Keys[i].CStr(), P(P.Keys[i]));
+}
+
+inline void Dict::SetZero (int Key, Array<String> const & keys)
+{
+    SDPair pair;
+    pair.SetZero (keys);
+    this->Set (Key, pair);
 }
 
 inline SDPair const & Dict::operator() (int Key) const

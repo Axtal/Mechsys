@@ -92,6 +92,9 @@ std::ostream & operator<< (std::ostream & os, Model const & D)
 SDPair MODEL;    // Model name
 SDPair FAILCRIT; // Failure criteria names (for ElastoPlastic models only)
 
+std::map<String,Array<String> > MODEL_PRM_NAMES; ///< Model name => Parameters names
+std::map<String,Array<String> > MODEL_IVS_NAMES; ///< Model name => Initial values names
+
 typedef Model * (*ModelMakerPtr)(int NDim, SDPair const & Prms);
 
 typedef std::map<String, ModelMakerPtr> ModelFactory_t;

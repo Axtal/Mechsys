@@ -120,6 +120,10 @@ int main(int argc, char **argv) try
     D1 += D3;                           cout << "D1 += D3 :          \n" << D1 << endl << endl;
     Dict D4(D1);                        cout << "D4(D1) :            \n" << D4 << endl << endl;
 
+    Dict D5;
+    D5.SetZero (-5, array);
+    cout << "D5     :            \n" << D5 << endl << endl;
+
     // end
     cout << endl;
     return 0;
