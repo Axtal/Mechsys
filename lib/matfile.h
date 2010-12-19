@@ -24,16 +24,8 @@
 
 // wxWidgets
 #ifdef HAS_WXW
-  #include <wx/window.h>
-  #include <wx/sizer.h>
-  #include <wx/aui/aui.h>
-  #include <wx/scrolwin.h>
-  #include <wx/textctrl.h>
-  #include <wx/checkbox.h>
-  #include <wx/filedlg.h>
   #include <mechsys/gui/wxdict.h>
   #include <mechsys/gui/common.h>
-  #include <mechsys/gui/wxrealnuminput.h>
 #endif
 
 // MechSys

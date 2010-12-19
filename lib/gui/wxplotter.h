@@ -17,8 +17,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_DATAPLT_H
-#define MECHSYS_DATAPLT_H
+#ifndef MECHSYS_WXPLOTTER_H
+#define MECHSYS_WXPLOTTER_H
 
 // STL
 #include <cmath>   // for ceil and floor
@@ -27,41 +27,34 @@
 #include <iostream>
 #include <map>
 
-// wxWidgets
-#include <wx/frame.h>
-#include <wx/aui/aui.h>
-#include <wx/filedlg.h>
-#include <wx/checkbox.h>
-#include <wx/combobox.h>
-
 // MechSys
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/array.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/gui/plotxy.h>
+#include <mechsys/gui/common.h>
 
 namespace GUI
 {
 
-class DataPLT : public wxWindow
+class WxPlotter : public wxWindow
 {
 public:
     // Constructor
-     DataPLT (wxFrame * Parent);
-    ~DataPLT () { Aui.UnInit(); }
+     WxPlotter (wxFrame * Parent);
+    ~WxPlotter () { Aui.UnInit(); }
 
     // Methods
-    void OnLoad    (wxCommandEvent & Event);
-    void OnSelData (wxCommandEvent & Event) { _set_plots (); }
-    void OnMultq   (wxCommandEvent & Event) { _set_plots (); }
-    void OnPltAll  (wxCommandEvent & Event) { _set_plots (); }
-
-    // Controls
-    wxAuiManager   Aui;
-    GUI::PlotXY  * qped, * qpev, * eved, * evlp;
+    void Sync    () { TransferDataFromWindow(); } ///< Synchronise (validate/transfer) data in controls
+    void ReBuild ();                              ///< Re-build plots
 
     // Data
+    wxAuiManager            Aui;                  ///< Aui Manager
+    GUI::PlotXY           * qped;                 ///< q/p versus Ed plot
+    GUI::PlotXY           * qpev;                 ///< q/p versus Ev plot
+    GUI::PlotXY           * eved;                 ///< Ev versus Ed plot
+    GUI::PlotXY           * evlp;                 ///< Ev versus log(p) plot
     bool                    Multq;                ///< multiply q according to Lode angle ?
     bool                    PltAll;               ///< plot all data at the same time ?
     wxComboBox            * CbxFNs;               ///< data filenames
@@ -69,10 +62,9 @@ public:
     Array<Array<double> >   p, q, t, lp, qp, mqp; ///< Octahedral invariants
 
     // Events
+    void OnLoad    (wxCommandEvent & Event);
+    void OnReBuild (wxCommandEvent & Event) { ReBuild (); }
     DECLARE_EVENT_TABLE()
-
-private:
-    void _set_plots ();
 };
 
 
@@ -87,14 +79,14 @@ enum
     ID_PLTALL,
 };
 
-BEGIN_EVENT_TABLE(DataPLT, wxWindow)
-    EVT_BUTTON   (ID_LOAD,    DataPLT::OnLoad)
-    EVT_COMBOBOX (ID_SELDATA, DataPLT::OnSelData)
-    EVT_CHECKBOX (ID_MULTQ,   DataPLT::OnMultq)
-    EVT_CHECKBOX (ID_PLTALL,  DataPLT::OnPltAll)
+BEGIN_EVENT_TABLE(WxPlotter, wxWindow)
+    EVT_BUTTON   (ID_LOAD,    WxPlotter::OnLoad)
+    EVT_COMBOBOX (ID_SELDATA, WxPlotter::OnReBuild)
+    EVT_CHECKBOX (ID_MULTQ,   WxPlotter::OnReBuild)
+    EVT_CHECKBOX (ID_PLTALL,  WxPlotter::OnReBuild)
 END_EVENT_TABLE()
 
-inline DataPLT::DataPLT (wxFrame * Parent)
+inline WxPlotter::WxPlotter (wxFrame * Parent)
     : wxWindow (Parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE),
       Multq  (true),
       PltAll (false)
@@ -116,24 +108,62 @@ inline DataPLT::DataPLT (wxFrame * Parent)
     evlp->ShowLastY = false;
 
     // control panel
-    ADD_WXPANEL    (pnl, sz, 1, 4);
+    ADD_WXPANEL    (pnl, szt, sz, 1, 4);
     ADD_WXBUTTON   (pnl, sz, ID_LOAD,    c0,     "Load data");
     ADD_WXCOMBOBOX (pnl, sz, ID_SELDATA, CbxFNs, "Data files");
     ADD_WXCHECKBOX (pnl, sz, ID_MULTQ,   c2,     "Lode multiply q", Multq);
     ADD_WXCHECKBOX (pnl, sz, ID_PLTALL,  c3,     "Plot all",        PltAll);
+    CbxFNs->SetMinSize (wxSize(200,20));
 
-    // panes
+    // commit all changes to wxAuiManager
     Aui.AddPane (pnl,  wxAuiPaneInfo().Name("cpnl").Caption("Data").Top   ().MinSize(wxSize(100,40)) .DestroyOnClose(false).CaptionVisible(true) .CloseButton(false));
     Aui.AddPane (qped, wxAuiPaneInfo().Name("qped").Caption("qped").Centre().Position(0)             .DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
     Aui.AddPane (eved, wxAuiPaneInfo().Name("eved").Caption("eved").Centre().Position(1)             .DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
     Aui.AddPane (evlp, wxAuiPaneInfo().Name("evlp").Caption("evlp").Right ().MinSize(wxSize(300,100)).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
     Aui.AddPane (qpev, wxAuiPaneInfo().Name("qpev").Caption("qpev").Right ().MinSize(wxSize(300,100)).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
+    Aui.Update  ();
 
-    // commit all changes to wxAuiManager
-    Aui.Update();
 }
 
-inline void DataPLT::OnLoad (wxCommandEvent & Event)
+inline void WxPlotter::ReBuild ()
+{
+    // update control's data
+    Sync ();
+
+    // filenames
+    wxArrayString fnames = CbxFNs->GetStrings ();
+
+    // disconnect plots
+    qped->DelCurves ();
+    qpev->DelCurves ();
+    eved->DelCurves ();
+    evlp->DelCurves ();
+
+    // reconnect plots
+    bool   mul = Multq;
+    bool   all = PltAll;
+    size_t ini = (all ? 0         : CbxFNs->GetSelection());
+    size_t num = (all ? ed.Size() : ini+1);
+    for (size_t i=ini; i<num; ++i)
+    {
+        GUI::CurveProps & c0 = qped->AddCurve (&ed[i], (mul ? &mqp[i] : &qp[i]), fnames[i].ToStdString().c_str());
+        GUI::CurveProps & c1 = qpev->AddCurve (&ev[i], (mul ? &mqp[i] : &qp[i]), fnames[i].ToStdString().c_str());
+        GUI::CurveProps & c2 = eved->AddCurve (&ed[i],                  &ev[i],  fnames[i].ToStdString().c_str());
+        GUI::CurveProps & c3 = evlp->AddCurve (&lp[i],                  &ev[i],  fnames[i].ToStdString().c_str());
+        c0.Typ=GUI::CT_BOTH;  c0.Psz=4;  c0.Pen.Set((all ? GUI::LinClr(i) : "black"), (i>5 ? "dash" : "solid"), 1);
+        c1.Typ=GUI::CT_BOTH;  c1.Psz=4;  c1.Pen.Set((all ? GUI::LinClr(i) : "black"), (i>5 ? "dash" : "solid"), 1);
+        c2.Typ=GUI::CT_BOTH;  c2.Psz=4;  c2.Pen.Set((all ? GUI::LinClr(i) : "black"), (i>5 ? "dash" : "solid"), 1);
+        c3.Typ=GUI::CT_BOTH;  c3.Psz=4;  c3.Pen.Set((all ? GUI::LinClr(i) : "black"), (i>5 ? "dash" : "solid"), 1);
+    }
+
+    // redraw
+    qped->Redraw ();
+    qpev->Redraw ();
+    eved->Redraw ();
+    evlp->Redraw ();
+}
+
+inline void WxPlotter::OnLoad (wxCommandEvent & Event)
 {
     wxFileDialog fd(this, "Choose data file", "", "", "*.dat", wxFD_MULTIPLE);
     if (fd.ShowModal()==wxID_OK)
@@ -180,7 +210,7 @@ inline void DataPLT::OnLoad (wxCommandEvent & Event)
                 else if (dat.Keys[j]=="Sar") { has_sxy=true; }
                 else if (dat.Keys[j]=="sxy") { has_sxy=true; }
             }
-            if (nrow==0) throw new Fatal("DataPLT::OnLoad: Could not find (sx,sy,sz,sxy) columns in file %s",fnames[i].ToStdString().c_str());
+            if (nrow==0) throw new Fatal("WxPlotter::OnLoad: Could not find (sx,sy,sz,sxy) columns in file %s",fnames[i].ToStdString().c_str());
 
             // set pointers to sub arrays of data
             Array<double> const * sx;
@@ -261,44 +291,6 @@ inline void DataPLT::OnLoad (wxCommandEvent & Event)
     }
 }
 
-inline void DataPLT::_set_plots ()
-{
-    // update control's data
-    TransferDataFromWindow ();
-
-    // filenames
-    wxArrayString fnames = CbxFNs->GetStrings ();
-
-    // disconnect plots
-    qped->DelCurves ();
-    qpev->DelCurves ();
-    eved->DelCurves ();
-    evlp->DelCurves ();
-
-    // reconnect plots
-    bool   mul = Multq;
-    bool   all = PltAll;
-    size_t ini = (all ? 0         : CbxFNs->GetSelection());
-    size_t num = (all ? ed.Size() : ini+1);
-    for (size_t i=ini; i<num; ++i)
-    {
-        GUI::CurveProps & c0 = qped->AddCurve (&ed[i], (mul ? &mqp[i] : &qp[i]), fnames[i].ToStdString().c_str());
-        GUI::CurveProps & c1 = qpev->AddCurve (&ev[i], (mul ? &mqp[i] : &qp[i]), fnames[i].ToStdString().c_str());
-        GUI::CurveProps & c2 = eved->AddCurve (&ed[i],                  &ev[i],  fnames[i].ToStdString().c_str());
-        GUI::CurveProps & c3 = evlp->AddCurve (&lp[i],                  &ev[i],  fnames[i].ToStdString().c_str());
-        c0.Typ=GUI::CT_BOTH;  c0.Psz=4;  c0.Pen.Set((all ? GUI::LinClr(i) : "black"), (i>5 ? "dash" : "solid"), 1);
-        c1.Typ=GUI::CT_BOTH;  c1.Psz=4;  c1.Pen.Set((all ? GUI::LinClr(i) : "black"), (i>5 ? "dash" : "solid"), 1);
-        c2.Typ=GUI::CT_BOTH;  c2.Psz=4;  c2.Pen.Set((all ? GUI::LinClr(i) : "black"), (i>5 ? "dash" : "solid"), 1);
-        c3.Typ=GUI::CT_BOTH;  c3.Psz=4;  c3.Pen.Set((all ? GUI::LinClr(i) : "black"), (i>5 ? "dash" : "solid"), 1);
-    }
-
-    // redraw
-    qped->Redraw ();
-    qpev->Redraw ();
-    eved->Redraw ();
-    evlp->Redraw ();
-}
-
 }; // namespace GUI
 
-#endif // MECHSYS_DATAPLT_H
+#endif // MECHSYS_WXPLOTTER_H

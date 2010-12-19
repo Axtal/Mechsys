@@ -23,27 +23,15 @@
 #include <mechsys/gui/plotxy.h>
 #include <mechsys/gui/pixmaps/icon.xpm>
 
-using std::cout;
-using std::endl;
-
 class MyFrame: public wxFrame
 {
 public:
     // Constructor and Destructor
-     MyFrame (const wxString & Title);
+     MyFrame (wxString const & Title);
     ~MyFrame () { Aui.UnInit(); }
 
     // Methods
-    void OnQuit      (wxCommandEvent & event) { Close (true); }
-    void OnAbout     (wxCommandEvent & event) { WXMSG ("Testing PlotXY", "About wxplotxy"); }
-    void OnShowAll   (wxCommandEvent & Event) { SHOW_ALL_WXPANES (Aui); }
-    void OnRun       (wxCommandEvent & Event) { WXMSG ("Method not implemented", "Run"); }
-    void OnAdd       (wxCommandEvent & Event);
-    void OnDel       (wxCommandEvent & Event);
-    void OnGrid      (wxCommandEvent & Event) { _set_plots(); }
-    void OnEqSF      (wxCommandEvent & Event) { _set_plots(); }
-    void OnxNumTicks (wxCommandEvent & Event) { _set_plots(); }
-    void OnyNumTicks (wxCommandEvent & Event) { _set_plots(); }
+    void ReBuild ();
 
     // Data
     wxAuiManager   Aui;
@@ -52,14 +40,18 @@ public:
     Array<double>  X, Y0, Y1, Y2, Y3, Y4, Y5;
 
     // Controls' data
-    bool   ShowGrid,  EqScales;
-    double xNumTicks, yNumTicks;
+    bool ShowGrid,  EqScales;
+    int  xNumTicks, yNumTicks;
 
     // Events
+    void OnQuit    (wxCommandEvent & event) { Close (true); }
+    void OnAbout   (wxCommandEvent & event) { WXMSG ("Testing PlotXY", "About wxplotxy"); }
+    void OnShowAll (wxCommandEvent & Event) { SHOW_ALL_WXPANES (Aui); }
+    void OnRun     (wxCommandEvent & Event) { WXMSG ("Method not implemented", "Run"); }
+    void OnAdd     (wxCommandEvent & Event);
+    void OnDel     (wxCommandEvent & Event);
+    void OnReBuild (wxCommandEvent & Event) { ReBuild(); }
     DECLARE_EVENT_TABLE()
-
-private:
-    void _set_plots();
 };
 
 #define MYAPP_TITLE "Testing PlotXY"
@@ -88,13 +80,13 @@ BEGIN_EVENT_TABLE (MyFrame, wxFrame)
     EVT_MENU     (wxID_ABOUT,     MyFrame::OnAbout)
     EVT_MENU     (ID_MNU_SHOWALL, MyFrame::OnShowAll)
     EVT_MENU     (ID_MNU_RUN,     MyFrame::OnRun)
-    EVT_CHECKBOX (ID_GRID,        MyFrame::OnGrid)
-    EVT_CHECKBOX (ID_EQSF,        MyFrame::OnEqSF)
     EVT_BUTTON   (ID_ADD,         MyFrame::OnAdd)
     EVT_BUTTON   (ID_DEL,         MyFrame::OnDel)
+    EVT_CHECKBOX (ID_GRID,        MyFrame::OnReBuild)
+    EVT_CHECKBOX (ID_EQSF,        MyFrame::OnReBuild)
 END_EVENT_TABLE ()
 
-MyFrame::MyFrame (const wxString & Title)
+MyFrame::MyFrame (wxString const & Title)
    : wxFrame(NULL, wxID_ANY, Title), ShowGrid(true), EqScales(false)
 {
     // force validation of child controls
@@ -102,8 +94,8 @@ MyFrame::MyFrame (const wxString & Title)
 
     // tell wxAuiManager to manage this frame
     Aui.SetManagedWindow (this);
-    SetMinSize (wxSize(640,480));  // minimum size
-    SetIcon    (wxIcon(icon_xpm)); // set frame icon
+    SetMinSize (wxSize(640,480));
+    SetIcon    (wxIcon(icon_xpm));
 
     // menu and status bars
     ADD_WXMENUSTATUS (mnu, mnu_fil, mnu_wnd, mnu_run, mnu_hlp);
@@ -121,13 +113,11 @@ MyFrame::MyFrame (const wxString & Title)
     P0 = new GUI::PlotXY (this, "First Graph", "x", "y(x)");
     P1 = new GUI::PlotXY (this, "Second Graph", "x", "y(x)");
 
-    // panes
+    // commit all changes to wxAuiManager
     Aui.AddPane (pnl, wxAuiPaneInfo().Name("pnl").Caption("Control panel").DestroyOnClose(false).Left().MinSize(wxSize(180,100)));
     Aui.AddPane (P0,  wxAuiPaneInfo().Name("P0") .Caption("First graph")  .DestroyOnClose(false).Centre());
     Aui.AddPane (P1,  wxAuiPaneInfo().Name("P1") .Caption("Second graph") .DestroyOnClose(false).Centre().Position(1));
-
-    // commit all changes to wxAuiManager
-    Aui.Update();
+    Aui.Update  ();
 
     // data for plots
     const int np = 20;
@@ -162,26 +152,24 @@ void MyFrame::OnAdd (wxCommandEvent & Event)
     P1->AddCurve (&X, &Y4, "log(1+x)").Pen.Set("blue",   "solid", 1);  P1->C[2].Typ=GUI::CT_BOTH;  P1->C[2].Pch=3;
     P1->AddCurve (&X, &Y5, "sqrt(x)") .Pen.Set("orange", "solid", 2);  P1->C[3].Typ=GUI::CT_BOTH;  P1->C[3].Pch=4;
 
-    _set_plots();
+    ReBuild ();
 }
 
 void MyFrame::OnDel (wxCommandEvent & Event)
 {
     P0->DelCurves ();
     P1->DelCurves ();
-    _set_plots    ();
+    ReBuild ();
 }
 
-void MyFrame::_set_plots ()
+void MyFrame::ReBuild ()
 {
     // update control's data
     TransferDataFromWindow ();
 
     // number of ticks
-    int xnt = static_cast<int>(xNumTicks);
-    int ynt = static_cast<int>(yNumTicks);
-    if (xnt>0) P0->BNumTck = xnt;
-    if (ynt>0) P0->LNumTck = ynt;
+    if (xNumTicks>0) { P0->BNumTck = xNumTicks;   P1->BNumTck = xNumTicks; }
+    if (yNumTicks>0) { P0->LNumTck = yNumTicks;   P1->LNumTck = yNumTicks; }
 
     // show grid
     if (ShowGrid)

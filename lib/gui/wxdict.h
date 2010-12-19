@@ -22,11 +22,7 @@
 // wxWidgets
 #ifdef HAS_WXW
   #include <wx/grid.h>
-  #include <wx/aui/aui.h>
-  #include <wx/checkbox.h>
-  #include <wx/valtext.h>
   #include <mechsys/gui/common.h>
-  #include <mechsys/gui/wxfloatvalidator.h>
 #endif
 
 // MechSys
@@ -45,7 +41,7 @@ class WxDictTable : public wxGridTableBase, public Dict
 {
 public:
     // Constructor
-    WxDictTable () : ShowSubKeys(true) {}
+    WxDictTable () : ShowSubKeys(true), SameSubKeys(false) {}
 
     // Methods
     int      GetNumberRows ();
@@ -54,25 +50,24 @@ public:
     void     SetValue      (int row, int col, wxString const & Str);
     bool     IsEmptyCell   (int row, int col) { return false; }
 
+    // Formatting methods
+    wxString GetColLabelValue (int col);
+    wxString GetRowLabelValue (int row);
+
     // Data
     bool ShowSubKeys; ///< Show subkeys in cell ?
+    bool SameSubKeys; ///< Show same subkeys for all columns ?
 };
 
 class WxDict : public wxWindow
 {
 public:
-    // static
-    static const int WidFirstCol = 50;
-    static const int WidCols     = 80;
-    static const int HeiFirstRow = 20;
-    static const int HeiRows     = 22;
-
     // Constructor & Destructor
      WxDict (wxWindow * Parent);
     ~WxDict () { Aui.UnInit(); }
 
     // Methods
-    void Update  () { TransferDataFromWindow(); } ///< Update (validate/transfer) data in controls
+    void Sync    () { TransferDataFromWindow(); } ///< Synchronise (validate/transfer) data in controls
     void ReBuild ();                              ///< Rebuild grid
 
     // Data
@@ -80,6 +75,12 @@ public:
     WxDictTable  * Tab;    ///< The table
     wxGrid       * Grd;    ///< The grid
     bool           FitCol; ///< Fit data to columns
+    bool           SameSK; ///< Same subkeys
+    bool           ShowSK; ///< Show subkeys
+
+    // Events
+    void OnReBuild (wxCommandEvent & Event) { ReBuild (); }
+    DECLARE_EVENT_TABLE()
 };
 
 
@@ -118,6 +119,30 @@ inline void WxDictTable::SetValue (int row, int col, wxString const & Str)
     }
 }
 
+inline wxString WxDictTable::GetColLabelValue (int col)
+{
+    if (Keys.Size()>(size_t)col)
+    {
+        wxString buf;  buf.Printf("%d", Keys[col]);
+        return buf;
+    }
+    return wxEmptyString;
+}
+
+inline wxString WxDictTable::GetRowLabelValue (int row)
+{
+    if (SameSubKeys)
+    {
+        if (Keys.Size()>0 && begin()!=end())
+        {
+            SDPair const & pair = begin()->second;
+            if (pair.Keys.Size()>(size_t)row) return wxString(pair.Keys[row]);
+        }
+        return wxEmptyString;
+    }
+    else return wxGridTableBase::GetRowLabelValue (row);
+}
+
 
 //////////////////////////////////////////////////////////////////////// Implementation ////// WxDict //////////
 
@@ -125,11 +150,21 @@ inline void WxDictTable::SetValue (int row, int col, wxString const & Str)
 enum
 {
     ID_WXDICT_FITCOL = wxID_HIGHEST+3000,
+    ID_WXDICT_SAMESK,
+    ID_WXDICT_SHOWSK,
 };
+
+BEGIN_EVENT_TABLE (WxDict, wxWindow)
+    EVT_CHECKBOX (ID_WXDICT_FITCOL, WxDict::OnReBuild)
+    EVT_CHECKBOX (ID_WXDICT_SAMESK, WxDict::OnReBuild)
+    EVT_CHECKBOX (ID_WXDICT_SHOWSK, WxDict::OnReBuild)
+END_EVENT_TABLE ()
 
 WxDict::WxDict (wxWindow * Parent)
     : wxWindow (Parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE),
-      FitCol   (false)
+      FitCol   (false),
+      SameSK   (false),
+      ShowSK   (true)
 {
     // force validation of child controls
     SetExtraStyle (wxWS_EX_VALIDATE_RECURSIVELY);
@@ -138,8 +173,10 @@ WxDict::WxDict (wxWindow * Parent)
     Aui.SetManagedWindow (this);
 
     // control panel
-    ADD_WXPANEL    (pnl, szr, 1, 1)
+    ADD_WXPANEL    (pnl, szt, szr, 1, 3);
     ADD_WXCHECKBOX (pnl, szr, ID_WXDICT_FITCOL, c0, "Fit columns to data", FitCol);
+    ADD_WXCHECKBOX (pnl, szr, ID_WXDICT_SAMESK, c1, "Same subkeys",        SameSK);
+    ADD_WXCHECKBOX (pnl, szr, ID_WXDICT_SHOWSK, c2, "Show subkeys",        ShowSK);
 
     // create table and grid
     Grd = new wxGrid           (this, wxID_ANY);
@@ -147,50 +184,25 @@ WxDict::WxDict (wxWindow * Parent)
     ReBuild ();
 
     // set Aui
-    Aui.AddPane (pnl, wxAuiPaneInfo().Name("cpnl").Caption("Control").Top().MinSize(wxSize(100,40)).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
+    Aui.AddPane (pnl, wxAuiPaneInfo().Name("cpnl").Caption("Control").Top().MinSize(wxSize(100,30)).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
     Aui.AddPane (Grd, wxAuiPaneInfo().Name("grid").Caption("Grid").Centre().DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
     Aui.Update  ();
 }
 
 void WxDict::ReBuild ()
 {
-    Update            ();
+    // synchronise data from controls
+    Sync ();
+
+    // rebuild grid based on updated table
     Grd->SetTable     (Tab, /*take_ownership*/false);
     Grd->ForceRefresh ();
-    if (FitCol) Grd->Fit ();
+    Tab->SameSubKeys = SameSK;
+    Tab->ShowSubKeys = ShowSK;
 
-/*
-    for (Dict_t::const_iterator it=begin(); it!=end(); ++it) if (it->second.size()>nrows) nrows = it->second.size();
-    for (size_t i=0; i<Keys.Size(); ++i)
-    {
-        wxString key;  key.Printf("%d",Keys[i]);
-        SetColLabelValue (i, key);
-        SetColSize       (i, WidCols);
-        if (!SamePairs)
-        {
-            throw new Fatal("WxDict::ReBuild: not yet (!SamePairs)");
-            SDPair const & pair = (*this)(Keys[i]);
-            for (size_t j=0; j<pair.Keys.Size(); ++j)
-            {
-            }
-        }
-    }
-    if (SamePairs)
-    {
-        wxString buf;
-        for (size_t i=0; i<begin()->second.Keys.Size(); ++i)
-        {
-            SetRowLabelValue (i, begin()->second.Keys[i]);
-            SetRowSize       (i, HeiRows);
-            SDPair const & pair = (*this)(Keys[i]);
-            for (size_t j=0; j<ncols; ++j)
-            {
-                buf.Printf("%g",pair(pair.Keys[j]));
-                SetCellValue (i,j,buf);
-            }
-        }
-    }
-*/
+    // reshape window
+    if (FitCol) Grd->Fit ();
+    Layout ();
 }
 
 }; // namespace GUI

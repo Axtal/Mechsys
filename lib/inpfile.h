@@ -24,15 +24,7 @@
 
 // wxWidgets
 #ifdef HAS_WXW
-  #include <wx/window.h>
-  #include <wx/sizer.h>
-  #include <wx/aui/aui.h>
-  #include <wx/scrolwin.h>
-  #include <wx/textctrl.h>
-  #include <wx/checkbox.h>
-  #include <wx/filedlg.h>
   #include <mechsys/gui/common.h>
-  #include <mechsys/gui/wxrealnuminput.h>
 #endif
 
 // MechSys
@@ -123,94 +115,19 @@ public:
     Array<PathIncs> Path;
 
 #ifdef USE_WXWIDGETS
-    wxAuiManager     Aui;
-    wxTextCtrl     * txt_fname;   // control with filename
-    wxString         lst_dir;     // last directory
-    WxRealNumInput * c_matid;     //  1
-    WxRealNumInput * c_flwid;     //  2
-    WxRealNumInput * c_ninc;      //  3
-    wxCheckBox     * c_cdrift;    //  4
-    WxRealNumInput * c_stol;      //  5
-    wxCheckBox     * c_ssout;     //  6
-    wxCheckBox     * c_ctetg;     //  7
-    wxCheckBox     * c_fem;       //  8
-    wxCheckBox     * c_dyn;       //  9
-    wxCheckBox     * c_hm;        // 10
-    WxRealNumInput * c_tf;        // 11
-    WxRealNumInput * c_dt;        // 12
-    WxRealNumInput * c_dtout;     // 13
-    WxRealNumInput * c_tsw;       // 14
-    WxRealNumInput * c_ndiv;      // 15
-    WxRealNumInput * c_nip;       // 16
-    wxCheckBox     * c_o2;        // 17
-    wxCheckBox     * c_ray;       // 18
-    WxRealNumInput * c_am;        // 19
-    WxRealNumInput * c_ak;        // 20
-    wxCheckBox     * c_rk;        // 21
-    wxTextCtrl     * c_rkscheme;  // 22
-    WxRealNumInput * c_rkstol;    // 23
-    wxTextCtrl     * c_refdat;    // 24
-    wxTextCtrl     * c_refsim;    // 25
-    wxTextCtrl     * c_refana;    // 26
-    WxRealNumInput * c_idxvert1;  // 27
-    WxRealNumInput * c_idxvert2;  // 28
-    WxRealNumInput * c_idxvert3;  // 29
-    WxRealNumInput * c_optdbl1;   // 30
-    WxRealNumInput * c_optdbl2;   // 31
-    WxRealNumInput * c_optdbl3;   // 32
-    WxRealNumInput * c_nldt_nsml; // 33
-    WxRealNumInput * c_nldt_nn;   // 34
-    WxRealNumInput * c_nldt_n;    // 35
-    WxRealNumInput * c_nldt_ll;   // 36
-    WxRealNumInput * c_nldt_sch;  // 37
-    WxRealNumInput * c_nldt_m;    // 38
-    WxRealNumInput * c_maxit;     // 39
-    WxRealNumInput * c_tolr;      // 40
+    // Methods
+    void Sync () { TransferDataFromWindow(); } ///< Synchronise (validate/transfer) data in controls
+
+    // Data
+    wxAuiManager  Aui;
+    wxString      LstDir;
+    wxTextCtrl  * TxtFName;
+    String        FName;
+
+    // Events
     void OnLoad (wxCommandEvent & Event);
     void OnSave (wxCommandEvent & Event);
-    void On_SET_MATID     (wxCommandEvent & Event) { matid     = c_matid      -> GetVal   (); } //  1
-    void On_SET_FLWID     (wxCommandEvent & Event) { flwid     = c_flwid      -> GetVal   (); } //  2
-    void On_SET_NINC      (wxCommandEvent & Event) { ninc      = c_ninc       -> GetVal   (); } //  3
-    void On_SET_CDRIFT    (wxCommandEvent & Event) { cdrift    = c_cdrift     -> GetValue (); } //  4
-    void On_SET_STOL      (wxCommandEvent & Event) { stol      = c_stol       -> GetVal   (); } //  5
-    void On_SET_SSOUT     (wxCommandEvent & Event) { ssout     = c_ssout      -> GetValue (); } //  6
-    void On_SET_CTETG     (wxCommandEvent & Event) { ctetg     = c_ctetg      -> GetValue (); } //  7
-    void On_SET_FEM       (wxCommandEvent & Event) { fem       = c_fem        -> GetValue (); } //  8
-    void On_SET_DYN       (wxCommandEvent & Event) { dyn       = c_dyn        -> GetValue (); } //  9
-    void On_SET_HM        (wxCommandEvent & Event) { hm        = c_hm         -> GetValue (); } // 10
-    void On_SET_TF        (wxCommandEvent & Event) { tf        = c_tf         -> GetVal   (); } // 11
-    void On_SET_DT        (wxCommandEvent & Event) { dt        = c_dt         -> GetVal   (); } // 12
-    void On_SET_DTOUT     (wxCommandEvent & Event) { dtout     = c_dtout      -> GetVal   (); } // 13
-    void On_SET_TSW       (wxCommandEvent & Event) { tsw       = c_tsw        -> GetVal   (); } // 14
-    void On_SET_NDIV      (wxCommandEvent & Event) { ndiv      = c_ndiv       -> GetVal   (); } // 15
-    void On_SET_NIP       (wxCommandEvent & Event) { nip       = c_nip        -> GetVal   (); } // 16
-    void On_SET_O2        (wxCommandEvent & Event) { o2        = c_o2         -> GetValue (); } // 17
-    void On_SET_RAY       (wxCommandEvent & Event) { ray       = c_ray        -> GetValue (); } // 18
-    void On_SET_AM        (wxCommandEvent & Event) { am        = c_am         -> GetVal   (); } // 19
-    void On_SET_AK        (wxCommandEvent & Event) { ak        = c_ak         -> GetVal   (); } // 20
-    void On_SET_RK        (wxCommandEvent & Event) { rk        = c_rk         -> GetValue (); } // 21
-    void On_SET_RKSCHEME  (wxCommandEvent & Event) { rkscheme  = c_rkscheme   -> GetValue ().ToStdString(); } // 22
-    void On_SET_RKSTOL    (wxCommandEvent & Event) { rkstol    = c_rkstol     -> GetVal   (); } // 23
-    void On_SET_REFDAT    (wxCommandEvent & Event) { refdat    = c_refdat     -> GetValue ().ToStdString(); } // 24
-    void On_SET_REFSIM    (wxCommandEvent & Event) { refsim    = c_refsim     -> GetValue ().ToStdString(); } // 25
-    void On_SET_REFANA    (wxCommandEvent & Event) { refana    = c_refana     -> GetValue ().ToStdString(); } // 26
-    void On_SET_IDXVERT1  (wxCommandEvent & Event) { idxvert1  = c_idxvert1   -> GetVal   (); } // 27
-    void On_SET_IDXVERT2  (wxCommandEvent & Event) { idxvert2  = c_idxvert2   -> GetVal   (); } // 28
-    void On_SET_IDXVERT3  (wxCommandEvent & Event) { idxvert3  = c_idxvert3   -> GetVal   (); } // 29
-    void On_SET_OPTDBL1   (wxCommandEvent & Event) { optdbl1   = c_optdbl1    -> GetVal   (); } // 30
-    void On_SET_OPTDBL2   (wxCommandEvent & Event) { optdbl2   = c_optdbl2    -> GetVal   (); } // 31
-    void On_SET_OPTDBL3   (wxCommandEvent & Event) { optdbl3   = c_optdbl3    -> GetVal   (); } // 32
-    void On_SET_NLDT_NSML (wxCommandEvent & Event) { nldt_nsml = c_nldt_nsml  -> GetVal   (); } // 33
-    void On_SET_NLDT_NN   (wxCommandEvent & Event) { nldt_nn   = c_nldt_nn    -> GetVal   (); } // 34
-    void On_SET_NLDT_N    (wxCommandEvent & Event) { nldt_n    = c_nldt_n     -> GetVal   (); } // 35
-    void On_SET_NLDT_LL   (wxCommandEvent & Event) { nldt_ll   = c_nldt_ll    -> GetVal   (); } // 36
-    void On_SET_NLDT_SCH  (wxCommandEvent & Event) { nldt_sch  = c_nldt_sch   -> GetVal   (); } // 37
-    void On_SET_NLDT_M    (wxCommandEvent & Event) { nldt_m    = c_nldt_m     -> GetVal   (); } // 38
-    void On_SET_MAXIT     (wxCommandEvent & Event) { maxit     = c_maxit      -> GetVal   (); } // 39
-    void On_SET_TOLR      (wxCommandEvent & Event) { tolr      = c_tolr       -> GetVal   (); } // 40
     DECLARE_EVENT_TABLE();
-private:
-    void _refresh ();
 #endif
 };
 
@@ -273,6 +190,7 @@ inline void InpFile::Read (char const * FileName)
     size_t line_num     = 1;
     int    idxdat       = 0;
     size_t idxpath      = 0;
+    Path.Resize (0);
     while (!inp_file.eof())
     {
         String line,key,equal,str_val;
@@ -440,188 +358,104 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
 
 enum
 {
-    ID_LOAD          = wxID_HIGHEST+1000,
-    ID_SAVE          ,
-    ID_SET_MATID     ,                        //   1
-    ID_SET_FLWID     ,                        //   2
-    ID_SET_NINC      ,                        //   3
-    ID_SET_CDRIFT    ,                        //   4
-    ID_SET_STOL      ,                        //   5
-    ID_SET_SSOUT     ,                        //   6
-    ID_SET_CTETG     ,                        //   7
-    ID_SET_FEM       ,                        //   8
-    ID_SET_DYN       ,                        //   9
-    ID_SET_HM        ,                        //  10
-    ID_SET_TF        ,                        //  11
-    ID_SET_DT        ,                        //  12
-    ID_SET_DTOUT     ,                        //  13
-    ID_SET_TSW       ,                        //  14
-    ID_SET_NDIV      ,                        //  15
-    ID_SET_NIP       ,                        //  16
-    ID_SET_O2        ,                        //  17
-    ID_SET_RAY       ,                        //  18
-    ID_SET_AM        ,                        //  19
-    ID_SET_AK        ,                        //  20
-    ID_SET_RK        ,                        //  21
-    ID_SET_RKSCHEME  ,                        //  22
-    ID_SET_RKSTOL    ,                        //  23
-    ID_SET_REFDAT    ,                        //  24
-    ID_SET_REFSIM    ,                        //  25
-    ID_SET_REFANA    ,                        //  26
-    ID_SET_IDXVERT1  ,                        //  27
-    ID_SET_IDXVERT2  ,                        //  28
-    ID_SET_IDXVERT3  ,                        //  29
-    ID_SET_OPTDBL1   ,                        //  30
-    ID_SET_OPTDBL2   ,                        //  31
-    ID_SET_OPTDBL3   ,                        //  32
-    ID_SET_NLDT_NSML ,                        //  33
-    ID_SET_NLDT_NN   ,                        //  34
-    ID_SET_NLDT_N    ,                        //  35
-    ID_SET_NLDT_LL   ,                        //  36
-    ID_SET_NLDT_SCH  ,                        //  37
-    ID_SET_NLDT_M    ,                        //  38
-    ID_SET_MAXIT     ,                        //  39
-    ID_SET_TOLR      ,                        //  40
+    ID_INPFILE_LOAD = wxID_HIGHEST+1000,
+    ID_INPFILE_SAVE,
 };
 
 BEGIN_EVENT_TABLE(InpFile, wxWindow)
-    EVT_BUTTON (ID_LOAD, InpFile::OnLoad)
-    EVT_BUTTON (ID_SAVE, InpFile::OnSave)
-    EVT_REALNUM_CHANGED (ID_SET_MATID     , InpFile::On_SET_MATID    ) //   1
-    EVT_REALNUM_CHANGED (ID_SET_FLWID     , InpFile::On_SET_FLWID    ) //   2
-    EVT_REALNUM_CHANGED (ID_SET_NINC      , InpFile::On_SET_NINC     ) //   3
-    EVT_CHECKBOX        (ID_SET_CDRIFT    , InpFile::On_SET_CDRIFT   ) //   4
-    EVT_REALNUM_CHANGED (ID_SET_STOL      , InpFile::On_SET_STOL     ) //   5
-    EVT_CHECKBOX        (ID_SET_SSOUT     , InpFile::On_SET_SSOUT    ) //   6
-    EVT_CHECKBOX        (ID_SET_CTETG     , InpFile::On_SET_CTETG    ) //   7
-    EVT_CHECKBOX        (ID_SET_FEM       , InpFile::On_SET_FEM      ) //   8
-    EVT_CHECKBOX        (ID_SET_DYN       , InpFile::On_SET_DYN      ) //   9
-    EVT_CHECKBOX        (ID_SET_HM        , InpFile::On_SET_HM       ) //  10
-    EVT_REALNUM_CHANGED (ID_SET_TF        , InpFile::On_SET_TF       ) //  11
-    EVT_REALNUM_CHANGED (ID_SET_DT        , InpFile::On_SET_DT       ) //  12
-    EVT_REALNUM_CHANGED (ID_SET_DTOUT     , InpFile::On_SET_DTOUT    ) //  13
-    EVT_REALNUM_CHANGED (ID_SET_TSW       , InpFile::On_SET_TSW      ) //  14
-    EVT_REALNUM_CHANGED (ID_SET_NDIV      , InpFile::On_SET_NDIV     ) //  15
-    EVT_REALNUM_CHANGED (ID_SET_NIP       , InpFile::On_SET_NIP      ) //  16
-    EVT_CHECKBOX        (ID_SET_O2        , InpFile::On_SET_O2       ) //  17
-    EVT_CHECKBOX        (ID_SET_RAY       , InpFile::On_SET_RAY      ) //  18
-    EVT_REALNUM_CHANGED (ID_SET_AM        , InpFile::On_SET_AM       ) //  19
-    EVT_REALNUM_CHANGED (ID_SET_AK        , InpFile::On_SET_AK       ) //  20
-    EVT_CHECKBOX        (ID_SET_RK        , InpFile::On_SET_RK       ) //  21
-    EVT_TEXT            (ID_SET_RKSCHEME  , InpFile::On_SET_RKSCHEME ) //  22
-    EVT_REALNUM_CHANGED (ID_SET_RKSTOL    , InpFile::On_SET_RKSTOL   ) //  23
-    EVT_TEXT            (ID_SET_REFDAT    , InpFile::On_SET_REFDAT   ) //  24
-    EVT_TEXT            (ID_SET_REFSIM    , InpFile::On_SET_REFSIM   ) //  25
-    EVT_TEXT            (ID_SET_REFANA    , InpFile::On_SET_REFANA   ) //  26
-    EVT_REALNUM_CHANGED (ID_SET_IDXVERT1  , InpFile::On_SET_IDXVERT1 ) //  27
-    EVT_REALNUM_CHANGED (ID_SET_IDXVERT2  , InpFile::On_SET_IDXVERT2 ) //  28
-    EVT_REALNUM_CHANGED (ID_SET_IDXVERT3  , InpFile::On_SET_IDXVERT3 ) //  29
-    EVT_REALNUM_CHANGED (ID_SET_OPTDBL1   , InpFile::On_SET_OPTDBL1  ) //  30
-    EVT_REALNUM_CHANGED (ID_SET_OPTDBL2   , InpFile::On_SET_OPTDBL2  ) //  31
-    EVT_REALNUM_CHANGED (ID_SET_OPTDBL3   , InpFile::On_SET_OPTDBL3  ) //  32
-    EVT_REALNUM_CHANGED (ID_SET_NLDT_NSML , InpFile::On_SET_NLDT_NSML) //  33
-    EVT_REALNUM_CHANGED (ID_SET_NLDT_NN   , InpFile::On_SET_NLDT_NN  ) //  34
-    EVT_REALNUM_CHANGED (ID_SET_NLDT_N    , InpFile::On_SET_NLDT_N   ) //  35
-    EVT_REALNUM_CHANGED (ID_SET_NLDT_LL   , InpFile::On_SET_NLDT_LL  ) //  36
-    EVT_REALNUM_CHANGED (ID_SET_NLDT_SCH  , InpFile::On_SET_NLDT_SCH ) //  37
-    EVT_REALNUM_CHANGED (ID_SET_NLDT_M    , InpFile::On_SET_NLDT_M   ) //  38
-    EVT_REALNUM_CHANGED (ID_SET_MAXIT     , InpFile::On_SET_MAXIT    ) //  39
-    EVT_REALNUM_CHANGED (ID_SET_TOLR      , InpFile::On_SET_TOLR     ) //  40
+    EVT_BUTTON (ID_INPFILE_LOAD, InpFile::OnLoad)
+    EVT_BUTTON (ID_INPFILE_SAVE, InpFile::OnSave)
 END_EVENT_TABLE()
 
 inline InpFile::InpFile (wxFrame * Parent)
     : wxWindow (Parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE)
 {
+    // default values
     Defaults();
 
-    // flags for sizers
-    long f1 = wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL;
-    long f2 = wxALIGN_LEFT|wxALL|wxEXPAND;
+    // force validation of child controls
+    SetExtraStyle (wxWS_EX_VALIDATE_RECURSIVELY);
 
     // tell wxAuiManager to manage this window
     Aui.SetManagedWindow (this);
 
     // control panel
-    wxPanel         * pnl = new wxPanel    (this, wxID_ANY);
-    wxBoxSizer      * szt = new wxBoxSizer (wxVERTICAL);
-    wxFlexGridSizer * sz0 = new wxFlexGridSizer (/*rows*/1,/*cols*/3,/*vgap*/0,/*hgap*/0);
-    txt_fname = new wxTextCtrl (pnl, wxID_ANY, wxEmptyString,wxDefaultPosition,wxSize(400,10),wxTE_READONLY);
-    sz0->Add (  new wxButton   (pnl, ID_LOAD, "Load"), 0,f2,2);
-    sz0->Add (  new wxButton   (pnl, ID_SAVE, "Save"), 0,f2,2);
-    sz0->Add (txt_fname, 0,f2,2);
-    szt->Add          (sz0,0,f2,2);
-    pnl->SetSizer     (szt);
-    szt->Fit          (pnl);
-    szt->SetSizeHints (pnl);
+    ADD_WXPANEL     (pnl, szt, szr, 1, 3);
+    ADD_WXBUTTON    (pnl, szr, ID_INPFILE_LOAD, c0, "Load");
+    ADD_WXBUTTON    (pnl, szr, ID_INPFILE_SAVE, c1, "Save");
+    ADD_WXTEXTCTRL_ (pnl, szr, wxID_ANY, TxtFName, "", FName);
+    TxtFName->SetMinSize (wxSize(200,20));
 
     // main
-    CREATE_WXPANEL     (p_mai , sz_mai , 6, 2);
-    ADD_WXREALNUMINPUT (p_mai , sz_mai , ID_SET_MATID     , matid     , c_matid     , "matid    "); //   1
-    ADD_WXREALNUMINPUT (p_mai , sz_mai , ID_SET_FLWID     , flwid     , c_flwid     , "flwid    "); //   2
-    ADD_WXREALNUMINPUT (p_mai , sz_mai , ID_SET_NINC      , ninc      , c_ninc      , "ninc     "); //   3
-    ADD_WXCHECKBOX     (p_mai , sz_mai , ID_SET_FEM       , fem       , c_fem       , "fem      "); //   8
-    ADD_WXCHECKBOX     (p_mai , sz_mai , ID_SET_DYN       , dyn       , c_dyn       , "dyn      "); //   9
-    ADD_WXCHECKBOX     (p_mai , sz_mai , ID_SET_HM        , hm        , c_hm        , "hm       "); //  10
-
-    // local integration
-    CREATE_WXPANEL     (p_loc , sz_loc , 2, 2);
-    ADD_WXCHECKBOX     (p_loc , sz_loc , ID_SET_CDRIFT    , cdrift    , c_cdrift    , "cdrift   "); //   4
-    ADD_WXREALNUMINPUT (p_loc , sz_loc , ID_SET_STOL      , stol      , c_stol      , "stol     "); //   5
-
-    // fem solution
-    CREATE_WXPANEL     (p_fem , sz_fem , 17, 2);
-    ADD_WXCHECKBOX     (p_fem , sz_fem , ID_SET_SSOUT     , ssout     , c_ssout     , "ssout    "); //   6
-    ADD_WXCHECKBOX     (p_fem , sz_fem , ID_SET_CTETG     , ctetg     , c_ctetg     , "ctetg    "); //   7
-    ADD_WXREALNUMINPUT (p_fem , sz_fem , ID_SET_TF        , tf        , c_tf        , "tf       "); //  11
-    ADD_WXREALNUMINPUT (p_fem , sz_fem , ID_SET_DT        , dt        , c_dt        , "dt       "); //  12
-    ADD_WXREALNUMINPUT (p_fem , sz_fem , ID_SET_DTOUT     , dtout     , c_dtout     , "dtout    "); //  13
-    ADD_WXREALNUMINPUT (p_fem , sz_fem , ID_SET_TSW       , tsw       , c_tsw       , "tsw      "); //  14
-    ADD_WXREALNUMINPUT (p_fem , sz_fem , ID_SET_NDIV      , ndiv      , c_ndiv      , "ndiv     "); //  15
-    ADD_WXREALNUMINPUT (p_fem , sz_fem , ID_SET_NIP       , nip       , c_nip       , "nip      "); //  16
-    ADD_WXCHECKBOX     (p_fem , sz_fem , ID_SET_O2        , o2        , c_o2        , "o2       "); //  17
-    ADD_WXCHECKBOX     (p_fem , sz_fem , ID_SET_RAY       , ray       , c_ray       , "ray      "); //  18
-    ADD_WXREALNUMINPUT (p_fem , sz_fem , ID_SET_AM        , am        , c_am        , "am       "); //  19
-    ADD_WXREALNUMINPUT (p_fem , sz_fem , ID_SET_AK        , ak        , c_ak        , "ak       "); //  20
-    ADD_WXCHECKBOX     (p_fem , sz_fem , ID_SET_RK        , rk        , c_rk        , "rk       "); //  21
-    ADD_WXTEXTCTRL     (p_fem , sz_fem , ID_SET_RKSCHEME  , rkscheme  , c_rkscheme  , "rkscheme "); //  22
-    ADD_WXREALNUMINPUT (p_fem , sz_fem , ID_SET_RKSTOL    , rkstol    , c_rkstol    , "rkstol   "); //  23
-    ADD_WXREALNUMINPUT (p_fem , sz_fem , ID_SET_MAXIT     , maxit     , c_maxit     , "maxit    "); //  39
-    ADD_WXREALNUMINPUT (p_fem , sz_fem , ID_SET_TOLR      , tolr      , c_tolr      , "tolr     "); //  40
-
-    // reference files
-    CREATE_WXPANEL     (p_rfi , sz_rfi , 3, 2);
-    ADD_WXTEXTCTRL     (p_rfi , sz_rfi , ID_SET_REFDAT    , refdat    , c_refdat    , "refdat   "); //  24
-    ADD_WXTEXTCTRL     (p_rfi , sz_rfi , ID_SET_REFSIM    , refsim    , c_refsim    , "refsim   "); //  25
-    ADD_WXTEXTCTRL     (p_rfi , sz_rfi , ID_SET_REFANA    , refana    , c_refana    , "refana   "); //  26
-
-    // nonlinear steps
-    CREATE_WXPANEL     (p_nls , sz_nls , 6 , 2);
-    ADD_WXREALNUMINPUT (p_nls , sz_nls , ID_SET_NLDT_NSML , nldt_nsml , c_nldt_nsml , "nldt_nsml"); //  33
-    ADD_WXREALNUMINPUT (p_nls , sz_nls , ID_SET_NLDT_NN   , nldt_nn   , c_nldt_nn   , "nldt_nn  "); //  34
-    ADD_WXREALNUMINPUT (p_nls , sz_nls , ID_SET_NLDT_N    , nldt_n    , c_nldt_n    , "nldt_n   "); //  35
-    ADD_WXREALNUMINPUT (p_nls , sz_nls , ID_SET_NLDT_LL   , nldt_ll   , c_nldt_ll   , "nldt_ll  "); //  36
-    ADD_WXREALNUMINPUT (p_nls , sz_nls , ID_SET_NLDT_SCH  , nldt_sch  , c_nldt_sch  , "nldt_sch "); //  37
-    ADD_WXREALNUMINPUT (p_nls , sz_nls , ID_SET_NLDT_M    , nldt_m    , c_nldt_m    , "nldt_m   "); //  38
-
-    // others
-    CREATE_WXPANEL     (p_oth , sz_oth ,  6, 2);
-    ADD_WXREALNUMINPUT (p_oth , sz_oth , ID_SET_IDXVERT1  , idxvert1  , c_idxvert1  , "idxvert1 "); //  27
-    ADD_WXREALNUMINPUT (p_oth , sz_oth , ID_SET_IDXVERT2  , idxvert2  , c_idxvert2  , "idxvert2 "); //  28
-    ADD_WXREALNUMINPUT (p_oth , sz_oth , ID_SET_IDXVERT3  , idxvert3  , c_idxvert3  , "idxvert3 "); //  29
-    ADD_WXREALNUMINPUT (p_oth , sz_oth , ID_SET_OPTDBL1   , optdbl1   , c_optdbl1   , "optdbl1  "); //  30
-    ADD_WXREALNUMINPUT (p_oth , sz_oth , ID_SET_OPTDBL2   , optdbl2   , c_optdbl2   , "optdbl2  "); //  31
-    ADD_WXREALNUMINPUT (p_oth , sz_oth , ID_SET_OPTDBL3   , optdbl3   , c_optdbl3   , "optdbl3  "); //  32
+    ADD_WXPANEL     (p_mai, sz_mai_t, sz_mai, 6, 2);
+    ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_matid     , "matid    ", matid    ); //   1
+    ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_flwid     , "flwid    ", flwid    ); //   2
+    ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_ninc      , "ninc     ", ninc     ); //   3
+    ADD_WXCHECKBOX2 (p_mai, sz_mai, wxID_ANY, c_fem       , "fem      ", fem      ); //   8
+    ADD_WXCHECKBOX2 (p_mai, sz_mai, wxID_ANY, c_dyn       , "dyn      ", dyn      ); //   9
+    ADD_WXCHECKBOX2 (p_mai, sz_mai, wxID_ANY, c_hm        , "hm       ", hm       ); //  10
+                                                                                            
+    // local integration                                                                    
+    ADD_WXPANEL     (p_loc, sz_loc_t, sz_loc, 2, 2);                                        
+    ADD_WXCHECKBOX2 (p_loc, sz_loc, wxID_ANY, c_cdrift    , "cdrift   ", cdrift   ); //   4
+    ADD_WXNUMINPUT2 (p_loc, sz_loc, wxID_ANY, c_stol      , "stol     ", stol     ); //   5
+                                                                                            
+    // fem solution                                                                         
+    ADD_WXPANEL     (p_fem, sz_fem_t, sz_fem, 17, 2);                             
+    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_ssout     , "ssout    ", ssout    ); //   6
+    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_ctetg     , "ctetg    ", ctetg    ); //   7
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_tf        , "tf       ", tf       ); //  11
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_dt        , "dt       ", dt       ); //  12
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_dtout     , "dtout    ", dtout    ); //  13
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_tsw       , "tsw      ", tsw      ); //  14
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_ndiv      , "ndiv     ", ndiv     ); //  15
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_nip       , "nip      ", nip      ); //  16
+    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_o2        , "o2       ", o2       ); //  17
+    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_ray       , "ray      ", ray      ); //  18
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_am        , "am       ", am       ); //  19
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_ak        , "ak       ", ak       ); //  20
+    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_rk        , "rk       ", rk       ); //  21
+    ADD_WXTEXTCTRL2 (p_fem, sz_fem, wxID_ANY, c_rkscheme  , "rkscheme ", rkscheme ); //  22
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_rkstol    , "rkstol   ", rkstol   ); //  23
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_maxit     , "maxit    ", maxit    ); //  39
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_tolr      , "tolr     ", tolr     ); //  40
+                                                                                            
+    // reference files                                                                      
+    ADD_WXPANEL     (p_rfi, sz_rfi_t, sz_rfi, 3, 2);                                        
+    ADD_WXTEXTCTRL2 (p_rfi, sz_rfi, wxID_ANY, c_refdat    , "refdat   ", refdat   ); //  24
+    ADD_WXTEXTCTRL2 (p_rfi, sz_rfi, wxID_ANY, c_refsim    , "refsim   ", refsim   ); //  25
+    ADD_WXTEXTCTRL2 (p_rfi, sz_rfi, wxID_ANY, c_refana    , "refana   ", refana   ); //  26
+    c_refdat->SetMinSize (wxSize(200,20));
+    c_refsim->SetMinSize (wxSize(200,20));
+    c_refana->SetMinSize (wxSize(200,20));
+                                                                                            
+    // nonlinear steps                                                                      
+    ADD_WXPANEL     (p_nls, sz_nls_t, sz_nls, 6, 2);                                        
+    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_nsml , "nldt_nsml", nldt_nsml); //  33
+    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_nn   , "nldt_nn  ", nldt_nn  ); //  34
+    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_n    , "nldt_n   ", nldt_n   ); //  35
+    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_ll   , "nldt_ll  ", nldt_ll  ); //  36
+    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_sch  , "nldt_sch ", nldt_sch ); //  37
+    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_m    , "nldt_m   ", nldt_m   ); //  38
+                                                                                            
+    // others                                                                               
+    ADD_WXPANEL     (p_oth, sz_oth_t, sz_oth, 6, 2);                                        
+    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_idxvert1  , "idxvert1 ", idxvert1 ); //  27
+    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_idxvert2  , "idxvert2 ", idxvert2 ); //  28
+    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_idxvert3  , "idxvert3 ", idxvert3 ); //  29
+    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_optdbl1   , "optdbl1  ", optdbl1  ); //  30
+    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_optdbl2   , "optdbl2  ", optdbl2  ); //  31
+    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_optdbl3   , "optdbl3  ", optdbl3  ); //  32
 
     // notebook
-    long nbk_style = (wxAUI_NB_DEFAULT_STYLE | wxAUI_NB_TAB_EXTERNAL_MOVE | wxNO_BORDER) & ~(wxAUI_NB_CLOSE_BUTTON | wxAUI_NB_CLOSE_ON_ACTIVE_TAB | wxAUI_NB_CLOSE_ON_ALL_TABS);
-    wxAuiNotebook * nbk0 = new wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, nbk_style);
-    wxAuiNotebook * nbk1 = new wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, nbk_style);
-    nbk0->AddPage(p_mai, "Main",              false);
-    nbk0->AddPage(p_loc, "Local Integration", false);
-    nbk0->AddPage(p_oth, "Others",            false);
-    nbk1->AddPage(p_fem, "FEM Solution",      false);
-    nbk1->AddPage(p_nls, "Nonlinear Steps",   false);
-    nbk1->AddPage(p_rfi, "Reference Files",   false);
+    ADD_WXNOTEBOOK (this, nbk0);
+    ADD_WXNOTEBOOK (this, nbk1);
+    nbk0->AddPage  (p_mai, "Main",              false);
+    nbk0->AddPage  (p_loc, "Local Integration", false);
+    nbk0->AddPage  (p_oth, "Others",            false);
+    nbk1->AddPage  (p_fem, "FEM Solution",      false);
+    nbk1->AddPage  (p_nls, "Nonlinear Steps",   false);
+    nbk1->AddPage  (p_rfi, "Reference Files",   false);
 
     // set panes in Aui
     Aui.AddPane (pnl,  wxAuiPaneInfo().Name("cpnl").Caption("cpnl").Top().MinSize(wxSize(100,40)).DestroyOnClose(false).CaptionVisible(false) .CloseButton(false));
@@ -634,19 +468,20 @@ inline InpFile::InpFile (wxFrame * Parent)
 
 inline void InpFile::OnLoad (wxCommandEvent & Event)
 {
-    wxFileDialog fd(this, "Load input (.inp) file", lst_dir, "", "*.inp");
+    wxFileDialog fd(this, "Load input (.inp) file", LstDir, "", "*.inp");
     if (fd.ShowModal()==wxID_OK)
     {
         Read (fd.GetPath().ToStdString().c_str());
-        txt_fname->SetValue (fd.GetFilename());
-        lst_dir = fd.GetDirectory ();
-        _refresh ();
+        TxtFName->SetValue (fd.GetFilename());
+        LstDir = fd.GetDirectory ();
+        TransferDataToWindow ();
     }
 }
 
 inline void InpFile::OnSave (wxCommandEvent & Event)
 {
-    wxFileDialog fd(this, "Save input (.inp) file", lst_dir, "", "*.inp", wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
+    Sync ();
+    wxFileDialog fd(this, "Save input (.inp) file", LstDir, "", "*.inp", wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
     if (fd.ShowModal()==wxID_OK)
     {
         std::cout << "fem = " << fem << std::endl;
@@ -691,55 +526,14 @@ inline void InpFile::OnSave (wxCommandEvent & Event)
         of << "nldt_m    = " << nldt_m    << std::endl; // 38
         of << "maxit     = " << maxit     << std::endl; // 39
         of << "tolr      = " << tolr      << std::endl; // 40
+        if (Path.Size()>0)
+        {
+            //of << "npath     = " << Path.Size() << std::endl;
+            //of << std::endl;
+        }
         of.close();
     }
 }
-
-inline void InpFile::_refresh ()
-{
-    c_matid      -> SetVal   (matid     ); //  1
-    c_flwid      -> SetVal   (flwid     ); //  2
-    c_ninc       -> SetVal   (ninc      ); //  3
-    c_cdrift     -> SetValue (cdrift    ); //  4
-    c_stol       -> SetVal   (stol      ); //  5
-    c_ssout      -> SetValue (ssout     ); //  6
-    c_ctetg      -> SetValue (ctetg     ); //  7
-    c_fem        -> SetValue (fem       ); //  8
-    c_dyn        -> SetValue (dyn       ); //  9
-    c_hm         -> SetValue (hm        ); // 10
-    c_tf         -> SetVal   (tf        ); // 11
-    c_dt         -> SetVal   (dt        ); // 12
-    c_dtout      -> SetVal   (dtout     ); // 13
-    c_tsw        -> SetVal   (tsw       ); // 14
-    c_ndiv       -> SetVal   (ndiv      ); // 15
-    c_nip        -> SetVal   (nip       ); // 16
-    c_o2         -> SetValue (o2        ); // 17
-    c_ray        -> SetValue (ray       ); // 18
-    c_am         -> SetVal   (am        ); // 19
-    c_ak         -> SetVal   (ak        ); // 20
-    c_rk         -> SetValue (rk        ); // 21
-    c_rkscheme   -> SetValue (rkscheme  ); // 22
-    c_rkstol     -> SetVal   (rkstol    ); // 23
-    c_refdat     -> SetValue (refdat    ); // 24
-    c_refsim     -> SetValue (refsim    ); // 25
-    c_refana     -> SetValue (refana    ); // 26
-    c_idxvert1   -> SetVal   (idxvert1  ); // 27
-    c_idxvert2   -> SetVal   (idxvert2  ); // 28
-    c_idxvert3   -> SetVal   (idxvert3  ); // 29
-    c_optdbl1    -> SetVal   (optdbl1   ); // 30
-    c_optdbl2    -> SetVal   (optdbl2   ); // 31
-    c_optdbl3    -> SetVal   (optdbl3   ); // 32
-    c_nldt_nsml  -> SetVal   (nldt_nsml ); // 33
-    c_nldt_nn    -> SetVal   (nldt_nn   ); // 34
-    c_nldt_n     -> SetVal   (nldt_n    ); // 35
-    c_nldt_ll    -> SetVal   (nldt_ll   ); // 36
-    c_nldt_sch   -> SetVal   (nldt_sch  ); // 37
-    c_nldt_m     -> SetVal   (nldt_m    ); // 38
-    c_maxit      -> SetVal   (maxit     ); // 39
-    c_tolr       -> SetVal   (tolr      ); // 40
-}
-
-#undef CREATE_PANEL
 
 #endif
 

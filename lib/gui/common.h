@@ -37,6 +37,8 @@
   #include <wx/valgen.h>
   #include <wx/scrolwin.h>
   #include <wx/checkbox.h>
+  #include <wx/combobox.h>
+  #include <wx/filedlg.h>
   #include <wx/sizer.h>
   #include <wx/button.h>
   #include <wx/stattext.h>
@@ -45,6 +47,7 @@
   #include <wx/msgdlg.h>
   #include <wx/log.h>
   #include <mechsys/gui/wxnuminput.h>
+  #include <mechsys/gui/wxstringvalidator.h>
 #else
   #error MechSys:gui/common.h: Either USE_FLTK or USE_WXWIDGETS must be defined
 #endif
@@ -96,6 +99,9 @@
     PNL->GetSizer()->Fit (PNL);                                             \
     PNL->GetSizer()->SetSizeHints (PNL);
 
+  #define ADD_WXNOTEBOOK(WND, NBK) \
+    wxAuiNotebook * NBK = new wxAuiNotebook(WND, wxID_ANY, wxDefaultPosition, wxDefaultSize, (wxAUI_NB_DEFAULT_STYLE | wxAUI_NB_TAB_EXTERNAL_MOVE | wxNO_BORDER) & ~(wxAUI_NB_CLOSE_BUTTON | wxAUI_NB_CLOSE_ON_ACTIVE_TAB | wxAUI_NB_CLOSE_ON_ALL_TABS));
+
   #define ADD_WXBUTTON(PNL, SZR, ID, CTRL, LBL) \
     wxButton * CTRL = new wxButton (PNL, ID, LBL, wxDefaultPosition, wxDefaultSize, 0); \
     SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
@@ -103,24 +109,28 @@
   #define ADD_WXCHECKBOX(PNL, SZR, ID, CTRL, LBL, VAR) \
     wxCheckBox * CTRL = new wxCheckBox (PNL, ID, LBL, wxDefaultPosition, wxDefaultSize, 0, wxGenericValidator(&VAR)); \
     CTRL->SetValue (VAR); \
-    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND|wxALIGN_CENTER_VERTICAL,2);
 
   #define ADD_WXCHECKBOX2(PNL, SZR, ID, CTRL, LBL, VAR) \
     wxCheckBox * CTRL = new wxCheckBox (PNL, ID, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxGenericValidator(&VAR)); \
     CTRL->SetValue (VAR); \
     SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
-    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND|wxALIGN_CENTER_VERTICAL,2);
 
   #define ADD_WXCOMBOBOX(PNL, SZR, ID, CTRL, LBL) \
     CTRL = new wxComboBox (PNL, ID, LBL, wxDefaultPosition, wxDefaultSize, 0); \
     SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
 
   #define ADD_WXTEXTCTRL(PNL, SZR, ID, CTRL, LBL, VAR) \
-    wxTextCtrl * CTRL = new wxTextCtrl (PNL, ID, VAR, wxDefaultPosition, wxDefaultSize, 0, wxTextCtrlValidator(wxFILTER_NONE,&VAR)); \
+    wxTextCtrl * CTRL = new wxTextCtrl (PNL, ID, VAR, wxDefaultPosition, wxDefaultSize, 0, WxStringValidator(&VAR)); \
+    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
+  #define ADD_WXTEXTCTRL_(PNL, SZR, ID, CTRL, LBL, VAR) \
+    CTRL = new wxTextCtrl (PNL, ID, VAR, wxDefaultPosition, wxDefaultSize, 0, WxStringValidator(&VAR)); \
     SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
 
   #define ADD_WXTEXTCTRL2(PNL, SZR, ID, CTRL, LBL, VAR) \
-    wxTextCtrl * CTRL = new wxTextCtrl (PNL, ID, VAR, wxDefaultPosition, wxDefaultSize, 0, wxTextCtrlValidator(wxFILTER_NONE,&VAR)); \
+    wxTextCtrl * CTRL = new wxTextCtrl (PNL, ID, VAR, wxDefaultPosition, wxDefaultSize, 0, WxStringValidator(&VAR)); \
     SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
     SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
 

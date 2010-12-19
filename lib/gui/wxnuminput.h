@@ -187,8 +187,9 @@ END_EVENT_TABLE()
 class WxNumValidator : public wxValidator
 {
 public:
-    WxNumValidator (double * ptVal=NULL) : wxValidator(), pVal(ptVal) {}
-    WxNumValidator (WxNumValidator const & Other) { pVal = Other.pVal; }
+    WxNumValidator (double * ptVal)      : wxValidator(), pValDbl(ptVal), pValInt(NULL)  {}
+    WxNumValidator (int    * ptVal=NULL) : wxValidator(), pValDbl(NULL),  pValInt(ptVal) {}
+    WxNumValidator (WxNumValidator const & Other) { pValDbl=Other.pValDbl; pValInt=Other.pValInt; }
     virtual ~WxNumValidator() {}
 
     virtual wxObject * Clone              () const { return new WxNumValidator(*this); }
@@ -196,10 +197,11 @@ public:
     virtual bool       TransferToWindow   ();
     virtual bool       Validate           (wxWindow * parent) { return true; }
 
-    WxNumValidator & operator= (WxNumValidator const & Other) { pVal = Other.pVal; return (*this); }
+    WxNumValidator & operator= (WxNumValidator const & Other) { pValDbl=Other.pValDbl; pValInt=Other.pValInt; return (*this); }
 
 private:
-    double * pVal;
+    double * pValDbl;
+    int    * pValInt;
     DECLARE_DYNAMIC_CLASS(WxNumValidator)
     DECLARE_EVENT_TABLE()
 };
@@ -211,13 +213,15 @@ END_EVENT_TABLE()
 
 bool WxNumValidator::TransferFromWindow()
 {
-    (*pVal) = static_cast<WxNumInput*>(m_validatorWindow)->GetVal();
+    if (pValInt==NULL) (*pValDbl) = static_cast<WxNumInput*>(m_validatorWindow)->GetVal();
+    else               (*pValInt) = static_cast<WxNumInput*>(m_validatorWindow)->GetVal();
     return true;
 }
 
 bool WxNumValidator::TransferToWindow()
 {
-    static_cast<WxNumInput*>(m_validatorWindow)->SetVal((*pVal));
+    if (pValInt==NULL) static_cast<WxNumInput*>(m_validatorWindow)->SetVal((*pValDbl));
+    else               static_cast<WxNumInput*>(m_validatorWindow)->SetVal((*pValInt));
     return true;
 }
 
