@@ -19,14 +19,14 @@
 #ifndef MECHSYS_WXDICT_H
 #define MECHSYS_WXDICT_H
 
-// Std Lib
-#include <fstream>
-
 // wxWidgets
 #ifdef HAS_WXW
   #include <wx/grid.h>
-  #include <wx/log.h>
+  #include <wx/aui/aui.h>
+  #include <wx/checkbox.h>
+  #include <wx/valtext.h>
   #include <mechsys/gui/common.h>
+  #include <mechsys/gui/wxfloatvalidator.h>
 #endif
 
 // MechSys
@@ -34,58 +34,136 @@
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
 
-class WxDict : public wxGrid, public Dict
+
+using std::cout;
+using std::endl;
+
+namespace GUI
+{
+
+class WxDictTable : public wxGridTableBase, public Dict
 {
 public:
+    // Constructor
+    WxDictTable () : ShowSubKeys(true) {}
+
+    // Methods
+    int      GetNumberRows ();
+    int      GetNumberCols () { return Keys.Size(); }
+    wxString GetValue      (int row, int col);
+    void     SetValue      (int row, int col, wxString const & Str);
+    bool     IsEmptyCell   (int row, int col) { return false; }
+
+    // Data
+    bool ShowSubKeys; ///< Show subkeys in cell ?
+};
+
+class WxDict : public wxWindow
+{
+public:
+    // static
     static const int WidFirstCol = 50;
     static const int WidCols     = 80;
     static const int HeiFirstRow = 20;
     static const int HeiRows     = 22;
 
-    // Constructor
-    WxDict (wxWindow * Parent);
+    // Constructor & Destructor
+     WxDict (wxWindow * Parent);
+    ~WxDict () { Aui.UnInit(); }
 
     // Methods
-    void ReBuild ();
+    void ReBuild (); ///< Rebuild grid
+    void Update  (); ///< Update (validate/transfer) data in controls
 
     // Data
-    bool SamePairs; ///< SDPairs contain the same keys
+    wxAuiManager   Aui;    ///< Aui
+    WxDictTable  * Tab;    ///< The table
+    wxGrid       * Grd;    ///< The grid
+    //wxCheckBox   * ChkFit; ///< Fit data to columns
 
-    // Events
-    void OnCellValueChanging (wxGridEvent & Event);
-    void OnCellChange        (wxGridEvent & Event);
-    DECLARE_EVENT_TABLE();
+    bool ChkFit;
 };
 
 
-/////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
+//////////////////////////////////////////////////////////////////////// Implementation ///// WxDictTable///////
 
 
-BEGIN_EVENT_TABLE(WxDict, wxGrid)
-    EVT_GRID_CELL_CHANGING (WxDict::OnCellValueChanging)
-    EVT_GRID_CELL_CHANGED  (WxDict::OnCellChange)
-END_EVENT_TABLE()
+inline int WxDictTable::GetNumberRows ()
+{
+    size_t nrows = 0;
+    for (Dict_t::const_iterator it=begin(); it!=end(); ++it)
+    {
+        if (it->second.size()>nrows) nrows = it->second.size();
+    }
+    return nrows;
+}
+
+inline wxString WxDictTable::GetValue (int row, int col)
+{
+    SDPair const & pair = (*this)(Keys[col]);
+    wxString buf;
+    if (pair.Keys.Size()>(size_t)row)
+    {
+        if (ShowSubKeys) buf.Printf("%s: %g", pair.Keys[row].CStr(), pair(pair.Keys[row]));
+        else             buf.Printf("%g",                            pair(pair.Keys[row]));
+    }
+    return buf;
+}
+
+inline void WxDictTable::SetValue (int row, int col, wxString const & Str)
+{
+    SDPair & pair = (*this)(Keys[col]);
+    if (pair.Keys.Size()>(size_t)row)
+    {
+        double val;
+        if (Str.ToDouble(&val)) pair(pair.Keys[row]) = val;
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////// Implementation ////// WxDict //////////
+
+
+enum
+{
+    ID_WXDICT_FIT = wxID_HIGHEST+3000,
+};
 
 WxDict::WxDict (wxWindow * Parent)
-    : wxGrid (Parent,wxID_ANY),
-      SamePairs (true)
+    : wxWindow (Parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE),
+      ChkFit (false)
 {
-    CreateGrid       (1,1);
-    SetRowLabelSize  (WidFirstCol);
-    SetColLabelSize  (HeiFirstRow);
-    //for (size_t i=0; i<3;  ++i) SetColSize (i,wid_cols);
-    //for (size_t i=0; i<10; ++i) SetRowSize (i,hei_rows);
+    // force validation of child controls
+    SetExtraStyle (wxWS_EX_VALIDATE_RECURSIVELY);
+
+    // tell Aui to manage this frame
+    Aui.SetManagedWindow (this);
+
+    // control panel
+    ADD_WXPANEL    (pnl, sz0, 1, 2)
+    ADD_WXCHECKBOX (pnl, sz0, wxID_ANY, ChkFit, chk0, "Fit columns to data");
+
+    // create table and grid
+    Grd = new wxGrid           (this, wxID_ANY);
+    Tab = new GUI::WxDictTable ();
+    ReBuild ();
+
+    // set Aui
+    Aui.AddPane (pnl, wxAuiPaneInfo().Name("cpnl").Caption("Control").Top().MinSize(wxSize(100,40)).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
+    Aui.AddPane (Grd, wxAuiPaneInfo().Name("grid").Caption("Grid").Centre().DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
+    Aui.Update  ();
 }
 
 void WxDict::ReBuild ()
 {
-    DeleteRows(0,GetTable()->GetNumberRows());
-    DeleteCols(0,GetTable()->GetNumberCols());
-    int nrows = 0;
-    int ncols = Keys.Size();
+    Grd->SetTable (Tab, /*take_ownership*/false);
+    Grd->ForceRefresh ();
+    Update ();
+    if (ChkFit) Grd->Fit ();
+    //if (ChkFit->GetValue()) Grd->Fit ();
+
+/*
     for (Dict_t::const_iterator it=begin(); it!=end(); ++it) if (it->second.size()>nrows) nrows = it->second.size();
-    AppendRows (nrows);
-    AppendCols (ncols);
     for (size_t i=0; i<Keys.Size(); ++i)
     {
         wxString key;  key.Printf("%d",Keys[i]);
@@ -93,6 +171,7 @@ void WxDict::ReBuild ()
         SetColSize       (i, WidCols);
         if (!SamePairs)
         {
+            throw new Fatal("WxDict::ReBuild: not yet (!SamePairs)");
             SDPair const & pair = (*this)(Keys[i]);
             for (size_t j=0; j<pair.Keys.Size(); ++j)
             {
@@ -101,42 +180,27 @@ void WxDict::ReBuild ()
     }
     if (SamePairs)
     {
+        wxString buf;
         for (size_t i=0; i<begin()->second.Keys.Size(); ++i)
         {
             SetRowLabelValue (i, begin()->second.Keys[i]);
             SetRowSize       (i, HeiRows);
+            SDPair const & pair = (*this)(Keys[i]);
+            for (size_t j=0; j<ncols; ++j)
+            {
+                buf.Printf("%g",pair(pair.Keys[j]));
+                SetCellValue (i,j,buf);
+            }
         }
     }
+*/
 }
 
-
-void WxDict::OnCellValueChanging (wxGridEvent & Event)
+void WxDict::Update ()
 {
-    int      row  = Event.GetRow();
-    int      col  = Event.GetCol();
-    wxString sval = GetCellValue(row,col);
-    double   val;
-    if (!sval.ToDouble(&val))
-    {
-        wxLogMessage ("Value=%s does not correspond to a real number",sval.ToStdString().c_str());
-        Event.Veto();
-        return;
-    }
-    Event.Skip();
+    TransferDataFromWindow ();
 }
 
-void WxDict::OnCellChange (wxGridEvent & Event)
-{
-    int      row  = Event.GetRow();
-    int      col  = Event.GetCol();
-    wxString sval = GetCellValue(row,col);
-    double   val;
-    if (!sval.ToDouble(&val))
-    { 
-        wxLogError ("MyGrid::OnDatCellChange: Value=%s does not correspond to a real number",sval.ToStdString().c_str());
-        return;
-    }
-}
-
+}; // namespace GUI
 
 #endif // MECHSYS_WXDICT_H

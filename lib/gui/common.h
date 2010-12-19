@@ -34,6 +34,7 @@
   #include <wx/font.h>
   #include <wx/gdicmn.h>
   #include <wx/dcbuffer.h>
+  #include <wx/valgen.h>
 #else
   #error MechSys:gui/common.h: Either USE_FLTK or USE_WXWIDGETS must be defined
 #endif
@@ -45,7 +46,7 @@
 
 #ifdef USE_WXWIDGETS
 
-  #define CREATE_WXPANEL(PNL, SZR, M, N)                                      \
+  #define ADD_WXPANEL(PNL, SZR, M, N)                                         \
         wxScrolled<wxPanel> * PNL = new wxScrolled<wxPanel> (this, wxID_ANY); \
         wxFlexGridSizer * SZR = new wxFlexGridSizer (M,N,0,0);                \
         PNL->SetSizer (new wxBoxSizer(wxVERTICAL));                           \
@@ -54,14 +55,20 @@
         PNL->GetSizer()->Fit (PNL);                                           \
         PNL->GetSizer()->SetSizeHints (PNL);
 
-  #define ADD_WXREALNUMINPUT(PNL, SZR, ID, VAR, CTRL, LBL)                                             \
-        CTRL = new WxRealNumInput (PNL, ID, VAR);                                                      \
+  #define ADD_WXCHECKBOX(PNL, SZR, ID, VAR, CTRL, LBL)                                                 \
+        wxCheckBox * CTRL = new wxCheckBox (PNL, ID, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxGenericValidator(&VAR));                                                \
+        CTRL->SetValue (static_cast<bool>(VAR));                                                       \
         SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
         SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
 
-  #define ADD_WXCHECKBOX(PNL, SZR, ID, VAR, CTRL, LBL)                                                 \
-        CTRL = new wxCheckBox (PNL, ID, wxEmptyString);                                                \
+  #define ADD_WXCHECKBOX_(PNL, SZR, ID, VAR, CTRL, LBL)                                                \
+        CTRL = new wxCheckBox (PNL, ID, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxGenericValidator(&VAR));                                                \
         CTRL->SetValue (static_cast<bool>(VAR));                                                       \
+        SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
+        SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
+  #define ADD_WXREALNUMINPUT(PNL, SZR, ID, VAR, CTRL, LBL)                                             \
+        CTRL = new WxRealNumInput (PNL, ID, VAR);                                                      \
         SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
         SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
 
@@ -69,10 +76,6 @@
         CTRL = new wxTextCtrl (PNL, ID, VAR);                                                          \
         SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
         SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
-
-  //#define ADD_WXWGETS(WGETS, PNL, SZR, ID, VAR, CTRL, LBL) \
-        //CTRL = new WGETS (PNL, ID, VAR);                   \
-        //SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
 
 #endif
 
