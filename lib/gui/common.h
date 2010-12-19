@@ -35,6 +35,16 @@
   #include <wx/gdicmn.h>
   #include <wx/dcbuffer.h>
   #include <wx/valgen.h>
+  #include <wx/scrolwin.h>
+  #include <wx/checkbox.h>
+  #include <wx/sizer.h>
+  #include <wx/button.h>
+  #include <wx/stattext.h>
+  #include <wx/menu.h>
+  #include <wx/aui/aui.h>
+  #include <wx/msgdlg.h>
+  #include <wx/log.h>
+  #include <mechsys/gui/wxnuminput.h>
 #else
   #error MechSys:gui/common.h: Either USE_FLTK or USE_WXWIDGETS must be defined
 #endif
@@ -46,36 +56,82 @@
 
 #ifdef USE_WXWIDGETS
 
-  #define ADD_WXPANEL(PNL, SZR, M, N)                                         \
-        wxScrolled<wxPanel> * PNL = new wxScrolled<wxPanel> (this, wxID_ANY); \
-        wxFlexGridSizer * SZR = new wxFlexGridSizer (M,N,0,0);                \
-        PNL->SetSizer (new wxBoxSizer(wxVERTICAL));                           \
-        PNL->SetScrollbars(10,10,0,0);                                        \
-        PNL->GetSizer()->Add (SZR,0,wxALIGN_LEFT|wxALL|wxEXPAND);             \
-        PNL->GetSizer()->Fit (PNL);                                           \
-        PNL->GetSizer()->SetSizeHints (PNL);
+  #define SHOW_ALL_WXPANES(AUI)                           \
+    for (size_t i=0; i<AUI.GetAllPanes().GetCount(); ++i) \
+    {                                                     \
+        AUI.GetAllPanes().Item(i).Show(true);             \
+        AUI.GetAllPanes().Item(i).Dock();                 \
+    }                                                     \
+    AUI.Update();
+ 
+  #define WXMSG(MSG,HEADER) wxMessageBox(MSG,HEADER,wxOK|wxICON_INFORMATION, this);
+  #define WXMSGINT(VAL,HEADER) { wxString buf; buf.Printf("%d",VAL); WXMSG(buf,HEADER); }
+  #define WXMSGVAL(VAL,HEADER) { wxString buf; buf.Printf("%g",VAL); WXMSG(buf,HEADER); }
 
-  #define ADD_WXCHECKBOX(PNL, SZR, ID, VAR, CTRL, LBL)                                                 \
-        wxCheckBox * CTRL = new wxCheckBox (PNL, ID, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxGenericValidator(&VAR));                                                \
-        CTRL->SetValue (static_cast<bool>(VAR));                                                       \
-        SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
-        SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+  #define ADD_WXMENUSTATUS(MNU, MNU_FILE, MNU_WND, MNU_RUN, MNU_HELP) \
+    wxMenuBar * MNU     = new wxMenuBar; \
+    wxMenu    * MNU_FLE = new wxMenu;    \
+    wxMenu    * MNU_WND = new wxMenu;    \
+    wxMenu    * MNU_RUN = new wxMenu;    \
+    wxMenu    * MNU_HLP = new wxMenu;    \
+    MNU_FLE -> Append (wxID_EXIT      , "&Quit\tCtrl-Q" , "Quit this program"); \
+    MNU_WND -> Append (ID_MNU_SHOWALL , "&Show All"     , "Show all windows" ); \
+    MNU_RUN -> Append (ID_MNU_RUN     , "&Run\tCtrl-R"  , "Run simulation"   ); \
+    MNU_HLP -> Append (wxID_ABOUT     , "&About\tF1"    , "Show about dialog"); \
+    MNU     -> Append (MNU_FLE        , "&File"         ); \
+    MNU     -> Append (MNU_WND        , "&Window"       ); \
+    MNU     -> Append (MNU_RUN        , "&Run"          ); \
+    MNU     -> Append (MNU_HLP        , "&Help"         ); \
+    SetMenuBar      (mnu);       \
+    CreateStatusBar (2);         \
+    SetStatusText   ("Welcome");
 
-  #define ADD_WXCHECKBOX_(PNL, SZR, ID, VAR, CTRL, LBL)                                                \
-        CTRL = new wxCheckBox (PNL, ID, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxGenericValidator(&VAR));                                                \
-        CTRL->SetValue (static_cast<bool>(VAR));                                                       \
-        SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
-        SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+  #define ADD_WXPANEL(PNL, SZTOP, SZR, M, N)                                \
+    wxScrolled<wxPanel> * PNL   = new wxScrolled<wxPanel> (this, wxID_ANY); \
+    wxBoxSizer          * SZTOP = new wxBoxSizer (wxVERTICAL);              \
+    wxFlexGridSizer     * SZR   = new wxFlexGridSizer (M,N,0,0);            \
+    PNL->SetSizer (SZTOP);                                                  \
+    PNL->SetScrollbars(10,10,0,0);                                          \
+    PNL->GetSizer()->Add (SZR,0,wxALIGN_LEFT|wxALL|wxEXPAND);               \
+    PNL->GetSizer()->Fit (PNL);                                             \
+    PNL->GetSizer()->SetSizeHints (PNL);
 
-  #define ADD_WXREALNUMINPUT(PNL, SZR, ID, VAR, CTRL, LBL)                                             \
-        CTRL = new WxRealNumInput (PNL, ID, VAR);                                                      \
-        SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
-        SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+  #define ADD_WXBUTTON(PNL, SZR, ID, CTRL, LBL) \
+    wxButton * CTRL = new wxButton (PNL, ID, LBL, wxDefaultPosition, wxDefaultSize, 0); \
+    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
 
-  #define ADD_WXTEXTCTRL(PNL, SZR, ID, VAR, CTRL, LBL)                                                 \
-        CTRL = new wxTextCtrl (PNL, ID, VAR);                                                          \
-        SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
-        SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+  #define ADD_WXCHECKBOX(PNL, SZR, ID, CTRL, LBL, VAR) \
+    wxCheckBox * CTRL = new wxCheckBox (PNL, ID, LBL, wxDefaultPosition, wxDefaultSize, 0, wxGenericValidator(&VAR)); \
+    CTRL->SetValue (VAR); \
+    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
+  #define ADD_WXCHECKBOX2(PNL, SZR, ID, CTRL, LBL, VAR) \
+    wxCheckBox * CTRL = new wxCheckBox (PNL, ID, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxGenericValidator(&VAR)); \
+    CTRL->SetValue (VAR); \
+    SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
+    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
+  #define ADD_WXCOMBOBOX(PNL, SZR, ID, CTRL, LBL) \
+    CTRL = new wxComboBox (PNL, ID, LBL, wxDefaultPosition, wxDefaultSize, 0); \
+    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
+  #define ADD_WXTEXTCTRL(PNL, SZR, ID, CTRL, LBL, VAR) \
+    wxTextCtrl * CTRL = new wxTextCtrl (PNL, ID, VAR, wxDefaultPosition, wxDefaultSize, 0, wxTextCtrlValidator(wxFILTER_NONE,&VAR)); \
+    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
+  #define ADD_WXTEXTCTRL2(PNL, SZR, ID, CTRL, LBL, VAR) \
+    wxTextCtrl * CTRL = new wxTextCtrl (PNL, ID, VAR, wxDefaultPosition, wxDefaultSize, 0, wxTextCtrlValidator(wxFILTER_NONE,&VAR)); \
+    SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
+    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
+  #define ADD_WXNUMINPUT(PNL, SZR, ID, CTRL, LBL, VAR) \
+    WxNumInput * CTRL = new WxNumInput (PNL, ID, VAR, wxDefaultPosition, wxDefaultSize, 0, WxNumValidator(&VAR)); \
+    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
+  #define ADD_WXNUMINPUT2(PNL, SZR, ID, CTRL, LBL, VAR) \
+    WxNumInput * CTRL = new WxNumInput (PNL, ID, VAR, wxDefaultPosition, wxDefaultSize, 0, WxNumValidator(&VAR)); \
+    SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
+    SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
 
 #endif
 

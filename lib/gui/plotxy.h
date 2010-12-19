@@ -106,6 +106,8 @@ public:
     bool Grid;      ///< With primary grid ?
     bool RecSF;     ///< Recalculate scale factors during draw ?
     bool WFrame;    ///< With frame? draw an all-around frame ?
+    int  BNumTck;   ///< Bottom ruler number of ticks
+    int  LNumTck;   ///< Left ruler number of ticks
     int  TicFsz;    ///< Ticks font size
     int  LblFsz;    ///< Labels font size
     int  TitFsz;    ///< Title font size
@@ -149,8 +151,6 @@ private:
     double _Ymin;       ///< Minimum y value (real coordinates)
     double _Xmax;       ///< Maximum x value (real coordinates)
     double _Ymax;       ///< Maximum y value (real coordinates)
-    int    _bnt;        ///< Bottom ruler number of ticks
-    int    _lnt;        ///< Left ruler number of ticks
     char   _btifmt[16]; ///< Bottom ruler ticks number format
     char   _ltifmt[16]; ///< Left ruler ticks number format
     char   _title[256]; ///< The title
@@ -199,6 +199,8 @@ inline PlotXY::PlotXY (wxWindow * Parent, char const * Title, char const * Xlbl,
       Grid      (true),
       RecSF     (true),
       WFrame    (true),
+      BNumTck   (10),
+      LNumTck   (10),
       TicFsz    (10),
       LblFsz    (12),
       TitFsz    (14),
@@ -223,9 +225,7 @@ inline PlotXY::PlotXY (wxWindow * Parent, char const * Title, char const * Xlbl,
       _Xmin     (0.0),
       _Ymin     (0.0),
       _Xmax     (1.0),
-      _Ymax     (1.0),
-      _bnt      (10),
-      _lnt      (10)
+      _Ymax     (1.0)
 {
 #ifdef USE_FLTK
     end();
@@ -404,8 +404,8 @@ inline void PlotXY::CalcSF ()
     }
 
     // ticks
-    _pretty (_Xmin, _Xmax, _bnt, BTicks);
-    _pretty (_Ymin, _Ymax, _lnt, LTicks);
+    _pretty (_Xmin, _Xmax, BNumTck, BTicks);
+    _pretty (_Ymin, _Ymax, LNumTck, LTicks);
 }
 
 inline void PlotXY::DrawRulers (DeviceContext & DC)

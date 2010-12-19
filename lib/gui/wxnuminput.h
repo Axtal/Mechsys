@@ -17,76 +17,76 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_WXREALNUMINPUT_H
-#define MECHSYS_WXREALNUMINPUT_H
+#ifndef MECHSYS_WXNUMINPUT_H
+#define MECHSYS_WXNUMINPUT_H
 
 // wxWidgets
 #include <wx/textctrl.h>
 #include <wx/event.h>
+#include <wx/validate.h>
 
 
-///////////////////////////////////////////////////////////////////////////////////// WxRealNumInput_Event /////
+///////////////////////////////////////////////////////////////////////////////////// WxNumInput_Event /////
 
 
-class WxRealNumInput_Event : public wxNotifyEvent
+class WxNumInput_Event : public wxNotifyEvent
 {
 public:
     // Constructor
-    WxRealNumInput_Event(wxEventType CmdType=wxEVT_NULL, int Id=0)
+    WxNumInput_Event(wxEventType CmdType=wxEVT_NULL, int Id=0)
         : wxNotifyEvent(CmdType, Id)
     {}
+
     // Copy constructor
-    WxRealNumInput_Event(WxRealNumInput_Event const & Event)
+    WxNumInput_Event(WxNumInput_Event const & Event)
         : wxNotifyEvent(Event)
     {}
+
     // Clone function
-    virtual wxEvent * Clone() const { return new WxRealNumInput_Event(*this); }
+    virtual wxEvent * Clone() const { return new WxNumInput_Event(*this); }
+
     // Declare dynamic class
-    DECLARE_DYNAMIC_CLASS(WxRealNumInput_Event);
+    DECLARE_DYNAMIC_CLASS(WxNumInput_Event);
 
     // Methods
-    void SetValue (double Val)       { _value = Val;  }
-    double GetValue ()         const { return _value; }
+    void   SetValue (double Val) { _value = Val;  }
+    double GetValue ()     const { return _value; }
 
 private:
     // Data
     double _value;
 };
 
-typedef void (wxEvtHandler::*WxRealNumInput_Event_Fun)(WxRealNumInput_Event&);
+typedef void (wxEvtHandler::*WxNumInput_Event_Fun)(WxNumInput_Event&);
 
 BEGIN_DECLARE_EVENT_TYPES()
     DECLARE_EVENT_TYPE(EVT_REALNUM_CHANGED, 801)
 END_DECLARE_EVENT_TYPES()
 
 // Macros for handling events
-#define EVT_REALNUM_CHANGED(id, fn)                                               \
-    DECLARE_EVENT_TABLE_ENTRY                                                     \
-    (                                                                             \
-        EVT_REALNUM_CHANGED                                                     , \
-        id                                                                      , \
-        -1                                                                      , \
-        (wxObjectEventFunction)(wxEventFunction)(WxRealNumInput_Event_Fun) & fn , \
-        (wxObject*) NULL                                                          \
+#define EVT_REALNUM_CHANGED(id, fn)                                           \
+    DECLARE_EVENT_TABLE_ENTRY                                                 \
+    (                                                                         \
+        EVT_REALNUM_CHANGED                                                 , \
+        id                                                                  , \
+        -1                                                                  , \
+        (wxObjectEventFunction)(wxEventFunction)(WxNumInput_Event_Fun) & fn , \
+        (wxObject*) NULL                                                      \
     ),
 
 DEFINE_EVENT_TYPE       (EVT_REALNUM_CHANGED)
-IMPLEMENT_DYNAMIC_CLASS (WxRealNumInput_Event, wxNotifyEvent)
+IMPLEMENT_DYNAMIC_CLASS (WxNumInput_Event, wxNotifyEvent)
 
 
-/////////////////////////////////////////////////////////////////////////////////////////// WxRealNumInput /////
+/////////////////////////////////////////////////////////////////////////////////////////// WxNumInput /////
 
 
-class WxRealNumInput : public wxTextCtrl
+class WxNumInput : public wxTextCtrl
 {
 public:
-    // Constructors
-    WxRealNumInput(wxWindow * Parent, wxWindowID Id, const wxString & Str, const wxPoint & Pos=wxDefaultPosition, const wxSize & Size=wxDefaultSize, int Style=0)
-        : wxTextCtrl(Parent, Id, Str, Pos, Size, Style|wxTE_PROCESS_ENTER)
-    {}
-
-    WxRealNumInput(wxWindow * Parent, wxWindowID Id, double Val, const wxPoint & Pos=wxDefaultPosition, const wxSize & Size=wxDefaultSize, int Style=0)
-        : wxTextCtrl(Parent, Id, wxEmptyString, Pos, Size, Style|wxTE_PROCESS_ENTER)
+    // Constructor
+    WxNumInput(wxWindow * Parent, wxWindowID Id, double Val, const wxPoint & Pos=wxDefaultPosition, const wxSize & Size=wxDefaultSize, int Style=0, wxValidator const & Validator=wxDefaultValidator)
+        : wxTextCtrl(Parent, Id, wxEmptyString, Pos, Size, Style|wxTE_PROCESS_ENTER, Validator)
     {
         wxString str;  str.Printf("%g",Val);
         SetValue (str);
@@ -101,6 +101,7 @@ public:
     // Methods
     double GetVal () const { double val; GetValue().ToDouble(&val); return val; }
     void   SetVal (double Val) { wxString str; str.Printf("%g",Val); SetValue(str); }
+
 private:
     // Event table
     DECLARE_EVENT_TABLE()
@@ -117,7 +118,7 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline void WxRealNumInput::OnChar(wxKeyEvent & Event)
+inline void WxNumInput::OnChar(wxKeyEvent & Event)
 {
     if (!isalpha(Event.GetKeyCode())) Event.Skip(); // Input is ok, so skip to main loop
     else
@@ -127,25 +128,25 @@ inline void WxRealNumInput::OnChar(wxKeyEvent & Event)
     }
 }
 
-inline void WxRealNumInput::OnSetFocus(wxFocusEvent & Event)
+inline void WxNumInput::OnSetFocus(wxFocusEvent & Event)
 {
     _buffer = GetValue(); // save a buffered value
     Event.Skip();
 }
 
-inline void WxRealNumInput::OnKillFocus(wxFocusEvent & Event)
+inline void WxNumInput::OnKillFocus(wxFocusEvent & Event)
 {
     double temp;
     if (_validate_value(temp)) _send_realnum_changed_event(temp);
 }
 
-inline void WxRealNumInput::OnTextEnter(wxCommandEvent & Event)
+inline void WxNumInput::OnTextEnter(wxCommandEvent & Event)
 {
     double temp;
     if (_validate_value(temp)) _send_realnum_changed_event(temp);
 }
 
-inline bool WxRealNumInput::_validate_value(double & OutValue)
+inline bool WxNumInput::_validate_value(double & OutValue)
 {
     bool ok_and_changed = false;
     if (!GetValue().ToDouble(&OutValue)) SetValue(_buffer); // not valid, so restore buffered value
@@ -164,19 +165,60 @@ inline bool WxRealNumInput::_validate_value(double & OutValue)
     return ok_and_changed;
 }
 
-inline void WxRealNumInput::_send_realnum_changed_event(double Val)
+inline void WxNumInput::_send_realnum_changed_event(double Val)
 {
-    WxRealNumInput_Event event(EVT_REALNUM_CHANGED, GetId());
+    WxNumInput_Event event(EVT_REALNUM_CHANGED, GetId());
     event.SetEventObject (this);
     event.SetValue       (Val);
     GetEventHandler()->ProcessEvent(event);
 }
 
-BEGIN_EVENT_TABLE(WxRealNumInput, wxTextCtrl)
-    EVT_CHAR       (          WxRealNumInput::OnChar     )
-    EVT_SET_FOCUS  (          WxRealNumInput::OnSetFocus )
-    EVT_KILL_FOCUS (          WxRealNumInput::OnKillFocus)
-    EVT_TEXT_ENTER (wxID_ANY, WxRealNumInput::OnTextEnter)
+BEGIN_EVENT_TABLE(WxNumInput, wxTextCtrl)
+    EVT_CHAR       (          WxNumInput::OnChar     )
+    EVT_SET_FOCUS  (          WxNumInput::OnSetFocus )
+    EVT_KILL_FOCUS (          WxNumInput::OnKillFocus)
+    EVT_TEXT_ENTER (wxID_ANY, WxNumInput::OnTextEnter)
 END_EVENT_TABLE()
 
-#endif // MECHSYS_WXREALNUMINPUT_H
+
+/////////////////////////////////////////////////////////////////////////////////////////// Validator /////
+
+
+class WxNumValidator : public wxValidator
+{
+public:
+    WxNumValidator (double * ptVal=NULL) : wxValidator(), pVal(ptVal) {}
+    WxNumValidator (WxNumValidator const & Other) { pVal = Other.pVal; }
+    virtual ~WxNumValidator() {}
+
+    virtual wxObject * Clone              () const { return new WxNumValidator(*this); }
+    virtual bool       TransferFromWindow ();
+    virtual bool       TransferToWindow   ();
+    virtual bool       Validate           (wxWindow * parent) { return true; }
+
+    WxNumValidator & operator= (WxNumValidator const & Other) { pVal = Other.pVal; return (*this); }
+
+private:
+    double * pVal;
+    DECLARE_DYNAMIC_CLASS(WxNumValidator)
+    DECLARE_EVENT_TABLE()
+};
+
+IMPLEMENT_DYNAMIC_CLASS(WxNumValidator, wxValidator)
+
+BEGIN_EVENT_TABLE(WxNumValidator, wxValidator)
+END_EVENT_TABLE()
+
+bool WxNumValidator::TransferFromWindow()
+{
+    (*pVal) = static_cast<WxNumInput*>(m_validatorWindow)->GetVal();
+    return true;
+}
+
+bool WxNumValidator::TransferToWindow()
+{
+    static_cast<WxNumInput*>(m_validatorWindow)->SetVal((*pVal));
+    return true;
+}
+
+#endif // MECHSYS_WXNUMINPUT_H

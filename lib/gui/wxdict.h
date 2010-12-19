@@ -72,16 +72,14 @@ public:
     ~WxDict () { Aui.UnInit(); }
 
     // Methods
-    void ReBuild (); ///< Rebuild grid
-    void Update  (); ///< Update (validate/transfer) data in controls
+    void Update  () { TransferDataFromWindow(); } ///< Update (validate/transfer) data in controls
+    void ReBuild ();                              ///< Rebuild grid
 
     // Data
     wxAuiManager   Aui;    ///< Aui
     WxDictTable  * Tab;    ///< The table
     wxGrid       * Grd;    ///< The grid
-    //wxCheckBox   * ChkFit; ///< Fit data to columns
-
-    bool ChkFit;
+    bool           FitCol; ///< Fit data to columns
 };
 
 
@@ -126,12 +124,12 @@ inline void WxDictTable::SetValue (int row, int col, wxString const & Str)
 
 enum
 {
-    ID_WXDICT_FIT = wxID_HIGHEST+3000,
+    ID_WXDICT_FITCOL = wxID_HIGHEST+3000,
 };
 
 WxDict::WxDict (wxWindow * Parent)
     : wxWindow (Parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE),
-      ChkFit (false)
+      FitCol   (false)
 {
     // force validation of child controls
     SetExtraStyle (wxWS_EX_VALIDATE_RECURSIVELY);
@@ -140,8 +138,8 @@ WxDict::WxDict (wxWindow * Parent)
     Aui.SetManagedWindow (this);
 
     // control panel
-    ADD_WXPANEL    (pnl, sz0, 1, 2)
-    ADD_WXCHECKBOX (pnl, sz0, wxID_ANY, ChkFit, chk0, "Fit columns to data");
+    ADD_WXPANEL    (pnl, szr, 1, 1)
+    ADD_WXCHECKBOX (pnl, szr, ID_WXDICT_FITCOL, c0, "Fit columns to data", FitCol);
 
     // create table and grid
     Grd = new wxGrid           (this, wxID_ANY);
@@ -156,11 +154,10 @@ WxDict::WxDict (wxWindow * Parent)
 
 void WxDict::ReBuild ()
 {
-    Grd->SetTable (Tab, /*take_ownership*/false);
+    Update            ();
+    Grd->SetTable     (Tab, /*take_ownership*/false);
     Grd->ForceRefresh ();
-    Update ();
-    if (ChkFit) Grd->Fit ();
-    //if (ChkFit->GetValue()) Grd->Fit ();
+    if (FitCol) Grd->Fit ();
 
 /*
     for (Dict_t::const_iterator it=begin(); it!=end(); ++it) if (it->second.size()>nrows) nrows = it->second.size();
@@ -194,11 +191,6 @@ void WxDict::ReBuild ()
         }
     }
 */
-}
-
-void WxDict::Update ()
-{
-    TransferDataFromWindow ();
 }
 
 }; // namespace GUI

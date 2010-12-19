@@ -53,26 +53,26 @@ public:
 
     // Methods
     void OnLoad    (wxCommandEvent & Event);
-    void OnSelData (wxCommandEvent & Event) { _init_plots (); }
-    void OnMultq   (wxCommandEvent & Event) { _init_plots (); }
-    void OnPltAll  (wxCommandEvent & Event) { _init_plots (); }
+    void OnSelData (wxCommandEvent & Event) { _set_plots (); }
+    void OnMultq   (wxCommandEvent & Event) { _set_plots (); }
+    void OnPltAll  (wxCommandEvent & Event) { _set_plots (); }
 
     // Controls
     wxAuiManager   Aui;
     GUI::PlotXY  * qped, * qpev, * eved, * evlp;
 
     // Data
-    wxCheckBox            * mult_q;               // multiply q according to Lode angle ?
-    wxCheckBox            * plt_all;              // plot all data at the same time ?
-    wxComboBox            * cbx_data;             // control with data filenames
-    Array<Array<double> >   ed, ev;               // Octahedral invariants
-    Array<Array<double> >   p, q, t, lp, qp, mqp; // Octahedral invariants
+    bool                    Multq;                ///< multiply q according to Lode angle ?
+    bool                    PltAll;               ///< plot all data at the same time ?
+    wxComboBox            * CbxFNs;               ///< data filenames
+    Array<Array<double> >   ed, ev;               ///< Octahedral invariants
+    Array<Array<double> >   p, q, t, lp, qp, mqp; ///< Octahedral invariants
 
     // Events
     DECLARE_EVENT_TABLE()
 
 private:
-    void _init_plots ();
+    void _set_plots ();
 };
 
 
@@ -95,11 +95,12 @@ BEGIN_EVENT_TABLE(DataPLT, wxWindow)
 END_EVENT_TABLE()
 
 inline DataPLT::DataPLT (wxFrame * Parent)
-    : wxWindow (Parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE)
+    : wxWindow (Parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE),
+      Multq  (true),
+      PltAll (false)
 {
-    // flags for sizers
-    long f1 = wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL|wxALL;
-    long f2 = wxALIGN_LEFT|wxALL|wxEXPAND;
+    // force validation of child controls
+    SetExtraStyle (wxWS_EX_VALIDATE_RECURSIVELY);
 
     // tell wxAuiManager to manage this frame
     Aui.SetManagedWindow (this);
@@ -115,21 +116,11 @@ inline DataPLT::DataPLT (wxFrame * Parent)
     evlp->ShowLastY = false;
 
     // control panel
-    wxPanel         * pnl = new wxPanel    (this, wxID_ANY);
-    wxBoxSizer      * szt = new wxBoxSizer (wxVERTICAL);
-    wxFlexGridSizer * sz0 = new wxFlexGridSizer (/*rows*/1,/*cols*/4,/*vgap*/0,/*hgap*/0);
-    cbx_data = new wxComboBox (pnl, ID_SELDATA, "Data files",wxDefaultPosition,wxSize(400,10));
-    mult_q   = new wxCheckBox (pnl, ID_MULTQ,   "Lode multiply q");
-    plt_all  = new wxCheckBox (pnl, ID_PLTALL,  "Plot all");
-    sz0->Add ( new wxButton   (pnl, ID_LOAD,    "Load data"), 0,f2,2);
-    sz0->Add (cbx_data, 0,f2,2);
-    sz0->Add (mult_q,   0,f2,2);
-    sz0->Add (plt_all,  0,f2,2);
-    szt->Add (sz0, 0,f2,2);
-    pnl->SetSizer     (szt);
-    szt->Fit          (pnl);
-    szt->SetSizeHints (pnl);
-    mult_q->SetValue  (true);
+    ADD_WXPANEL    (pnl, sz, 1, 4);
+    ADD_WXBUTTON   (pnl, sz, ID_LOAD,    c0,     "Load data");
+    ADD_WXCOMBOBOX (pnl, sz, ID_SELDATA, CbxFNs, "Data files");
+    ADD_WXCHECKBOX (pnl, sz, ID_MULTQ,   c2,     "Lode multiply q", Multq);
+    ADD_WXCHECKBOX (pnl, sz, ID_PLTALL,  c3,     "Plot all",        PltAll);
 
     // panes
     Aui.AddPane (pnl,  wxAuiPaneInfo().Name("cpnl").Caption("Data").Top   ().MinSize(wxSize(100,40)) .DestroyOnClose(false).CaptionVisible(true) .CloseButton(false));
@@ -157,7 +148,7 @@ inline void DataPLT::OnLoad (wxCommandEvent & Event)
         qpev->DelCurves ();
         eved->DelCurves ();
         evlp->DelCurves ();
-        cbx_data->Clear ();
+        CbxFNs->Clear   ();
 
         // resize data arrays
         ed .Resize (paths.size());
@@ -265,15 +256,18 @@ inline void DataPLT::OnLoad (wxCommandEvent & Event)
         }
 
         // refresh cbx => replot
-        cbx_data->Set          (fnames);
-        cbx_data->SetSelection (0);
+        CbxFNs->Set          (fnames);
+        CbxFNs->SetSelection (0);
     }
 }
 
-inline void DataPLT::_init_plots ()
+inline void DataPLT::_set_plots ()
 {
+    // update control's data
+    TransferDataFromWindow ();
+
     // filenames
-    wxArrayString fnames = cbx_data->GetStrings ();
+    wxArrayString fnames = CbxFNs->GetStrings ();
 
     // disconnect plots
     qped->DelCurves ();
@@ -282,9 +276,9 @@ inline void DataPLT::_init_plots ()
     evlp->DelCurves ();
 
     // reconnect plots
-    bool   mul = mult_q ->GetValue();
-    bool   all = plt_all->GetValue();
-    size_t ini = (all ? 0         : cbx_data->GetSelection());
+    bool   mul = Multq;
+    bool   all = PltAll;
+    size_t ini = (all ? 0         : CbxFNs->GetSelection());
     size_t num = (all ? ed.Size() : ini+1);
     for (size_t i=ini; i<num; ++i)
     {
