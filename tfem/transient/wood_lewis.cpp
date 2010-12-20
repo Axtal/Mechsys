@@ -87,7 +87,7 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
-    sol.Theta = theta;
+    //sol.Theta = theta;
     
     // stage # 1 -----------------------------------------------------------
     Dict   bcs;

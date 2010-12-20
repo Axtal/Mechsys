@@ -78,7 +78,7 @@ int main(int argc, char **argv) try
     // props, models, and domain
     Dict prps, mdls;
     prps.Set(-1, "prob geom psa nip", PROB("Equilib"), GEOM("Quad8"), TRUE, 4.0);
-    mdls.Set(-1, "name E nu VM cu Hp psa", MODEL("ElastoPlastic"), E, nu, TRUE, cu, Hp, TRUE);
+    mdls.Set(-1, "name E nu VM c Hp psa", MODEL("ElastoPlastic"), E, nu, TRUE, cu, Hp, TRUE);
     //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, 1.0);
     FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict());
 

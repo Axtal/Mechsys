@@ -27,6 +27,7 @@ using std::cout;
 using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
+const double TRUE = 1.0;
 
 int main(int argc, char **argv) try
 {
@@ -64,9 +65,9 @@ int main(int argc, char **argv) try
     //mdls.Set(-1, "name psa  E nu", MODEL("LinElastic"),1.0,  1.0e+5, 0.49);
     //mdls.Set(-2, "name psa  E nu", MODEL("LinElastic"),1.0,  1.0e+5, 0.49);
     //mdls.Set(-3, "name psa  E nu", MODEL("LinElastic"),1.0,  1.0e+5, 0.49);
-    mdls.Set(-1, "name psa  E nu  fc c phi", MODEL("LinElastic"),1.0,  1.0e+5, 0.49, FAILCRIT("MC"), 9.0, 0.0);
-    mdls.Set(-2, "name psa  E nu  fc c phi", MODEL("LinElastic"),1.0,  1.0e+5, 0.49, FAILCRIT("MC"), 9.0, 0.0);
-    mdls.Set(-3, "name psa  E nu  fc c phi", MODEL("LinElastic"),1.0,  1.0e+5, 0.49, FAILCRIT("MC"), 9.0, 0.0);
+    mdls.Set(-1, "name psa  E nu  MC c phi", MODEL("LinElastic"),1.0,  1.0e+5, 0.49, TRUE, 9.0, 0.0);
+    mdls.Set(-2, "name psa  E nu  MC c phi", MODEL("LinElastic"),1.0,  1.0e+5, 0.49, TRUE, 9.0, 0.0);
+    mdls.Set(-3, "name psa  E nu  MC c phi", MODEL("LinElastic"),1.0,  1.0e+5, 0.49, TRUE, 9.0, 0.0);
 
     // initial values
     Dict inis;

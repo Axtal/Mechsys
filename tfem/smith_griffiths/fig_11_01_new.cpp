@@ -37,7 +37,7 @@ using std::cout;
 using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
-using Util::TRUE;
+const double TRUE = 1.0;
 
 class BCF : public FEM::BCFuncs
 {
