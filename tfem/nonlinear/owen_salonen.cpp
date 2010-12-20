@@ -31,6 +31,7 @@ using std::cout;
 using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
+const double TRUE = 1.0;
 
 int main(int argc, char **argv) try
 {
@@ -98,7 +99,7 @@ int main(int argc, char **argv) try
         fkey      = "owen_salonen_uni";
         out_verts = 0;
         prps.Set(-1, "prob geom", PROB("Equilib"), (o2 ? GEOM("Hex20") : GEOM("Hex8")));
-        mdls.Set(-1, "name E nu fc sY Hp", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp);
+        mdls.Set(-1, "name E nu VM sY Hp", MODEL("ElastoPlastic"), E, nu, TRUE, sY, Hp);
         //mdls.Set(-1, "name E nu", MODEL("LinElastic"), E, nu);
     }
     else
@@ -108,8 +109,8 @@ int main(int argc, char **argv) try
             out_verts.Resize(6);
             fkey      = "owen_salonen_2d";
             out_verts = 0,1,2, 27,28,29;
-            prps.Set(-1, "prob geom pse h", PROB("Equilib"), (o2 ? GEOM("Quad8") : GEOM("Quad4")), 1.0, t);
-            mdls.Set(-1, "name E nu fc sY Hp pse", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
+            prps.Set(-1, "prob geom pse h", PROB("Equilib"), (o2 ? GEOM("Quad8") : GEOM("Quad4")), TRUE, t);
+            mdls.Set(-1, "name E nu VM sY Hp pse", MODEL("ElastoPlastic"), E, nu, TRUE, sY, Hp, TRUE);
             //mdls.Set(-1, "name E nu pse", MODEL("LinElastic"), E, nu, 1.0);
         }
         else
@@ -118,7 +119,7 @@ int main(int argc, char **argv) try
             fkey      = "owen_salonen_3d";
             out_verts = -1,-2,-3,-4,-5,-6,-7,-8;
             prps.Set(-1, "prob geom", PROB("Equilib"), (o2 ? GEOM("Hex20") : GEOM("Hex8")));
-            mdls.Set(-1, "name E nu fc sY Hp", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp);
+            mdls.Set(-1, "name E nu VM sY Hp", MODEL("ElastoPlastic"), E, nu, TRUE, sY, Hp);
             //mdls.Set(-1, "name E nu", MODEL("LinElastic"), E, nu);
         }
     }

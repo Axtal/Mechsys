@@ -54,6 +54,9 @@ public:
     wxString GetColLabelValue (int col);
     wxString GetRowLabelValue (int row);
 
+    // operators
+    void operator= (Dict const & R); ///< Assignment operator
+
     // Data
     bool ShowSubKeys; ///< Show subkeys in cell ?
     bool SameSubKeys; ///< Show same subkeys for all columns ?
@@ -67,8 +70,7 @@ public:
     ~WxDict () { Aui.UnInit(); }
 
     // Methods
-    void Sync    () { TransferDataFromWindow(); } ///< Synchronise (validate/transfer) data in controls
-    void ReBuild ();                              ///< Rebuild grid
+    void ReBuild (bool ReadControls=true); ///< Rebuild grid
 
     // Data
     wxAuiManager   Aui;    ///< Aui
@@ -143,6 +145,17 @@ inline wxString WxDictTable::GetRowLabelValue (int row)
     else return wxGridTableBase::GetRowLabelValue (row);
 }
 
+inline void WxDictTable::operator= (Dict const & R)
+{
+    clear();
+    Keys.Resize (R.Keys.Size());
+    for (size_t i=0; i<R.Keys.Size(); ++i)
+    {
+        Keys[i]          = R.Keys[i];
+        (*this)[Keys[i]] = R(Keys[i]);
+    }
+}
+
 
 //////////////////////////////////////////////////////////////////////// Implementation ////// WxDict //////////
 
@@ -189,10 +202,11 @@ WxDict::WxDict (wxWindow * Parent)
     Aui.Update  ();
 }
 
-void WxDict::ReBuild ()
+void WxDict::ReBuild (bool ReadControls)
 {
-    // synchronise data from controls
-    Sync ();
+    // synchronise data from/to controls
+    if (ReadControls) TransferDataFromWindow ();
+    else              TransferDataToWindow   ();
 
     // rebuild grid based on updated table
     Grd->SetTable     (Tab, /*take_ownership*/false);

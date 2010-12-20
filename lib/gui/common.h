@@ -59,6 +59,16 @@
 
 #ifdef USE_WXWIDGETS
 
+    void WxError (String const & Fmt, ...)
+    {
+        String msg;
+        va_list       arg_list;
+        va_start     (arg_list, Fmt);
+        msg.PrintfV  (Fmt, arg_list);
+        va_end       (arg_list);
+        wxMessageBox (msg, "Error", wxOK|wxICON_ERROR);
+    }
+
   #define SHOW_ALL_WXPANES(AUI)                           \
     for (size_t i=0; i<AUI.GetAllPanes().GetCount(); ++i) \
     {                                                     \
@@ -67,9 +77,9 @@
     }                                                     \
     AUI.Update();
  
-  #define WXMSG(MSG,HEADER) wxMessageBox(MSG,HEADER,wxOK|wxICON_INFORMATION, this);
-  #define WXMSGINT(VAL,HEADER) { wxString buf; buf.Printf("%d",VAL); WXMSG(buf,HEADER); }
-  #define WXMSGVAL(VAL,HEADER) { wxString buf; buf.Printf("%g",VAL); WXMSG(buf,HEADER); }
+  #define WXMSG(MSG) wxMessageBox(MSG,"Message",wxOK|wxICON_INFORMATION);
+  #define WXMSGINT(VAL) { wxString buf; buf.Printf("%d",VAL); WXMSG(buf); }
+  #define WXMSGVAL(VAL) { wxString buf; buf.Printf("%g",VAL); WXMSG(buf); }
 
   #define ADD_WXMENUSTATUS(MNU, MNU_FILE, MNU_WND, MNU_RUN, MNU_HELP) \
     wxMenuBar * MNU     = new wxMenuBar; \
@@ -100,7 +110,7 @@
     PNL->GetSizer()->SetSizeHints (PNL);
 
   #define ADD_WXNOTEBOOK(WND, NBK) \
-    wxAuiNotebook * NBK = new wxAuiNotebook(WND, wxID_ANY, wxDefaultPosition, wxDefaultSize, (wxAUI_NB_DEFAULT_STYLE | wxAUI_NB_TAB_EXTERNAL_MOVE | wxNO_BORDER) & ~(wxAUI_NB_CLOSE_BUTTON | wxAUI_NB_CLOSE_ON_ACTIVE_TAB | wxAUI_NB_CLOSE_ON_ALL_TABS));
+    wxAuiNotebook * NBK = new wxAuiNotebook(WND, wxID_ANY, wxDefaultPosition, wxDefaultSize, (wxAUI_NB_DEFAULT_STYLE | wxAUI_NB_TAB_EXTERNAL_MOVE | wxNO_BORDER | wxAUI_NB_WINDOWLIST_BUTTON) & ~(wxAUI_NB_CLOSE_BUTTON | wxAUI_NB_CLOSE_ON_ACTIVE_TAB | wxAUI_NB_CLOSE_ON_ALL_TABS));
 
   #define ADD_WXBUTTON(PNL, SZR, ID, CTRL, LBL) \
     wxButton * CTRL = new wxButton (PNL, ID, LBL, wxDefaultPosition, wxDefaultSize, 0); \

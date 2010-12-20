@@ -23,7 +23,7 @@
 #include <fstream>
 
 // wxWidgets
-#ifdef HAS_WXW
+#ifdef USE_WXWIDGETS
   #include <mechsys/gui/wxdict.h>
   #include <mechsys/gui/common.h>
 #endif
@@ -46,37 +46,37 @@ public:
      MatFile (wxFrame * Parent);
     ~MatFile () { Aui.UnInit(); }
 #else
-    MatFile () { Defaults(); }
+    MatFile () {}
 #endif
 
     // Methods
-    void Defaults ();
-    void Read     (char const * FileName);
+    void Read (char const * FileName);
 
     // Data
-    Dict     Prms; ///< Tag => prms
+    Dict Prms; ///< Main data structure: maps tag to parameters
 
 #ifdef USE_WXWIDGETS
-    wxAuiManager     Aui;
-    wxTextCtrl     * TxtFname;   // control with filename
-    Array<String>    Names;      // names
-    Array<WxDict*>   Dicts;      // dictionaries with parameters
-    wxString         LstDir;     // last directory
+    // Methods
+    void Sync () { TransferDataFromWindow(); } ///< Synchronise (validate/transfer) data in controls
+
+    // Data
+    wxAuiManager          Aui;      ///< Aui manager
+    wxString              LstDir;   ///< Last accessed directory
+    wxTextCtrl          * TxtFName; ///< Control with input file filename
+    String                FName;    ///< Material file (.mat) filename
+    Array<String>         MdlNames; ///< Available model names
+    Array<GUI::WxDict*>   Dicts;    ///< dictionaries with parameters
+
+    // Events
     void OnLoad (wxCommandEvent & Event);
     void OnSave (wxCommandEvent & Event);
     DECLARE_EVENT_TABLE();
-private:
-    void _refresh ();
 #endif
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
-
-inline void MatFile::Defaults ()
-{
-}
 
 inline void MatFile::Read (char const * FileName)
 {
@@ -85,8 +85,9 @@ inline void MatFile::Read (char const * FileName)
     if (!mat_file.is_open()) throw new Fatal("MatFile::Read: Could not open file <%s>",FileName);
 }
 
-std::ostream & operator<< (std::ostream & os, MatFile const & IF)
+std::ostream & operator<< (std::ostream & os, MatFile const & MF)
 {
+    os << MF.Prms << std::endl;
     return os;
 }
 
@@ -94,70 +95,55 @@ std::ostream & operator<< (std::ostream & os, MatFile const & IF)
 
 enum
 {
-    ID_MAT_LOAD = wxID_HIGHEST+2000,
-    ID_MAT_SAVE ,
+    ID_MATFILE_LOAD = wxID_HIGHEST+2000,
+    ID_MATFILE_SAVE ,
 };
 
 BEGIN_EVENT_TABLE(MatFile, wxWindow)
-    EVT_BUTTON (ID_MAT_LOAD, MatFile::OnLoad)
-    EVT_BUTTON (ID_MAT_SAVE, MatFile::OnSave)
+    EVT_BUTTON (ID_MATFILE_LOAD, MatFile::OnLoad)
+    EVT_BUTTON (ID_MATFILE_SAVE, MatFile::OnSave)
 END_EVENT_TABLE()
 
 inline MatFile::MatFile (wxFrame * Parent)
     : wxWindow (Parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE)
 {
-    Defaults();
-
-    // flags for sizers
-    long f1 = wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL;
-    long f2 = wxALIGN_LEFT|wxALL|wxEXPAND;
+    // force validation of child controls
+    SetExtraStyle (wxWS_EX_VALIDATE_RECURSIVELY);
 
     // tell wxAuiManager to manage this window
     Aui.SetManagedWindow (this);
 
     // control panel
-    wxPanel         * pnl = new wxPanel    (this, wxID_ANY);
-    wxBoxSizer      * szt = new wxBoxSizer (wxVERTICAL);
-    wxFlexGridSizer * sz0 = new wxFlexGridSizer (/*rows*/1,/*cols*/3,/*vgap*/0,/*hgap*/0);
-    TxtFname = new wxTextCtrl (pnl, wxID_ANY, wxEmptyString,wxDefaultPosition,wxSize(400,10),wxTE_READONLY);
-    sz0->Add (  new wxButton   (pnl, ID_MAT_LOAD, "Load"), 0,f2,2);
-    sz0->Add (  new wxButton   (pnl, ID_MAT_SAVE, "Save"), 0,f2,2);
-    sz0->Add (TxtFname, 0,f2,2);
-    szt->Add          (sz0,0,f2,2);
-    pnl->SetSizer     (szt);
-    szt->Fit          (pnl);
-    szt->SetSizeHints (pnl);
+    ADD_WXPANEL     (pnl, szt, szr, 1, 3);
+    ADD_WXBUTTON    (pnl, szr, ID_MATFILE_LOAD, c0, "Load");
+    ADD_WXBUTTON    (pnl, szr, ID_MATFILE_SAVE, c1, "Save");
+    ADD_WXTEXTCTRL_ (pnl, szr, wxID_ANY, TxtFName, "", FName);
+    TxtFName->SetMinSize (wxSize(200,20));
 
     // models
-    Array<wxScrolled<wxPanel>*> P; // panels
-    Array<wxFlexGridSizer*>     S; // sizers
     for (ModelFactory_t::iterator it=ModelFactory.begin(); it!=ModelFactory.end(); ++it)
     {
-        CREATE_WXPANEL (p, s, 2, 2);
-        P.Push (p);
-        S.Push (s);
-        Names.Push (it->first);
-        if (Names.Last()=="CamClay")
+        MdlNames.Push (it->first);
+        Dicts.Push    (new GUI::WxDict(this));
+        Dicts.Last()->ShowSK = false;
+        Dicts.Last()->SameSK = true;
+        Str2ArrayStr_t::const_iterator mprms = MODEL_PRM_NAMES.find(MdlNames.Last());
+        if (mprms!=MODEL_PRM_NAMES.end())
         {
-            WxDict * c = new WxDict (p);
-            s->Add     (c, 0,f2,2);
-            Dicts.Push (c);
-            c->SetZero (-1, MODEL_PRM_NAMES["CamClay"]);
-            c->ReBuild ();
+            Dicts.Last()->Tab->SetZero (-1, mprms->second);
+            Dicts.Last()->ReBuild      (false);
         }
+        else WxError("MatFile::MatFile: __internal_error__ Model named <%s> is not in map: MODEL_PRM_NAMES",MdlNames.Last().CStr());
     }
 
     // notebook
-    long nbk_style = (wxAUI_NB_DEFAULT_STYLE | wxAUI_NB_TAB_EXTERNAL_MOVE | wxNO_BORDER) & ~(wxAUI_NB_CLOSE_BUTTON | wxAUI_NB_CLOSE_ON_ACTIVE_TAB | wxAUI_NB_CLOSE_ON_ALL_TABS);
-    wxAuiNotebook * nbk0 = new wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, nbk_style);
-    for (size_t i=0; i<Names.Size(); ++i) nbk0->AddPage(P[i], Names[i], false);
-
-    // set panes in Aui
-    Aui.AddPane (pnl,  wxAuiPaneInfo().Name("cpnl").Caption("cpnl").Top().MinSize(wxSize(100,40)).DestroyOnClose(false).CaptionVisible(false) .CloseButton(false));
-    Aui.AddPane (nbk0, wxAuiPaneInfo().Name("nbk0").Caption("nbk0").Centre().Position(0).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
+    ADD_WXNOTEBOOK (this, nbk);
+    for (size_t i=0; i<MdlNames.Size(); ++i) nbk->AddPage (Dicts[i], MdlNames[i], false);
 
     // commit all changes to wxAuiManager
-    Aui.Update();
+    Aui.AddPane (pnl, wxAuiPaneInfo().Name("cpnl").Caption("cpnl").Top().MinSize(wxSize(100,40)).DestroyOnClose(false).CaptionVisible(false) .CloseButton(false));
+    Aui.AddPane (nbk, wxAuiPaneInfo().Name("nbk0").Caption("nbk0").Centre().Position(0).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
+    Aui.Update  ();
 }
 
 inline void MatFile::OnLoad (wxCommandEvent & Event)
@@ -166,24 +152,26 @@ inline void MatFile::OnLoad (wxCommandEvent & Event)
     if (fd.ShowModal()==wxID_OK)
     {
         Read (fd.GetPath().ToStdString().c_str());
-        TxtFname->SetValue (fd.GetFilename());
+        TxtFName->SetValue (fd.GetFilename());
         LstDir = fd.GetDirectory ();
-        _refresh ();
+        for (size_t i=0; i<Dicts.Size(); ++i)
+        {
+            (*Dicts[i]->Tab) = Prms;
+            Dicts[i]->ReBuild ();
+        }
+        TransferDataToWindow ();
     }
 }
 
 inline void MatFile::OnSave (wxCommandEvent & Event)
 {
+    Sync ();
     wxFileDialog fd(this, "Save material (.mat) file", LstDir, "", "*.mat", wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
     if (fd.ShowModal()==wxID_OK)
     {
         std::fstream of(fd.GetPath().ToStdString().c_str(), std::ios::out);
         of.close();
     }
-}
-
-inline void MatFile::_refresh ()
-{
 }
 
 #endif

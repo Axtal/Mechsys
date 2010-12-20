@@ -89,11 +89,12 @@ std::ostream & operator<< (std::ostream & os, Model const & D)
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
 
 
-SDPair MODEL;    // Model name
-SDPair FAILCRIT; // Failure criteria names (for ElastoPlastic models only)
+SDPair MODEL; ///< Model name
 
-std::map<String,Array<String> > MODEL_PRM_NAMES; ///< Model name => Parameters names
-std::map<String,Array<String> > MODEL_IVS_NAMES; ///< Model name => Initial values names
+typedef std::map<String,Array<String> > Str2ArrayStr_t; ///< Map string to array of strings
+
+Str2ArrayStr_t MODEL_PRM_NAMES; ///< Model name => Parameters names
+Str2ArrayStr_t MODEL_IVS_NAMES; ///< Model name => Initial values names
 
 typedef Model * (*ModelMakerPtr)(int NDim, SDPair const & Prms);
 
@@ -157,7 +158,7 @@ inline void ReadMaterial (int Tag, int MatID, const char * FileName, String & Mo
                 else if (key=="ninis") { reading_model=false; ninis=atoi(strval.CStr()); reading_inis=(ninis==0?false:true); model_read=(ninis==0?true:false); }
                 else if (idxprm<nprms)
                 {
-                    Prms.Set (Tag, key.CStr(), (key=="fc" ? FAILCRIT(strval.CStr()) : atof(strval.CStr())));
+                    Prms.Set (Tag, key.CStr(), atof(strval.CStr()));
                     idxprm++;
                 }
                 else throw new Fatal("ReadMaterial: Error in file <%s> @ line # %d: there are more parameters than specified by nprms==%d. The reading of parameters finishes when 'ninis' is found. Key==%s is invalid",FileName,line_num,nprms,key.CStr());

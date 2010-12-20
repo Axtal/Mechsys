@@ -1,10 +1,12 @@
-from numpy import *
-from pylab import *
-from msys_readdata import *
+import optparse
+from msys_fig import *
 
-plt = 1
+# input
+op = optparse.OptionParser()
+op.add_option('--tst',  '-t', dest='tst',  default='0', help='test number')
+opts, args = op.parse_args()
 
-if plt==0:
+if opts.tst=='0':
     dat = read_table("nayak_zienk_01.res")
     u    = array(dat['u'])
     fint = array(dat['fint'])
@@ -23,7 +25,7 @@ if plt==0:
     grid()
     show()
 
-elif plt==1:
+elif opts.tst=='1':
 
     d1   = read_table("nayak_fig5a_ua.dat")
     d2   = read_table("nayak_fig5a_ub.dat")

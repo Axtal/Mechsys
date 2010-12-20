@@ -28,6 +28,7 @@ using FEM::PROB;
 using FEM::GEOM;
 using Util::_6_3;
 using Util::_8s;
+const double TRUE = 1.0;
 
 struct DbgDat
 {
@@ -70,9 +71,9 @@ int main(int argc, char **argv) try
     // props, domain, and solver
     Array<int> out_verts(1,2,3);
     Dict prps, mdls;
-    prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), 1.0);
-    mdls.Set(-1, "name E nu fc sY Hp psa", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
-    //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, 1.0);
+    prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), TRUE);
+    mdls.Set(-1, "name E nu VM sY Hp psa", MODEL("ElastoPlastic"), E, nu, TRUE, sY, Hp, TRUE);
+    //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, TRUE);
     FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict(), "ep_test", &out_verts);
 
     // debug data

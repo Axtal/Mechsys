@@ -23,7 +23,7 @@
 #include <fstream>
 
 // wxWidgets
-#ifdef HAS_WXW
+#ifdef USE_WXWIDGETS
   #include <mechsys/gui/common.h>
 #endif
 
@@ -119,10 +119,10 @@ public:
     void Sync () { TransferDataFromWindow(); } ///< Synchronise (validate/transfer) data in controls
 
     // Data
-    wxAuiManager  Aui;
-    wxString      LstDir;
-    wxTextCtrl  * TxtFName;
-    String        FName;
+    wxAuiManager  Aui;      ///< Aui manager
+    wxString      LstDir;   ///< Last accessed directory
+    wxTextCtrl  * TxtFName; ///< Control with input file filename
+    String        FName;    ///< Input file (.inp) filename
 
     // Events
     void OnLoad (wxCommandEvent & Event);
@@ -457,13 +457,11 @@ inline InpFile::InpFile (wxFrame * Parent)
     nbk1->AddPage  (p_nls, "Nonlinear Steps",   false);
     nbk1->AddPage  (p_rfi, "Reference Files",   false);
 
-    // set panes in Aui
+    // commit all changes to wxAuiManager
     Aui.AddPane (pnl,  wxAuiPaneInfo().Name("cpnl").Caption("cpnl").Top().MinSize(wxSize(100,40)).DestroyOnClose(false).CaptionVisible(false) .CloseButton(false));
     Aui.AddPane (nbk0, wxAuiPaneInfo().Name("nbk0").Caption("nbk0").Centre().Position(0).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
     Aui.AddPane (nbk1, wxAuiPaneInfo().Name("nbk1").Caption("nbk1").Centre().Position(1).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
-
-    // commit all changes to wxAuiManager
-    Aui.Update();
+    Aui.Update  ();
 }
 
 inline void InpFile::OnLoad (wxCommandEvent & Event)

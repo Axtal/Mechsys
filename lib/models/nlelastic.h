@@ -128,8 +128,11 @@ Model * NLElasticMaker(int NDim, SDPair const & Prms) { return new NLElastic(NDi
 
 int NLElasticRegister()
 {
-    ModelFactory["NLElastic"] = NLElasticMaker;
-    MODEL.Set ("NLElastic", (double)MODEL.Keys.Size());
+    ModelFactory   ["NLElastic"] = NLElasticMaker;
+    MODEL.Set      ("NLElastic", (double)MODEL.Keys.Size());
+    MODEL_PRM_NAMES["NLElastic"].Resize(4);
+    MODEL_PRM_NAMES["NLElastic"] = "K0", "G0", "alp", "bet";
+    MODEL_IVS_NAMES["NLElastic"].Resize(0);
     return 0;
 }
 

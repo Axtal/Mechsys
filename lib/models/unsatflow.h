@@ -50,6 +50,9 @@ public:
 class UnsatFlow : public Model
 {
 public:
+    // enums
+    enum WRC_t { BC_t, HZ_t, ZI_t }; ///< WRC type
+
     // Constructor
     UnsatFlow (int NDim, SDPair const & Prms);
 
@@ -64,12 +67,12 @@ public:
     double gamW;  ///< water unit weight
     double kwsat; ///< saturated (isotropic) conductivity
     double Mkw;   ///< expoent of kw model
-    int    WRC;   ///< water retention curve model: 0:BC, 1:HZ, 2:ZI
+    WRC_t  wrc;   ///< water retention curve model
 
     // SWRC parameters
     double bc_lam, bc_sb,  bc_wr;                      ///< Brooks & Corey model parameters
     double hz_a,   hz_b,   hz_A,   hz_B;               ///< Huang and Zienkiewicz (Gawin, Schrefler ...)
-    double zi_del, zi_bet, zi_gam, zi_a, zi_b, zi_alp; ///< Zienkiewicz et al. 1990
+    double zi_del, zi_bet, zi_gam, zi_a, zi_b, zi_alp; ///< Zienkiewicz et al. 1990 (zi_bet and zi_a => [m])
 
     // Read-write variables (scratchpad)
     mutable double c, C, chi;
@@ -159,25 +162,23 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms)
     gamW    = Prms("gamW");
     kwsat   = Prms("kwsat");
     Mkw     = Prms("Mkw");
-    bc_lam  = 0.8;
-    bc_sb   = 1.8;
-    bc_wr   = 0.01;
-    hz_a    = 0.10152;
-    hz_b    = 2.4279;
-    hz_A    = 2.207;
-    hz_B    = 1.0121;
-    zi_del  = 0.0842;
-    zi_bet  = 0.7; // m
-    zi_gam  = 2.0;
-    zi_a    = 5.0; // m
-    zi_b    = 4.0;
-    zi_alp  = 0.9;
-    WRC     = (Prms.HasKey("WRC") ? static_cast<int>(Prms("WRC")) : 0);
-    if (Prms.HasKey("bc_lam")) bc_lam = Prms("bc_lam");
-    if (Prms.HasKey("bc_sb"))  bc_sb  = Prms("bc_sb");
-    if (Prms.HasKey("bc_sbb")) bc_sb  = exp(Prms("bc_sbb"))-1.0;
-    if (Prms.HasKey("bc_wr"))  bc_wr  = Prms("bc_wr");
-    if (WRC<0 || WRC>2) throw new Fatal("UnsatFlow::UnsatFlow: WRC must be 0(BC), 1(HZ) or 2(ZI)");
+    bc_lam  = (Prms.HasKey("bc_lam") ? Prms("bc_lam") : 0.8    );
+    bc_sb   = (Prms.HasKey("bc_sb" ) ? Prms("bc_sb" ) : 1.8    );
+    bc_wr   = (Prms.HasKey("bc_wr" ) ? Prms("bc_wr" ) : 0.01   );
+    hz_a    = (Prms.HasKey("hz_a"  ) ? Prms("hz_a"  ) : 0.10152);
+    hz_b    = (Prms.HasKey("hz_b"  ) ? Prms("hz_b"  ) : 2.4279 );
+    hz_A    = (Prms.HasKey("hz_A"  ) ? Prms("hz_A"  ) : 2.207  );
+    hz_B    = (Prms.HasKey("hz_B"  ) ? Prms("hz_B"  ) : 1.0121 );
+    zi_del  = (Prms.HasKey("zi_del") ? Prms("zi_del") : 0.0842 );
+    zi_bet  = (Prms.HasKey("zi_bet") ? Prms("zi_bet") : 0.7    );
+    zi_gam  = (Prms.HasKey("zi_gam") ? Prms("zi_gam") : 2.0    );
+    zi_a    = (Prms.HasKey("zi_a"  ) ? Prms("zi_a"  ) : 5.0    );
+    zi_b    = (Prms.HasKey("zi_b"  ) ? Prms("zi_b"  ) : 4.0    );
+    zi_alp  = (Prms.HasKey("zi_alp") ? Prms("zi_alp") : 0.9    );
+    wrc     = BC_t;
+    if (Prms.HasKey("bc_sbb")) bc_sb = exp(Prms("bc_sbb"))-1.0;
+    if (Prms.HasKey("HZ"))     wrc   = HZ_t;
+    if (Prms.HasKey("ZI"))     wrc   = ZI_t;
 }
 
 inline void UnsatFlow::InitIvs (SDPair const & Ini, State * Sta) const
@@ -281,11 +282,11 @@ inline double UnsatFlow::_kw_mult (double Sw) const
     {
         if (Sw>0.0)
         {
-            if (WRC==0) // BC
+            if (wrc==BC_t) // BC
             {
                 return pow(Sw,Mkw);
             }
-            else if (WRC==1) // HZ
+            else if (wrc==HZ_t) // HZ
             {
                 double kwm = 1.0 - hz_A*pow(1.0-Sw, hz_B);
                 if (kwm<0.0) return 0.0;
@@ -310,12 +311,12 @@ inline double UnsatFlow::_Cpc (double pc, double Sw) const
 {
     if (pc>0.0 && Sw>0.0)
     {
-        if (WRC==0) // BC
+        if (wrc==BC_t) // BC
         {
             if (pc>bc_sb && Sw>bc_wr) return -bc_lam*pow(bc_sb/pc,bc_lam)*(1.0-bc_wr)/pc;
             else return 0.0;
         }
-        else if (WRC==1) // HZ
+        else if (wrc==HZ_t) // HZ
         {
             return -(hz_a*hz_b*pow(pc/gamW,hz_b))/pc;
         }
@@ -365,8 +366,15 @@ Model * UnsatFlowMaker(int NDim, SDPair const & Prms) { return new UnsatFlow(NDi
 
 int UnsatFlowRegister()
 {
-    ModelFactory["UnsatFlow"] = UnsatFlowMaker;
-    MODEL.Set ("UnsatFlow", (double)MODEL.Keys.Size());
+    ModelFactory   ["UnsatFlow"] = UnsatFlowMaker;
+    MODEL.Set      ("UnsatFlow", (double)MODEL.Keys.Size());
+    MODEL_PRM_NAMES["UnsatFlow"].Resize(16);
+    MODEL_PRM_NAMES["UnsatFlow"] = "gamW",   "kwsat",  "Mkw",
+                                   "bc_lam", "bc_sb",  "bc_wr",
+                                   "hz_a",   "hz_b",   "hz_A",   "hz_B",
+                                   "zi_del", "zi_bet", "zi_gam", "zi_a", "zi_b", "zi_alp";
+    MODEL_IVS_NAMES["UnsatFlow"].Resize(3);
+    MODEL_IVS_NAMES["UnsatFlow"] = "n", "pw", "sw";
     return 0;
 }
 

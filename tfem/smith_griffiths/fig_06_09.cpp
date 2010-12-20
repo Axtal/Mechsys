@@ -29,6 +29,7 @@ using Util::_6_3;
 using Util::_8s;
 using FEM::PROB;
 using FEM::GEOM;
+const double TRUE = 1.0;
 
 double DelP = 520.0;
 
@@ -76,8 +77,8 @@ int main(int argc, char **argv) try
     
     // props, models, and domain
     Dict prps, mdls;
-    prps.Set(-1, "prob geom psa nip", PROB("Equilib"), GEOM("Quad8"), 1.0, 4.0);
-    mdls.Set(-1, "name E nu fc cu Hp psa", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), cu, Hp, 1.0);
+    prps.Set(-1, "prob geom psa nip", PROB("Equilib"), GEOM("Quad8"), TRUE, 4.0);
+    mdls.Set(-1, "name E nu VM cu Hp psa", MODEL("ElastoPlastic"), E, nu, TRUE, cu, Hp, TRUE);
     //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, 1.0);
     FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict());
 

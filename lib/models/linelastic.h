@@ -122,8 +122,11 @@ Model * LinElasticMaker(int NDim, SDPair const & Prms) { return new LinElastic(N
 
 int LinElasticRegister()
 {
-    ModelFactory["LinElastic"] = LinElasticMaker;
-    MODEL.Set ("LinElastic", (double)MODEL.Keys.Size());
+    ModelFactory   ["LinElastic"] = LinElasticMaker;
+    MODEL.Set      ("LinElastic", (double)MODEL.Keys.Size());
+    MODEL_PRM_NAMES["LinElastic"].Resize(2);
+    MODEL_PRM_NAMES["LinElastic"] = "E", "nu";
+    MODEL_IVS_NAMES["LinElastic"].Resize(0);
     return 0;
 }
 

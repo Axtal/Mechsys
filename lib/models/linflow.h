@@ -93,8 +93,11 @@ Model * LinFlowMaker(int NDim, SDPair const & Prms) { return new LinFlow(NDim,Pr
 
 int LinFlowRegister()
 {
-    ModelFactory["LinFlow"] = LinFlowMaker;
-    MODEL.Set ("LinFlow", (double)MODEL.Keys.Size());
+    ModelFactory   ["LinFlow"] = LinFlowMaker;
+    MODEL.Set      ("LinFlow", (double)MODEL.Keys.Size());
+    MODEL_PRM_NAMES["LinFlow"].Resize(3);
+    MODEL_PRM_NAMES["LinFlow"] = "kx", "ky", "kz";
+    MODEL_IVS_NAMES["LinFlow"].Resize(0);
     return 0;
 }
 

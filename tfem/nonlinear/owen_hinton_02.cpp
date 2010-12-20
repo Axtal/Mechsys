@@ -41,6 +41,7 @@ using FEM::GEOM;
 using Util::_4;
 using Util::_6_3;
 using Util::_8s;
+const double TRUE = 1.0;
 
 const double DelP = 19.0;
 const size_t NInc = 19;
@@ -152,12 +153,12 @@ plot(dat['x'],dat['y'],'ro',lw=3)\n");
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad8"), 1.0);
+    prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad8"), TRUE);
 
     // models
     Dict mdls;
-    //mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 2.1e+4, 0.3, 1.0);
-    mdls.Set(-1, "name E nu fc sY psa", MODEL("ElastoPlastic"), 2.1e+4, 0.3, FAILCRIT("VM"), 24.0, 1.0);
+    //mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 2.1e+4, 0.3, TRUE);
+    mdls.Set(-1, "name E nu VM sY psa", MODEL("ElastoPlastic"), 2.1e+4, 0.3, TRUE, 24.0, TRUE);
 
     // initial values
     Dict inis;
