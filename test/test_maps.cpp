@@ -58,6 +58,21 @@ int main(int argc, char **argv) try
     cout << "Is 'uy' in Keys ? => " << (Util::HasKey(keys,"uy") ? " YES " : " NO ") << endl;
     cout << "Array of keys = " << array << endl;
 
+    cout << TERM_CLR_GREEN_H << "\n// String ///////////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
+
+    String line("this is a.### test"), left, right;
+    line.Split (left, right, "###");
+    cout << "line  = " << line  << endl;
+    cout << "left  = " << left  << endl;
+    cout << "right = " << right << endl;
+    cout << "has word 'tis'  = " << line.HasWord("tis")  << endl;
+    cout << "has word 'this' = " << line.HasWord("this") << endl;
+    line = "A = 3";
+    line.Split (left, right, "=");
+    cout << "line  = " << line  << endl;
+    cout << "left  = " << left  << endl;
+    cout << "right = " << right << endl;
+
     cout << TERM_CLR_GREEN_H << "\n// Array Find ///////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
 
     Array<int> A(7); A = 1, 4, 2, 6, 0, 3, -3;

@@ -90,6 +90,8 @@ public:
     int          PrintfV (String const & Fmt, va_list ArgList) { return _set_msg (Fmt.c_str(), ArgList); } ///< Print with format and ArgList
     char const * CStr    ()                              const { return this->c_str(); }                   ///< Get C-string
     void         TextFmt (char const * NF);                                                                ///< Convert NF (ex: "%10g") to text Format (ex: "%10s")
+    void         Split   (String & Left, String & Right, char const * Separator=" ");
+    bool         HasWord (String const & Word) { return (find(Word)!=npos); }
 
 #ifdef USE_BOOST_PYTHON
     BPy::str PyStr() const { return BPy::str(CStr()); }
@@ -122,6 +124,14 @@ inline void String::TextFmt (char const * NF)
     pos=this->find("g"); while (pos!=String::npos) { this->replace(pos,1,"s"); pos=this->find("g",pos+1); }
     pos=this->find("f"); while (pos!=String::npos) { this->replace(pos,1,"s"); pos=this->find("f",pos+1); }
     pos=this->find("e"); while (pos!=String::npos) { this->replace(pos,1,"s"); pos=this->find("e",pos+1); }
+}
+
+inline void String::Split (String & Left, String & Right, char const * Separator)
+{
+    size_t pos = find(Separator);
+    Left  = substr (0,pos);
+    if (pos==npos) Right = "";
+    else           Right = substr (pos+String(Separator).size());
 }
 
 inline int String::_set_msg (char const * Fmt, va_list ArgList)

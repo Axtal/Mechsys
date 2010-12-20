@@ -523,6 +523,14 @@ inline void Dict::Set (int Key, SDPair const & P)
 {
     for (size_t i=0; i<P.Keys.Size(); ++i)
         this->Set (Key, P.Keys[i].CStr(), P(P.Keys[i]));
+    if (P.Keys.Size()==0)
+    {
+        if (!HasKey(Key))
+        {
+            (*this)[Key] = P;
+            Keys.Push (Key);
+        }
+    }
 }
 
 inline void Dict::SetZero (int Key, Array<String> const & keys)

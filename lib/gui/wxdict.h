@@ -30,10 +30,6 @@
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
 
-
-using std::cout;
-using std::endl;
-
 namespace GUI
 {
 
@@ -73,12 +69,13 @@ public:
     void ReBuild (bool ReadControls=true); ///< Rebuild grid
 
     // Data
-    wxAuiManager   Aui;    ///< Aui
-    WxDictTable  * Tab;    ///< The table
-    wxGrid       * Grd;    ///< The grid
-    bool           FitCol; ///< Fit data to columns
-    bool           SameSK; ///< Same subkeys
-    bool           ShowSK; ///< Show subkeys
+    wxAuiManager   Aui;      ///< Aui
+    WxDictTable  * Tab;      ///< The table
+    wxGrid       * Grd;      ///< The grid
+    bool           FitCol;   ///< Fit data to columns
+    bool           SameSK;   ///< Same subkeys
+    bool           ShowSK;   ///< Show subkeys
+    bool           HideCol0; ///< Hide column # 0
 
     // Events
     void OnReBuild (wxCommandEvent & Event) { ReBuild (); }
@@ -177,7 +174,8 @@ WxDict::WxDict (wxWindow * Parent)
     : wxWindow (Parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE),
       FitCol   (false),
       SameSK   (false),
-      ShowSK   (true)
+      ShowSK   (true),
+      HideCol0 (false)
 {
     // force validation of child controls
     SetExtraStyle (wxWS_EX_VALIDATE_RECURSIVELY);
@@ -217,6 +215,7 @@ void WxDict::ReBuild (bool ReadControls)
     // reshape window
     if (FitCol) Grd->Fit ();
     Layout ();
+    if (HideCol0 && Grd->GetNumberCols()>0) Grd->HideCol (0);
 }
 
 }; // namespace GUI
