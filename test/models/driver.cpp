@@ -21,8 +21,6 @@
 #include <sstream>
 #include <fstream>
 
-#define USE_WXWIDGETS
-
 // MechSys
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/linalg/umfpack.h>
@@ -283,17 +281,21 @@ int main(int argc, char **argv) try
     // input filename
     String inp_fname("driver.inp");
     String mat_fname("materials.inp");
-    if (argc>1) inp_fname = argv[1];
-    if (argc>2) mat_fname = argv[2];
+    double pcam0 = 100.0;
+    if (argc>1) inp_fname  = argv[1];
+    if (argc>2) mat_fname  = argv[2];
+    if (argc>3) pcam0 = atof(argv[3]);
 
     // read input file
     InpFile inp;
     inp.Read (inp_fname.CStr());
+    if (inp.stol<0) inp.stol = 1.0e-5;
 
     // parse materials file (with initial values)
     Dict prms, inis;
     String model_name;
     ReadMaterial (-1, inp.matid, mat_fname.CStr(), model_name, prms, inis);
+    inis.Set (-1, "sx sy sz", -pcam0, -pcam0, -pcam0);
 
     // flow material data
     String flw_name;
@@ -325,6 +327,17 @@ int main(int argc, char **argv) try
     // FEM using one single element
     if (inp.fem)
     {
+        // default input data
+        if (inp.tf<0)         inp.tf       = 1.0;
+        if (inp.tsw<0)        inp.tsw      = 0.1;
+        if (inp.dt<0)         inp.dt       = 0.01;
+        if (inp.dtout<0)      inp.dtout    = 0.05;
+        if (inp.rkscheme=="") inp.rkscheme = "RK4I";
+        if (inp.rkstol<0)     inp.rkstol   = 1.0e-5;
+        if (inp.ndiv<0)       inp.ndiv     = 1;
+        if (inp.am<0)         inp.am       = 0.1;
+        if (inp.ak<0)         inp.ak       = 0.1;
+
         // mesh
         if (!(inp.ndiv==1 || inp.ndiv==3)) throw new Fatal("NDiv must be either 1 or 3");
         int option = 0; // Vol=0, Surf=1, Both=2
@@ -352,7 +365,7 @@ int main(int argc, char **argv) try
 
         // boundary condition functions
         BCF bcf;
-        bcf.tsw = inp.tsw;
+        bcf.tsw = inp.tsw<0;
         if (inis.HasKey(-1)) bcf.pw = (inis(-1).HasKey("pw") ? inis(-1)("pw") : 0.0); // current pw
         else                 bcf.pw = 0.0;
 
@@ -462,8 +475,8 @@ int main(int argc, char **argv) try
     else
     {
         // allocate model and set initial values
-        Model * mdl = AllocModel (model_name, /*NDim*/3, prms(-1));
-        EquilibState sta(/*NDim*/3);
+        Model * mdl = AllocModel (model_name, 3, prms(-1));
+        EquilibState sta(3);
         mdl->InitIvs (inis(-1), &sta);
 
         // allocate memory
@@ -474,7 +487,7 @@ int main(int argc, char **argv) try
 
         // output initial state
         std::ostringstream oss; // output string
-        sta.Output (oss, /*header*/true, "%17.8e");
+        sta.Output (oss, true, "%17.8e"); // true => header
 
         // auxiliar variables
         size_t niv = size(sta.Ivs);                 // number of internal values
@@ -483,8 +496,8 @@ int main(int argc, char **argv) try
         Vec_t deps_1 (6), dsig_1 (6), divs_1 (niv); // intermediate increments
         Vec_t deps_2 (6), dsig_2 (6), divs_2 (niv); // ME increments
         Vec_t eps_dif(6), sig_dif(6);               // ME - FE strain/stress difference
-        EquilibState sta_1 (/*NDim*/3);             // intermediate state
-        EquilibState sta_ME(/*NDim*/3);             // Modified-Euler state
+        EquilibState sta_1 (3);                     // intermediate state
+        EquilibState sta_ME(3);                     // Modified-Euler state
 
         // constants
         double dTini  = 1.0;
@@ -502,6 +515,8 @@ int main(int argc, char **argv) try
             // set prescribed increments
             set_to_zero (DEps);
             set_to_zero (DSig);
+            set_to_zero (deps);
+            set_to_zero (dsig);
             pDEps = false,false,false, false,false,false;
             pSw   = (inp.Path[i].HasDSw);
             bool zpath = inp.Path[i].zPath;
@@ -533,14 +548,18 @@ int main(int argc, char **argv) try
                 dsig = DSig/ninc;
             }
 
+            cout << "deps = " << PrintVector(deps);
+            cout << "dsig = " << PrintVector(dsig);
+            cout << "dez  = " << dez << endl;
+
             // for each increment
             cout << "Increment = ";
             for (int j=0; j<ninc; ++j)
             {
                 // trial increments
-                if      (kpath) kTgIncs (mdl, &sta, lode, koct, dez,              deps_tr, dsig_tr, divs_tr);
-                else if (zpath) zTgIncs (mdl, &sta, lode, dp,   dez,              deps_tr, dsig_tr, divs_tr, dexy, deyz, dezx);
-                else             TgIncs (mdl, &sta, /*dT*/1.0, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
+                if      (kpath) kTgIncs (mdl, &sta, lode, koct, dez,         deps_tr, dsig_tr, divs_tr);
+                else if (zpath) zTgIncs (mdl, &sta, lode, dp,   dez,         deps_tr, dsig_tr, divs_tr, dexy, deyz, dezx);
+                else             TgIncs (mdl, &sta,  1.0, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
 
                 // loading-unloading ?
                 double aint = -1.0; // no intersection
@@ -550,9 +569,9 @@ int main(int argc, char **argv) try
                 if (aint>0.0 && aint<1.0)
                 {
                     // update to intersection
-                    if      (kpath) kTgIncs (mdl, &sta, lode,    koct, dez*aint,       deps_tr, dsig_tr, divs_tr);
-                    else if (zpath) zTgIncs (mdl, &sta, lode, dp*aint, dez*aint,       deps_tr, dsig_tr, divs_tr, dexy*aint, deyz*aint, dezx*aint);
-                    else             TgIncs (mdl, &sta, /*dT*/aint, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
+                    if      (kpath) kTgIncs (mdl, &sta, lode,    koct, dez*aint,    deps_tr, dsig_tr, divs_tr);
+                    else if (zpath) zTgIncs (mdl, &sta, lode, dp*aint, dez*aint,    deps_tr, dsig_tr, divs_tr, dexy*aint, deyz*aint, dezx*aint);
+                    else             TgIncs (mdl, &sta, aint,    deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
                     sta.Eps += deps_tr;
                     sta.Sig += dsig_tr;
                     sta.Ivs += divs_tr;
@@ -562,7 +581,7 @@ int main(int argc, char **argv) try
                     if (inp.cdrift) mdl->CorrectDrift (&sta);
 
                     // output
-                    sta.Output (oss, /*header*/false, "%17.8e");
+                    sta.Output (oss, false, "%17.8e"); // false => header
                 }
 
                 // set loading flag (must be after intersection because the tgIncs during intersection must be calc with Ldg=false)
@@ -572,6 +591,9 @@ int main(int argc, char **argv) try
 
                 // update stress path in model
                 mdl->UpdatePath (&sta, deps_tr, dsig_tr);
+
+                cout << "deps_tr = " << PrintVector(deps_tr);
+                cout << "dsig_tr = " << PrintVector(dsig_tr);
 
                 // for each pseudo time T
                 double T  = 0.0;
@@ -605,6 +627,8 @@ int main(int argc, char **argv) try
                     for (size_t i=0; i<niv; ++i) ivs_err += fabs(sta_ME.Ivs(i)-sta_1.Ivs(i))/(1.0+fabs(sta_ME.Ivs(i)));
                     double error = eps_err + sig_err + ivs_err;
 
+                    cout << "error = " << error << endl;
+
                     // step multiplier
                     double m = (error>0.0 ? 0.9*sqrt(inp.stol/error) : mMax);
 
@@ -627,7 +651,7 @@ int main(int argc, char **argv) try
                         if (m>mMax) m = mMax;
 
                         // output
-                        if (inp.ssout) sta.Output (oss, /*header*/false, "%17.8e");
+                        if (inp.ssout) sta.Output (oss, false, "%17.8e"); // false => header
                     }
                     else if (m<mMin) m = mMin;
 
@@ -641,7 +665,7 @@ int main(int argc, char **argv) try
                 cout << j << " ";
 
                 // output
-                if (!inp.ssout) sta.Output (oss, /*header*/false, "%17.8e");
+                if (!inp.ssout) sta.Output (oss, false, "%17.8e"); // false => header
             }
             cout << "\n";
         }

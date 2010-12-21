@@ -303,7 +303,7 @@ class Plotter:
         if self.rst_circ:
             M = phi_calc_M (self.fc_phi, 'oct')
             R = M if self.oct_norm else self.fc_poct*M
-            self.draw_arc(gca(), 0.,0.,R, 0.85*pi/2., 1.05*(pi/2.+pi/3.), self.lgray)
+            Arc (0.,0.,R, 0.85*pi/2., 1.05*(pi/2.+pi/3.), ec='grey')
 
 
     # Plot failure line in p-q plane
@@ -611,9 +611,9 @@ class Plotter:
                 #R0 = abs((s1-s2)/2.)
                 #R1 = abs((s2-s3)/2.)
                 R2 = abs((s3-s1)/2.)
-                #self.draw_arc(gca(), C0,0.,R0, 0., pi, 'red', res=30)
-                #self.draw_arc(gca(), C1,0.,R1, 0., pi, 'red', res=30)
-                self.draw_arc(gca(), C2,0.,R2, 0., pi, 'red', res=30)
+                #Arc (C0,0.,R0, 0., pi, ec='red', res=30)
+                #Arc (C1,0.,R1, 0., pi, ec='red', res=30)
+                Arc (C2,0.,R2, 0., pi, ec='red', res=30)
             p1, = plot ([0], [0], 'r-')
         else: p1, = plot (X, Y, 'r^', clip_on=False)
         la  = legend([p0,p1], [r'fit: $\phi=%2.2f^\circ$'%(phi_fit), 'DEM data'], loc='upper left')

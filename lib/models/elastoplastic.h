@@ -425,7 +425,7 @@ inline void ElastoPlastic::CorrectDrift (State * Sta) const
     size_t maxIt = 10;
     double tol   = 1.0e-8;
     Vec_t  VDe(NCps), DeW(NCps);
-    while (fnew>tol)
+    while (fnew>tol && it<maxIt)
     {
         Gradients (sta);
         FlowRule  (sta);

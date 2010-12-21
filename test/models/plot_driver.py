@@ -54,8 +54,8 @@ if opts.tst=='1':
     ana = inp.refana.PyStr()
 
     if not dat=='': p.plot (dat,marker='o',clr='k', label='Dat')
-    if not sim=='': p.plot (sim,marker='-',clr='g', label='Sim')
-    if not ana=='': p.plot (ana,marker='-',clr='c', label='Ana')
+    if not sim=='': p.plot (sim,marker='+',clr='g', label='Sim')
+    if not ana=='': p.plot (ana,marker='^',clr='c', label='Ana')
 
     if opts.both=='1':
         p.lwd=2; p.plot (pnt,clr='blue', markevery=10, draw_ros=True, label='Point (%s)'%name)
@@ -64,7 +64,7 @@ if opts.tst=='1':
         p.lwd=2; p.plot (res,clr='blue', markevery=10, draw_ros=True, label='%s'%name)
     subplot(2,3,3)
     l = legend(loc='upper left',prop=FontProperties(size=8))
-    p.show()
+    show()
 
 elif opts.tst=='2':
     res = []

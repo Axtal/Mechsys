@@ -1,4 +1,4 @@
-matid    = 0
+matid    = 3
 ninc     = 10
 cdrift   = 1
 ssout    = 1
@@ -21,13 +21,13 @@ rkscheme = RK23
 rkstol   = 1.0
 npath    = 1
 
-ndat = 3
-  kcam = 3
-  lode = 30
-  dez  = -10
+#ndat = 3
+#  kcam = 3
+#  lode = 30
+#  dez  = -10
 
-#ndat = 1
-#  dez = -10
+ndat = 1
+  dez = -10
 
 #ndat = 3
 #  dsx = 0
