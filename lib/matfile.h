@@ -58,28 +58,32 @@ public:
     void Read (char const * FileName);
     void Save (char const * FileName);
 
-    // Data
-    Dict ID2Prms; ///< maps ID to parameters
-    Dict ID2Inis; ///< maps ID to initial values
-
 #ifdef USE_WXWIDGETS
-    // typedefs
-    typedef std::map<String,GUI::WxDict*> MdlName2Dict_t;
-
     // Methods
-    void Sync () { TransferDataFromWindow(); } ///< Synchronise (validate/transfer) data in controls
+    void AddMdl ();
 
     // Data
-    wxAuiManager     Aui;      ///< Aui manager
-    wxString         LstDir;   ///< Last accessed directory
-    wxTextCtrl     * TxtFName; ///< Control with input file filename
-    String           FName;    ///< Material file (.mat) filename
-    MdlName2Dict_t   Dicts;    ///< model name => dictionaries with parameters
+    GUI::WxDictTable   ID2Prms;  ///< maps ID to parameters
+    GUI::WxDictTable   ID2Inis;  ///< maps ID to initial values
+    GUI::WxDict      * DPrms;    ///< grid view for ID2Prms
+    GUI::WxDict      * DInis;    ///< grid view for ID2Inis
+    wxAuiManager       Aui;      ///< Aui manager
+    wxString           LstDir;   ///< Last accessed directory
+    wxTextCtrl       * TxtFName; ///< Control with input file filename
+    wxComboBox       * CbxMdl;   ///< Model names
+    String             FName;    ///< Material file (.mat) filename
+    wxArrayString      MNames;   ///< Model names
 
     // Events
     void OnLoad (wxCommandEvent & Event);
     void OnSave (wxCommandEvent & Event);
+    void OnAdd  (wxCommandEvent & Event) { AddMdl (); }
+    void OnDel  (wxCommandEvent & Event);
     DECLARE_EVENT_TABLE();
+#else
+    // Data
+    Dict ID2Prms; ///< maps ID to parameters
+    Dict ID2Inis; ///< maps ID to initial values
 #endif
 };
 
@@ -264,11 +268,15 @@ enum
 {
     ID_MATFILE_LOAD = wxID_HIGHEST+2000,
     ID_MATFILE_SAVE ,
+    ID_MATFILE_ADD  ,
+    ID_MATFILE_DEL  ,
 };
 
 BEGIN_EVENT_TABLE(MatFile, wxWindow)
     EVT_BUTTON (ID_MATFILE_LOAD, MatFile::OnLoad)
     EVT_BUTTON (ID_MATFILE_SAVE, MatFile::OnSave)
+    EVT_BUTTON (ID_MATFILE_ADD,  MatFile::OnAdd)
+    EVT_BUTTON (ID_MATFILE_DEL,  MatFile::OnDel)
 END_EVENT_TABLE()
 
 inline MatFile::MatFile (wxFrame * Parent)
@@ -281,35 +289,36 @@ inline MatFile::MatFile (wxFrame * Parent)
     Aui.SetManagedWindow (this);
 
     // control panel
-    ADD_WXPANEL     (pnl, szt, szr, 1, 3);
-    ADD_WXBUTTON    (pnl, szr, ID_MATFILE_LOAD, c0, "Load");
-    ADD_WXBUTTON    (pnl, szr, ID_MATFILE_SAVE, c1, "Save");
-    ADD_WXTEXTCTRL_ (pnl, szr, wxID_ANY, TxtFName, "", FName);
-    TxtFName->SetMinSize (wxSize(200,20));
+    ADD_WXPANEL     (pnl, szt, szr, 1, 6);
+    ADD_WXBUTTON    (pnl, szr, ID_MATFILE_LOAD, c0,       "Load");
+    ADD_WXTEXTCTRL_ (pnl, szr, wxID_ANY,        TxtFName, "", FName);
+    ADD_WXBUTTON    (pnl, szr, ID_MATFILE_SAVE, c1,       "Save");
+    ADD_WXBUTTON    (pnl, szr, ID_MATFILE_ADD,  c2,       "Add" );
+    ADD_WXCOMBOBOX  (pnl, szr, wxID_ANY,        CbxMdl,   "Select Model");
+    ADD_WXBUTTON    (pnl, szr, ID_MATFILE_DEL,  c3,       "Del" );
+    CbxMdl  ->SetMinSize (wxSize(200,12));
+    TxtFName->SetMinSize (wxSize(200,12));
 
-    // models
+    // grids and models
+    DPrms = new GUI::WxDict (this, &ID2Prms);
+    DInis = new GUI::WxDict (this, &ID2Inis);
     for (ModelFactory_t::iterator it=ModelFactory.begin(); it!=ModelFactory.end(); ++it)
     {
-        Dicts[it->first] = new GUI::WxDict(this);
-        Dicts[it->first]->ShowSK = false;
-        Dicts[it->first]->SameSK = true;
-        Str2ArrayStr_t::const_iterator mprms = MODEL_PRM_NAMES.find(it->first);
-        if (mprms!=MODEL_PRM_NAMES.end())
-        {
-            Dicts[it->first]->HideCol0 = true;
-            Dicts[it->first]->Tab->SetZero (-1, mprms->second);
-            Dicts[it->first]->ReBuild      (false);
-        }
-        else WxError("MatFile::MatFile: __internal_error__ Model named <%s> is not in map: MODEL_PRM_NAMES",it->first.CStr());
+        String const & model_name = it->first;
+        Str2ArrayStr_t::const_iterator iprm = MODEL_PRM_NAMES.find(model_name);
+        Str2ArrayStr_t::const_iterator iivs = MODEL_IVS_NAMES.find(model_name);
+        if (iprm==MODEL_PRM_NAMES.end()) WxError("MatFile::MatFile: __internal_error__ Model named <%s> is not in map: MODEL_PRM_NAMES",model_name.CStr());
+        if (iivs==MODEL_IVS_NAMES.end()) WxError("MatFile::MatFile: __internal_error__ Model named <%s> is not in map: MODEL_IVS_NAMES",model_name.CStr());
+        MNames.Add (model_name);
     }
-
-    // notebook
-    ADD_WXNOTEBOOK (this, nbk);
-    for (MdlName2Dict_t::const_iterator it=Dicts.begin(); it!=Dicts.end(); ++it) nbk->AddPage (it->second, it->first, false);
+    ID2Prms.Val2Name = &MODEL;
+    CbxMdl->Set (MNames);
+    if (MNames.size()>0) CbxMdl->SetValue(MNames[0]);
 
     // commit all changes to wxAuiManager
-    Aui.AddPane (pnl, wxAuiPaneInfo().Name("cpnl").Caption("cpnl").Top().MinSize(wxSize(100,40)).DestroyOnClose(false).CaptionVisible(false) .CloseButton(false));
-    Aui.AddPane (nbk, wxAuiPaneInfo().Name("nbk0").Caption("nbk0").Centre().Position(0).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
+    Aui.AddPane (pnl,   wxAuiPaneInfo().Name("cpnl") .Caption("Material file: Control Panel")   .Top   ().            DestroyOnClose(false).CaptionVisible(true).CloseButton(false).MinSize(wxSize(100,40)).Floatable(false));
+    Aui.AddPane (DPrms, wxAuiPaneInfo().Name("dprms").Caption("Material file: Model parameters").Centre().Position(1).DestroyOnClose(false).CaptionVisible(true).CloseButton(false));
+    Aui.AddPane (DInis, wxAuiPaneInfo().Name("dinis").Caption("Material file: Initial values")  .Centre().Position(2).DestroyOnClose(false).CaptionVisible(true).CloseButton(false));
     Aui.Update  ();
 }
 
@@ -321,34 +330,41 @@ inline void MatFile::OnLoad (wxCommandEvent & Event)
         TxtFName->SetValue (fd.GetFilename());
         LstDir = fd.GetDirectory ();
         Read (fd.GetPath().ToStdString().c_str());
-        for (size_t i=0; i<ID2Prms.Keys.Size(); ++i)
-        {
-            int            id   = ID2Prms.Keys[i];
-            SDPair const & pair = ID2Prms(id);
-            String model_name;
-            MODEL.Val2Key (pair("name"), model_name);
-            MdlName2Dict_t::iterator it = Dicts.find(model_name);
-            if (it!=Dicts.end())
-            {
-                SDPair const & prms = (*it->second->Tab)(-1);
-                for (size_t j=0; j<prms.Keys.Size(); ++j)
-                {
-                    double val = (pair.HasKey(prms.Keys[j]) ? pair(prms.Keys[j]) : 0.0);
-                    it->second->Tab->Set (id, prms.Keys[j].CStr(), val);
-                }
-                it->second->ReBuild ();
-            }
-            else throw new Fatal("MatFile::OnLoad: __internal_error__ Model named <%s> (from MODEL) wasn't found in Dicts (from ModelFactory)",model_name.CStr());
-        }
+        DPrms->ReBuild  ();
+        DInis->ReBuild  ();
         TransferDataToWindow ();
     }
 }
 
 inline void MatFile::OnSave (wxCommandEvent & Event)
 {
-    Sync ();
+    TransferDataFromWindow(); // Synchronise (validate/transfer) data in controls
     wxFileDialog fd(this, "Save material (.mat) file", LstDir, "", "*.mat", wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
     if (fd.ShowModal()==wxID_OK) Save (fd.GetPath().ToStdString().c_str());
+}
+
+inline void MatFile::AddMdl ()
+{
+    String model_name = CbxMdl->GetValue().ToStdString();
+    int max_id = -1;
+    for (size_t i=0; i<ID2Prms.Keys.Size(); ++i) if (ID2Prms.Keys[i]>max_id) max_id = ID2Prms.Keys[i];
+    int id = max_id + 1;
+    Str2ArrayStr_t::const_iterator iprm = MODEL_PRM_NAMES.find(model_name);
+    Str2ArrayStr_t::const_iterator iivs = MODEL_IVS_NAMES.find(model_name);
+    ID2Prms.Set     (id, "name", MODEL(model_name));
+    ID2Prms.SetZero (id, iprm->second);
+    ID2Inis.SetZero (id, iivs->second);
+    DPrms->ReBuild  ();
+    DInis->ReBuild  ();
+}
+
+inline void MatFile::OnDel (wxCommandEvent & Event)
+{
+    wxArrayInt sel = DPrms->Grd->GetSelectedCols();
+    DPrms->Tab->DeleteCols (sel);
+    DInis->Tab->DeleteCols (sel);
+    DPrms->ReBuild ();
+    DInis->ReBuild ();
 }
 
 #endif

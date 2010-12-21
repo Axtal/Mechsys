@@ -123,10 +123,11 @@ public:
     Dict () {}                             ///< Default constructor
     Dict (Dict const & R) { (*this) = R; } ///< Copy constructor
 
-    // Set methods
-    void Set (int Key, const char * Str, ...); ///< Set given key, keys, and vals: Set(-1, "ux uy", 1.0,2.0). NOTE: valus must be double
-    void Set (int Key, SDPair const & P);      ///< Set given SDPair (does merge)
+    // Methods
+    void Set     (int Key, const char * Str, ...);      ///< Set given key, keys, and vals: Set(-1, "ux uy", 1.0,2.0). NOTE: valus must be double
+    void Set     (int Key, SDPair const & P);           ///< Set given SDPair (does merge)
     void SetZero (int Key, Array<String> const & keys); ///< Create dictionary with all keys set to zero
+    void Del     (int Key);                             ///< Delete item corresponding to Key
 
     // Operators
     SDPair const & operator() (int Key) const;
@@ -538,6 +539,19 @@ inline void Dict::SetZero (int Key, Array<String> const & keys)
     SDPair pair;
     pair.SetZero (keys);
     this->Set (Key, pair);
+}
+
+inline void Dict::Del (int Key)
+{
+    Dict_t::iterator p = this->find(Key);
+    if (p==this->end())
+    {
+        std::ostringstream oss;
+        oss << (*this);
+        throw new Fatal("Dict::Del: Dictionary: %s does not have a key = %d",oss.str().c_str(),Key);
+    }
+    erase       (p);
+    Keys.DelVal (Key);
 }
 
 inline SDPair const & Dict::operator() (int Key) const

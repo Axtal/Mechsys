@@ -137,6 +137,9 @@ int main(int argc, char **argv) try
 
     Dict D5;
     D5.SetZero (-5, array);
+    D5.SetZero (-6, array);
+    cout << "D5     :            \n" << D5 << endl << endl;
+    D5.Del(-5);
     cout << "D5     :            \n" << D5 << endl << endl;
 
     // end
