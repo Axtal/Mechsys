@@ -548,9 +548,9 @@ int main(int argc, char **argv) try
                 dsig = DSig/ninc;
             }
 
-            cout << "deps = " << PrintVector(deps);
-            cout << "dsig = " << PrintVector(dsig);
-            cout << "dez  = " << dez << endl;
+            //cout << "deps = " << PrintVector(deps);
+            //cout << "dsig = " << PrintVector(dsig);
+            //cout << "dez  = " << dez << endl;
 
             // for each increment
             cout << "Increment = ";
@@ -592,8 +592,8 @@ int main(int argc, char **argv) try
                 // update stress path in model
                 mdl->UpdatePath (&sta, deps_tr, dsig_tr);
 
-                cout << "deps_tr = " << PrintVector(deps_tr);
-                cout << "dsig_tr = " << PrintVector(dsig_tr);
+                //cout << "deps_tr = " << PrintVector(deps_tr);
+                //cout << "dsig_tr = " << PrintVector(dsig_tr);
 
                 // for each pseudo time T
                 double T  = 0.0;
@@ -627,7 +627,7 @@ int main(int argc, char **argv) try
                     for (size_t i=0; i<niv; ++i) ivs_err += fabs(sta_ME.Ivs(i)-sta_1.Ivs(i))/(1.0+fabs(sta_ME.Ivs(i)));
                     double error = eps_err + sig_err + ivs_err;
 
-                    cout << "error = " << error << endl;
+                    //cout << "error = " << error << endl;
 
                     // step multiplier
                     double m = (error>0.0 ? 0.9*sqrt(inp.stol/error) : mMax);

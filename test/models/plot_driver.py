@@ -10,7 +10,7 @@ op.add_option('--inp',  '-i', dest='inp',  default='driver.inp',    help='input 
 op.add_option('--mat',  '-m', dest='mat',  default='materials.inp', help='materials filename, ex: materials.inp')
 op.add_option('--tst',  '-t', dest='tst',  default='1',             help='test number')
 op.add_option('--fem',  '-f', dest='fem',  default='0')
-op.add_option('--both', '-b', dest='both', default='1')
+op.add_option('--both', '-b', dest='both', default='0')
 opts, args = op.parse_args()
 
 # input file

@@ -1,0 +1,110 @@
+matid    = 3
+ninc     = 10
+cdrift   = 1
+ssout    = 1
+refdat   = camclay01.dat
+refsim   = sim_nod_60.dat
+ndiv     = 1
+o2       = 0
+nip      = 8
+fem      = 0
+dyn      = 0
+tsw      = 0.02
+dt       = 0.01
+dtout    = 0.02
+am       = 0.001
+ak       = 0.0
+ray      = 1
+tf       = 1.0 
+rk       = 1
+rkscheme = RK23
+rkstol   = 1.0
+npath    = 14
+
+#ndat = 3
+#  kcam = 3
+#  lode = 30
+#  dez  = -10
+
+#ndat = 1
+#  dez = -10
+
+#ndat = 3
+#  dsx = 0
+#  dsy = 0
+#  dsz = -149
+
+#ndat = 3
+#  lode  = 90
+#  dpcam = 10
+#  dez   = -2
+
+ndat = 3
+dex = -0.00921034  
+dey = -0.00921034  
+dez = -0.0657673
+
+ndat = 3
+dex =   0.0173598  
+dey =   0.0173598  
+dez =  -0.140424
+
+ndat = 3
+dex =   0.0534048  
+dey =   0.0534048  
+dez =  -0.202689
+
+ndat = 3
+dex =    0.080156  
+dey =    0.080156  
+dez =  -0.231596
+
+ndat = 3
+dex =   0.0977435  
+dey =   0.0977435  
+dez =  -0.245542
+
+ndat = 3
+dex =    0.108508  
+dey =    0.108508  
+dez =  -0.251295
+
+ndat = 3
+dex =    0.113941  
+dey =    0.113941  
+dez =  -0.251159
+
+ndat = 3
+dex =    0.123068  
+dey =    0.123068  
+dez =  -0.262455
+
+ndat = 3
+dex =    0.126624  
+dey =    0.126624  
+dez =  -0.264383
+
+ndat = 3
+dex =    0.129542  
+dey =    0.129542  
+dez =  -0.266688
+
+ndat = 3
+dex =    0.132074  
+dey =    0.132074  
+dez =  -0.269337
+
+ndat = 3
+dex =    0.134373  
+dey =    0.134373  
+dez =  -0.272283
+
+ndat = 3
+dex =    0.136496  
+dey =    0.136496  
+dez =  -0.275395
+
+ndat = 3
+dex =   0.0496045  
+dey =   0.0496045  
+dez = -0.0998691
