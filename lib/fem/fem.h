@@ -17,6 +17,7 @@
  ************************************************************************/
 
 // MechSys
+#ifndef INCLUDE_MODELS_ONLY
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/mesh/mesh.h>
@@ -43,10 +44,12 @@
 #include <mechsys/fem/domain.h>
 #include <mechsys/fem/solver.h>
 #include <mechsys/fem/rksolver.h>
+#include <mechsys/linalg/matvec.h>
+#endif
 #include <mechsys/models/model.h>
 #include <mechsys/models/linflow.h>
 #include <mechsys/models/linelastic.h>
 #include <mechsys/models/nlelastic.h>
 #include <mechsys/models/elastoplastic.h>
 #include <mechsys/models/camclay.h>
-#include <mechsys/linalg/matvec.h>
+#include <mechsys/models/unsatflow.h>

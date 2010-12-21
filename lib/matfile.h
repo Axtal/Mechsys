@@ -34,7 +34,9 @@
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
+#define INCLUDE_MODELS_ONLY
 #include <mechsys/fem/fem.h>
+#undef  INCLUDE_MODELS_ONLY
 
 using std::cout;
 using std::endl;
@@ -51,7 +53,7 @@ public:
      MatFile (wxFrame * Parent);
     ~MatFile () { Aui.UnInit(); }
 #else
-    MatFile () {}
+    MatFile () { ID2Prms = new Dict;  ID2Inis = new Dict; }
 #endif
 
     // Methods
@@ -63,8 +65,8 @@ public:
     void AddMdl ();
 
     // Data
-    GUI::WxDictTable   ID2Prms;  ///< maps ID to parameters
-    GUI::WxDictTable   ID2Inis;  ///< maps ID to initial values
+    GUI::WxDictTable * ID2Prms;  ///< maps ID to parameters
+    GUI::WxDictTable * ID2Inis;  ///< maps ID to initial values
     GUI::WxDict      * DPrms;    ///< grid view for ID2Prms
     GUI::WxDict      * DInis;    ///< grid view for ID2Inis
     wxAuiManager       Aui;      ///< Aui manager
@@ -82,8 +84,8 @@ public:
     DECLARE_EVENT_TABLE();
 #else
     // Data
-    Dict ID2Prms; ///< maps ID to parameters
-    Dict ID2Inis; ///< maps ID to initial values
+    Dict * ID2Prms; ///< maps ID to parameters
+    Dict * ID2Inis; ///< maps ID to initial values
 #endif
 };
 
@@ -110,8 +112,8 @@ inline void MatFile::Read (char const * FileName)
     String model_name;
     Array<String> const * prm_names = NULL;
     Array<String> const * ivs_names = NULL;
-    ID2Prms.clear ();
-    ID2Inis.clear ();
+    ID2Prms->clear ();
+    ID2Inis->clear ();
     while (!mat_file.eof())
     {
         String line,key,equal,strval;
@@ -137,13 +139,13 @@ inline void MatFile::Read (char const * FileName)
                     Str2ArrayStr_t::const_iterator itb = MODEL_IVS_NAMES.find(strval);
 
                     // check
-                    if (ID2Prms.HasKey(ID))              throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: IDs must be unique. %d is repeated",FileName,line_num,ID);
+                    if (ID2Prms->HasKey(ID))             throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: IDs must be unique. %d is repeated",FileName,line_num,ID);
                     if (MODEL.find(strval)==MODEL.end()) throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: Model 'name' = %s is not available in MODEL",FileName,line_num,strval.CStr());
                     if (ita==MODEL_PRM_NAMES.end())      throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: Model 'name' = %s is not available in MODEL_PRM_NAMES",FileName,line_num,strval.CStr());
                     if (itb==MODEL_IVS_NAMES.end())      throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: Model 'name' = %s is not available in MODEL_IVS_NAMES",FileName,line_num,strval.CStr());
 
                     // set
-                    ID2Prms.Set (ID, "name", MODEL(strval));
+                    ID2Prms->Set (ID, "name", MODEL(strval));
                     model_name   = strval;
                     reading_name = false;
                     reading_prms = true;
@@ -173,7 +175,7 @@ inline void MatFile::Read (char const * FileName)
                         if (ninis>0) reading_inis = true;
                         else
                         {
-                            ID2Inis.Set (ID, SDPair());
+                            ID2Inis->Set (ID, SDPair());
                             reading_inis = false;
                         }
                     }
@@ -183,7 +185,7 @@ inline void MatFile::Read (char const * FileName)
                 {
                     if (prm_names->Has(key))
                     {
-                        ID2Prms.Set (ID, key.CStr(), atof(strval.CStr()));
+                        ID2Prms->Set (ID, key.CStr(), atof(strval.CStr()));
                         idxprm++;
                     }
                     else throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: parameter named '%s' is not available for model '%s'",FileName,line_num,key.CStr(),model_name.CStr());
@@ -203,7 +205,7 @@ inline void MatFile::Read (char const * FileName)
                 {
                     if (ivs_names->Has(key))
                     {
-                        ID2Inis.Set (ID, key.CStr(), atof(strval.CStr()));
+                        ID2Inis->Set (ID, key.CStr(), atof(strval.CStr()));
                         idxini++;
                     }
                     else throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: initial value '%s' is not available for model '%s'",FileName,line_num,key.CStr(),model_name.CStr());
@@ -221,11 +223,11 @@ inline void MatFile::Save (char const * FileName)
     std::ostringstream oss;
     oss << "############ Materials ##############\n\n";
     String buf;
-    for (size_t i=0; i<ID2Prms.Keys.Size(); ++i)
+    for (size_t i=0; i<ID2Prms->Keys.Size(); ++i)
     {
-        int            id   = ID2Prms.Keys[i];
-        SDPair const & prms = ID2Prms(id);
-        SDPair const & inis = ID2Inis(id);
+        int            id   = ID2Prms->Keys[i];
+        SDPair const & prms = (*ID2Prms)(id);
+        SDPair const & inis = (*ID2Inis)(id);
         String name;
         MODEL.Val2Key (prms("name"), name);
         buf.Printf("%-8s = %d\n", "ID",    id);                  oss<<buf;
@@ -256,9 +258,9 @@ inline void MatFile::Save (char const * FileName)
 std::ostream & operator<< (std::ostream & os, MatFile const & MF)
 {
     os << "ID2Prms =\n";
-    os << MF.ID2Prms << std::endl;
+    os << (*MF.ID2Prms) << std::endl;
     os << "ID2Inis =\n";
-    os << MF.ID2Inis << std::endl;
+    os << (*MF.ID2Inis) << std::endl;
     return os;
 }
 
@@ -300,8 +302,10 @@ inline MatFile::MatFile (wxFrame * Parent)
     TxtFName->SetMinSize (wxSize(200,12));
 
     // grids and models
-    DPrms = new GUI::WxDict (this, &ID2Prms);
-    DInis = new GUI::WxDict (this, &ID2Inis);
+    ID2Prms = new GUI::WxDictTable;
+    ID2Inis = new GUI::WxDictTable;
+    DPrms   = new GUI::WxDict (this, ID2Prms);
+    DInis   = new GUI::WxDict (this, ID2Inis);
     for (ModelFactory_t::iterator it=ModelFactory.begin(); it!=ModelFactory.end(); ++it)
     {
         String const & model_name = it->first;
@@ -311,7 +315,7 @@ inline MatFile::MatFile (wxFrame * Parent)
         if (iivs==MODEL_IVS_NAMES.end()) WxError("MatFile::MatFile: __internal_error__ Model named <%s> is not in map: MODEL_IVS_NAMES",model_name.CStr());
         MNames.Add (model_name);
     }
-    ID2Prms.Val2Name = &MODEL;
+    ID2Prms->Val2Name = &MODEL;
     CbxMdl->Set (MNames);
     if (MNames.size()>0) CbxMdl->SetValue(MNames[0]);
 
@@ -329,7 +333,8 @@ inline void MatFile::OnLoad (wxCommandEvent & Event)
     {
         TxtFName->SetValue (fd.GetFilename());
         LstDir = fd.GetDirectory ();
-        Read (fd.GetPath().ToStdString().c_str());
+        try { Read (fd.GetPath().ToStdString().c_str()); }
+        catch (Fatal * e) { WxError(e->Msg().CStr()); }
         DPrms->ReBuild  ();
         DInis->ReBuild  ();
         TransferDataToWindow ();
@@ -347,15 +352,15 @@ inline void MatFile::AddMdl ()
 {
     String model_name = CbxMdl->GetValue().ToStdString();
     int max_id = -1;
-    for (size_t i=0; i<ID2Prms.Keys.Size(); ++i) if (ID2Prms.Keys[i]>max_id) max_id = ID2Prms.Keys[i];
+    for (size_t i=0; i<ID2Prms->Keys.Size(); ++i) if (ID2Prms->Keys[i]>max_id) max_id = ID2Prms->Keys[i];
     int id = max_id + 1;
     Str2ArrayStr_t::const_iterator iprm = MODEL_PRM_NAMES.find(model_name);
     Str2ArrayStr_t::const_iterator iivs = MODEL_IVS_NAMES.find(model_name);
-    ID2Prms.Set     (id, "name", MODEL(model_name));
-    ID2Prms.SetZero (id, iprm->second);
-    ID2Inis.SetZero (id, iivs->second);
-    DPrms->ReBuild  ();
-    DInis->ReBuild  ();
+    ID2Prms->Set     (id, "name", MODEL(model_name));
+    ID2Prms->SetZero (id, iprm->second);
+    ID2Inis->SetZero (id, iivs->second);
+    DPrms->ReBuild   ();
+    DInis->ReBuild   ();
 }
 
 inline void MatFile::OnDel (wxCommandEvent & Event)
