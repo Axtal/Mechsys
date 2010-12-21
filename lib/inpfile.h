@@ -116,12 +116,11 @@ public:
 
 #ifdef USE_WXWIDGETS
     // Methods
-    void Sync () { TransferDataFromWindow(); } ///< Synchronise (validate/transfer) data in controls
+    void Sync (bool Dat2Ctrl=false) { if (Dat2Ctrl) TransferDataToWindow(); else TransferDataFromWindow(); } ///< Synchronise (validate/transfer) data in controls
 
     // Data
     wxAuiManager  Aui;      ///< Aui manager
     wxString      LstDir;   ///< Last accessed directory
-    wxTextCtrl  * TxtFName; ///< Control with input file filename
     String        FName;    ///< Input file (.inp) filename
 
     // Events
@@ -285,6 +284,11 @@ inline void InpFile::Read (char const * FileName)
         line_num++;
     }
     if (idxpath!=Path.Size()) throw new Fatal("InpFile::Read: Error in file <%s>: Not all Path data could be read for npath==%d",FileName,Path.Size());
+
+
+#ifdef USE_WXWIDGETS
+    Sync (/*Dat2Ctrl*/true);
+#endif
 }
 
 std::ostream & operator<< (std::ostream & os, PathIncs const & P)
@@ -380,11 +384,9 @@ inline InpFile::InpFile (wxFrame * Parent)
     Aui.SetManagedWindow (this);
 
     // control panel
-    ADD_WXPANEL     (pnl, szt, szr, 1, 3);
-    ADD_WXBUTTON    (pnl, szr, ID_INPFILE_LOAD, c0, "Load");
-    ADD_WXBUTTON    (pnl, szr, ID_INPFILE_SAVE, c1, "Save");
-    ADD_WXTEXTCTRL_ (pnl, szr, wxID_ANY, TxtFName, "", FName);
-    TxtFName->SetMinSize (wxSize(200,20));
+    ADD_WXPANEL  (pnl, szt, szr, 1, 2);
+    ADD_WXBUTTON (pnl, szr, ID_INPFILE_LOAD, c0, "Load");
+    ADD_WXBUTTON (pnl, szr, ID_INPFILE_SAVE, c1, "Save");
 
     // main
     ADD_WXPANEL     (p_mai, sz_mai_t, sz_mai, 6, 2);
@@ -449,18 +451,18 @@ inline InpFile::InpFile (wxFrame * Parent)
 
     // notebook
     ADD_WXNOTEBOOK (this, nbk0);
-    ADD_WXNOTEBOOK (this, nbk1);
+    //ADD_WXNOTEBOOK (this, nbk1);
     nbk0->AddPage  (p_mai, "Main",              false);
     nbk0->AddPage  (p_loc, "Local Integration", false);
     nbk0->AddPage  (p_oth, "Others",            false);
-    nbk1->AddPage  (p_fem, "FEM Solution",      false);
-    nbk1->AddPage  (p_nls, "Nonlinear Steps",   false);
-    nbk1->AddPage  (p_rfi, "Reference Files",   false);
+    nbk0->AddPage  (p_fem, "FEM Solution",      false);
+    nbk0->AddPage  (p_nls, "Nonlinear Steps",   false);
+    nbk0->AddPage  (p_rfi, "Reference Files",   false);
 
     // commit all changes to wxAuiManager
-    Aui.AddPane (pnl,  wxAuiPaneInfo().Name("cpnl").Caption("cpnl").Top().MinSize(wxSize(100,40)).DestroyOnClose(false).CaptionVisible(false) .CloseButton(false));
+    Aui.AddPane (pnl,  wxAuiPaneInfo().Name("cpnl").Caption("cpnl").Top().MinSize(wxSize(100,50)).DestroyOnClose(false).CaptionVisible(false) .CloseButton(false));
     Aui.AddPane (nbk0, wxAuiPaneInfo().Name("nbk0").Caption("nbk0").Centre().Position(0).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
-    Aui.AddPane (nbk1, wxAuiPaneInfo().Name("nbk1").Caption("nbk1").Centre().Position(1).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
+    //Aui.AddPane (nbk1, wxAuiPaneInfo().Name("nbk1").Caption("nbk1").Centre().Position(1).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
     Aui.Update  ();
 }
 
@@ -470,9 +472,7 @@ inline void InpFile::OnLoad (wxCommandEvent & Event)
     if (fd.ShowModal()==wxID_OK)
     {
         Read (fd.GetPath().ToStdString().c_str());
-        TxtFName->SetValue (fd.GetFilename());
         LstDir = fd.GetDirectory ();
-        TransferDataToWindow ();
     }
 }
 

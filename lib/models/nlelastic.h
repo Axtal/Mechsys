@@ -24,9 +24,6 @@
 #include <mechsys/models/model.h>
 #include <mechsys/models/equilibstate.h>
 
-using std::cout;
-using std::endl;
-
 class NLElastic : public Model
 {
 public:

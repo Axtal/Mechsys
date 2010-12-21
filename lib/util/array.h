@@ -97,6 +97,7 @@ public:
     Value_T const * GetPtr () const { return _values; }          ///< Returns a pointer to the values
     Value_T       & Last   ()       { return _values[_size-1]; } ///< Return the last element
     Value_T const & Last   () const { return _values[_size-1]; } ///< Return the last element
+    size_t          size   () const { return Size(); }           ///< Alternative Size() method
 
     // Operators
     Value_T       & operator[] (size_t i);                 ///< Access operator (write)

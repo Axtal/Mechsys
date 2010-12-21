@@ -27,9 +27,6 @@
 #include <mechsys/models/equilibstate.h>
 #include <mechsys/models/stressupdate.h>
 
-using std::cout;
-using std::endl;
-
 namespace FEM
 {
 

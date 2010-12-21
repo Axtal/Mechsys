@@ -38,6 +38,7 @@
   #include <wx/scrolwin.h>
   #include <wx/checkbox.h>
   #include <wx/combobox.h>
+  #include <wx/textctrl.h>
   #include <wx/filedlg.h>
   #include <wx/sizer.h>
   #include <wx/button.h>
@@ -46,6 +47,7 @@
   #include <wx/aui/aui.h>
   #include <wx/msgdlg.h>
   #include <wx/log.h>
+  #include <wx/thread.h>
   #include <mechsys/gui/wxnuminput.h>
   #include <mechsys/gui/wxstringvalidator.h>
 #else
@@ -98,6 +100,17 @@
     SetMenuBar      (mnu);       \
     CreateStatusBar (2);         \
     SetStatusText   ("Welcome");
+
+  #define ADD_WXTOOLBAR(TBR) \
+    wxAuiToolBar * TBR = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_OVERFLOW); \
+    TBR->AddTool (ID_TBR_RUN,  "Run",  gear_sml_xpm); \
+    TBR->AddTool (ID_TBR_STOP, "Stop", stop_xpm);     \
+    TBR->SetToolBitmapSize (wxSize(16,16));           \
+    TBR->Realize();
+
+  #define ADD_LOGPANEL(LOG) \
+    Log = new wxTextCtrl (this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxNO_BORDER | wxTE_MULTILINE | wxTE_READONLY); \
+    wxLog::SetActiveTarget (new wxLogTextCtrl(Log));
 
   #define ADD_WXPANEL(PNL, SZTOP, SZR, M, N)                                \
     wxScrolled<wxPanel> * PNL   = new wxScrolled<wxPanel> (this, wxID_ANY); \
@@ -152,6 +165,29 @@
     WxNumInput * CTRL = new WxNumInput (PNL, ID, VAR, wxDefaultPosition, wxDefaultSize, 0, WxNumValidator(&VAR)); \
     SZR->Add (new wxStaticText(PNL,wxID_ANY,LBL), 0,wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL,2); \
     SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+
+  #define DECLARE_THREAD(THNAME, FRAMENAME)           \
+    class THNAME : public wxThread                    \
+    {                                                 \
+      public:                                         \
+        THNAME(FRAMENAME * F) : wxThread(), Fra(F) {} \
+        wxThread::ExitCode Entry();                   \
+        FRAMENAME * Fra;                              \
+    };
+
+  #define SPAWN_THREAD(THNAME, TH, ISRUNNING)                                        \
+    if (ISRUNNING) throw new Fatal("Simulation is running");                         \
+    THNAME * TH = new THNAME(this);                                                  \
+    if (TH->Create()!=wxTHREAD_NO_ERROR) throw new Fatal("Could not create thread"); \
+    TH->SetPriority (WXTHREAD_MAX_PRIORITY);                                         \
+    if (TH->Run()!=wxTHREAD_NO_ERROR) throw new Fatal("Could not start thread");     \
+    ISRUNNING = true;
+
+  #define WXCATCH(WITH_ERROR, ERROR_MSG)                                          \
+    catch (Fatal      * e)     { WITH_ERROR=true; ERROR_MSG=e->Msg(); delete e; } \
+    catch (char const * m)     { WITH_ERROR=true; ERROR_MSG=m; }                  \
+    catch (std::exception & e) { WITH_ERROR=true; ERROR_MSG=e.what(); }           \
+    catch (...)                { WITH_ERROR=true; ERROR_MSG="Some exception (...) occurred"; }
 
 #endif
 

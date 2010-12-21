@@ -1,0 +1,61 @@
+# materials.mat
+
+ID    = 0
+name  = LinElastic
+nprms = 2
+E     = 60000000.0
+nu    = 0.3
+ninis = 0
+
+ID    = 1
+name  = ElastoPlastic
+nprms = 5
+E     = 6000.0
+nu    = 0.3
+VM    = 1.0
+sY    = 150.0
+Hp    = 0.0
+ninis = 0
+
+ID    = 2
+name  = ElastoPlastic
+nprms = 6
+E     = 6000.0
+nu    = 0.3
+MC    = 1.0
+c     = 0.1
+phi   = 25.376933525152303
+psi   = 1.0
+ninis = 0
+
+ID    = 3
+name  = CamClay
+nprms = 4
+lam   = 0.01
+kap   = 0.001
+nu    = 0.3
+phi   = 25.376933525152303
+ninis = 1
+v0    = 2.0
+
+ID    = 4
+name  = CamClay
+nprms = 4
+lam   = 0.0891
+kap   = 0.0196
+nu    = 0.2
+phi   = 31.6
+ninis = 1
+v0    = 1.691
+
+ID     = 5
+name   = UnsatFlow
+nprms  = 6
+gamW   = 10.0
+kwsat  = 1.0e-2
+Mkw    = 1.0
+bc_lam = 0.8
+bc_sb  = 1.8
+bc_wr  = 0.01
+ninis  = 2
+n      = 0.3

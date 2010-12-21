@@ -93,6 +93,10 @@ public:
     void         Split   (String & Left, String & Right, char const * Separator=" ");
     bool         HasWord (String const & Word) { return (find(Word)!=npos); }
 
+    // For compatibility with wxWidgets
+    String       & ToStdString()       { return (*this); }
+    String const & ToStdString() const { return (*this); }
+
 #ifdef USE_BOOST_PYTHON
     BPy::str PyStr() const { return BPy::str(CStr()); }
 #endif

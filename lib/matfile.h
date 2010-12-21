@@ -20,7 +20,6 @@
 #define MECHSYS_MATFILE_H
 
 // Std Lib
-#include <iostream>
 #include <sstream>
 #include <fstream>
 
@@ -37,9 +36,6 @@
 #define INCLUDE_MODELS_ONLY
 #include <mechsys/fem/fem.h>
 #undef  INCLUDE_MODELS_ONLY
-
-using std::cout;
-using std::endl;
 
 #ifdef USE_WXWIDGETS
 class MatFile : public wxWindow
@@ -71,7 +67,6 @@ public:
     GUI::WxDict      * DInis;    ///< grid view for ID2Inis
     wxAuiManager       Aui;      ///< Aui manager
     wxString           LstDir;   ///< Last accessed directory
-    wxTextCtrl       * TxtFName; ///< Control with input file filename
     wxComboBox       * CbxMdl;   ///< Model names
     String             FName;    ///< Material file (.mat) filename
     wxArrayString      MNames;   ///< Model names
@@ -216,6 +211,12 @@ inline void MatFile::Read (char const * FileName)
         }
         line_num++;
     }
+
+#ifdef USE_WXWIDGETS
+    DPrms->ReBuild  ();
+    DInis->ReBuild  ();
+    TransferDataToWindow ();
+#endif
 }
 
 inline void MatFile::Save (char const * FileName)
@@ -291,15 +292,13 @@ inline MatFile::MatFile (wxFrame * Parent)
     Aui.SetManagedWindow (this);
 
     // control panel
-    ADD_WXPANEL     (pnl, szt, szr, 1, 6);
-    ADD_WXBUTTON    (pnl, szr, ID_MATFILE_LOAD, c0,       "Load");
-    ADD_WXTEXTCTRL_ (pnl, szr, wxID_ANY,        TxtFName, "", FName);
-    ADD_WXBUTTON    (pnl, szr, ID_MATFILE_SAVE, c1,       "Save");
-    ADD_WXBUTTON    (pnl, szr, ID_MATFILE_ADD,  c2,       "Add" );
-    ADD_WXCOMBOBOX  (pnl, szr, wxID_ANY,        CbxMdl,   "Select Model");
-    ADD_WXBUTTON    (pnl, szr, ID_MATFILE_DEL,  c3,       "Del" );
-    CbxMdl  ->SetMinSize (wxSize(200,12));
-    TxtFName->SetMinSize (wxSize(200,12));
+    ADD_WXPANEL    (pnl, szt, szr, 1, 5);
+    ADD_WXBUTTON   (pnl, szr, ID_MATFILE_LOAD, c0,     "Load");
+    ADD_WXBUTTON   (pnl, szr, ID_MATFILE_SAVE, c1,     "Save");
+    ADD_WXCOMBOBOX (pnl, szr, wxID_ANY,        CbxMdl, "Select Model");
+    ADD_WXBUTTON   (pnl, szr, ID_MATFILE_ADD,  c2,     "Add" );
+    ADD_WXBUTTON   (pnl, szr, ID_MATFILE_DEL,  c3,     "Del" );
+    CbxMdl->SetMinSize (wxSize(200,12));
 
     // grids and models
     ID2Prms = new GUI::WxDictTable;
@@ -320,7 +319,7 @@ inline MatFile::MatFile (wxFrame * Parent)
     if (MNames.size()>0) CbxMdl->SetValue(MNames[0]);
 
     // commit all changes to wxAuiManager
-    Aui.AddPane (pnl,   wxAuiPaneInfo().Name("cpnl") .Caption("Material file: Control Panel")   .Top   ().            DestroyOnClose(false).CaptionVisible(true).CloseButton(false).MinSize(wxSize(100,40)).Floatable(false));
+    Aui.AddPane (pnl,   wxAuiPaneInfo().Name("cpnl") .Caption("Material file: Control Panel")   .Top   ().            DestroyOnClose(false).CaptionVisible(true).CloseButton(false).MinSize(wxSize(100,50)).Floatable(false));
     Aui.AddPane (DPrms, wxAuiPaneInfo().Name("dprms").Caption("Material file: Model parameters").Centre().Position(1).DestroyOnClose(false).CaptionVisible(true).CloseButton(false));
     Aui.AddPane (DInis, wxAuiPaneInfo().Name("dinis").Caption("Material file: Initial values")  .Centre().Position(2).DestroyOnClose(false).CaptionVisible(true).CloseButton(false));
     Aui.Update  ();
@@ -331,13 +330,9 @@ inline void MatFile::OnLoad (wxCommandEvent & Event)
     wxFileDialog fd(this, "Load material (.mat) file", LstDir, "", "*.mat");
     if (fd.ShowModal()==wxID_OK)
     {
-        TxtFName->SetValue (fd.GetFilename());
         LstDir = fd.GetDirectory ();
         try { Read (fd.GetPath().ToStdString().c_str()); }
         catch (Fatal * e) { WxError(e->Msg().CStr()); }
-        DPrms->ReBuild  ();
-        DInis->ReBuild  ();
-        TransferDataToWindow ();
     }
 }
 

@@ -1,0 +1,40 @@
+matid    = 0
+ninc     = 10
+cdrift   = 1
+ssout    = 1
+refdat   = camclay01.dat
+refsim   = sim_nod_60.dat
+ndiv     = 1
+o2       = 0
+nip      = 8
+fem      = 0
+dyn      = 0
+tsw      = 0.02
+dt       = 0.01
+dtout    = 0.02
+am       = 0.001
+ak       = 0.0
+ray      = 1
+tf       = 1.0 
+rk       = 1
+rkscheme = RK23
+rkstol   = 1.0
+npath    = 1
+
+ndat = 3
+  kcam = 3
+  lode = 30
+  dez  = -10
+
+#ndat = 1
+#  dez = -10
+
+#ndat = 3
+#  dsx = 0
+#  dsy = 0
+#  dsz = -149
+
+#ndat = 3
+#  lode  = 90
+#  dpcam = 10
+#  dez   = -2

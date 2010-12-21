@@ -23,9 +23,6 @@
 // MechSys
 #include <mechsys/models/elastoplastic.h>
 
-using std::cout;
-using std::endl;
-
 class CamClay : public ElastoPlastic
 {
 public:
