@@ -32,6 +32,7 @@
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
+#include <mechsys/linalg/matvec.h>
 
 /*
 struct PathIncs
@@ -71,6 +72,7 @@ public:
     // Methods
     void Defaults ();
     void Read     (char const * FileName);
+    void GetIncs  (int PathKey, double Div, Vec_t & dsig, Vec_t & deps, Array<bool> & PrescDeps, double & dpw, double & dSw, bool & PrescDpw, bool & PrescDSw) const;
 
     // Data
     int    matid;       ///<  1 material ID
@@ -190,6 +192,7 @@ inline void InpFile::Read (char const * FileName)
     std::fstream inp_file(FileName, std::ios::in);
     if (!inp_file.is_open()) throw new Fatal("InpFile::Read: Could not open file <%s>",FileName);
     bool   reading_path = false;
+    int    npath        = 0;
     int    ndat         = -1;
     size_t line_num     = 1;
     int    idxdat       = 0;
@@ -233,64 +236,87 @@ inline void InpFile::Read (char const * FileName)
                     ndat   = -1;
                     idxdat = 0;
                     idxpath++;
-                    if ((size_t)idxpath==Path->Keys.Size()) break;
+                    if (idxpath==npath) break;
                 }
             }
             else
             {
-                if      (key=="matid")      matid     = atoi(str_val.CStr());                    //  1
-                else if (key=="flwid")      flwid     = atoi(str_val.CStr());                    //  2
-                else if (key=="ninc")       ninc      = atoi(str_val.CStr());                    //  3
-                else if (key=="cdrift")     cdrift    = static_cast<bool>(atoi(str_val.CStr())); //  4
-                else if (key=="stol")       stol      = val;                                     //  5
-                else if (key=="ssout")      ssout     = static_cast<bool>(atoi(str_val.CStr())); //  6
-                else if (key=="ctetg")      ctetg     = static_cast<bool>(atoi(str_val.CStr())); //  7
-                else if (key=="fem")        fem       = val;                                     //  8
-                else if (key=="dyn")        dyn       = static_cast<bool>(atoi(str_val.CStr())); //  9
-                else if (key=="hm")         hm        = static_cast<bool>(atoi(str_val.CStr())); // 10
-                else if (key=="tf")         tf        = val;                                     // 11
-                else if (key=="dt")         dt        = val;                                     // 12
-                else if (key=="dtout")      dtout     = val;                                     // 13
-                else if (key=="tsw")        tsw       = val;                                     // 14
-                else if (key=="ndiv")       ndiv      = atoi(str_val.CStr());                    // 15
-                else if (key=="nip")        nip       = atoi(str_val.CStr());                    // 16
-                else if (key=="o2")         o2        = static_cast<bool>(atoi(str_val.CStr())); // 17
-                else if (key=="ray")        ray       = static_cast<bool>(atoi(str_val.CStr())); // 18
-                else if (key=="am")         am        = val;                                     // 19
-                else if (key=="ak")         ak        = val;                                     // 20
-                else if (key=="rk")         rk        = static_cast<bool>(atoi(str_val.CStr())); // 21
-                else if (key=="rkscheme")   rkscheme  = str_val;                                 // 22
-                else if (key=="rkstol")     rkstol    = val;                                     // 23
-                else if (key=="refdat")     refdat    = str_val;                                 // 24
-                else if (key=="refsim")     refsim    = str_val;                                 // 25
-                else if (key=="refana")     refana    = str_val;                                 // 26
-                else if (key=="idxvert1")   idxvert1  = atoi(str_val.CStr());                    // 27
-                else if (key=="idxvert2")   idxvert2  = atoi(str_val.CStr());                    // 28
-                else if (key=="idxvert3")   idxvert3  = atoi(str_val.CStr());                    // 29
-                else if (key=="optdbl1")  { optdbl1   = val;   hasoptdbl1=true; }                // 30
-                else if (key=="optdbl2")  { optdbl2   = val;   hasoptdbl2=true; }                // 31
-                else if (key=="optdbl3")  { optdbl3   = val;   hasoptdbl3=true; }                // 32
-                else if (key=="nldt_nsml")  nldt_nsml = atoi(str_val.CStr());                    // 33
-                else if (key=="nldt_nn")    nldt_nn   = atoi(str_val.CStr());                    // 34
-                else if (key=="nldt_n")     nldt_n    = atoi(str_val.CStr());                    // 35
-                else if (key=="nldt_ll")    nldt_ll   = val;                                     // 36
-                else if (key=="nldt_sch")   nldt_sch  = atoi(str_val.CStr());                    // 37
-                else if (key=="nldt_m")     nldt_m    = val;                                     // 38
-                else if (key=="maxit")      maxit     = atoi(str_val.CStr());                    // 39
-                else if (key=="tolr")       tolr      = val;                                     // 40
-                else if (key=="npath")      reading_path = true;
+                if      (key=="matid")      matid     = atoi(str_val.CStr());       //  1
+                else if (key=="flwid")      flwid     = atoi(str_val.CStr());       //  2
+                else if (key=="ninc")       ninc      = atoi(str_val.CStr());       //  3
+                else if (key=="cdrift")     cdrift    = (bool)atoi(str_val.CStr()); //  4
+                else if (key=="stol")       stol      = val;                        //  5
+                else if (key=="ssout")      ssout     = (bool)atoi(str_val.CStr()); //  6
+                else if (key=="ctetg")      ctetg     = (bool)atoi(str_val.CStr()); //  7
+                else if (key=="fem")        fem       = val;                        //  8
+                else if (key=="dyn")        dyn       = (bool)atoi(str_val.CStr()); //  9
+                else if (key=="hm")         hm        = (bool)atoi(str_val.CStr()); // 10
+                else if (key=="tf")         tf        = val;                        // 11
+                else if (key=="dt")         dt        = val;                        // 12
+                else if (key=="dtout")      dtout     = val;                        // 13
+                else if (key=="tsw")        tsw       = val;                        // 14
+                else if (key=="ndiv")       ndiv      = atoi(str_val.CStr());       // 15
+                else if (key=="nip")        nip       = atoi(str_val.CStr());       // 16
+                else if (key=="o2")         o2        = (bool)atoi(str_val.CStr()); // 17
+                else if (key=="ray")        ray       = (bool)atoi(str_val.CStr()); // 18
+                else if (key=="am")         am        = val;                        // 19
+                else if (key=="ak")         ak        = val;                        // 20
+                else if (key=="rk")         rk        = (bool)atoi(str_val.CStr()); // 21
+                else if (key=="rkscheme")   rkscheme  = str_val;                    // 22
+                else if (key=="rkstol")     rkstol    = val;                        // 23
+                else if (key=="refdat")     refdat    = str_val;                    // 24
+                else if (key=="refsim")     refsim    = str_val;                    // 25
+                else if (key=="refana")     refana    = str_val;                    // 26
+                else if (key=="idxvert1")   idxvert1  = atoi(str_val.CStr());       // 27
+                else if (key=="idxvert2")   idxvert2  = atoi(str_val.CStr());       // 28
+                else if (key=="idxvert3")   idxvert3  = atoi(str_val.CStr());       // 29
+                else if (key=="optdbl1")  { optdbl1   = val;   hasoptdbl1=true; }   // 30
+                else if (key=="optdbl2")  { optdbl2   = val;   hasoptdbl2=true; }   // 31
+                else if (key=="optdbl3")  { optdbl3   = val;   hasoptdbl3=true; }   // 32
+                else if (key=="nldt_nsml")  nldt_nsml = atoi(str_val.CStr());       // 33
+                else if (key=="nldt_nn")    nldt_nn   = atoi(str_val.CStr());       // 34
+                else if (key=="nldt_n")     nldt_n    = atoi(str_val.CStr());       // 35
+                else if (key=="nldt_ll")    nldt_ll   = val;                        // 36
+                else if (key=="nldt_sch")   nldt_sch  = atoi(str_val.CStr());       // 37
+                else if (key=="nldt_m")     nldt_m    = val;                        // 38
+                else if (key=="maxit")      maxit     = atoi(str_val.CStr());       // 39
+                else if (key=="tolr")       tolr      = val;                        // 40
+                else if (key=="npath")    { npath     = (int)val;  reading_path = true; }
                 else throw new Fatal("InpFile::Read: Error in file <%s> @ line # %d: Key==%s in invalid",FileName,line_num,key.CStr());
             }
         }
         line_num++;
     }
-    if ((size_t)idxpath!=Path->Keys.Size()) throw new Fatal("InpFile::Read: Error in file <%s>: Not all Path data could be read for npath==%zd",FileName,Path->Keys.Size());
+    if ((size_t)idxpath!=Path->Keys.Size()) throw new Fatal("InpFile::Read: Error in file <%s>: Not all Path data could be read for npath==%zd",FileName,npath);
 
 
 #ifdef USE_WXWIDGETS
     Sync (/*Dat2Ctrl*/true);
     GPath->ReBuild ();
 #endif
+}
+
+inline void InpFile::GetIncs (int PathKey, double Div, Vec_t & dsig, Vec_t & deps, Array<bool> & PrescDeps, double & dpw, double & dSw, bool & PrescDpw, bool & PrescDSw) const
+{
+    // number of increments
+    SDPair const & path = (*Path)(Path->Keys[PathKey]);
+
+    // set prescribed increments
+    set_to_zero (dsig);
+    set_to_zero (deps);
+    PrescDeps = false,false,false, false,false,false;
+    dpw       = 0.0;
+    dSw       = 0.0;
+    PrescDpw  = false;
+    PrescDSw  = false;
+    if (path.HasKey("dsx")) { dsig(0) = path("dsx")/Div;                       }
+    if (path.HasKey("dsy")) { dsig(1) = path("dsy")/Div;                       }
+    if (path.HasKey("dsz")) { dsig(2) = path("dsz")/Div;                       }
+    if (path.HasKey("dex")) { deps(0) = path("dex")/Div;                       }
+    if (path.HasKey("dey")) { deps(1) = path("dey")/Div;  PrescDeps[1] = true; }
+    if (path.HasKey("dez")) { deps(2) = path("dez")/Div;  PrescDeps[2] = true; }
+    if (path.HasKey("dpw")) { dpw     = path("dpw")/Div;  PrescDpw     = true; }
+    if (path.HasKey("dSw")) { dSw     = path("dSw")/Div;  PrescDSw     = true; }
 }
 
 std::ostream & operator<< (std::ostream & os, InpFile const & IF)
@@ -431,8 +457,8 @@ inline InpFile::InpFile (wxFrame * Parent)
     ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_optdbl3   , "optdbl3  ", optdbl3  ); //  32
 
     // path
-    Path  = new GUI::WxDictTable;   Path->Transposed = true;
-    GPath = new GUI::WxDict (this, Path);
+    Path  = new GUI::WxDictTable;         Path->Transposed = false;
+    GPath = new GUI::WxDict (this, Path); GPath->FitCol    = true;
 
     // notebook
     ADD_WXNOTEBOOK (this, nbk0);

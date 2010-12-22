@@ -41,7 +41,7 @@ public:
 
     // Derived Methods
     int      GetNumberRows ();
-    int      GetNumberCols () { return Keys.Size(); }
+    int      GetNumberCols ();
     wxString GetValue      (int row, int col);
     void     SetValue      (int row, int col, wxString const & Str);
     bool     IsEmptyCell   (int row, int col) { return false; }
@@ -95,6 +95,17 @@ inline int WxDictTable::GetNumberRows ()
         if (it->second.size()>nrows) nrows = it->second.size();
     }
     return nrows;
+}
+
+inline int WxDictTable::GetNumberCols ()
+{
+    if (!Transposed) return Keys.Size();
+    size_t ncols = 0;
+    for (Dict_t::const_iterator it=begin(); it!=end(); ++it)
+    {
+        if (it->second.size()>ncols) ncols = it->second.size();
+    }
+    return ncols;
 }
 
 inline wxString WxDictTable::GetValue (int Row, int Col)
@@ -210,15 +221,16 @@ WxDict::WxDict (wxWindow * Parent, WxDictTable * tab)
     SetSizer          (szt);
     szt->Fit          (this);                                           
     szt->SetSizeHints (this);
-    ADD_WXCHECKBOX    (this, szr, ID_WXDICT_FITCOL, c0, "Fit columns to data", FitCol);
-    ADD_WXCHECKBOX    (this, szr, ID_WXDICT_TRANSP, c1, "Transposed",          Transp);
+    ADD_WXCHECKBOX    (this, szr, ID_WXDICT_TRANSP, c0, "Transposed",          Transp);
+    ADD_WXCHECKBOX    (this, szr, ID_WXDICT_FITCOL, c1, "Fit columns to data", FitCol);
     szt->Add          (szr);
 
     // create table and grid
     Tab = (tab==NULL ? new GUI::WxDictTable() : tab);
     Grd = new wxGrid (this, wxID_ANY);
     szt->Add (Grd, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
-    ReBuild ();
+    Transp = Tab->Transposed;
+    ReBuild (false);
 }
 
 void WxDict::ReBuild (bool ReadControls)

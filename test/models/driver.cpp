@@ -50,7 +50,6 @@ using FEM::PROB;
 using FEM::GEOM;
 const double True = 1.0;
 
-
 void zTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double dp, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs, double dexy=0., double deyz=0., double dezx=0.)
 {
     Mat_t D;
@@ -60,7 +59,6 @@ void zTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, doubl
     double dsx, dsy, dsz, dsxy, dsyz, dszx, dex, dey; 
     if (fabs(fabs(LodeDeg)-90.0)<1.0e-14)
     {
-        //printf("--------------------------------------\n");
         dsx  = -((D(0,0)*(D(1,5)*D(2,1)-D(1,1)*D(2,5))+D(0,1)*(D(1,0)*D(2,5)-D(1,5)*D(2,0))+D(0,5)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dezx+(D(0,0)*(D(1,2)*D(2,1)-D(1,1)*D(2,2))+D(0,1)*(D(1,0)*D(2,2)-D(1,2)*D(2,0))+D(0,2)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dez+ (D(0,0)*(D(1,4)*D(2,1)-D(1,1)*D(2,4))+D(0,1)*(D(1,0)*D(2,4)-D(1,4)*D(2,0))+D(0,4)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*deyz+(D(0,0)*(D(1,3)*D(2,1)-D(1,1)*D(2,3))+D(0,1)*(D(1,0)*D(2,3)-D(1,3)*D(2,0))+D(0,3)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dexy+D(0,0)*D(1,1)*c-D(0,1)*D(1,0)*c)/(D(1,0)*D(2,1)+D(0,0)*(-D(2,1)-2*D(1,1))+D(0,1)*(D(2,0)+2*D(1,0))-D(1,1)*D(2,0));
         dsy  = -((D(0,0)*(D(1,5)*D(2,1)-D(1,1)*D(2,5))+D(0,1)*(D(1,0)*D(2,5)-D(1,5)*D(2,0))+D(0,5)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dezx+(D(0,0)*(D(1,2)*D(2,1)-D(1,1)*D(2,2))+D(0,1)*(D(1,0)*D(2,2)-D(1,2)*D(2,0))+D(0,2)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dez+ (D(0,0)*(D(1,4)*D(2,1)-D(1,1)*D(2,4))+D(0,1)*(D(1,0)*D(2,4)-D(1,4)*D(2,0))+D(0,4)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*deyz+(D(0,0)*(D(1,3)*D(2,1)-D(1,1)*D(2,3))+D(0,1)*(D(1,0)*D(2,3)-D(1,3)*D(2,0))+D(0,3)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dexy+D(0,0)*D(1,1)*c-D(0,1)*D(1,0)*c)/(D(1,0)*D(2,1)+D(0,0)*(-D(2,1)-2*D(1,1))+D(0,1)*(D(2,0)+2*D(1,0))-D(1,1)*D(2,0));
         dsz  =  ((D(0,0)*(2*D(1,5)*D(2,1)-2*D(1,1)*D(2,5))+D(0,1)*(2*D(1,0)*D(2,5)-2*D(1,5)*D(2,0))+D(0,5)*(2*D(1,1)*D(2,0)-2*D(1,0)*D(2,1)))*dezx+ (D(0,0)*(2*D(1,2)*D(2,1)-2*D(1,1)*D(2,2))+D(0,1)*(2*D(1,0)*D(2,2)-2*D(1,2)*D(2,0))+D(0,2)*(2*D(1,1)*D(2,0)-2*D(1,0)*D(2,1)))*dez+(D(0,0)*(2*D(1,4)*D(2,1)-2*D(1,1)*D(2,4))+D(0,1)*(2*D(1,0)*D(2,4)-2*D(1,4)*D(2,0))+D(0,4)*(2*D(1,1)*D(2,0)-2*D(1,0)*D(2,1)))*deyz+ (D(0,0)*(2*D(1,3)*D(2,1)-2*D(1,1)*D(2,3))+D(0,1)*(2*D(1,0)*D(2,3)-2*D(1,3)*D(2,0))+D(0,3)*(2*D(1,1)*D(2,0)-2*D(1,0)*D(2,1)))*dexy+D(1,0)*D(2,1)*c-D(0,0)*D(2,1)*c-D(1,1)*D(2,0)*c+D(0,1)*D(2,0)*c)/(D(1,0)*D(2,1)+D(0,0)*(-D(2,1)-2*D(1,1))+D(0,1)*(D(2,0)+2*D(1,0))- D(1,1)*D(2,0));
@@ -95,7 +93,6 @@ void zTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, doubl
     Vec_t deps_tmp(deps), dsig_tmp(dsig);
     Mdl->TgIncs (Sta, deps_tmp, dsig_tmp, divs);
 
-    //printf("deps=[%g, %g, %g],  dsig=[%g, %g, %g]\n",deps(0),deps(1),deps(2),dsig(0),dsig(1),dsig(2));
 }
 
 void kTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, double k, double dez, Vec_t & deps, Vec_t & dsig, Vec_t & divs)
@@ -110,7 +107,6 @@ void kTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, doubl
     double n = SQ3*sqrt(1.+m*m)/(SQ2*k);
     double c = n-1.;
     double d = n+1.;
-    //printf("m = %g\n",m);
     //if (fabs(fabs(LodeDeg)-90.0)<1.0e-14)
     //{
         //dsx = -((D(0,0)*(D(1,2)*D(2,1)-D(1,1)*D(2,2))+D(0,1)*(D(1,0)*D(2,2)-D(1,2)*D(2,0))+D(0,2)*(D(1,1)*D(2,0)-D(1,0)*D(2,1)))*dez)/(D(0,1)*(D(1,0)*(d-c)+D(2,0))+D(0,0)*(D(1,1)*(c-d)-D(2,1))+D(1,0)*D(2,1)-D(1,1)*D(2,0));
@@ -187,7 +183,6 @@ void kTgIncs (Model const * Mdl, EquilibState const * Sta, double LodeDeg, doubl
     dsig = dsx, dsy, dsz, 0., 0., 0.;
     deps = dex, dey, dez, 0., 0., 0.;
 
-    //printf("diff = %g, %g, %g, %g, %g\n",dsx-dsig(0), dsy-dsig(1), dsz-dsig(2), dex-deps(0), dey-deps(1));
     
     // calc divs
     Vec_t deps_tmp(deps), dsig_tmp(dsig);
@@ -264,7 +259,6 @@ void TgIncs (Model const * Mdl, EquilibState const * Sta, double dT, Vec_t const
     }
 }
 
-
 class BCF : public FEM::BCFuncs
 {
 public:
@@ -285,11 +279,15 @@ int main(int argc, char **argv) try
     if (argc>1) inp_fname  = argv[1];
     if (argc>2) mat_fname  = argv[2];
     if (argc>3) pcam0 = atof(argv[3]);
+    String fkey = inp_fname.substr (0, inp_fname.find(".inp"));
 
     // read input file
     InpFile inp;
     inp.Read (inp_fname.CStr());
+
+    // correct default values
     if (inp.stol<0) inp.stol = 1.0e-5;
+    if (inp.ninc<0) inp.ninc = 20;
 
     // parse materials file (with initial values)
     Dict prms, inis;
@@ -310,19 +308,17 @@ int main(int argc, char **argv) try
 
     // output
     cout << inp;
-    printf("\nMaterial data:\n");
-    printf("  name = %s\n",model_name.CStr());
-    if (inp.flwid>0) printf("  flow = %s\n",flw_name.CStr());
-    printf("  prms : "); cout << prms << endl;
-    printf("  inis : "); cout << inis << endl;
-    printf("\nPath:\n");
-    cout << inp.Path;
+    cout << "\nMaterial data:\n";
+    cout << "  name = " << model_name << endl;   if (inp.flwid>0)
+    cout << "  flow = " << flw_name   << endl;
+    cout << "  prms = " << prms       << endl;
+    cout << "  inis = " << inis       << endl << endl;
 
-    // auxiliar variables
-    Vec_t DEps(6), DSig(6); // total increments for one stage
-    Array<bool>   pDEps(6); // prescribed strain components ?
-    bool          ppw, pSw; // prescribed water pressure and saturation ?
-    double        Dpw, DSw; // total increments of pw and Sw for one stage
+    // auxiliary variables
+    Vec_t         dsig(6), deps(6);   // increments for each path (total divided by ninc)
+    Array<bool>   prescDeps(6);       // prescribed strain components ?
+    double        dpw, dSw;           // increments of pw and Sw for each path (total divided by ninc)
+    bool          prescDpw, prescDSw; // prescribed water pressure and saturation ?
 
     // FEM using one single element
     if (inp.fem)
@@ -340,10 +336,8 @@ int main(int argc, char **argv) try
 
         // mesh
         if (!(inp.ndiv==1 || inp.ndiv==3)) throw new Fatal("NDiv must be either 1 or 3");
-        int option = 0; // Vol=0, Surf=1, Both=2
         Mesh::Structured mesh(3);
-        mesh.GenBox   (inp.o2, inp.ndiv,inp.ndiv,inp.ndiv, 1.0,1.0,1.0);
-        mesh.WriteVTU ("driver_mesh",option);
+        mesh.GenBox (inp.o2, inp.ndiv,inp.ndiv,inp.ndiv, 1.0,1.0,1.0);
 
         // properties
         Dict prps;
@@ -370,9 +364,8 @@ int main(int argc, char **argv) try
         else                 bcf.pw = 0.0;
 
         // domain and solver
-        FEM::Domain dom(mesh, prps, prms, inis, "driver", &out_nods);
+        FEM::Domain dom(mesh, prps, prms, inis, fkey.CStr(), &out_nods);
         FEM::Solver sol(dom);
-        dom.WriteVTU ("driver_initial");
         sol.CteTg = inp.ctetg;
 
         // dynamic scheme
@@ -402,28 +395,13 @@ int main(int argc, char **argv) try
         }
 
         // solve
-        for (size_t i=0; i<inp.Path.Size(); ++i)
+        for (size_t i=0; i<inp.Path->Keys.Size(); ++i)
         {
-            // number of increments
-            int ninc = (inp.Path[i].ninc<0 ? inp.ninc : inp.Path[i].ninc);
-
             // set prescribed increments
-            set_to_zero (DEps);
-            set_to_zero (DSig);
-            pDEps = false,false,false, false,false,false;
-            DSig(0) = inp.Path[i].dsx;
-            DSig(1) = inp.Path[i].dsy;
-            DSig(2) = inp.Path[i].dsz;
-            if (fabs(inp.Path[i].dex)>1.0e-10) { DEps(0) = inp.Path[i].dex;  pDEps[0] = true; }
-            if (fabs(inp.Path[i].dey)>1.0e-10) { DEps(1) = inp.Path[i].dey;  pDEps[1] = true; }
-            if (fabs(inp.Path[i].dez)>1.0e-10) { DEps(2) = inp.Path[i].dez;  pDEps[2] = true; }
-            ppw = (inp.Path[i].HasDpw);
-            pSw = (inp.Path[i].HasDSw);
-            if (ppw) Dpw = inp.Path[i].dpw;
-            if (pSw) DSw = inp.Path[i].dSw;
+            inp.GetIncs (inp.Path->Keys[i], 1.0, dsig, deps, prescDeps, dpw, dSw, prescDpw, prescDSw);
 
             // set solver
-            if (ppw) sol.DScheme = FEM::Solver::RK_t; // it has to be RK because GN22 doesn't account for U BCs yet
+            if (prescDpw) sol.DScheme = FEM::Solver::RK_t; // it has to be RK because GN22 doesn't account for U BCs yet
 
             // solve
             Dict bcs;
@@ -438,35 +416,35 @@ int main(int argc, char **argv) try
             }
             if (inp.dyn)
             {
-                if (pSw) throw new Fatal("FEM/HM: prescribed Sw is not available");
-                else if (ppw)
+                if (prescDSw) throw new Fatal("FEM/HM: prescribed Sw is not available yet");
+                else if (prescDpw)
                 {
-                    bcf.pw += Dpw;
+                    bcf.pw += dpw;
                     bcs.Set(-11, "pw bcf", 0.0, True);
                     bcs.Set(-21, "pw bcf", 0.0, True);
                     bcs.Set(-31, "pw bcf", 0.0, True);
                 }
                 else
                 {
-                    if (pDEps[0]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-11, "ux multU", DEps(0), True);*/ else bcs.Set(-11, "qn bcf", DSig(0), True);
-                    if (pDEps[1]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-21, "uy multU", DEps(1), True);*/ else bcs.Set(-21, "qn bcf", DSig(1), True);
-                    if (pDEps[2]) throw new Fatal("Dyn: prescribed strain is not available yet"); /*bcs.Set(-31, "uz multU", DEps(2), True);*/ else bcs.Set(-31, "qn bcf", DSig(2), True);
+                    if (prescDeps[0]) throw new Fatal("Dyn: prescribed strain is not available yet"); else bcs.Set(-11, "qn bcf", dsig(0), True);
+                    if (prescDeps[1]) throw new Fatal("Dyn: prescribed strain is not available yet"); else bcs.Set(-21, "qn bcf", dsig(1), True);
+                    if (prescDeps[2]) throw new Fatal("Dyn: prescribed strain is not available yet"); else bcs.Set(-31, "qn bcf", dsig(2), True);
                 }
             }
             else
             {
-                if (pDEps[0]) bcs.Set(-11, "ux", DEps(0)); else bcs.Set(-11, "qn", DSig(0));
-                if (pDEps[1]) bcs.Set(-21, "uy", DEps(1)); else bcs.Set(-21, "qn", DSig(1));
-                if (pDEps[2]) bcs.Set(-31, "uz", DEps(2)); else bcs.Set(-31, "qn", DSig(2));
+                if (prescDeps[0]) bcs.Set(-11, "ux", deps(0)); else bcs.Set(-11, "qn", dsig(0));
+                if (prescDeps[1]) bcs.Set(-21, "uy", deps(1)); else bcs.Set(-21, "qn", dsig(1));
+                if (prescDeps[2]) bcs.Set(-31, "uz", deps(2)); else bcs.Set(-31, "qn", dsig(2));
             }
             dom.SetBCs   (bcs);
             dom.PrintBCs (cout, inp.tf);
             sol.SSOut = inp.ssout;
-            if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout, "driver");
+            if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout, fkey.CStr());
             else
             {
-                sol.Solve    (ninc);
-                dom.WriteVTU ("driver_final");
+                sol.Solve    (inp.ninc);
+                dom.WriteVTU (fkey.CStr());
             }
         }
     }
@@ -491,7 +469,6 @@ int main(int argc, char **argv) try
 
         // auxiliar variables
         size_t niv = size(sta.Ivs);                 // number of internal values
-        Vec_t deps   (6), dsig   (6);               // subincrements
         Vec_t deps_tr(6), dsig_tr(6), divs_tr(niv); // trial increments
         Vec_t deps_1 (6), dsig_1 (6), divs_1 (niv); // intermediate increments
         Vec_t deps_2 (6), dsig_2 (6), divs_2 (niv); // ME increments
@@ -507,59 +484,37 @@ int main(int argc, char **argv) try
 
         // for each state
         double lode, dp, dez, dexy, deyz, dezx, koct;
-        for (size_t i=0; i<inp.Path.Size(); ++i)
+        for (size_t i=0; i<inp.Path->Keys.Size(); ++i)
         {
-            // number of increments
-            int ninc = (inp.Path[i].ninc<0 ? inp.ninc : inp.Path[i].ninc);
-
             // set prescribed increments
-            set_to_zero (DEps);
-            set_to_zero (DSig);
-            set_to_zero (deps);
-            set_to_zero (dsig);
-            pDEps = false,false,false, false,false,false;
-            pSw   = (inp.Path[i].HasDSw);
-            bool zpath = inp.Path[i].zPath;
-            bool kpath = inp.Path[i].kPath;
+            SDPair const & path = (*inp.Path)(inp.Path->Keys[i]);
+            bool zpath = path.HasKey("k");
+            bool kpath = path.HasKey("dp");
             if (kpath)
             {
-                lode = inp.Path[i].lode;
-                koct = inp.Path[i].k;
-                dez  = inp.Path[i].dez/ninc;
+                lode = path("lode");
+                koct = path("k");
+                dez  = path("dez")/inp.ninc;
             }
             else if (zpath)
             {
-                lode = inp.Path[i].lode;
-                dp   = inp.Path[i].dp  /ninc;
-                dez  = inp.Path[i].dez /ninc;
-                dexy = inp.Path[i].dexy/ninc;
-                deyz = inp.Path[i].deyz/ninc;
-                dezx = inp.Path[i].dezx/ninc;
+                lode = path("lode");
+                dp   = path("dp")  /inp.ninc;
+                dez  = path("dez") /inp.ninc;
+                dexy = path("dexy")/inp.ninc;
+                deyz = path("deyz")/inp.ninc;
+                dezx = path("dezx")/inp.ninc;
             }
-            else
-            {
-                DSig(0) = inp.Path[i].dsx;
-                DSig(1) = inp.Path[i].dsy;
-                DSig(2) = inp.Path[i].dsz;
-                if (fabs(inp.Path[i].dex)>1.0e-10) { DEps(0) = inp.Path[i].dex;  pDEps[0] = true; }
-                if (fabs(inp.Path[i].dey)>1.0e-10) { DEps(1) = inp.Path[i].dey;  pDEps[1] = true; }
-                if (fabs(inp.Path[i].dez)>1.0e-10) { DEps(2) = inp.Path[i].dez;  pDEps[2] = true; }
-                deps = DEps/ninc;
-                dsig = DSig/ninc;
-            }
-
-            //cout << "deps = " << PrintVector(deps);
-            //cout << "dsig = " << PrintVector(dsig);
-            //cout << "dez  = " << dez << endl;
+            else inp.GetIncs (inp.Path->Keys[i], inp.ninc, dsig, deps, prescDeps, dpw, dSw, prescDpw, prescDSw);
 
             // for each increment
             cout << "Increment = ";
-            for (int j=0; j<ninc; ++j)
+            for (int j=0; j<inp.ninc; ++j)
             {
                 // trial increments
-                if      (kpath) kTgIncs (mdl, &sta, lode, koct, dez,         deps_tr, dsig_tr, divs_tr);
-                else if (zpath) zTgIncs (mdl, &sta, lode, dp,   dez,         deps_tr, dsig_tr, divs_tr, dexy, deyz, dezx);
-                else             TgIncs (mdl, &sta,  1.0, deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
+                if      (kpath) kTgIncs (mdl, &sta, lode, koct, dez,             deps_tr, dsig_tr, divs_tr);
+                else if (zpath) zTgIncs (mdl, &sta, lode, dp,   dez,             deps_tr, dsig_tr, divs_tr, dexy, deyz, dezx);
+                else             TgIncs (mdl, &sta,  1.0, deps, dsig, prescDeps, deps_tr, dsig_tr, divs_tr);
 
                 // loading-unloading ?
                 double aint = -1.0; // no intersection
@@ -569,9 +524,9 @@ int main(int argc, char **argv) try
                 if (aint>0.0 && aint<1.0)
                 {
                     // update to intersection
-                    if      (kpath) kTgIncs (mdl, &sta, lode,    koct, dez*aint,    deps_tr, dsig_tr, divs_tr);
-                    else if (zpath) zTgIncs (mdl, &sta, lode, dp*aint, dez*aint,    deps_tr, dsig_tr, divs_tr, dexy*aint, deyz*aint, dezx*aint);
-                    else             TgIncs (mdl, &sta, aint,    deps, dsig, pDEps, deps_tr, dsig_tr, divs_tr);
+                    if      (kpath) kTgIncs (mdl, &sta, lode,    koct, dez*aint,     deps_tr, dsig_tr, divs_tr);
+                    else if (zpath) zTgIncs (mdl, &sta, lode, dp*aint, dez*aint,     deps_tr, dsig_tr, divs_tr, dexy*aint, deyz*aint, dezx*aint);
+                    else             TgIncs (mdl, &sta, aint, deps, dsig, prescDeps, deps_tr, dsig_tr, divs_tr);
                     sta.Eps += deps_tr;
                     sta.Sig += dsig_tr;
                     sta.Ivs += divs_tr;
@@ -592,9 +547,6 @@ int main(int argc, char **argv) try
                 // update stress path in model
                 mdl->UpdatePath (&sta, deps_tr, dsig_tr);
 
-                //cout << "deps_tr = " << PrintVector(deps_tr);
-                //cout << "dsig_tr = " << PrintVector(dsig_tr);
-
                 // for each pseudo time T
                 double T  = 0.0;
                 double dT = dTini;
@@ -605,15 +557,15 @@ int main(int argc, char **argv) try
                     if (T>=1.0) break;
 
                     // FE and ME steps
-                    if      (kpath) kTgIncs (mdl, &sta, lode,  koct, dez*dT,   deps_1, dsig_1, divs_1);
-                    else if (zpath) zTgIncs (mdl, &sta, lode, dp*dT, dez*dT,   deps_1, dsig_1, divs_1, dexy*dT, deyz*dT, dezx*dT);
-                    else             TgIncs (mdl, &sta, dT, deps, dsig, pDEps, deps_1, dsig_1, divs_1);
+                    if      (kpath) kTgIncs (mdl, &sta, lode,  koct, dez*dT,       deps_1, dsig_1, divs_1);
+                    else if (zpath) zTgIncs (mdl, &sta, lode, dp*dT, dez*dT,       deps_1, dsig_1, divs_1, dexy*dT, deyz*dT, dezx*dT);
+                    else             TgIncs (mdl, &sta, dT, deps, dsig, prescDeps, deps_1, dsig_1, divs_1);
                     sta_1.Eps = sta.Eps + deps_1;
                     sta_1.Sig = sta.Sig + dsig_1;
                     sta_1.Ivs = sta.Ivs + divs_1;
-                    if      (kpath) kTgIncs (mdl, &sta_1, lode,  koct, dez*dT,   deps_2, dsig_2, divs_2);
-                    else if (zpath) zTgIncs (mdl, &sta_1, lode, dp*dT, dez*dT,   deps_2, dsig_2, divs_2, dexy*dT, deyz*dT, dezx*dT);
-                    else             TgIncs (mdl, &sta_1, dT, deps, dsig, pDEps, deps_2, dsig_2, divs_2);
+                    if      (kpath) kTgIncs (mdl, &sta_1, lode,  koct, dez*dT,       deps_2, dsig_2, divs_2);
+                    else if (zpath) zTgIncs (mdl, &sta_1, lode, dp*dT, dez*dT,       deps_2, dsig_2, divs_2, dexy*dT, deyz*dT, dezx*dT);
+                    else             TgIncs (mdl, &sta_1, dT, deps, dsig, prescDeps, deps_2, dsig_2, divs_2);
                     sta_ME.Eps = sta.Eps + 0.5*(deps_1+deps_2);
                     sta_ME.Sig = sta.Sig + 0.5*(dsig_1+dsig_2);
                     sta_ME.Ivs = sta.Ivs + 0.5*(divs_1+divs_2);
@@ -671,7 +623,7 @@ int main(int argc, char **argv) try
         }
 
         // write output file
-        String res_fname = inp_fname.substr(0,inp_fname.size()-3) + "res";
+        String res_fname = fkey + ".res";
         std::ofstream of(res_fname.CStr(), std::ios::out);
         of << oss.str();
         of.close();

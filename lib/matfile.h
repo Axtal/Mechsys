@@ -361,9 +361,11 @@ inline void MatFile::AddMdl ()
 
 inline void MatFile::OnDel (wxCommandEvent & Event)
 {
-    wxArrayInt sel = DPrms->Grd->GetSelectedCols();
-    DPrms->Tab->DeleteCols (sel);
-    DInis->Tab->DeleteCols (sel);
+    wxArrayInt sel = (DPrms->Tab->Transposed ? DPrms->Grd->GetSelectedRows() : DPrms->Grd->GetSelectedCols());
+    if (DPrms->Tab->Transposed) DPrms->Tab->DeleteRows (sel);
+    else                        DPrms->Tab->DeleteCols (sel);
+    if (DInis->Tab->Transposed) DInis->Tab->DeleteRows (sel);
+    else                        DInis->Tab->DeleteCols (sel);
     DPrms->ReBuild ();
     DInis->ReBuild ();
 }
