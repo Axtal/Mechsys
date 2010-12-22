@@ -31,6 +31,7 @@
 #include <mechsys/models/unconv02.h>
 #include <mechsys/models/unconv03.h>
 #include <mechsys/models/unconv04.h>
+#include <mechsys/models/driver.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/numstreams.h>
@@ -275,10 +276,12 @@ int main(int argc, char **argv) try
     // input filename
     String inp_fname("driver.inp");
     String mat_fname("materials.inp");
-    double pcam0 = 100.0;
-    if (argc>1) inp_fname  = argv[1];
-    if (argc>2) mat_fname  = argv[2];
-    if (argc>3) pcam0 = atof(argv[3]);
+    double pcam0    = 100.0;
+    bool   new_algo = false;
+    if (argc>1) inp_fname  =      argv[1];
+    if (argc>2) mat_fname  =      argv[2];
+    if (argc>3) pcam0      = atof(argv[3]);
+    if (argc>4) new_algo   = atoi(argv[4]);
     String fkey = inp_fname.substr (0, inp_fname.find(".inp"));
 
     // read input file
@@ -452,6 +455,9 @@ int main(int argc, char **argv) try
     // single point integration
     else
     {
+        // driver
+        Driver drv(model_name, prms(-1), inis(-1));
+
         // allocate model and set initial values
         Model * mdl = AllocModel (model_name, 3, prms(-1));
         EquilibState sta(3);
@@ -511,6 +517,17 @@ int main(int argc, char **argv) try
             cout << "Increment = ";
             for (int j=0; j<inp.ninc; ++j)
             {
+                if (new_algo)
+                {
+                    //drv.Linear = true;
+                    drv.PrescDEps = prescDeps;
+                    drv.DEps      = deps;
+                    drv.DSig      = dsig;
+                    drv.Update ();
+                    drv.Sta->Output (oss, false, "%17.8e"); // false => header
+                    continue;
+                }
+
                 // trial increments
                 if      (kpath) kTgIncs (mdl, &sta, lode, koct, dez,             deps_tr, dsig_tr, divs_tr);
                 else if (zpath) zTgIncs (mdl, &sta, lode, dp,   dez,             deps_tr, dsig_tr, divs_tr, dexy, deyz, dezx);
