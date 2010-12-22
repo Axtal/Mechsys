@@ -537,7 +537,20 @@ inline void InpFile::OnSave (wxCommandEvent & Event)
         of << "nldt_m    = " << nldt_m    << std::endl; // 38
         of << "maxit     = " << maxit     << std::endl; // 39
         of << "tolr      = " << tolr      << std::endl; // 40
-        of << "path      =\n"<< (*Path)   << std::endl;
+        of << "npath     = " << Path->Keys.Size() << std::endl;
+
+        String buf;
+        for (size_t i=0; i<Path->Keys.Size(); ++i)
+        {
+            SDPair const & path = (*Path)(Path->Keys[i]);
+            of << std::endl;
+            of << "ndat = " << path.Keys.Size() << std::endl;
+            for (size_t j=0; j<path.Keys.Size(); ++j)
+            {
+                buf.Printf("  %-5s = %g\n", path.Keys[j].CStr(), path(path.Keys[j]));
+                of << buf;
+            }
+        }
         of.close();
     }
 }

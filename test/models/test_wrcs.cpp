@@ -34,8 +34,8 @@ using Util::SQ2;
 using Util::SQ3;
 using Util::SQ6;
 using Util::PI;
-using Util::TRUE;
-using Util::FALSE;
+const double TRUE  = 1.0;
+const double FALSE = 0.0;
 
 int main(int argc, char **argv) try
 {

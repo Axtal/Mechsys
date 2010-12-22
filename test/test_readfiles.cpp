@@ -48,7 +48,7 @@ int main(int argc, char **argv) try
     cout << mat << endl;
 
     cout << "\n######################### FO1.CTP.01.dat ###########################\n";
-    cout << "sx = \n" << dat.sx[0] << endl;
+    cout << "sig = \n" << dat.sig[0] << endl;
 
     return 0;
 }

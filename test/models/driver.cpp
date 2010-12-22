@@ -483,7 +483,7 @@ int main(int argc, char **argv) try
         double MaxSS  = 2000;
 
         // for each state
-        double lode, dp, dez, dexy, deyz, dezx, koct;
+        double lode=0, dp=0, dez=0, dexy=0, deyz=0, dezx=0, koct=0;
         for (size_t i=0; i<inp.Path->Keys.Size(); ++i)
         {
             // set prescribed increments

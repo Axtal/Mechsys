@@ -45,9 +45,9 @@ public:
 
     // Events
     void OnQuit    (wxCommandEvent & event) { Close (true); }
-    void OnAbout   (wxCommandEvent & event) { WXMSG ("Testing PlotXY", "About wxplotxy"); }
+    void OnAbout   (wxCommandEvent & event) { WXMSG ("Testing PlotXY"); }
     void OnShowAll (wxCommandEvent & Event) { SHOW_ALL_WXPANES (Aui); }
-    void OnRun     (wxCommandEvent & Event) { WXMSG ("Method not implemented", "Run"); }
+    void OnRun     (wxCommandEvent & Event) { WXMSG ("Method not implemented"); }
     void OnAdd     (wxCommandEvent & Event);
     void OnDel     (wxCommandEvent & Event);
     void OnReBuild (wxCommandEvent & Event) { ReBuild(); }
