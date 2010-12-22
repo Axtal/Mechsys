@@ -37,7 +37,7 @@ class WxDictTable : public wxGridTableBase, public Dict
 {
 public:
     // Constructor & Destructor
-    WxDictTable () : Val2Name(NULL) {}
+    WxDictTable () : Val2Name(NULL), Transposed(false) {}
 
     // Derived Methods
     int      GetNumberRows ();
@@ -48,15 +48,18 @@ public:
 
     // Derived formatting methods
     wxString GetColLabelValue (int col);
+    wxString GetRowLabelValue (int row);
 
     // operators
     void operator= (Dict const & R); ///< Assignment operator
 
     // Methods
     void DeleteCols (wxArrayInt const & ColsToDelete);
+    void DeleteRows (wxArrayInt const & RowsToDelete);
 
     // Data
-    SDPair const * Val2Name; ///< Maps 'name' value to description of subkey 'name'
+    SDPair const * Val2Name;   ///< Maps 'name' value to description of subkey 'name'
+    bool           Transposed; ///< Show keys along lines instead columns
 };
 
 class WxDict : public wxWindow
@@ -72,6 +75,7 @@ public:
     WxDictTable * Tab;    ///< The table
     wxGrid      * Grd;    ///< The grid
     bool          FitCol; ///< Fit data to columns
+    bool          Transp; ///< Tranposed
 
     // Events
     void OnReBuild (wxCommandEvent & Event) { ReBuild (); }
@@ -84,6 +88,7 @@ public:
 
 inline int WxDictTable::GetNumberRows ()
 {
+    if (Transposed) return Keys.Size();
     size_t nrows = 0;
     for (Dict_t::const_iterator it=begin(); it!=end(); ++it)
     {
@@ -92,8 +97,11 @@ inline int WxDictTable::GetNumberRows ()
     return nrows;
 }
 
-inline wxString WxDictTable::GetValue (int row, int col)
+inline wxString WxDictTable::GetValue (int Row, int Col)
 {
+    int row = Row;
+    int col = Col;
+    if (Transposed) { row=Col; col=Row; }
     SDPair const & pair = (*this)(Keys[col]);
     wxString buf;
     if (pair.Keys.Size()>(size_t)row)
@@ -110,8 +118,11 @@ inline wxString WxDictTable::GetValue (int row, int col)
     return buf;
 }
 
-inline void WxDictTable::SetValue (int row, int col, wxString const & Str)
+inline void WxDictTable::SetValue (int Row, int Col, wxString const & Str)
 {
+    int row = Row;
+    int col = Col;
+    if (Transposed) { row=Col; col=Row; }
     SDPair & pair = (*this)(Keys[col]);
     if (pair.Keys.Size()>(size_t)row)
     {
@@ -123,9 +134,21 @@ inline void WxDictTable::SetValue (int row, int col, wxString const & Str)
 
 inline wxString WxDictTable::GetColLabelValue (int col)
 {
+    if (Transposed) return wxGridTableBase::GetColLabelValue (col);
     if (Keys.Size()>(size_t)col)
     {
         wxString buf;  buf.Printf("%d", Keys[col]);
+        return buf;
+    }
+    return wxEmptyString;
+}
+
+inline wxString WxDictTable::GetRowLabelValue (int row)
+{
+    if (!Transposed) return wxGridTableBase::GetColLabelValue (row); // also Col => A, B, C, ...
+    if (Keys.Size()>(size_t)row)
+    {
+        wxString buf;  buf.Printf("%d", Keys[row]);
         return buf;
     }
     return wxEmptyString;
@@ -144,8 +167,17 @@ inline void WxDictTable::operator= (Dict const & R)
 
 inline void WxDictTable::DeleteCols (wxArrayInt const & ColsToDelete)
 {
+    if (Transposed) return;
     wxArrayInt keys_to_delete(ColsToDelete.size());
     for (size_t i=0; i<ColsToDelete  .size(); ++i) keys_to_delete[i] = Keys[ColsToDelete[i]];
+    for (size_t i=0; i<keys_to_delete.size(); ++i) Del(keys_to_delete[i]);
+}
+
+inline void WxDictTable::DeleteRows (wxArrayInt const & RowsToDelete)
+{
+    if (!Transposed) return;
+    wxArrayInt keys_to_delete(RowsToDelete.size());
+    for (size_t i=0; i<RowsToDelete  .size(); ++i) keys_to_delete[i] = Keys[RowsToDelete[i]];
     for (size_t i=0; i<keys_to_delete.size(); ++i) Del(keys_to_delete[i]);
 }
 
@@ -156,30 +188,36 @@ inline void WxDictTable::DeleteCols (wxArrayInt const & ColsToDelete)
 enum
 {
     ID_WXDICT_FITCOL = wxID_HIGHEST+3000,
+    ID_WXDICT_TRANSP,
 };
 
 BEGIN_EVENT_TABLE (WxDict, wxWindow)
     EVT_CHECKBOX (ID_WXDICT_FITCOL, WxDict::OnReBuild)
+    EVT_CHECKBOX (ID_WXDICT_TRANSP, WxDict::OnReBuild)
 END_EVENT_TABLE ()
 
 WxDict::WxDict (wxWindow * Parent, WxDictTable * tab)
     : wxWindow (Parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE),
-      FitCol   (false)
+      FitCol   (false),
+      Transp   (false)
 {
     // force validation of child controls
     SetExtraStyle (wxWS_EX_VALIDATE_RECURSIVELY);
 
     // controls
-    wxBoxSizer * sz = new wxBoxSizer(wxVERTICAL);
-    SetSizer         (sz);
-    sz->Fit          (this);                                           
-    sz->SetSizeHints (this);
-    ADD_WXCHECKBOX   (this, sz, ID_WXDICT_FITCOL, c0, "Fit columns to data", FitCol);
+    wxBoxSizer * szt = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer * szr = new wxBoxSizer(wxHORIZONTAL);
+    SetSizer          (szt);
+    szt->Fit          (this);                                           
+    szt->SetSizeHints (this);
+    ADD_WXCHECKBOX    (this, szr, ID_WXDICT_FITCOL, c0, "Fit columns to data", FitCol);
+    ADD_WXCHECKBOX    (this, szr, ID_WXDICT_TRANSP, c1, "Transposed",          Transp);
+    szt->Add          (szr);
 
     // create table and grid
     Tab = (tab==NULL ? new GUI::WxDictTable() : tab);
     Grd = new wxGrid (this, wxID_ANY);
-    sz->Add (Grd, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
+    szt->Add (Grd, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);
     ReBuild ();
 }
 
@@ -190,6 +228,7 @@ void WxDict::ReBuild (bool ReadControls)
     else              TransferDataToWindow   ();
 
     // rebuild grid based on updated table
+    Tab->Transposed = Transp;
     Grd->SetTable     (Tab, /*take_ownership*/false);
     Grd->ForceRefresh ();
 

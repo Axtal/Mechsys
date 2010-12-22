@@ -25,6 +25,7 @@
 // wxWidgets
 #ifdef USE_WXWIDGETS
   #include <mechsys/gui/common.h>
+  #include <mechsys/gui/wxdict.h>
 #endif
 
 // MechSys
@@ -32,6 +33,7 @@
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
 
+/*
 struct PathIncs
 {
     double dsx, dsy, dsz, dsxy, dsyz, dszx; // stress increments
@@ -48,6 +50,7 @@ struct PathIncs
                   lode(0.),dp(0.),zPath(false),ninc(-1),k(0.),kPath(false),
                   dpw(0.),dSw(0.),HasDpw(false),HasDSw(false) {}
 };
+*/
 
 #ifdef USE_WXWIDGETS
 class InpFile : public wxWindow
@@ -61,7 +64,8 @@ public:
      InpFile (wxFrame * Parent);
     ~InpFile () { Aui.UnInit(); }
 #else
-    InpFile () { Defaults(); }
+     InpFile () { Defaults(); Path = new Dict; }
+    ~InpFile () { delete Path; }
 #endif
 
     // Methods
@@ -111,22 +115,23 @@ public:
     int    maxit;       ///< 39 max num of iterations
     double tolr;        ///< 40 tolerance for residual
 
-    // path increments
-    Array<PathIncs> Path;
-
 #ifdef USE_WXWIDGETS
     // Methods
     void Sync (bool Dat2Ctrl=false) { if (Dat2Ctrl) TransferDataToWindow(); else TransferDataFromWindow(); } ///< Synchronise (validate/transfer) data in controls
 
     // Data
-    wxAuiManager  Aui;      ///< Aui manager
-    wxString      LstDir;   ///< Last accessed directory
-    String        FName;    ///< Input file (.inp) filename
+    wxAuiManager       Aui;    ///< Aui manager
+    wxString           LstDir; ///< Last accessed directory
+    String             FName;  ///< Input file (.inp) filename
+    GUI::WxDictTable * Path;   ///< Path increments
+    GUI::WxDict      * GPath;  ///< Grid for editing the path
 
     // Events
     void OnLoad (wxCommandEvent & Event);
     void OnSave (wxCommandEvent & Event);
     DECLARE_EVENT_TABLE();
+#else
+    Dict * Path; ///< Path increments
 #endif
 };
 
@@ -188,8 +193,8 @@ inline void InpFile::Read (char const * FileName)
     int    ndat         = -1;
     size_t line_num     = 1;
     int    idxdat       = 0;
-    size_t idxpath      = 0;
-    Path.Resize (0);
+    int    idxpath      = 0;
+    Path->clear();
     while (!inp_file.eof())
     {
         String line,key,equal,str_val;
@@ -203,32 +208,32 @@ inline void InpFile::Read (char const * FileName)
             if (reading_path)
             {
                 if      (key=="ndat") ndat = atoi(str_val.CStr());
-                else if (ndat<0) throw new Fatal("InpFile::Read: Error in file <%s> @ line # %d: key 'ndat' must come before data. Key==%s is in the wrong position",FileName,line_num,key.CStr());
-                else if (key=="kcam")  { Path[idxpath].k    = Util::SQ2*val/3.; Path[idxpath].kPath=true; Path[idxpath].zPath=false; idxdat++; }
-                else if (key=="dpcam") { Path[idxpath].dp   = val*Util::SQ3;    Path[idxpath].zPath=true; Path[idxpath].kPath=false; idxdat++; }
-                else if (key=="lode")  { Path[idxpath].lode = val;       idxdat++; if (val<30. || val>90.) throw new Fatal("Lode angle alpha must be inside [30,90]. Alpha==%g is invalid",val); }
-                else if (key=="dex")   { Path[idxpath].dex  = val/100.;  idxdat++; }
-                else if (key=="dey")   { Path[idxpath].dey  = val/100.;  idxdat++; }
-                else if (key=="dez")   { Path[idxpath].dez  = val/100.;  idxdat++; }
-                else if (key=="dexy")  { Path[idxpath].dexy = val/100.;  idxdat++; }
-                else if (key=="deyz")  { Path[idxpath].deyz = val/100.;  idxdat++; }
-                else if (key=="dezx")  { Path[idxpath].dezx = val/100.;  idxdat++; }
-                else if (key=="dsx")   { Path[idxpath].dsx  = val;       idxdat++; }
-                else if (key=="dsy")   { Path[idxpath].dsy  = val;       idxdat++; }
-                else if (key=="dsz")   { Path[idxpath].dsz  = val;       idxdat++; }
-                else if (key=="dsxy")  { Path[idxpath].dsxy = val;       idxdat++; }
-                else if (key=="dsyz")  { Path[idxpath].dsyz = val;       idxdat++; }
-                else if (key=="dszx")  { Path[idxpath].dszx = val;       idxdat++; }
-                else if (key=="dpw")   { Path[idxpath].dpw  = val;  Path[idxpath].HasDpw=true;  idxdat++; }
-                else if (key=="dSw")   { Path[idxpath].dSw  = val;  Path[idxpath].HasDSw=true;  idxdat++; }
-                else if (key=="ninc")  { Path[idxpath].ninc = atoi(str_val.CStr());  idxdat++; }
-                else throw new Fatal("InpFile::Read: Error in file<%s> @ line # %d: reading data of Path # %d. Key==%s is invalid",FileName,line_num,idxpath,key.CStr());
+                else if (ndat<0) throw new Fatal("InpFile::Read: Error in file <%s> at line # %d: key 'ndat' must come before data. '%s' is in the wrong place",FileName,line_num,key.CStr());
+                else if (key=="kcam")  { Path->Set(idxpath, "k"   , Util::SQ2*val/3.); idxdat++; }
+                else if (key=="dpcam") { Path->Set(idxpath, "dp"  , val*Util::SQ3   ); idxdat++; }
+                else if (key=="lode")  { Path->Set(idxpath, "lode", val             ); idxdat++; if (val<30. || val>90.) throw new Fatal("InpFile::Read: Error in file <%s> at line # %d: Lode angle alpha must be inside [30,90]. Alpha==%g is invalid",FileName,line_num,val); }
+                else if (key=="dex")   { Path->Set(idxpath, "dex" , val/100.        ); idxdat++; }
+                else if (key=="dey")   { Path->Set(idxpath, "dey" , val/100.        ); idxdat++; }
+                else if (key=="dez")   { Path->Set(idxpath, "dez" , val/100.        ); idxdat++; }
+                else if (key=="dexy")  { Path->Set(idxpath, "dexy", val/100.        ); idxdat++; }
+                else if (key=="deyz")  { Path->Set(idxpath, "deyz", val/100.        ); idxdat++; }
+                else if (key=="dezx")  { Path->Set(idxpath, "dezx", val/100.        ); idxdat++; }
+                else if (key=="dsx")   { Path->Set(idxpath, "dsx" , val             ); idxdat++; }
+                else if (key=="dsy")   { Path->Set(idxpath, "dsy" , val             ); idxdat++; }
+                else if (key=="dsz")   { Path->Set(idxpath, "dsz" , val             ); idxdat++; }
+                else if (key=="dsxy")  { Path->Set(idxpath, "dsxy", val             ); idxdat++; }
+                else if (key=="dsyz")  { Path->Set(idxpath, "dsyz", val             ); idxdat++; }
+                else if (key=="dszx")  { Path->Set(idxpath, "dszx", val             ); idxdat++; }
+                else if (key=="dpw")   { Path->Set(idxpath, "dpw" , val             ); idxdat++; }
+                else if (key=="dSw")   { Path->Set(idxpath, "dSw" , val             ); idxdat++; }
+                else if (key=="ninc")  { Path->Set(idxpath, "ninc", val             ); idxdat++; }
+                else throw new Fatal("InpFile::Read: Error in file <%s> at line # %d when reading data of Path # %d. Key==%s is invalid or in the wrong place",FileName,line_num,idxpath,key.CStr());
                 if (idxdat==ndat)
                 {
                     ndat   = -1;
                     idxdat = 0;
                     idxpath++;
-                    if (idxpath==Path.Size()) break;
+                    if ((size_t)idxpath==Path->Keys.Size()) break;
                 }
             }
             else
@@ -273,44 +278,19 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="nldt_m")     nldt_m    = val;                                     // 38
                 else if (key=="maxit")      maxit     = atoi(str_val.CStr());                    // 39
                 else if (key=="tolr")       tolr      = val;                                     // 40
-                else if (key=="npath")
-                {
-                    Path.Resize ((size_t)val);
-                    reading_path = true;
-                }
+                else if (key=="npath")      reading_path = true;
                 else throw new Fatal("InpFile::Read: Error in file <%s> @ line # %d: Key==%s in invalid",FileName,line_num,key.CStr());
             }
         }
         line_num++;
     }
-    if (idxpath!=Path.Size()) throw new Fatal("InpFile::Read: Error in file <%s>: Not all Path data could be read for npath==%d",FileName,Path.Size());
+    if ((size_t)idxpath!=Path->Keys.Size()) throw new Fatal("InpFile::Read: Error in file <%s>: Not all Path data could be read for npath==%zd",FileName,Path->Keys.Size());
 
 
 #ifdef USE_WXWIDGETS
     Sync (/*Dat2Ctrl*/true);
+    GPath->ReBuild ();
 #endif
-}
-
-std::ostream & operator<< (std::ostream & os, PathIncs const & P)
-{
-    os << "ninc="<<P.ninc << " ";
-    if      (P.kPath) { os << "lode="<<P.lode << " kcam="<<P.k*3./Util::SQ2 << " dez="<<P.dez << std::endl; }
-    else if (P.zPath) { os << "lode="<<P.lode << " dpcam="<<P.dp/Util::SQ3  << " dez="<<P.dez << std::endl; }
-    else
-    {
-        os << "ds=["<<P.dsx << " "<<P.dsy << " "<<P.dsz << " "<<P.dsxy << " "<<P.dsyz << " "<<P.dszx << "] ";
-        os << "de=["<<P.dex << " "<<P.dey << " "<<P.dez << " "<<P.dexy << " "<<P.deyz << " "<<P.dezx << "]";
-    }
-    if (P.HasDpw) os << " dpw=" << P.dpw << " ";
-    if (P.HasDSw) os << " dSw=" << P.dSw << " ";
-    os << "\n";
-    return os;
-}
-
-std::ostream & operator<< (std::ostream & os, Array<PathIncs> const & A)
-{
-    for (size_t i=0; i<A.Size(); ++i) os << "  " << A[i];
-    return os;
 }
 
 std::ostream & operator<< (std::ostream & os, InpFile const & IF)
@@ -355,6 +335,7 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     if (IF.nldt_m      >0 ) os << "nldt_m    = " << IF.nldt_m    << "\n"; //  38
     if (IF.maxit       >0 ) os << "maxit     = " << IF.maxit     << "\n"; //  39
     if (IF.tolr        >=0) os << "tolr      = " << IF.tolr      << "\n"; //  40
+    os << "path      =\n"<< (*IF.Path) << std::endl;
     return os;
 }
 
@@ -449,20 +430,25 @@ inline InpFile::InpFile (wxFrame * Parent)
     ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_optdbl2   , "optdbl2  ", optdbl2  ); //  31
     ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_optdbl3   , "optdbl3  ", optdbl3  ); //  32
 
+    // path
+    Path  = new GUI::WxDictTable;   Path->Transposed = true;
+    GPath = new GUI::WxDict (this, Path);
+
     // notebook
     ADD_WXNOTEBOOK (this, nbk0);
-    //ADD_WXNOTEBOOK (this, nbk1);
+    ADD_WXNOTEBOOK (this, nbk1);
     nbk0->AddPage  (p_mai, "Main",              false);
     nbk0->AddPage  (p_loc, "Local Integration", false);
     nbk0->AddPage  (p_oth, "Others",            false);
     nbk0->AddPage  (p_fem, "FEM Solution",      false);
     nbk0->AddPage  (p_nls, "Nonlinear Steps",   false);
     nbk0->AddPage  (p_rfi, "Reference Files",   false);
+    nbk1->AddPage  (GPath, "Path",              false);
 
     // commit all changes to wxAuiManager
     Aui.AddPane (pnl,  wxAuiPaneInfo().Name("cpnl").Caption("cpnl").Top().MinSize(wxSize(100,50)).DestroyOnClose(false).CaptionVisible(false) .CloseButton(false));
     Aui.AddPane (nbk0, wxAuiPaneInfo().Name("nbk0").Caption("nbk0").Centre().Position(0).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
-    //Aui.AddPane (nbk1, wxAuiPaneInfo().Name("nbk1").Caption("nbk1").Centre().Position(1).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
+    Aui.AddPane (nbk1, wxAuiPaneInfo().Name("nbk1").Caption("nbk1").Centre().Position(1).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
     Aui.Update  ();
 }
 
@@ -471,8 +457,9 @@ inline void InpFile::OnLoad (wxCommandEvent & Event)
     wxFileDialog fd(this, "Load input (.inp) file", LstDir, "", "*.inp");
     if (fd.ShowModal()==wxID_OK)
     {
-        Read (fd.GetPath().ToStdString().c_str());
         LstDir = fd.GetDirectory ();
+        try { Read (fd.GetPath().ToStdString().c_str()); }
+        catch (Fatal * e) { WxError(e->Msg().CStr()); }
     }
 }
 
@@ -524,11 +511,7 @@ inline void InpFile::OnSave (wxCommandEvent & Event)
         of << "nldt_m    = " << nldt_m    << std::endl; // 38
         of << "maxit     = " << maxit     << std::endl; // 39
         of << "tolr      = " << tolr      << std::endl; // 40
-        if (Path.Size()>0)
-        {
-            //of << "npath     = " << Path.Size() << std::endl;
-            //of << std::endl;
-        }
+        of << "path      =\n"<< (*Path)   << std::endl;
         of.close();
     }
 }

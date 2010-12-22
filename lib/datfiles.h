@@ -80,6 +80,7 @@ public:
     bool           Multq;  ///< multiply q according to Lode angle ?
     bool           PltAll; ///< plot all data at the same time ?
     wxComboBox   * CbxFNs; ///< data filenames
+    wxString       LstDir; ///< Last accessed directory
 
     // Events
     void OnLoad    (wxCommandEvent & Event);
@@ -296,13 +297,13 @@ inline void DatFiles::ReBuild ()
 
 inline void DatFiles::OnLoad (wxCommandEvent & Event)
 {
-    wxFileDialog fd(this, "Choose data file", "", "", "*.dat", wxFD_MULTIPLE);
+    wxFileDialog fd(this, "Select data files (.dat)", LstDir, "", "*.dat", wxFD_MULTIPLE);
     if (fd.ShowModal()==wxID_OK)
     {
         // get filenames
         wxArrayString paths, fnames;
-        fd .GetPaths     (paths);
-        fd .GetFilenames (fnames);
+        fd.GetPaths     (paths);
+        fd.GetFilenames (fnames);
 
         // disconnect plots
         qped->DelCurves ();
@@ -312,7 +313,9 @@ inline void DatFiles::OnLoad (wxCommandEvent & Event)
         CbxFNs->Clear   ();
 
         // load data
-        Read (paths, fnames);
+        LstDir = fd.GetDirectory ();
+        try { Read (paths, fnames); }
+        catch (Fatal * e) { WxError(e->Msg().CStr()); }
     }
 }
 

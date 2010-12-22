@@ -49,7 +49,8 @@ public:
      MatFile (wxFrame * Parent);
     ~MatFile () { Aui.UnInit(); }
 #else
-    MatFile () { ID2Prms = new Dict;  ID2Inis = new Dict; }
+     MatFile () { ID2Prms = new Dict;  ID2Inis = new Dict; }
+    ~MatFile () { delete ID2Prms;  delete ID2Inis; }
 #endif
 
     // Methods

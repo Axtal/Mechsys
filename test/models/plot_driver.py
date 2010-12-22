@@ -37,7 +37,8 @@ else:
 
 # res file
 fem = 'driver_nod_%d.res'%out_nods[2]
-pnt = 'driver.res'
+#pnt = 'driver.res'
+pnt = 'alt_sim_nod_60.res'
 res = fem if opts.fem=='1' else pnt
 
 if opts.tst=='1':
