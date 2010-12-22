@@ -706,7 +706,7 @@ template<typename Value_T>
 inline void Array<Value_T>::DelItem (size_t IdxToRemove)
 {
 #ifndef NDEBUG
-    if (IdxToRemove<0 || IdxToRemove>=_size) throw new Fatal("Array::Del Subscript==%d (size==%d) is out of range.", IdxToRemove, _size);
+    if (IdxToRemove<0 || IdxToRemove>=Size()) throw new Fatal("Array::Del Subscript==%zd (size==%zd) is out of range.", IdxToRemove, Size());
 #endif
     Array<Value_T> tmp((*this));
     this->Resize (tmp.Size()-1);
@@ -738,7 +738,7 @@ template<typename Value_T>
 inline Value_T & Array<Value_T>::operator[] (size_t i)
 {
 #ifndef NDEBUG
-    if (i<0 || i>=_size) throw new Fatal("Array::operator[] (write) Subscript==%d (size==%d) is out of range.", i, _size);
+    if (i<0 || i>=Size()) throw new Fatal("Array::operator[] (write) Subscript==%zd (size==%zd) is out of range.", i, Size());
 #endif
     return _values[i];
 }
@@ -747,7 +747,7 @@ template<typename Value_T>
 inline Value_T const & Array<Value_T>::operator[] (size_t i) const
 {
 #ifndef NDEBUG
-    if (i<0 || i>=_size) throw new Fatal("Array::operator[] (read) Subscript==%d (size==%d) is out of range.", i, _size); 
+    if (i<0 || i>=Size()) throw new Fatal("Array::operator[] (read) Subscript==%zd (size==%zd) is out of range.", i, Size()); 
 #endif
     return _values[i];
 }

@@ -909,10 +909,10 @@ inline void Inv (Vec_t const & T, Vec_t & Ti, double Tol=1.0e-10)
             throw new Fatal("matvec.h::Inv: inverse of 2nd order symmetric tensor failed with null (%g) determinat.\n  T =%s",Tol,oss.str().c_str());
         }
 
-        Ti(0) =  T[1]*T[2]/det;
-        Ti(1) =  T[0]*T[2]/det;
-        Ti(2) = (T[0]*T[1] - T[3]*T[3]/2.0)/det;
-        Ti(3) = -T[2]*T[3]/det;
+        Ti(0) =  T(1)*T(2)/det;
+        Ti(1) =  T(0)*T(2)/det;
+        Ti(2) = (T(0)*T(1) - T(3)*T(3)/2.0)/det;
+        Ti(3) = -T(2)*T(3)/det;
 
     }
     else if (ncp==6)
@@ -929,12 +929,12 @@ inline void Inv (Vec_t const & T, Vec_t & Ti, double Tol=1.0e-10)
             throw new Fatal("matvec.h::Inv: inverse of 2nd order symmetric tensor failed with null (%g) determinat.\n  T =%s",Tol,oss.str().c_str());
         }
 
-        Ti(0) = (T[1]*T[2] - T[4]*T[4]/2.0)/det;
-        Ti(1) = (T[0]*T[2] - T[5]*T[5]/2.0)/det;
-        Ti(2) = (T[0]*T[1] - T[3]*T[3]/2.0)/det;
-        Ti(3) = (T[4]*T[5]/Util::SQ2 - T[2]*T[3])/det;
-        Ti(4) = (T[3]*T[5]/Util::SQ2 - T[0]*T[4])/det;
-        Ti(5) = (T[3]*T[4]/Util::SQ2 - T[1]*T[5])/det;
+        Ti(0) = (T(1)*T(2) - T(4)*T(4)/2.0)/det;
+        Ti(1) = (T(0)*T(2) - T(5)*T(5)/2.0)/det;
+        Ti(2) = (T(0)*T(1) - T(3)*T(3)/2.0)/det;
+        Ti(3) = (T(4)*T(5)/Util::SQ2 - T(2)*T(3))/det;
+        Ti(4) = (T(3)*T(5)/Util::SQ2 - T(0)*T(4))/det;
+        Ti(5) = (T(3)*T(4)/Util::SQ2 - T(1)*T(5))/det;
     }
     else throw new Fatal("matvec.h::Inv: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
 }
@@ -987,12 +987,12 @@ inline void DerivInv (Vec_t const & A, Vec_t & Ai, Mat_t & dInvA_dA, double Tol=
     {
         double s = Util::SQ2;
         dInvA_dA =
-            -Ai[0]*Ai[0]     , -Ai[3]*Ai[3]/2.  , -Ai[5]*Ai[5]/2.  , -Ai[0]*Ai[3]                      , -(Ai[3]*Ai[5])/s                  , -Ai[0]*Ai[5]                      , 
-            -Ai[3]*Ai[3]/2.  , -Ai[1]*Ai[1]     , -Ai[4]*Ai[4]/2.  , -Ai[1]*Ai[3]                      , -Ai[1]*Ai[4]                      , -(Ai[3]*Ai[4])/s                  , 
-            -Ai[5]*Ai[5]/2.  , -Ai[4]*Ai[4]/2.  , -Ai[2]*Ai[2]     , -(Ai[4]*Ai[5])/s                  , -Ai[2]*Ai[4]                      , -Ai[2]*Ai[5]                      , 
-            -Ai[0]*Ai[3]     , -Ai[1]*Ai[3]     , -(Ai[4]*Ai[5])/s , -Ai[3]*Ai[3]/2.-Ai[0]*Ai[1]       , -(Ai[1]*Ai[5])/s-(Ai[3]*Ai[4])/2. , -(Ai[3]*Ai[5])/2.-(Ai[0]*Ai[4])/s , 
-            -(Ai[3]*Ai[5])/s , -Ai[1]*Ai[4]     , -Ai[2]*Ai[4]     , -(Ai[1]*Ai[5])/s-(Ai[3]*Ai[4])/2. , -Ai[4]*Ai[4]/2.-Ai[1]*Ai[2]       , -(Ai[4]*Ai[5])/2.-(Ai[2]*Ai[3])/s , 
-            -Ai[0]*Ai[5]     , -(Ai[3]*Ai[4])/s , -Ai[2]*Ai[5]     , -(Ai[3]*Ai[5])/2.-(Ai[0]*Ai[4])/s , -(Ai[4]*Ai[5])/2.-(Ai[2]*Ai[3])/s , -Ai[5]*Ai[5]/2.-Ai[0]*Ai[2]       ;
+            -Ai(0)*Ai(0)     , -Ai(3)*Ai(3)/2.  , -Ai(5)*Ai(5)/2.  , -Ai(0)*Ai(3)                      , -(Ai(3)*Ai(5))/s                  , -Ai(0)*Ai(5)                      , 
+            -Ai(3)*Ai(3)/2.  , -Ai(1)*Ai(1)     , -Ai(4)*Ai(4)/2.  , -Ai(1)*Ai(3)                      , -Ai(1)*Ai(4)                      , -(Ai(3)*Ai(4))/s                  , 
+            -Ai(5)*Ai(5)/2.  , -Ai(4)*Ai(4)/2.  , -Ai(2)*Ai(2)     , -(Ai(4)*Ai(5))/s                  , -Ai(2)*Ai(4)                      , -Ai(2)*Ai(5)                      , 
+            -Ai(0)*Ai(3)     , -Ai(1)*Ai(3)     , -(Ai(4)*Ai(5))/s , -Ai(3)*Ai(3)/2.-Ai(0)*Ai(1)       , -(Ai(1)*Ai(5))/s-(Ai(3)*Ai(4))/2. , -(Ai(3)*Ai(5))/2.-(Ai(0)*Ai(4))/s , 
+            -(Ai(3)*Ai(5))/s , -Ai(1)*Ai(4)     , -Ai(2)*Ai(4)     , -(Ai(1)*Ai(5))/s-(Ai(3)*Ai(4))/2. , -Ai(4)*Ai(4)/2.-Ai(1)*Ai(2)       , -(Ai(4)*Ai(5))/2.-(Ai(2)*Ai(3))/s , 
+            -Ai(0)*Ai(5)     , -(Ai(3)*Ai(4))/s , -Ai(2)*Ai(5)     , -(Ai(3)*Ai(5))/2.-(Ai(0)*Ai(4))/s , -(Ai(4)*Ai(5))/2.-(Ai(2)*Ai(3))/s , -Ai(5)*Ai(5)/2.-Ai(0)*Ai(2)       ;
     }
     else throw new Fatal("matvec.h::DerivInv: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
 }

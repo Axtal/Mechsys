@@ -45,8 +45,9 @@ public:
 class Model
 {
 public:
-    // Constructor
+    // Constructor & Destructor
     Model (int NDim, SDPair const & Prms, char const * Name="__unnamed_model__"); ///< NDim:space dimension, Prms:parameters
+    virtual ~Model () {}
 
     // Methods
     virtual void InitIvs      (SDPair const & Ini, State * Sta)                              const =0;

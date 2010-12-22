@@ -30,8 +30,9 @@ public:
     // enums
     enum FCrit_t { VM_t, DP_t, MC_t, MN_t, AN_t }; ///< Failure criterion type
 
-    // Constructor
+    // Constructor & Destructor
     ElastoPlastic (int NDim, SDPair const & Prms, bool DerivedModel=false);
+    virtual ~ElastoPlastic () {}
 
     // Derived methods
     virtual void TgIncs       (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const;

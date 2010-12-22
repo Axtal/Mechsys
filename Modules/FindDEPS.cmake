@@ -29,7 +29,7 @@ OPTION(A_MAKE_STDVECTOR     "Use std::vector instead of own implemenatation ?"  
                                                                                    
 # Options                                                                          
 OPTION(A_USE_MPI            "Use OpenMPI ? "                                       OFF)
-OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" ON)
+OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
 OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
 OPTION(A_USE_VTK            "Use VTK ?"                                            OFF)
 OPTION(A_USE_HDF5           "Use HDF5 ?"                                           OFF)

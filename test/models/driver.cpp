@@ -493,13 +493,13 @@ int main(int argc, char **argv) try
             if (kpath)
             {
                 lode = path("lode");
-                koct = path("k");
+                koct = path("kcam")*SQ2/3.0;
                 dez  = path("dez")/inp.ninc;
             }
             else if (zpath)
             {
                 lode = path("lode");
-                dp   = path("dp")  /inp.ninc;
+                dp   = path("dpcam")*SQ3/inp.ninc;
                 dez  = path("dez") /inp.ninc;
                 dexy = path("dexy")/inp.ninc;
                 deyz = path("deyz")/inp.ninc;

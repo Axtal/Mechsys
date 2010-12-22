@@ -212,24 +212,24 @@ inline void InpFile::Read (char const * FileName)
             {
                 if      (key=="ndat") ndat = atoi(str_val.CStr());
                 else if (ndat<0) throw new Fatal("InpFile::Read: Error in file <%s> at line # %d: key 'ndat' must come before data. '%s' is in the wrong place",FileName,line_num,key.CStr());
-                else if (key=="kcam")  { Path->Set(idxpath, "k"   , Util::SQ2*val/3.); idxdat++; }
-                else if (key=="dpcam") { Path->Set(idxpath, "dp"  , val*Util::SQ3   ); idxdat++; }
-                else if (key=="lode")  { Path->Set(idxpath, "lode", val             ); idxdat++; if (val<30. || val>90.) throw new Fatal("InpFile::Read: Error in file <%s> at line # %d: Lode angle alpha must be inside [30,90]. Alpha==%g is invalid",FileName,line_num,val); }
-                else if (key=="dex")   { Path->Set(idxpath, "dex" , val/100.        ); idxdat++; }
-                else if (key=="dey")   { Path->Set(idxpath, "dey" , val/100.        ); idxdat++; }
-                else if (key=="dez")   { Path->Set(idxpath, "dez" , val/100.        ); idxdat++; }
-                else if (key=="dexy")  { Path->Set(idxpath, "dexy", val/100.        ); idxdat++; }
-                else if (key=="deyz")  { Path->Set(idxpath, "deyz", val/100.        ); idxdat++; }
-                else if (key=="dezx")  { Path->Set(idxpath, "dezx", val/100.        ); idxdat++; }
-                else if (key=="dsx")   { Path->Set(idxpath, "dsx" , val             ); idxdat++; }
-                else if (key=="dsy")   { Path->Set(idxpath, "dsy" , val             ); idxdat++; }
-                else if (key=="dsz")   { Path->Set(idxpath, "dsz" , val             ); idxdat++; }
-                else if (key=="dsxy")  { Path->Set(idxpath, "dsxy", val             ); idxdat++; }
-                else if (key=="dsyz")  { Path->Set(idxpath, "dsyz", val             ); idxdat++; }
-                else if (key=="dszx")  { Path->Set(idxpath, "dszx", val             ); idxdat++; }
-                else if (key=="dpw")   { Path->Set(idxpath, "dpw" , val             ); idxdat++; }
-                else if (key=="dSw")   { Path->Set(idxpath, "dSw" , val             ); idxdat++; }
-                else if (key=="ninc")  { Path->Set(idxpath, "ninc", val             ); idxdat++; }
+                else if (key=="kcam")  { Path->Set(idxpath, "kcam" , val     ); idxdat++; }
+                else if (key=="dpcam") { Path->Set(idxpath, "dpcam", val     ); idxdat++; }
+                else if (key=="lode")  { Path->Set(idxpath, "lode" , val     ); idxdat++; if (val<30. || val>90.) throw new Fatal("InpFile::Read: Error in file <%s> at line # %d: Lode angle alpha must be inside [30,90]. Alpha==%g is invalid",FileName,line_num,val); }
+                else if (key=="dex")   { Path->Set(idxpath, "dex"  , val/100.); idxdat++; }
+                else if (key=="dey")   { Path->Set(idxpath, "dey"  , val/100.); idxdat++; }
+                else if (key=="dez")   { Path->Set(idxpath, "dez"  , val/100.); idxdat++; }
+                else if (key=="dexy")  { Path->Set(idxpath, "dexy" , val/100.); idxdat++; }
+                else if (key=="deyz")  { Path->Set(idxpath, "deyz" , val/100.); idxdat++; }
+                else if (key=="dezx")  { Path->Set(idxpath, "dezx" , val/100.); idxdat++; }
+                else if (key=="dsx")   { Path->Set(idxpath, "dsx"  , val     ); idxdat++; }
+                else if (key=="dsy")   { Path->Set(idxpath, "dsy"  , val     ); idxdat++; }
+                else if (key=="dsz")   { Path->Set(idxpath, "dsz"  , val     ); idxdat++; }
+                else if (key=="dsxy")  { Path->Set(idxpath, "dsxy" , val     ); idxdat++; }
+                else if (key=="dsyz")  { Path->Set(idxpath, "dsyz" , val     ); idxdat++; }
+                else if (key=="dszx")  { Path->Set(idxpath, "dszx" , val     ); idxdat++; }
+                else if (key=="dpw")   { Path->Set(idxpath, "dpw"  , val     ); idxdat++; }
+                else if (key=="dSw")   { Path->Set(idxpath, "dSw"  , val     ); idxdat++; }
+                else if (key=="ninc")  { Path->Set(idxpath, "ninc" , val     ); idxdat++; }
                 else throw new Fatal("InpFile::Read: Error in file <%s> at line # %d when reading data of Path # %d. Key==%s is invalid or in the wrong place",FileName,line_num,idxpath,key.CStr());
                 if (idxdat==ndat)
                 {
