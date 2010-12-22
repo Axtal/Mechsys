@@ -32,6 +32,9 @@
 class MyApp : public wxApp
 {
 public:
+    // Destructor
+    virtual ~MyApp () {}
+
     // program startup
     virtual bool OnInit();
 

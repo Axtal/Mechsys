@@ -35,13 +35,14 @@ public:
     static size_t NCo; ///< Number of stress/strain components == 2*NDim
     static size_t NDu; ///< Number of DOFs (displacements) == NN*NDim
 
-    // Constructor
+    // Constructor & Destructor
     EquilibElem (int                  NDim,   ///< Space dimension
                  Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
                  Model        const * Mdl,    ///< Model
                  SDPair       const & Prp,    ///< Properties
                  SDPair       const & Ini,    ///< Initial values
                  Array<Node*> const & Nodes); ///< Connectivity
+    virtual ~EquilibElem () {}
 
     // Methods
     virtual void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF); ///< If setting body forces, IdxEdgeOrFace is ignored

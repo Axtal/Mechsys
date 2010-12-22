@@ -42,6 +42,9 @@ public:
         : wxNotifyEvent(Event)
     {}
 
+    // Destructor
+    virtual ~WxNumInput_Event () {}
+
     // Clone function
     virtual wxEvent * Clone() const { return new WxNumInput_Event(*this); }
 

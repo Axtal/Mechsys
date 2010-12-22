@@ -117,7 +117,7 @@ public:
              Array<Node*> const & Nodes); ///< Connectivity
 
     // Destructor
-    ~Element ();
+    virtual ~Element ();
 
     // Methods
     virtual void IncNLocDOF   (size_t & NEq)                                      const {} ///< Increment the number of local DOFs

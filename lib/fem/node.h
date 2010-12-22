@@ -39,6 +39,7 @@ namespace FEM
 class BCFuncs
 {
 public:
+    virtual ~BCFuncs () {}
     virtual double u  (double Time) { return 0; } ///< Value of U component at Time
     virtual double v  (double Time) { return 0; } ///< Value of V component at Time
     virtual double a  (double Time) { return 0; } ///< Value of A component at Time

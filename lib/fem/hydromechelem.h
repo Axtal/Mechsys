@@ -62,10 +62,10 @@ public:
     void Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & Bp, Mat_t & N, Mat_t & Np, double & detJ, double & Coef) const; ///< Interpolation matrices
 
     // Methods for the Runge-Kutta method
-    virtual size_t NIVs       ()                                                            const;
-    virtual double GetIV      (size_t i)                                                    const;
-    virtual void   SetIV      (size_t i, double Val);
-    virtual void   CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const;
+    size_t NIVs       ()                                                            const;
+    double GetIV      (size_t i)                                                    const;
+    void   SetIV      (size_t i, double Val);
+    void   CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const;
 
     // Data
     UnsatFlow              * FMdl;     ///< Flow model

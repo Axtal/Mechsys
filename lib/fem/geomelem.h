@@ -33,11 +33,12 @@ namespace FEM
 class GeomElem
 {
 public:
-    // Constructor
+    // Constructor & Destructor
     GeomElem (int          NDim,                         ///< Space dimension
               size_t       NN,                           ///< Number of nodes
               size_t       NFN,                          ///< Number of nodes on face/edge
               char const * Name="__unnamed_geomelem__"); ///< Name. Ex: Tri3, Quad4, ...
+    virtual ~GeomElem () {}
 
     // Methods to be overloaded
     virtual void   SetIPs     (int TotNIP)                            =0; ///< Set the total number of integration points in this element

@@ -34,6 +34,7 @@ class State
 {
 public:
     State (int NDim) {}
+    virtual ~State () {}
     virtual void   Init    (SDPair const & Ini, size_t NIvs=0) =0;
     virtual void   Backup  () =0;
     virtual void   Restore () =0;

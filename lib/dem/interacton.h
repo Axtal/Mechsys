@@ -38,7 +38,8 @@ class Interacton   //General class for interactons
 public:
 
     // Constructor and destructor
-    Interacton () {};                            ///< Default constructor
+    Interacton () {}           ///< Default constructor
+    virtual ~Interacton () {}  ///< Destructor
 
     // Methods
     virtual bool UpdateContacts   (double alpha) =0;    ///< Update contacts by verlet algorithm
