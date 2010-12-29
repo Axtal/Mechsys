@@ -772,37 +772,44 @@ class Plotter:
     # Plot failure criteria
     # =====================
     def plot_fc (self, types=['MC', 'MN'], phis=[30.0], lwds=None, clrs=None, lsts=None, fmt='%g', lwd=1,
-            fsz=10, np=40, sc=1.0, r=None, samin=None, samax=None, sbmin=None, sbmax=None, positive=False):
-        # draw rosette
-        r   = 1.*phi_calc_M(max(phis),'oct') if r==None else r
-        cf  = 0.2
-        cr  = 1.1
-        l1  = (             0.0  , cr*r            ) # line: 1 end points
-        l2  = (-cr*r*cos(pi/6.0) ,-cr*r*sin(pi/6.0)) # line: 2 end points
-        l3  = ( cr*r*cos(pi/6.0) ,-cr*r*sin(pi/6.0)) # line: 3 end points
-        l4  = (-cr*r*cos(pi/6.0) , cr*r*sin(pi/6.0)) # line: 4 = neg 1 end points
-        lo  = (-cr*r*cos(pi/3.0) , cr*r*sin(pi/3.0)) # line: origin of cylindrical system
-        # main lines
-        plot([0.0,l1[0]],[0.0,l1[1]],'k-', color='grey', zorder=0)
-        plot([0.0,l2[0]],[0.0,l2[1]],'k-', color='grey', zorder=0)
-        plot([0.0,l3[0]],[0.0,l3[1]],'k-', color='grey', zorder=0)
-        # reference
-        plot([0.0, l4[0]],[0.0, l4[1]],'--', color='grey', zorder=-1)
-        plot([0.0, lo[0]],[0.0, lo[1]],'--', color='grey', zorder=-1)
-        plot([0.0,-l4[0]],[0.0, l4[1]],'--', color='grey', zorder=-1)
-        plot([0.0,-lo[0]],[0.0, lo[1]],'--', color='grey', zorder=-1)
-        plot([-cr*r,cr*r],[0.0,0.0],   '--', color='grey', zorder=-1)
-        # text
-        if positive:
-            text(l1[0],l1[1],r'$\sigma_1,\theta=+30^\circ$', ha='center', fontsize=fsz)
-            text(l2[0],l2[1],r'$\sigma_2$',                  ha='right',  fontsize=fsz)
-            text(l3[0],l3[1],r'$\sigma_3$',                  ha='left',   fontsize=fsz)
-        else:
-            text(l1[0],l1[1],r'$-\sigma_1,\theta=+30^\circ$', ha='center', fontsize=fsz)
-            text(l2[0],l2[1],r'$-\sigma_3$',                  ha='right',  fontsize=fsz)
-            text(l3[0],l3[1],r'$-\sigma_2$',                  ha='left',   fontsize=fsz)
-        text(lo[0],lo[1],r'$\theta=0^\circ$',   ha='center', fontsize=fsz)
-        text(l4[0],l4[1],r'$\theta=-30^\circ$', ha='center', fontsize=fsz)
+            fsz=10, np=40, sc=1.0, r=None, samin=None, samax=None, sbmin=None, sbmax=None, positive=False,
+            draw_ros=True, draw_ref_lines=True, with_leg=True, lbls=None):
+        r = 1.*phi_calc_M(max(phis),'oct') if r==None else r
+        if draw_ros:
+            # draw rosette
+            cf  = 0.2
+            cr  = 1.1
+            l1  = (             0.0  , cr*r            ) # line: 1 end points
+            l2  = (-cr*r*cos(pi/6.0) ,-cr*r*sin(pi/6.0)) # line: 2 end points
+            l3  = ( cr*r*cos(pi/6.0) ,-cr*r*sin(pi/6.0)) # line: 3 end points
+            l4  = (-cr*r*cos(pi/6.0) , cr*r*sin(pi/6.0)) # line: 4 = neg 1 end points
+            lo  = (-cr*r*cos(pi/3.0) , cr*r*sin(pi/3.0)) # line: origin of cylindrical system
+            # main lines
+            plot([0.0,l1[0]],[0.0,l1[1]],'k-', color='grey', zorder=0)
+            plot([0.0,l2[0]],[0.0,l2[1]],'k-', color='grey', zorder=0)
+            plot([0.0,l3[0]],[0.0,l3[1]],'k-', color='grey', zorder=0)
+            # reference
+            plot([0.0, l4[0]],[0.0, l4[1]],'--', color='grey', zorder=-1)
+            plot([0.0,-l4[0]],[0.0, l4[1]],'--', color='grey', zorder=-1)
+            plot([0.0,   0.0],[0.0,-l1[1]],'--', color='grey', zorder=-1)
+            if draw_ref_lines:
+                plot([0.0, lo[0]],[0.0, lo[1]],'--', color='grey', zorder=-1)
+                plot([0.0,-lo[0]],[0.0, lo[1]],'--', color='grey', zorder=-1)
+                plot([-cr*r,cr*r],[0.0,0.0],   '--', color='grey', zorder=-1)
+            # text
+            if positive:
+                if self.rst_theta: text(l1[0],l1[1],r'$\sigma_1,\theta=+30^\circ$', ha='center', fontsize=fsz)
+                else:              text(l1[0],l1[1],r'$\sigma_1$',                  ha='center', fontsize=fsz)
+                text(l2[0],l2[1],r'$\sigma_2$',                  ha='right',  fontsize=fsz)
+                text(l3[0],l3[1],r'$\sigma_3$',                  ha='left',   fontsize=fsz)
+            else:
+                if self.rst_theta: text(l1[0],l1[1],r'$-\sigma_1,\theta=+30^\circ$', ha='center', fontsize=fsz)
+                else:              text(l1[0],l1[1],r'$-\sigma_1$',                  ha='center', fontsize=fsz)
+                text(l2[0],l2[1],r'$-\sigma_3$',                  ha='right',  fontsize=fsz)
+                text(l3[0],l3[1],r'$-\sigma_2$',                  ha='left',   fontsize=fsz)
+            if self.rst_theta:
+                text(lo[0],lo[1],r'$\theta=0^\circ$',   ha='center', fontsize=fsz)
+                text(l4[0],l4[1],r'$\theta=-30^\circ$', ha='center', fontsize=fsz)
         # contour
         f     = zeros ((np,np))
         sa    = zeros ((np,np))
@@ -828,18 +835,21 @@ class Plotter:
                         sig     = matrix([[s123[0]],[s123[1]],[s123[2]],[0.0]])
                         f[i,j]  = self.failure_crit (sig, ty)
                 contour (sa,sb,f, [0.0], colors=clr, linestyles=lst, linewidths=lwd)
-            sphi = sin(phi*pi/180.0)
-            q = sc * 2.0*sqrt(2.0)*sphi/(3.0+sphi)
-            s = '$\phi=' + fmt + '^\circ$'
-            text (0.0, -q, s%phi, fontsize=fsz, va='top')
-        l, t = [], []
-        for k, ty in enumerate(types):
-            clr = GetClr(k) if clrs==None else clrs[k]
-            lst = GetLst(k) if lsts==None else lsts[k]
-            l.append (plot([0],[0], linestyle=lst, color=clr))
-            t.append (self.failure_crit_names(ty))
-        legend (l,t, bbox_to_anchor=(0,0,1,1), loc=3, ncol=2, mode='expand', borderaxespad=0.,
-                handlelength=3, prop={'size':8})
+            if self.rst_phi:
+                sphi = sin(phi*pi/180.0)
+                q = sc * 2.0*sqrt(2.0)*sphi/(3.0+sphi)
+                s = '$\phi=' + fmt + '^\circ$'
+                text (0.0, -q, s%phi, fontsize=fsz, va='top')
+        if with_leg:
+            l, t = [], []
+            for k, ty in enumerate(types):
+                clr = GetClr(k) if clrs==None else clrs[k]
+                lst = GetLst(k) if lsts==None else lsts[k]
+                l.append (plot([0],[0], linestyle=lst, color=clr))
+                if lbls==None: t.append (self.failure_crit_names(ty))
+            if not lbls==None: t = lbls
+            legend (l,t, bbox_to_anchor=(0,0,1,1), loc=3, ncol=2, mode='expand', borderaxespad=0.,
+                    handlelength=3, prop={'size':8})
         gca().set_xticks([])
         gca().set_yticks([])
         gca().set_frame_on(False)
