@@ -43,14 +43,20 @@ class Plotter:
         self.fc_phi    = -1                                       # friction angle for FC
         self.fc_c      = 0.0                                      # cohesion for FC
         self.fc_np     = 40                                       # number of points for drawing failure line
-        self.fc_a      = [0., 0., 1.]                             # anisotropic fc: bedding planes normal
-        self.fc_R      = -1                                       # anisotropic fc: R
-        self.fc_alp    = 0.1                                      # anisotropic fc: coefficient
+        self.fc_a      = None                                     # anisotropic fc: bedding planes normal
+        self.fc_R      = None                                     # anisotropic fc: R
+        self.fc_alp    = None                                     # anisotropic fc: coefficient
+        self.fc_sstar  = None                                     # anisotropic fc: sig to pass fc through
+        self.fc_b      = None                                     # anisotropic fc: b coefficient
+        self.fc_obliq  = False                                    # anisotropic fc: oblique projection
+        self.fc_noct   = False                                    # anisotropic fc: use noct instead of nsmp
         self.mark_max  = False                                    # mark max (failure) point ?
         self.mark_lst  = False                                    # mark residual (failure) point ?
         self.oct_norm  = False                                    # normalize plot in octahedral plane by p ?
         self.rst_phi   = True                                     # show fc_phi in Rosette
         self.rst_circ  = True                                     # draw circle in Rosette
+        self.rst_full  = False                                    # draw full rosette
+        self.rst_theta = True                                     # show theta in rosette
         self.isxyz     = (-1,0)                                   # indices for sxyz plot, use negative numbers for principal components
         self.devplot   = True                                     # plot s3-s1, s3-s2 instead of Ek, Sk
         self.pcte      = -1                                       # if pcte>0 => pcte in Ev x p (logp) plot?
@@ -272,7 +278,7 @@ class Plotter:
             M = phi_calc_M (self.fc_phi, 'oct')
             R = M if self.oct_norm else self.fc_poct*M
             r = max(r,R)
-        cf = 0.2
+        cf = 0.2 if not self.rst_full else 1.1
         cr = 1.1
         l1 = (             0.0  , cr*r            ) # line: 1 end points
         l2 = (-cf*r*cos(pi/6.0) ,-cf*r*sin(pi/6.0)) # line: 2 end points
@@ -293,17 +299,22 @@ class Plotter:
         if self.oct_sxyz: k1,k2,k3 = 'z','y','x'
         else:             k1,k2,k3 = '1','3','2'
         txt = '/p_{oct}' if self.oct_norm else ''
-        text(l1[0],l1[1],r'$-\sigma_%s%s,\theta=+30^\circ$'%(k1,txt), ha='center', fontsize=self.fsz)
         text(l2[0],l2[1],r'$-\sigma_%s%s$'%(k2,txt),                  ha='right',  fontsize=self.fsz)
         text(l3[0],l3[1],r'$-\sigma_%s%s$'%(k3,txt),                  ha='left',   fontsize=self.fsz)
-        text(lo[0],lo[1],r'$\theta=0^\circ$',                         ha='center', fontsize=self.fsz)
-        text(l4[0],l4[1],r'$\theta=-30^\circ$',                       ha='left',   fontsize=self.fsz)
+        if self.rst_theta:
+            text(l1[0],l1[1],r'$-\sigma_%s%s,\theta=+30^\circ$'%(k1,txt), ha='center', fontsize=self.fsz)
+            text(lo[0],lo[1],r'$\theta=0^\circ$',                         ha='center', fontsize=self.fsz)
+            text(l4[0],l4[1],r'$\theta=-30^\circ$',                       ha='left',   fontsize=self.fsz)
+        else:
+            text(l1[0],l1[1],r'$-\sigma_%s%s$'%(k1,txt), ha='center', fontsize=self.fsz)
         if self.rst_phi:
-            text(0.0,l2[1]-0.05*r,r'$\phi_{comp}=%2.1f^\circ$'%self.fc_phi, ha='center', va='top', fontsize=10)
+            if self.rst_full: text(0.0,-l1[1],      r'$\phi_{comp}=%2.1f^\circ$'%self.fc_phi, ha='center', va='center', fontsize=self.fsz+2)
+            else:             text(0.0,l2[1]-0.05*r,r'$\phi_{comp}=%2.1f^\circ$'%self.fc_phi, ha='center', va='top', fontsize=self.fsz+2)
         if self.rst_circ:
             M = phi_calc_M (self.fc_phi, 'oct')
             R = M if self.oct_norm else self.fc_poct*M
-            Arc (0.,0.,R, 0.85*pi/2., 1.05*(pi/2.+pi/3.), ec='grey')
+            if self.rst_full: Arc (0.,0.,R, 0.0,        2.0*pi,             ec='grey')
+            else:             Arc (0.,0.,R, 0.85*pi/2., 1.05*(pi/2.+pi/3.), ec='grey')
 
 
     # Plot failure line in p-q plane
@@ -347,6 +358,13 @@ class Plotter:
             samin = min(-1.1*R, samin)
             samax = max(-0.1*R, samax)
             sbmin = min(-0.1*R, sbmin)
+            sbmax = max( 1.1*R, sbmax)
+        if self.rst_full:
+            M = phi_calc_M (self.fc_phi, 'oct')
+            R = M if self.oct_norm else self.fc_poct*M
+            samin = min(-1.1*R, samin)
+            samax = max( 1.1*R, samax)
+            sbmin = min(-1.1*R, sbmin)
             sbmax = max( 1.1*R, sbmax)
         dsa    = (samax-samin)/self.fc_np
         dsb    = (sbmax-sbmin)/self.fc_np
@@ -420,6 +438,56 @@ class Plotter:
             contour (x, y, f, [0.0], linewidths=1, colors=self.fc_clr[k], linestyles=self.fc_ls[k], label=self.fc_ty[k])
 
 
+    # Anisotropic criterion invariants
+    # ================================
+    def get_nvec_namp_sig_tau(self, l, Q=None):
+        # calculate nvec
+        if self.fc_noct: nvec = matrix([[-1.0],[-1.0],[-1.0]])/sqrt(3.0)
+        else:
+            if not self.fc_b==None:
+                nnew = -matrix([[abs(l[0])**(-self.fc_b)], [abs(l[1])**(-self.fc_b)], [abs(l[2])**(-self.fc_b)]])
+                nvec = nnew / norm(nnew)
+            else:
+                I2   = l[0]*l[1] + l[1]*l[2] + l[2]*l[0]
+                I3   = l[0]*l[1]*l[2]
+                nvec = -matrix(sqrt(I3/(I2*l))).T
+        # calculate namp
+        if Q==None: namp = nvec + self.fc_alp *       self.fc_a
+        else:       namp = nvec + self.fc_alp * Q.T * self.fc_a
+        namp = namp / norm(namp)
+        # calculate sig and tau
+        if self.fc_obliq: Pamp = (nvec * namp.T) / (nvec.T * namp)[0]
+        #if self.fc_obliq: Pamp = (namp * nvec.T) / (namp.T * nvec)[0]
+        else:             Pamp =  namp * namp.T
+        Qamp = self.Imat - Pamp
+        tamp = diag(l) * namp
+        pamp = Pamp*tamp
+        qamp = Qamp*tamp
+        sig  = norm(pamp)
+        tau  = norm(qamp)
+        return nvec, namp, sig, tau
+
+
+    # Set constants of anisotropic criterion
+    # ======================================
+    def set_anisocrit(self, phi_deg=30.0, b=None, alpha=0.1, a=[1.,0.,0.], sig_star=0):
+        self.fc_phi   = phi_deg
+        self.fc_b     = b
+        self.fc_alp   = alpha
+        self.fc_a     = matrix(a).T
+        self.fc_sstar = sig_star
+        # assemble l, vector with principal values
+        sphi = sin(self.fc_phi*pi/180.0)
+        A    = (1.0+sphi)/(1.0-sphi)
+        if   sig_star==0: l = array([-A , -1., -1.])
+        elif sig_star==1: l = array([-1., -A , -1.])
+        elif sig_star==2: l = array([-1., -1., -A ])
+        else: raise Exception('set_anisocrit: sig_star must be 0, 1, or 2. %d is invalid'%sig_star)
+        # invariants
+        nvec, namp, sig, tau = self.get_nvec_namp_sig_tau (l)
+        self.fc_R            = tau/sig
+
+
     # Failure criterion
     # =================
     def failure_crit(self, sig, fc_ty):
@@ -479,22 +547,10 @@ class Plotter:
             M       = Mcs*(2.0*om/(1.0+om-(1.0-om)*t))**0.25;
             f       = q/p - M
         elif fc_ty=='AMP':
-            #R    = 2.0*sqrt(2.0)*tan(self.fc_phi*pi/180.0)/3.0
-            #R    = R*0.7
             l, Q = sig_calc_rot (sig)
-            if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return 1.0e+8
-            I1,I2,I3 = char_invs(sig)
-            a    = matrix(self.fc_a).T
-            nsmp = matrix(sqrt(I3/(I2*l))).T
-            namp = self.fc_alp*Q.T*a + nsmp
-            namp = namp / norm(namp)
-            Pamp = namp*namp.T
-            Qamp = self.Imat - Pamp
-            tamp = diag(l) * namp
-            pamp = Pamp*tamp
-            qamp = Qamp*tamp
-            ss   = norm(pamp)
-            tt   = norm(qamp)
+            if not self.fc_noct:
+                if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return 1.0e+8
+            nvec, namp, ss, tt = self.get_nvec_namp_sig_tau (l, Q)
             return tt - self.fc_R*ss
         else: raise Exception('failure_crit: fc_ty==%s is invalid' % fc_ty)
         return f
@@ -715,7 +771,8 @@ class Plotter:
 
     # Plot failure criteria
     # =====================
-    def plot_fc (self, types=['MC', 'MN'], phis=[30.0], lwds=None, clrs=None, lsts=None, fmt='%g', lwd=1, fsz=10, np=40, r=None, samin=None, samax=None, sbmin=None, sbmax=None, positive=False):
+    def plot_fc (self, types=['MC', 'MN'], phis=[30.0], lwds=None, clrs=None, lsts=None, fmt='%g', lwd=1,
+            fsz=10, np=40, sc=1.0, r=None, samin=None, samax=None, sbmin=None, sbmax=None, positive=False):
         # draw rosette
         r   = 1.*phi_calc_M(max(phis),'oct') if r==None else r
         cf  = 0.2
@@ -750,15 +807,15 @@ class Plotter:
         f     = zeros ((np,np))
         sa    = zeros ((np,np))
         sb    = zeros ((np,np))
-        sc    = 1.0
-        samin = -1.2*r if samin==None else samin
-        samax =  1.2*r if samax==None else samax
-        sbmin = -1.2*r if sbmin==None else sbmin
-        sbmax =  1.2*r if sbmax==None else sbmax
+        samin = -1.1*r if samin==None else samin
+        samax =  1.1*r if samax==None else samax
+        sbmin = -1.1*r if sbmin==None else sbmin
+        sbmax =  1.1*r if sbmax==None else sbmax
         dsa   = (samax-samin)/np
         dsb   = (sbmax-sbmin)/np
         for phi in phis:
             self.fc_phi = phi
+            self.set_anisocrit (self.fc_phi, self.fc_b, self.fc_alp, self.fc_a.T, self.fc_sstar)
             for k, ty in enumerate(types):
                 clr = GetClr(k) if clrs==None else clrs[k]
                 lst = GetLst(k) if lsts==None else lsts[k]
