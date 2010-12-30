@@ -310,6 +310,15 @@ def oct_calc_s123(sa,sb,sc):
     return array([s1,s2,s3])
 
 
+# Principal stresses: sx, sy, sz
+# ==============================
+def oct_calc_sxyz(sa,sb,sc):
+    sz =               - 2.0*sb/sqrt(6.0) - sc/sqrt(3.0)
+    sy =  sa/sqrt(2.0) +     sb/sqrt(6.0) - sc/sqrt(3.0)
+    sx = -sa/sqrt(2.0) +     sb/sqrt(6.0) - sc/sqrt(3.0)
+    return array([sx,sy,sz])
+
+
 # Calculate M
 # ===========
 # phi: friction angle at compression (degrees)

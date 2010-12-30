@@ -40,6 +40,7 @@ class FCrits:
         self.samax   = None                  # max sa in Pi plane
         self.sbmin   = None                  # min sb in Pi plane
         self.sbmax   = None                  # max sb in Pi plane
+        self.sxyz    = True                  # consider sx(right), sy(left), sz(up) instead of s1(up), s2(right), s3(left)
         self.rst_txt = []                    # rosette text
         self.leg_plt = []                    # legend plots (items appended in plot)
         self.leg_txt = []                    # legend texts (items appended in plot)
@@ -47,13 +48,14 @@ class FCrits:
 
     # Set constants of anisotropic criterion
     # ======================================
-    def aniso (self, phi_deg=30.0, b=None, alpha=0.1, a=[1.,0.,0.], sig_star=0):
+    def aniso (self, phi_deg=30.0, b=None, alpha=0.1, a=[0.,0.,1.], sig_star=2):
 
         # set constants
+        a = matrix(a).T
         self.phi   = phi_deg
         self.b     = b
         self.alp   = alpha
-        self.a     = matrix(a).T
+        self.a     = a / norm(a)
         self.sstar = sig_star
 
         # assemble l, vector with principal values
@@ -207,11 +209,10 @@ class FCrits:
     # Rosette
     # =======
     # th   : show theta angles
-    # sxyz : sx, sy, sz instead of s1, s2, s3
     # ref  : reference lines
     # pos  : positive values
     # fsz  : font size
-    def rst (self, th=False, sxyz=True, ref=False, pos=False, fsz=10):
+    def rst (self, th=False, ref=False, pos=False, fsz=10):
 
         # radius
         r = 1.*phi_calc_M(self.phi,'oct') if self.r==None else self.r
@@ -240,8 +241,8 @@ class FCrits:
             plot ([-cr*r,cr*r],[0.0,0.0],   '--', color='grey', zorder=-1)
 
         # text
-        if sxyz: k1,k2,k3 = 'z','y','x'
-        else:    k1,k2,k3 = '1','3','2'
+        if self.sxyz: k1,k2,k3 = 'z','y','x'
+        else:         k1,k2,k3 = '1','3','2'
         if pos:
             if th: t1 = text(l1[0],l1[1],r'$\sigma_%s,\theta=+30^\circ$'%k1, ha='center', fontsize=fsz)
             else:  t1 = text(l1[0],l1[1],r'$\sigma_%s$'%k1,                  ha='center', fontsize=fsz)
@@ -283,9 +284,10 @@ class FCrits:
             for j in range(np):
                 sa[i,j] = samin + i*dsa
                 sb[i,j] = sbmin + j*dsb
-                s123    = oct_calc_s123 (sa[i,j], sb[i,j], self.sc)
-                sig     = matrix([[s123[0]],[s123[1]],[s123[2]],[0.0]])
-                f[i,j]  = self.func (sig, typ)
+                if self.sxyz: s = oct_calc_sxyz (sa[i,j], sb[i,j], self.sc)
+                else:         s = oct_calc_s123 (sa[i,j], sb[i,j], self.sc)
+                sig    = matrix([[s[0]],[s[1]],[s[2]],[0.0]])
+                f[i,j] = self.func (sig, typ)
         contour (sa,sb,f, [0.0], colors=clr, linestyles=lst, linewidths=lwd)
 
         # set axis
