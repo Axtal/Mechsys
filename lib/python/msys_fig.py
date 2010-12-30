@@ -47,7 +47,13 @@ def SetForEps (proport=0.75, fig_width_pt=455.24):
               'figure.figsize': fig_size}
     rcParams.update(params)
 
-def Save (filename): savefig (filename, bbox_inches='tight')
+def Save (filename, extra_artists=[]): savefig (filename, bbox_inches='tight', bbox_extra_artists=extra_artists)
+# As a workaround, savefig can take bbox_extra_artists keyword (this may
+# only be in the svn version though), which is a list artist that needs
+# to be accounted for the bounding box calculation. So in your case, the
+# below code will work.
+# t1 = ax.text(-0.2,0.5,'text',transform=ax.transAxes)
+# fig.savefig('test.png', bbox_inches='tight', bbox_extra_artists=[t1])
 
 def Grid (color='grey', zorder=-100): grid (color=color, zorder=zorder)
 
