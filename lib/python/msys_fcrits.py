@@ -18,6 +18,7 @@
 
 from msys_invariants import *
 from msys_fig        import *
+from numpy           import ogrid
 
 class FCrits:
     # Constructor
@@ -40,6 +41,8 @@ class FCrits:
         self.samax   = None                  # max sa in Pi plane
         self.sbmin   = None                  # min sb in Pi plane
         self.sbmax   = None                  # max sb in Pi plane
+        self.scmin   = None                  # min sc in Pi plane (3D only)
+        self.scmax   = None                  # max sc in Pi plane (3D only)
         self.sxyz    = True                  # consider sx(right), sy(left), sz(up) instead of s1(up), s2(right), s3(left)
         self.rst_txt = []                    # rosette text
         self.leg_plt = []                    # legend plots (items appended in plot)
@@ -104,9 +107,16 @@ class FCrits:
         return nvec, namp, sp, sq
 
 
-    # Failure criteria
-    # ================
+    # Failure criteria (or yield surface)
+    # ===================================
     def func (self, sig, typ):
+
+        # yield surface
+        ysurf = False
+        if typ[0]=='y':
+            ysurf = True
+            typ   = typ[1:]
+            pc    = self.sc/2.0
 
         # sin phi
         sphi = sin(self.phi*pi/180.0)
@@ -116,14 +126,16 @@ class FCrits:
             p, q = sig_calc_p_q(sig)
             if self.fc_psa: k = sqrt(2.0)*self.fc_cu
             else:           k = 2.0*(sqrt(2.0)/sqrt(3.0))*self.fc_cu
-            f = q - k
+            if ysurf: raise Exception('func: ysurf is not available with VM')
+            else: f = q - k
 
         # Drucker/Prager
         elif typ=='DP':
             cbar = sqrt(3.0)*self.c/tan(self.phi*pi/180.0)
             kdp  = 2.0*sqrt(2.0)*sphi/(3.0-sphi)
             p, q = sig_calc_p_q(sig)
-            f    = q - (p + cbar)*kdp
+            if ysurf: f = ((p-pc)/pc)**2.0 + (q/(kdp*pc))**2.0 - 1.0
+            else:     f = q - (p + cbar)*kdp
 
         # Mohr/Coulomb
         elif typ=='MC':
@@ -132,7 +144,8 @@ class FCrits:
             th   = arcsin(t)/3.0
             cbar = sqrt(3.0)*self.c/tan(self.phi*pi/180.0)
             g    = sqrt(2.0)*sphi/(sqrt(3.0)*cos(th)-sphi*sin(th))
-            f    = q - (p + cbar)*g
+            if ysurf: raise Exception('func: ysurf is not available with MC')
+            else: f = q - (p + cbar)*g
 
         # Nakai/Matsuoka
         elif typ=='NM':
@@ -146,7 +159,8 @@ class FCrits:
             l        = sig_calc_s123(sig_)
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
             I1,I2,I3 = char_invs(sig_)
-            f        = I1*I2 - kmn*I3
+            if ysurf: raise Exception('func: ysurf is not available with NM')
+            else: f = I1*I2 - kmn*I3
 
         # Nakai/Matsuoka nonlinear
         elif typ=='NMnl':
@@ -157,7 +171,8 @@ class FCrits:
             l    = sig_calc_s123(sig)
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
             I1,I2,I3 = char_invs(sig)
-            f        = I1*I2 - kmn*I3
+            if ysurf: raise Exception('func: ysurf is not available with NMnl')
+            else: f = I1*I2 - kmn*I3
 
         # Lade/Duncan
         elif typ=='LD':
@@ -168,7 +183,8 @@ class FCrits:
             l        = sig_calc_s123(sig_)
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
             I1,I2,I3 = char_invs(sig_)
-            f        = I1**3.0 - kld*I3
+            if ysurf: raise Exception('func: ysurf is not available with LD')
+            else: f = I1**3.0 - kld*I3
 
         # Argyris/Sheng
         elif typ=='AS':
@@ -176,15 +192,21 @@ class FCrits:
             Mcs     = 6.0*sphi/(3.0-sphi)
             om      = ((3.0-sphi)/(3.0+sphi))**4.0
             M       = Mcs*(2.0*om/(1.0+om-(1.0-om)*t))**0.25;
-            f       = q/p - M
+            if ysurf: raise Exception('func: ysurf is not available with AS')
+            else: f = q/p - M
 
         # Anisotropic
         elif typ=='AMP' or typ=='AMPb' or typ=='AMPba':
             l, Q = sig_calc_rot (sig)
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return 1.0e+8
             nvec, namp, sp, sq = self.get_nvec_namp_sig_tau (l, Q)
-            return sq - self.R * sp
-        else: raise Exception('failure_crit: typ==%s is invalid' % typ)
+            if ysurf:
+                pc = pc / sqrt(3.0)
+                f  = ((sp-pc)/pc)**2.0 + (sq/(self.R*pc))**2.0 - 1.0
+            else: f = sq - self.R * sp
+
+        # error
+        else: raise Exception('func: typ==%s is invalid' % typ)
 
         # return function value
         return f
@@ -315,3 +337,43 @@ class FCrits:
     def leg (self, fsz=8, ncol=2):
         legend (self.leg_plt, self.leg_txt, bbox_to_anchor=(0,0,1,1), loc=3, ncol=ncol, mode='expand',
                 borderaxespad=0., handlelength=3, prop={'size':fsz})
+
+
+    # Plot 3D failure criteria
+    # ========================
+    def plot3d (self, typs=['MC','NM'], clr='red', np=40):
+
+        # radius
+        r = 1.*phi_calc_M(self.phi,'oct') if self.r==None else self.r
+
+        # contour
+        F = []
+        for typ in typs: F.append (zeros((np,np,np)))
+        sa    = zeros ((np,np,np))
+        sb    = zeros ((np,np,np))
+        sc    = zeros ((np,np,np))
+        samin = -1.1*r       if self.samin==None else self.samin
+        samax =  1.1*r       if self.samax==None else self.samax
+        sbmin = -1.1*r       if self.sbmin==None else self.sbmin
+        sbmax =  1.1*r       if self.sbmax==None else self.sbmax
+        scmin =  0.0         if self.scmin==None else self.scmin
+        scmax =  1.1*self.sc if self.scmax==None else self.scmax
+        dsa   = (samax-samin)/np
+        dsb   = (sbmax-sbmin)/np
+        dsc   = (scmax-scmin)/np
+        for i in range(np):
+            for j in range(np):
+                for k in range(np):
+                    sa[i,j,k] = samin + i*dsa
+                    sb[i,j,k] = sbmin + j*dsb
+                    sc[i,j,k] = scmin + k*dsc
+                    if self.sxyz: s = oct_calc_sxyz (sa[i,j,k], sb[i,j,k], sc[i,j,k])
+                    else:         s = oct_calc_s123 (sa[i,j,k], sb[i,j,k], sc[i,j,k])
+                    sig      = matrix([[s[0]],[s[1]],[s[2]],[0.0]])
+                    for m, typ in enumerate(typs): F[m][i,j,k] = self.func (sig, typ)
+
+        from enthought.mayavi.mlab import contour3d
+        from enthought.mayavi.mlab import show as mlab_show
+
+        for m, typ in enumerate(typs): contour3d (sa, sb, sc, F[m], contours=[0.0])
+        mlab_show ()
