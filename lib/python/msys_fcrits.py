@@ -49,6 +49,28 @@ class FCrits:
         self.leg_txt = []                    # legend texts (items appended in plot)
 
 
+    # Intersection and friction angle
+    # ===============================
+    def inter (self, sig_star=2, do_plot=True):
+        sphi = sin(self.phi*pi/180.0)
+        A    = (1.0+sphi)/(1.0-sphi)
+        if   sig_star==0: l = array([-A , -1., -1.])
+        elif sig_star==1: l = array([-1., -A , -1.])
+        elif sig_star==2: l = array([-1., -1., -A ])
+        dev_sig_tr = array([2.*l[0]-l[1]-l[2],
+                            2.*l[1]-l[2]-l[0],
+                            2.*l[2]-l[0]-l[1]])/3.0
+        sig   = array([-1.,-1.,-1.])/sqrt(3.)
+        a     = 0.5
+        sig_a = sig + a*dev_sig_tr
+        if do_plot:
+            sa, sb, sc = sxyz_calc_oct (sig_a)
+            print sa, sb, sc
+            plot ([sa], [sb], 'go')
+
+
+
+
     # Set constants of anisotropic criterion
     # ======================================
     def aniso (self, phi_deg=30.0, b=None, alpha=0.1, a=[0.,0.,1.], sig_star=2):
@@ -201,8 +223,9 @@ class FCrits:
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return 1.0e+8
             nvec, namp, sp, sq = self.get_nvec_namp_sig_tau (l, Q)
             if ysurf:
-                pc = pc / sqrt(3.0)
-                f  = ((sp-pc)/pc)**2.0 + (sq/(self.R*pc))**2.0 - 1.0
+                z0 = 2.0*pc/sqrt(3.0)
+                f  = log(sp/z0) + (1.0/self.bet)*(sq/(self.R*sp))**self.bet
+                #f  = ((sp-pc)/pc)**2.0 + (sq/(self.R*pc))**2.0 - 1.0
             else: f = sq - self.R * sp
 
         # error

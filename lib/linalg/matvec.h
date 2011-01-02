@@ -1366,6 +1366,29 @@ inline BPy::tuple Pypqth2L (double p, double q, double th, BPy::str const & Type
 #endif
 
 
+////////////////////////////////////////////////////////////////////////////// Anisotropic Invariants ////////////
+
+
+inline void UnitVecDeriv (Vec_t const & n, Vec_t & nu, Mat_t & dnudn, double Tol=1.0e-8)
+{
+    double norm_n = Norm(n);
+    Mat_t I;
+    Identity (size(n), I);
+    if (norm_n>Tol)
+    {
+        nu = n / norm_n;
+        Mat_t nu_dy_nu;
+        Dyad (nu, nu, nu_dy_nu);
+        dnudn = (I - nu_dy_nu) / norm_n;
+    }
+    else
+    {
+        nu    = 1./Util::SQ3, 1./Util::SQ3, 1./Util::SQ3;
+        dnudn = I;
+    }
+}
+
+
 ///////////////////////////////////////////////////////////////////////// Failure criteria constants /////////////
 
 

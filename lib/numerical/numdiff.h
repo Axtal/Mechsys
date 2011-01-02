@@ -40,10 +40,10 @@ class Diff // numerical differentiation
 {
 public:
     // Typedefs
-    typedef double (Instance::*pFun) (double x) const; ///< Callback function: y=f(x)
+    typedef double (Instance::*pFun) (double x); ///< Callback function: y=f(x)
 
     // Constructor
-    Diff (Instance const * p2Inst);
+    Diff (Instance * p2Inst);
 
     // Methods
     double DyDx (pFun p2Fun, double AtX, double StepSize=1.0e-8); ///< Evaluate dy_dx at x
@@ -56,8 +56,8 @@ public:
     double LastAbsErr; ///< Last Absolute Error
 
 private:
-    Instance const * _p2inst;  ///< Pointer to an instance
-    pFun             _p2fun;   ///< Pointer to instance function
+    Instance * _p2inst;  ///< Pointer to an instance
+    pFun       _p2fun;   ///< Pointer to instance function
 };
 
 /** Trick to pass pointers to member functions to GSL.
@@ -74,7 +74,7 @@ double __numdiff_call_fun__ (double x, void * not_used_for_params)
 
 
 template<typename Instance>
-inline Diff<Instance>::Diff (Instance const * p2Inst)
+inline Diff<Instance>::Diff (Instance * p2Inst)
     : Method     (0),
       LastAbsErr (0.),
       _p2inst    (p2Inst)

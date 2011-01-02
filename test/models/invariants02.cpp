@@ -65,7 +65,7 @@ public:
         diSig_dSig.change_dim(6,6);
         dPdt.Resize(3);
     }
-    void CalcState (double t) const
+    void CalcState (double t)
     {
         if (test==1)
         {
@@ -163,58 +163,58 @@ public:
         dPdt[1] = dP1dSig * dSigdt;
         dPdt[2] = dP2dSig * dSigdt;
     }
-    double pFun   (double t) const { CalcState(t); return p;         }
-    double qFun   (double t) const { CalcState(t); return q;         }
-    double thFun  (double t) const { CalcState(t); return th;        }
-    double L0Fun  (double t) const { CalcState(t); return L(0);      }
-    double L1Fun  (double t) const { CalcState(t); return L(1);      }
-    double L2Fun  (double t) const { CalcState(t); return L(2);      }
-    double iS0Fun (double t) const { CalcState(t); return invSig(0); }
-    double iS1Fun (double t) const { CalcState(t); return invSig(1); }
-    double iS2Fun (double t) const { CalcState(t); return invSig(2); }
-    double iS3Fun (double t) const { CalcState(t); return invSig(3); }
-    double iS4Fun (double t) const { CalcState(t); return invSig(4); }
-    double iS5Fun (double t) const { CalcState(t); return invSig(5); }
+    double pFun   (double t) { CalcState(t); return p;         }
+    double qFun   (double t) { CalcState(t); return q;         }
+    double thFun  (double t) { CalcState(t); return th;        }
+    double L0Fun  (double t) { CalcState(t); return L(0);      }
+    double L1Fun  (double t) { CalcState(t); return L(1);      }
+    double L2Fun  (double t) { CalcState(t); return L(2);      }
+    double iS0Fun (double t) { CalcState(t); return invSig(0); }
+    double iS1Fun (double t) { CalcState(t); return invSig(1); }
+    double iS2Fun (double t) { CalcState(t); return invSig(2); }
+    double iS3Fun (double t) { CalcState(t); return invSig(3); }
+    double iS4Fun (double t) { CalcState(t); return invSig(4); }
+    double iS5Fun (double t) { CalcState(t); return invSig(5); }
 
-    double P00Fun (double t) const { CalcState(t); return P0(0);     }
-    double P01Fun (double t) const { CalcState(t); return P0(1);     }
-    double P02Fun (double t) const { CalcState(t); return P0(2);     }
-    double P03Fun (double t) const { CalcState(t); return P0(3);     }
-    double P04Fun (double t) const { CalcState(t); return P0(4);     }
-    double P05Fun (double t) const { CalcState(t); return P0(5);     }
+    double P00Fun (double t) { CalcState(t); return P0(0);     }
+    double P01Fun (double t) { CalcState(t); return P0(1);     }
+    double P02Fun (double t) { CalcState(t); return P0(2);     }
+    double P03Fun (double t) { CalcState(t); return P0(3);     }
+    double P04Fun (double t) { CalcState(t); return P0(4);     }
+    double P05Fun (double t) { CalcState(t); return P0(5);     }
 
-    double P10Fun (double t) const { CalcState(t); return P1(0);     }
-    double P11Fun (double t) const { CalcState(t); return P1(1);     }
-    double P12Fun (double t) const { CalcState(t); return P1(2);     }
-    double P13Fun (double t) const { CalcState(t); return P1(3);     }
-    double P14Fun (double t) const { CalcState(t); return P1(4);     }
-    double P15Fun (double t) const { CalcState(t); return P1(5);     }
+    double P10Fun (double t) { CalcState(t); return P1(0);     }
+    double P11Fun (double t) { CalcState(t); return P1(1);     }
+    double P12Fun (double t) { CalcState(t); return P1(2);     }
+    double P13Fun (double t) { CalcState(t); return P1(3);     }
+    double P14Fun (double t) { CalcState(t); return P1(4);     }
+    double P15Fun (double t) { CalcState(t); return P1(5);     }
 
-    double P20Fun (double t) const { CalcState(t); return P2(0);     }
-    double P21Fun (double t) const { CalcState(t); return P2(1);     }
-    double P22Fun (double t) const { CalcState(t); return P2(2);     }
-    double P23Fun (double t) const { CalcState(t); return P2(3);     }
-    double P24Fun (double t) const { CalcState(t); return P2(4);     }
-    double P25Fun (double t) const { CalcState(t); return P2(5);     }
+    double P20Fun (double t) { CalcState(t); return P2(0);     }
+    double P21Fun (double t) { CalcState(t); return P2(1);     }
+    double P22Fun (double t) { CalcState(t); return P2(2);     }
+    double P23Fun (double t) { CalcState(t); return P2(3);     }
+    double P24Fun (double t) { CalcState(t); return P2(4);     }
+    double P25Fun (double t) { CalcState(t); return P2(5);     }
 
     // Data
     int    test;
     bool   use_iod; // Use: InvOctDerivs ?
     bool   sort;    // sort eigenvalues ?
     Vec_t  Sig0, I;
-    mutable Vec_t  invSig, diSdt, diAdt;
-    mutable Mat_t  M, dMdt, diSig_dSig;
-    mutable Mat3_t dpqthdL, dLdpqth;
-    mutable Vec3_t L, L1, dLdt, dpdL, dqdL, dTdL, dthdL;
-    mutable Vec_t  Sig, S, SS, devSS, P0, P1, P2, dSigdt, dSdt, dthdSig;
+    Vec_t  invSig, diSdt, diAdt;
+    Mat_t  M, dMdt, diSig_dSig;
+    Mat3_t dpqthdL, dLdpqth;
+    Vec3_t L, L1, dLdt, dpdL, dqdL, dTdL, dthdL;
+    Vec_t  Sig, S, SS, devSS, P0, P1, P2, dSigdt, dSdt, dthdSig;
     //mutable Vec_t dP0, dP1, dP2;
-    mutable double c, p, q, th, dpdt1, dqdt1, dqdt2, dpdt2, dthdt1, dthdt2, dL0dt2, dL1dt2, dL2dt2;
-    mutable double p1,q1,T1, p2,q2,T2, p3,q3,T3;
-    mutable Mat_t  dP0dSig, dP1dSig, dP2dSig;
-    mutable Array<Vec_t> dPdt;
+    double c, p, q, th, dpdt1, dqdt1, dqdt2, dpdt2, dthdt1, dthdt2, dL0dt2, dL1dt2, dL2dt2;
+    double p1,q1,T1, p2,q2,T2, p3,q3,T3;
+    Mat_t  dP0dSig, dP1dSig, dP2dSig;
+    Array<Vec_t> dPdt;
 };
 
-typedef double (Problem::*pFun) (double t) const;
+typedef double (Problem::*pFun) (double t);
 
 int main(int argc, char **argv) try
 {
