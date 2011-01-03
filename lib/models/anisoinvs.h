@@ -33,85 +33,86 @@ class AnisoInvs
 {
 public:
     // Constructor & Destructor
-     AnisoInvs (double b, double Alpha, Vec_t const & a, bool Obliq=true);
+     AnisoInvs (double b, double Alpha, Vec3_t const & a, bool Obliq=true);
     ~AnisoInvs () {}
 
     // Methods
     void Calc (Vec_t const & Sig, bool WithDerivs=false);
 
     // Constants
-    double b, Alpha;
-    Vec_t  a;
-    bool   Obliq;
-    double Tol;
-    Vec_t  au;
+    double  b, Alpha;
+    Vec3_t  a;
+    bool    Obliq;
+    double  Tol;
+    Vec3_t  au;
 
     // Data
-    static double sp, sq;
-    static Vec_t  N, Nu, n, nu;
-    static Mat_t  Qt;
-    static Vec3_t L;
-    static Vec3_t v0,v1,v2;
-    static Vec_t  P0,P1,P2;
-    static Vec_t  t, p, q;
-    static Mat_t  P;
+    static double  sp, sq;      // invariants
+    static Vec3_t  N123, N, Nu; // SMP
+    static Vec3_t  n, nu;       // AMP
+    static Mat3_t  Q;           // rotation matrix
+    static Mat3_t  mSig;        // matrix of Sig
+    static Vec3_t  L;           // eigenvalues
+    static Vec3_t  v0,v1,v2;    // eigenvectors
+    static Vec3_t  t, p, q;     // traction and projections
+    static Mat3_t  P;           // projector
 
     // Derivs
-    static Mat_t  dNudN,   dNds,  dNuds; // SMP
-    static Mat_t  dnudn,   dnds,  dnuds; // AMP
-    static Mat_t  dtds,    dpds,  dqds;
-    static double dspds,   dsqds;
-    static Vec_t  dspdSig, dsqdSig;
+#ifdef HAS_TENSORS
+    static Ten1_t V0, V1, V2;                // eigenvectors
+    static Ten2_t E0, E1, E2;                // eigenprojectors
+    static Ten3_t dv0dSig, dv1dSig, dv2dSig; // eigenvectors
+    static Ten2_t dN123dL;                   // SMP(123)
+    static Ten3_t dNdSig, dNudSig;           // SMP
+    static Ten2_t dNudN;                     // SMP
+    static Ten3_t dndSig, dnudSig;           // AMP
+    static Ten2_t dnudn;                     // AMP
+    static Ten2_t tSig, I;                   // tensor Sig and Identity
+    static Ten1_t tN, tNu, tn, tnu;          // tensors: normal vectors
+    static Ten3_t dtdSig;                    // traction
+#endif
 
 private:
     bool  _allocated;
 };
 
-double AnisoInvs::sp;  double AnisoInvs::sq;
-Vec_t  AnisoInvs::N;   Vec_t  AnisoInvs::Nu;  Vec_t AnisoInvs::n;  Vec_t AnisoInvs::nu;
-Mat_t  AnisoInvs::Qt;
+// Data
+double AnisoInvs::sp;       double AnisoInvs::sq;
+Vec3_t AnisoInvs::N123;     Vec3_t AnisoInvs::N;       Vec3_t AnisoInvs::Nu;
+Vec3_t AnisoInvs::n;        Vec3_t AnisoInvs::nu;
+Mat3_t AnisoInvs::Q;
+Mat3_t AnisoInvs::mSig;
 Vec3_t AnisoInvs::L;
-Vec3_t AnisoInvs::v0;  Vec3_t AnisoInvs::v1;  Vec3_t AnisoInvs::v2;
-Vec_t  AnisoInvs::P0;  Vec_t  AnisoInvs::P1;  Vec_t  AnisoInvs::P2;
-Vec_t  AnisoInvs::t;   Vec_t  AnisoInvs::p;   Vec_t  AnisoInvs::q;
-Mat_t  AnisoInvs::P;
+Vec3_t AnisoInvs::v0;       Vec3_t AnisoInvs::v1;      Vec3_t AnisoInvs::v2;
+Vec3_t AnisoInvs::t;        Vec3_t AnisoInvs::p;       Vec3_t AnisoInvs::q;
+Mat3_t AnisoInvs::P;
 
-Mat_t  AnisoInvs::dNudN;    Mat_t  AnisoInvs::dNds;    Mat_t AnisoInvs::dNuds;
-Mat_t  AnisoInvs::dnudn;    Mat_t  AnisoInvs::dnds;    Mat_t AnisoInvs::dnuds;
-Mat_t  AnisoInvs::dtds;     Mat_t  AnisoInvs::dpds;    Mat_t AnisoInvs::dqds;
-double AnisoInvs::dspds;    double AnisoInvs::dsqds;
-Vec_t  AnisoInvs::dspdSig;  Vec_t  AnisoInvs::dsqdSig;
+// Derivs
+#ifdef HAS_TENSORS
+Ten1_t AnisoInvs::V0;        Ten1_t AnisoInvs::V1;        Ten1_t AnisoInvs::V2;
+Ten3_t AnisoInvs::dv0dSig;   Ten3_t AnisoInvs::dv1dSig;   Ten3_t AnisoInvs::dv2dSig;
+Ten2_t AnisoInvs::E0;        Ten2_t AnisoInvs::E1;        Ten2_t AnisoInvs::E2;
+Ten2_t AnisoInvs::dN123dL;
+Ten3_t AnisoInvs::dNdSig;    Ten3_t AnisoInvs::dNudSig;
+Ten2_t AnisoInvs::dNudN;
+Ten3_t AnisoInvs::dndSig;    Ten3_t AnisoInvs::dnudSig;
+Ten2_t AnisoInvs::dnudn;
+Ten2_t AnisoInvs::tSig;      Ten2_t AnisoInvs::I;
+Ten1_t AnisoInvs::tN;        Ten1_t AnisoInvs::tNu;       Ten1_t AnisoInvs::tn;    Ten1_t AnisoInvs::tnu;
+Ten3_t AnisoInvs::dtdSig;
+#endif
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation
 
 
-inline AnisoInvs::AnisoInvs (double Theb, double TheAlpha, Vec_t const & Thea, bool TheObliq)
+inline AnisoInvs::AnisoInvs (double Theb, double TheAlpha, Vec3_t const & Thea, bool TheObliq)
     : b(Theb), Alpha(TheAlpha), a(Thea), Obliq(TheObliq), Tol(1.0e-8), _allocated(false)
 {
     if (!_allocated)
     {
-        N .change_dim (3);
-        Nu.change_dim (3);
-        n .change_dim (3);
-        nu.change_dim (3);
-        Qt.change_dim (3,3);
-        t .change_dim (3);
-        p .change_dim (3);
-        q .change_dim (3);
-        P .change_dim (3,3);
-
-        dNudN.change_dim (3,3);
-        dNds .change_dim (3,3);
-        dNuds.change_dim (3,3);
-
-        dnudn.change_dim (3,3);
-        dnds .change_dim (3,3);
-        dnuds.change_dim (3,3);
-
-        dtds.change_dim (3,3);
-        dpds.change_dim (3,3);
-        dqds.change_dim (3,3);
+        I.SetDiagonal (1.0);
+        _allocated = true;
     }
 
     // check
@@ -123,39 +124,39 @@ inline AnisoInvs::AnisoInvs (double Theb, double TheAlpha, Vec_t const & Thea, b
 inline void AnisoInvs::Calc (Vec_t const & Sig, bool WithDerivs)
 {
     // principal values and eigenprojectors
-    EigenProj (Sig, L, v0, v1, v2, P0, P1, P2);
-    for (size_t j=0; j<3; ++j)
-    {
-        Qt(0,j) = v0(j);
-        Qt(1,j) = v1(j);
-        Qt(2,j) = v2(j);
-    }
+    Mat3_t  mSig;
+    Ten2Mat (Sig, mSig);
+    Eig     (mSig, L, v0, v1, v2);
     //if (L(0)>0.0 || L(1)>0.0 || L(2)>0.0) throw new Fatal("AnisoInvs::Calc: This method only works when all principal values are negative (compression octant). L=[%g,%g,%g]",L(0),L(1),L(2));
+
+    // rotation matrix
+    Q(0,0) = v0(0);   Q(0,1) = v1(0);   Q(0,2) = v2(0);
+    Q(1,0) = v0(1);   Q(1,1) = v1(1);   Q(1,2) = v2(1);
+    Q(2,0) = v0(2);   Q(2,1) = v1(2);   Q(2,2) = v2(2);
 
     // normal vectors
     bool zero = (fabs(L(0))<Tol || fabs(L(1))<Tol || fabs(L(2))<Tol);
-    if (zero) N = 1.0, 1.0, 1.0;                                                       // SMP
-    else      N = 1.0/pow(fabs(L(0)),b), 1.0/pow(fabs(L(1)),b), 1.0/pow(fabs(L(2)),b); // SMP
-    Nu = N / Norm(N);      // SMP
-    n  = Alpha*Qt*au + Nu; // AMP
-    //n  = Alpha*au + Nu; // AMP
-    nu = n / Norm(n);      // AMP
+    if (zero) N123 = 1.0, 1.0, 1.0;                                                       // SMP(123)
+    else      N123 = 1.0/pow(fabs(L(0)),b), 1.0/pow(fabs(L(1)),b), 1.0/pow(fabs(L(2)),b); // SMP(123)
+    N  = product (Q, N123); // SMP(xyz)
+    Nu = N / Norm(N);       // SMP
+    n  = Alpha*au + Nu;     // AMP
+    nu = n / Norm(n);       // AMP
 
     // traction
-    t = L(0)*nu(0), L(1)*nu(1), L(2)*nu(2);
+    t = product (mSig, nu);
 
     // P projector
     double s = 0.0;
     if (Obliq)
     {
         s = 1.0 / dot(N, n);
-        Dyad (N, n, P);
-        P *= s;
+        Dyad (s, N, n, P); // P = s*(N dy n)
     }
     else Dyad (nu, nu, P);
 
     // invariants
-    p  = P * t;
+    p  = product (P, t);
     q  = t - p;
     sp = Norm(p);
     sq = Norm(q);
@@ -163,16 +164,55 @@ inline void AnisoInvs::Calc (Vec_t const & Sig, bool WithDerivs)
     // derivatives
     if (WithDerivs)
     {
-        // normal vectors
+#ifdef HAS_TENSORS
+        // normal to SMP in principal system
+        if (zero) dN123dL.SetDiagonal (1.0);
+        else dN123dL = -b/(L(0)*pow(fabs(L(0)),b)), 0.0, 0.0,
+                        0.0, -b/(L(1)*pow(fabs(L(1)),b)), 0.0,
+                        0.0, 0.0, -b/(L(2)*pow(fabs(L(2)),b)); // SMP(123)
+
+        // eigenvectors and eigenprojectors
+        Ten1Tensor (v0,V0);   Ten1Tensor (v1,V1);   Ten1Tensor (v2,V2);
+        EigenVecDerivs (Sig, L, v0,v1,v2, dv0dSig,dv1dSig,dv2dSig);
+        E0 = (V0 & V0);
+        E1 = (V1 & V1);
+        E2 = (V2 & V2);
+
+        // normal to SMP in xyz system
+        dNdSig = ((V0&E0)*dN123dL[0][0]) + ((V1&E1)*dN123dL[1][1]) + ((V2&E2)*dN123dL[2][2]) + (dv0dSig*N123(0)) + (dv1dSig*N123(1)) + (dv2dSig*N123(2));
+
+        // unit normal to SMP in xyz system
         UnitVecDeriv (N, Nu, dNudN, Tol);
-        if (zero) Identity (3, dNds);
-        else dNds = -b/(L(0)*pow(fabs(L(0)),b)), 0.0, 0.0,
-                    0.0, -b/(L(1)*pow(fabs(L(1)),b)), 0.0,
-                    0.0, 0.0, -b/(L(2)*pow(fabs(L(2)),b)); // SMP
-        dNuds = dNudN * dNds;             // SMP
-        dnds  = dNuds;                    // AMP
-        UnitVecDeriv (n, nu, dnudn, Tol); // AMP
-        dnuds = dnudn * dnds;             // AMP
+        dNudSig = dNudN * dNdSig;
+
+        // normal to AMP in xyz system
+        dndSig = dNudSig;
+
+        // unit normal to AMP in xyz system
+        UnitVecDeriv (n, nu, dnudn, Tol);
+        dnudSig = dnudn * dndSig;
+
+        // convert to tensors
+        Ten2Tensor (mSig, tSig);
+        Ten1Tensor (N,    tN);
+        Ten1Tensor (Nu,   tNu);
+        Ten1Tensor (n,    tn);
+        Ten1Tensor (nu,   tnu);
+
+        // traction
+        dtdSig = (I & tnu) + (tSig * dnudSig);
+        //dtdSig.Clear ();
+        //for (int i=0; i<3; ++i)
+        //for (int k=0; k<3; ++k)
+        //for (int l=0; l<3; ++l)
+        //{
+            //for (int j=0; j<3; ++j) dtdSig[i][k][l] += I[i][k]*I[j][l]*nu[j];
+            //for (int j=0; j<3; ++j) dtdSig[i][k][l] += tSig[i][j]*dnudSig[j][k][l];
+        //}
+
+#else
+        throw new Fatal("AnisoInvs::Calc: Tensors library is required in order to calculate derivatives");
+#endif
     }
 }
 

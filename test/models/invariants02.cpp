@@ -64,7 +64,7 @@ public:
         dMdt  .change_dim(6,6);
         diSig_dSig.change_dim(6,6);
         dPdt.Resize(3);
-#if HAS_TENSORS
+#ifdef HAS_TENSORS
         dvdt.Resize(3);
 #endif
     }
@@ -234,7 +234,7 @@ public:
     double p1,q1,T1, p2,q2,T2, p3,q3,T3;
     Mat_t  dP0dSig, dP1dSig, dP2dSig;
     Array<Vec_t> dPdt;
-#if HAS_TENSORS
+#ifdef HAS_TENSORS
     Array<Ten1_t> dvdt;
 #endif
 };
@@ -430,7 +430,7 @@ int main(int argc, char **argv) try
         }
     }
 
-#if HAS_TENSORS
+#ifdef HAS_TENSORS
     // eigenvectors
     double max_err_dvdt[3][3] = {{0.,0.,0.},
                                  {0.,0.,0.},
@@ -504,7 +504,7 @@ int main(int argc, char **argv) try
     for (size_t k=0; k<3; ++k)
     for (size_t i=0; i<6; ++i)
         printf("  max_err_dP%zd%zddt = %s%16.8e%s\n",k,i,(max_err_dPdt[k][i]>tol_dPdt[k][i]?TERM_RED:TERM_GREEN),max_err_dPdt[k][i],TERM_RST);
-#if HAS_TENSORS
+#ifdef HAS_TENSORS
     double tol_dvdt[3][3]= {{1.0e-7, 1.0e-7, 1.0e-7},
                             {1.0e-7, 1.0e-6, 1.0e-7},
                             {1.0e-6, 1.0e-6, 1.0e-7}};
@@ -530,7 +530,7 @@ int main(int argc, char **argv) try
     for (size_t k=0; k<3; ++k)
     for (size_t i=0; i<6; ++i)
         if (max_err_dPdt[k][i] > tol_dPdt[k][i]) return 1;
-#if HAS_TENSORS
+#ifdef HAS_TENSORS
     for (size_t k=0; k<3; ++k)
     for (size_t i=0; i<3; ++i)
         if (max_err_dvdt[k][i] > tol_dvdt[k][i]) return 1;

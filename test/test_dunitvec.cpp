@@ -83,6 +83,22 @@ public:
         // derivative of unit vector
         UnitVecDeriv (n, nu, dnudn);
         dnudt = dnudn * dndt;
+
+        // blitz++
+        Vec3_t tmp_n, tmp_nu;
+        Mat3_t tmp_dnudn;
+        tmp_n = n(0), n(1), n(2);
+        UnitVecDeriv (tmp_n, tmp_nu, tmp_dnudn);
+        for (size_t i=0; i<3; ++i)
+        {
+            double error = fabs(tmp_nu(i)-nu(i));
+            if (error>1.0e-15) throw new Fatal("Problem::CalcState: blitz' UnitVecDeriv gives different nu than Mat_t function. error = %g",error);
+            for (size_t j=0; j<3; ++j)
+            {
+                double err = fabs(tmp_dnudn(i,j)-dnudn(i,j));
+                if (err>1.0e-15) throw new Fatal("Problem::CalcState: blitz' UnitVecDeriv gives different dnudn than Mat_t function. err = %g",err);
+            }
+        }
     }
 
     // Functions

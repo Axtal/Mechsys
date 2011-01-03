@@ -720,6 +720,14 @@ inline void Dyad (Vec3_t const & A, Vec3_t const & B, Mat3_t & M)
     M(2,0)=A(2)*B(0);  M(2,1)=A(2)*B(1);  M(2,2)=A(2)*B(2);
 }
 
+/** Dyadic product multiplied by s. */
+inline void Dyad (double s, Vec3_t const & A, Vec3_t const & B, Mat3_t & M)
+{
+    M(0,0)=s*A(0)*B(0);  M(0,1)=s*A(0)*B(1);  M(0,2)=s*A(0)*B(2);
+    M(1,0)=s*A(1)*B(0);  M(1,1)=s*A(1)*B(1);  M(1,2)=s*A(1)*B(2);
+    M(2,0)=s*A(2)*B(0);  M(2,1)=s*A(2)*B(1);  M(2,2)=s*A(2)*B(2);
+}
+
 /** Matrix multiplication. */
 inline void Mult (Mat3_t const & A, Mat3_t const & B, Mat3_t & M)
 {
@@ -836,6 +844,13 @@ inline void Ten2Mat (Vec_t const & Ten, Mat_t & Mat)
 
 /** Creates the matrix representation of 2nd order symmetric tensor Ten (Mandel's representation). */
 #ifdef HAS_TENSORS
+inline void Ten2Tensor (Mat3_t const & Ten, TensorsLib::Tensor2<double,3> & T)
+{
+    T = Ten(0,0),  Ten(0,1),  Ten(0,2),
+        Ten(1,0),  Ten(1,1),  Ten(1,2),
+        Ten(2,0),  Ten(2,1),  Ten(2,2);
+}
+
 inline void Ten2Tensor (Vec_t const & Ten, TensorsLib::Tensor2<double,3> & T)
 {
     size_t ncp = size(Ten);
@@ -899,6 +914,11 @@ inline void Tensor2Ten (TensorsLib::Tensor4<double,3> const & T, Mat_t & Ten, si
     }
 }
 
+inline void Ten1Tensor (Vec3_t const & V, Ten1_t & Vec)
+{
+    Vec = V(0), V(1), V(2);
+}
+
 inline void Ten1Tensor (Vec_t const & V, Ten1_t & Vec)
 {
     if (size(V)!=3) throw new Fatal("matvec.h::Ten1Tensor: Vector (Vec_t) must have size equal to 3");
@@ -908,6 +928,11 @@ inline void Ten1Tensor (Vec_t const & V, Ten1_t & Vec)
 inline void Tensor1Ten (Ten1_t const & V, Vec_t & Vec)
 {
     Vec.change_dim (3);
+    Vec = V[0], V[1], V[2];
+}
+
+inline void Tensor1Ten (Ten1_t const & V, Vec3_t & Vec)
+{
     Vec = V[0], V[1], V[2];
 }
 #endif
@@ -1509,6 +1534,50 @@ inline void UnitVecDeriv (Vec_t const & n, Vec_t & nu, Mat_t & dnudn, double Tol
         dnudn = I;
     }
 }
+
+/** Derivative of unit vector. */
+inline void UnitVecDeriv (Vec3_t const & n, Vec3_t & nu, Mat3_t & dnudn, double Tol=1.0e-8)
+{
+    double norm_n = Norm(n);
+    if (norm_n>Tol)
+    {
+        double s = 1.0/norm_n;
+        nu = n / norm_n;
+        dnudn(0,0)=s-s*nu(0)*nu(0);   dnudn(0,1)= -s*nu(0)*nu(1);   dnudn(0,2)= -s*nu(0)*nu(2);
+        dnudn(1,0)= -s*nu(1)*nu(0);   dnudn(1,1)=s-s*nu(1)*nu(1);   dnudn(1,2)= -s*nu(1)*nu(2);
+        dnudn(2,0)= -s*nu(2)*nu(0);   dnudn(2,1)= -s*nu(2)*nu(1);   dnudn(2,2)=s-s*nu(2)*nu(2);
+    }
+    else
+    {
+        nu    = 1./Util::SQ3, 1./Util::SQ3, 1./Util::SQ3;
+        dnudn = 1.0, 0.0, 0.0,
+                0.0, 1.0, 0.0,
+                0.0, 0.0, 1.0;
+    }
+}
+
+#ifdef HAS_TENSORS
+/** Derivative of unit vector. */
+inline void UnitVecDeriv (Vec3_t const & n, Vec3_t & nu, Ten2_t & dnudn, double Tol=1.0e-8)
+{
+    double norm_n = Norm(n);
+    if (norm_n>Tol)
+    {
+        double s = 1.0/norm_n;
+        nu = n / norm_n;
+        dnudn[0][0]=s-s*nu(0)*nu(0);   dnudn[0][1]= -s*nu(0)*nu(1);   dnudn[0][2]= -s*nu(0)*nu(2);
+        dnudn[1][0]= -s*nu(1)*nu(0);   dnudn[1][1]=s-s*nu(1)*nu(1);   dnudn[1][2]= -s*nu(1)*nu(2);
+        dnudn[2][0]= -s*nu(2)*nu(0);   dnudn[2][1]= -s*nu(2)*nu(1);   dnudn[2][2]=s-s*nu(2)*nu(2);
+    }
+    else
+    {
+        nu    = 1./Util::SQ3, 1./Util::SQ3, 1./Util::SQ3;
+        dnudn = 1.0, 0.0, 0.0,
+                0.0, 1.0, 0.0,
+                0.0, 0.0, 1.0;
+    }
+}
+#endif
 
 /** Anisotropic invariants and derivatives. */
 inline void Aniso (Vec_t const & Sig, double b, double Alp, Vec_t const & a, bool Obliq,
