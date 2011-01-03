@@ -89,7 +89,7 @@ public:
             Sig    = 0.1*Sig0 + M*Sig0;
             dSigdt = dMdt*Sig0;
         }
-        EigenProjDerivs (Sig, L, P0,P1,P2, dP0dSig, dP1dSig, dP2dSig, sort);
+        EigenProjDerivs (Sig, L, v0,v1,v2, P0,P1,P2, dP0dSig, dP1dSig, dP2dSig, sort);
         //EigenProj (Sig,    L,     P0,  P1,  P2, sort);
         //EigenProj (dSigdt, dLdt, dP0, dP1, dP2);
         dLdt(0) = dot(P0,dSigdt);
@@ -206,8 +206,8 @@ public:
     Mat_t  M, dMdt, diSig_dSig;
     Mat3_t dpqthdL, dLdpqth;
     Vec3_t L, L1, dLdt, dpdL, dqdL, dTdL, dthdL;
+    Vec3_t v0,v1,v2;
     Vec_t  Sig, S, SS, devSS, P0, P1, P2, dSigdt, dSdt, dthdSig;
-    //mutable Vec_t dP0, dP1, dP2;
     double c, p, q, th, dpdt1, dqdt1, dqdt2, dpdt2, dthdt1, dthdt2, dL0dt2, dL1dt2, dL2dt2;
     double p1,q1,T1, p2,q2,T2, p3,q3,T3;
     Mat_t  dP0dSig, dP1dSig, dP2dSig;

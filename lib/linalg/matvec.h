@@ -1229,12 +1229,12 @@ inline void Calc_Piso (size_t NCp, Mat_t & Piso)
 }
 
 /** Derivatives of the eigenprojectors w.r.t its defining tensor. */
-inline void EigenProjDerivs (Vec_t const & A, Vec3_t & L, Vec_t &  P0,   Vec_t &  P1,   Vec_t &  P2,
+inline void EigenProjDerivs (Vec_t const & A, Vec3_t & L, Vec3_t & v0,   Vec3_t & v1,   Vec3_t & v2,
+                                                          Vec_t &  P0,   Vec_t &  P1,   Vec_t &  P2,
                                                           Mat_t & dP0dA, Mat_t & dP1dA, Mat_t & dP2dA,
                              double Pertubation=1.0e-7, double Tol=1.0e-14, bool SortAsc=false, bool SortDesc=false)
 {
     // eigenprojectors
-    Vec3_t v0,v1,v2;
     EigenProj (A, L, v0, v1, v2, P0, P1, P2, SortAsc, SortDesc);
 
     // check eigenvalues
