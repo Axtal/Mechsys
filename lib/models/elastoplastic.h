@@ -448,9 +448,9 @@ inline void ElastoPlastic::CorrectDrift (State * Sta) const
 inline void ElastoPlastic::_MC_grads (EquilibState const * Sta, double sinp, Vec_t & VorW) const
 {
     // eigenvalues and eigenprojectors
-    Vec3_t L;
+    Vec3_t L, v0, v1, v2;
     Vec_t  P0,P1,P2;
-    EigenProj (Sta->Sig, L, P0, P1, P2);
+    EigenProj (Sta->Sig, L, v0, v1, v2, P0, P1, P2);
 
     // oct invariants and its derivatives w.r.t principal values (L)
     double p,q,t;

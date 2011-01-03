@@ -30,6 +30,7 @@
 using std::cout;
 using std::endl;
 using Util::PI;
+double const TRUE=1.0;
 
 void Func (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
 {
@@ -66,7 +67,7 @@ int main (int argc, char **argv) try
     // model
     SDPair prms;
     //prms.Set("E nu fc c phi", 1000.0, 0.3, FAILCRIT("MC"), 1.0, 30.0);
-    prms.Set("E nu fc phi", 1000.0, 0.3, FAILCRIT("MN"), 30.0);
+    prms.Set("E nu MN phi", 1000.0, 0.3, TRUE, 30.0);
     ElastoPlastic mdl(/*NDim*/3, prms);
 
     // grid

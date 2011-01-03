@@ -90,9 +90,10 @@ int main(int argc, char **argv) try
 
 	cout << "\n--- eigen-projectors -----------------------------\n";
     Vec3_t L;
+    Vec3_t v0,v1,v2;
     Vec_t  P0,P1,P2;
     Mat3_t p0,p1,p2, p0xp0, p0xp1;
-    EigenProj (T, L, P0, P1, P2);
+    EigenProj (T, L, v0, v1, v2, P0, P1, P2);
     Ten2Mat   (P0, p0);
     Ten2Mat   (P1, p1);
     Ten2Mat   (P2, p2);

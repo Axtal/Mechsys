@@ -1446,7 +1446,7 @@ inline void UnitVecDeriv (Vec_t const & n, Vec_t & nu, Mat_t & dnudn, double Tol
         nu = n / norm_n;
         Mat_t nu_dy_nu;
         Dyad (nu, nu, nu_dy_nu);
-        dnudn = (I - nu_dy_nu) / norm_n;
+        dnudn = I/norm_n - nu_dy_nu/norm_n;
     }
     else
     {

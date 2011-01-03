@@ -110,10 +110,10 @@ inline void Unconv04::Stiffness (State const * Sta, Mat_t & D) const
 {
     EquilibState const * sta = static_cast<EquilibState const*>(Sta);
 
-    Vec3_t Le, Ls;
+    Vec3_t Le, Ls, v0, v1, v2, w0, w1, w2;
     Vec_t P0,P1,P2, Q0,Q1,Q2;
-    EigenProj (sta->Eps, Le, Q0,Q1,Q2, /*sort*/true);
-    EigenProj (sta->Sig, Ls, P0,P1,P2, /*sort*/true);
+    EigenProj (sta->Eps, Le, w0,w1,w2, Q0,Q1,Q2, /*sort*/true);
+    EigenProj (sta->Sig, Ls, v0,v1,v2, P0,P1,P2, /*sort*/true);
 
     Mat3_t X, Y, Yi; // devedgamdL, dpqthdL, dLdpqth
     double ev,ed,te;

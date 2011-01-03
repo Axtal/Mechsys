@@ -52,12 +52,14 @@ int main(int argc, char **argv) try
     }
     size_t ncp = size(sig);
 
-    Vec3_t L, dpdL, dqdL, dtdL, dev_L, Ii(1.0,1.0,1.0), Lb;
+    Vec3_t L, v0,v1,v2, dpdL, dqdL;
+    Vec3_t dtdL;
+    Vec3_t dev_L, Ii(1.0,1.0,1.0), Lb;
     Vec_t  dev_sig(ncp), dI1(ncp),dI2(ncp),dI3(ncp), P0,P1,P2;
     double s1,s2,s3, p,q,t, p1,q1,q2,q3,t1;
     double I1,I2,I3, I1b,I2b,I3b;
     double s1b,s2b,s3b;
-    EigenProj (sig, L, P0,P1,P2);
+    EigenProj (sig, L, v0,v1,v2, P0,P1,P2);
     OctInvs   (sig, p, q, t);
     OctInvs   (L,   p1,q1,t1, dpdL,dqdL,dtdL);
     CharInvs  (sig, I1,I2,I3, dI1,dI2,dI3);
@@ -151,7 +153,7 @@ int main(int argc, char **argv) try
             }
             else
             {
-                if (fabs(A[i][j]*c - sig[k])>1.0e-15) err_t2ten = true;
+                if (fabs(A[i][j]*c - sig(k))>1.0e-15) err_t2ten = true;
             }
         }
         for (size_t i=0; i<ncp; ++i)

@@ -40,7 +40,7 @@ using Util::PI;
 class Problem
 {
 public:
-    double yFun (double x) const
+    double yFun (double x)
     {
         return pow(x,1.5);
     }
