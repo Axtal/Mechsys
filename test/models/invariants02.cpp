@@ -64,6 +64,9 @@ public:
         dMdt  .change_dim(6,6);
         diSig_dSig.change_dim(6,6);
         dPdt.Resize(3);
+#if HAS_TENSORS
+        dvdt.Resize(3);
+#endif
     }
     void CalcState (double t)
     {
@@ -157,6 +160,13 @@ public:
             double diff = fabs(diSig_dSig(i,j) - dInvAdAmat(i,j));
             if (diff>1.0e-9) throw new Fatal("diSig_dSig is not equal to dInvAdAmat. Error=%17.9e",diff);
         }
+
+        // derivative of eigenvectors
+        Ten3_t dv0dSig, dv1dSig, dv2dSig;
+        EigenVecDerivs (Sig, L, v0,v1,v2, dv0dSig,dv1dSig,dv2dSig);
+        dvdt[0] = dv0dSig % dAdt;
+        dvdt[1] = dv1dSig % dAdt;
+        dvdt[2] = dv2dSig % dAdt;
 #endif
         // derivative of eigenprojectors
         dPdt[0] = dP0dSig * dSigdt;
@@ -197,6 +207,18 @@ public:
     double P24Fun (double t) { CalcState(t); return P2(4);     }
     double P25Fun (double t) { CalcState(t); return P2(5);     }
 
+    double v00Fun (double t) { CalcState(t); return v0(0);     }
+    double v01Fun (double t) { CalcState(t); return v0(1);     }
+    double v02Fun (double t) { CalcState(t); return v0(2);     }
+
+    double v10Fun (double t) { CalcState(t); return v1(0);     }
+    double v11Fun (double t) { CalcState(t); return v1(1);     }
+    double v12Fun (double t) { CalcState(t); return v1(2);     }
+
+    double v20Fun (double t) { CalcState(t); return v2(0);     }
+    double v21Fun (double t) { CalcState(t); return v2(1);     }
+    double v22Fun (double t) { CalcState(t); return v2(2);     }
+
     // Data
     int    test;
     bool   use_iod; // Use: InvOctDerivs ?
@@ -212,6 +234,9 @@ public:
     double p1,q1,T1, p2,q2,T2, p3,q3,T3;
     Mat_t  dP0dSig, dP1dSig, dP2dSig;
     Array<Vec_t> dPdt;
+#if HAS_TENSORS
+    Array<Ten1_t> dvdt;
+#endif
 };
 
 typedef double (Problem::*pFun) (double t);
@@ -405,6 +430,48 @@ int main(int argc, char **argv) try
         }
     }
 
+#if HAS_TENSORS
+    // eigenvectors
+    double max_err_dvdt[3][3] = {{0.,0.,0.},
+                                 {0.,0.,0.},
+                                 {0.,0.,0.}};
+    pFun vfuncs[3][3] = {{&Problem::v00Fun, &Problem::v01Fun, &Problem::v02Fun},
+                         {&Problem::v10Fun, &Problem::v11Fun, &Problem::v12Fun},
+                         {&Problem::v20Fun, &Problem::v21Fun, &Problem::v22Fun}};
+    for (size_t k=0; k<3; ++k)
+    {
+        if (verbose)
+        {
+            printf("\n%6s","t");
+            for (size_t j=0; j<3; ++j)
+            {
+                char str0[32];
+                char str1[32];
+                char str2[32];
+                sprintf(str0,"dv%zd%zddt_num",   k,j);
+                sprintf(str1,"dv%zd%zddt",       k,j);
+                sprintf(str2,"error(dv%zd%zddt)",k,j);
+                printf("%12s %12s %16s  ",str0,str1,str2);
+            }
+            printf("\n");
+        }
+        for (size_t i=0; i<ndiv+1; ++i)
+        {
+            double t = (double)i/(double)ndiv;
+            prob.CalcState (t);
+            if (verbose) printf("%6.3f",t);
+            for (size_t j=0; j<3; ++j)
+            {
+                double dvdt_num = nd.DyDx (vfuncs[k][j], t);
+                double err      = fabs(dvdt_num - prob.dvdt[k][j]);
+                if (err > max_err_dvdt[k][j]) max_err_dvdt[k][j] = err;
+                if (verbose) printf("%12.8f %12.8f %16.8e  ", dvdt_num, prob.dvdt[k][j], err);
+            }
+            if (verbose) printf("\n");
+        }
+    }
+#endif
+
     // error
     double tol_dpdt   = 1.0e-6;
     double tol_dqdt   = 1.0e-7;
@@ -437,6 +504,14 @@ int main(int argc, char **argv) try
     for (size_t k=0; k<3; ++k)
     for (size_t i=0; i<6; ++i)
         printf("  max_err_dP%zd%zddt = %s%16.8e%s\n",k,i,(max_err_dPdt[k][i]>tol_dPdt[k][i]?TERM_RED:TERM_GREEN),max_err_dPdt[k][i],TERM_RST);
+#if HAS_TENSORS
+    double tol_dvdt[3][3]= {{1.0e-7, 1.0e-7, 1.0e-7},
+                            {1.0e-7, 1.0e-6, 1.0e-7},
+                            {1.0e-6, 1.0e-6, 1.0e-7}};
+    for (size_t k=0; k<3; ++k)
+    for (size_t i=0; i<3; ++i)
+        printf("  max_err_dv%zd%zddt = %s%16.8e%s\n",k,i,(max_err_dvdt[k][i]>tol_dvdt[k][i]?TERM_RED:TERM_GREEN),max_err_dvdt[k][i],TERM_RST);
+#endif
     printf("\n");
 
     // end
@@ -455,6 +530,11 @@ int main(int argc, char **argv) try
     for (size_t k=0; k<3; ++k)
     for (size_t i=0; i<6; ++i)
         if (max_err_dPdt[k][i] > tol_dPdt[k][i]) return 1;
+#if HAS_TENSORS
+    for (size_t k=0; k<3; ++k)
+    for (size_t i=0; i<3; ++i)
+        if (max_err_dvdt[k][i] > tol_dvdt[k][i]) return 1;
+#endif
     return 0;
 }
 MECHSYS_CATCH

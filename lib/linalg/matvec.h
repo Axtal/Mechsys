@@ -38,6 +38,14 @@
 // Tensors
 #ifdef HAS_TENSORS
   #include <tensors/tensoperators.h>
+  #include <tensors/tensor1.h>
+  #include <tensors/tensor2.h>
+  #include <tensors/tensor3.h>
+  #include <tensors/tensor4.h>
+  typedef TensorsLib::Tensor1<double,3> Ten1_t;
+  typedef TensorsLib::Tensor2<double,3> Ten2_t;
+  typedef TensorsLib::Tensor3<double,3> Ten3_t;
+  typedef TensorsLib::Tensor4<double,3> Ten4_t;
 #endif
 
 // MechSys
@@ -890,6 +898,18 @@ inline void Tensor2Ten (TensorsLib::Tensor4<double,3> const & T, Mat_t & Ten, si
         if (I<NumComponents && J<NumComponents) Ten(I,J) = T[i][j][k][l]*a*b;
     }
 }
+
+inline void Ten1Tensor (Vec_t const & V, Ten1_t & Vec)
+{
+    if (size(V)!=3) throw new Fatal("matvec.h::Ten1Tensor: Vector (Vec_t) must have size equal to 3");
+    Vec = V(0), V(1), V(2);
+}
+
+inline void Tensor1Ten (Ten1_t const & V, Vec_t & Vec)
+{
+    Vec.change_dim (3);
+    Vec = V[0], V[1], V[2];
+}
 #endif
 
 /** Creates a 2nd order symmetric tensor Ten (using Mandel's representation) based on its matrix components. */
@@ -1291,6 +1311,41 @@ inline void EigenProjDerivs (Vec_t const & A, Vec3_t & L, Vec3_t & v0,   Vec3_t 
     if (pert[1]) { L(1)-=Pertubation;  L(2)+=Pertubation; }
     if (pert[2]) { L(2)-=Pertubation;  L(0)+=Pertubation; }
 }
+
+/** Derivatives of the eigenvectors of Sig w.r.t Sig (a third order tensor).  NOTE: the eigevalues and eigenvectors must be given as input. */
+#ifdef HAS_TENSORS
+inline void EigenVecDerivs (Vec_t  const & Sig,     Vec3_t const &  L,
+                            Vec3_t const &  v0,     Vec3_t const &  v1,     Vec3_t const & v2,
+                            Ten3_t       & dv0dSig, Ten3_t       & dv1dSig, Ten3_t       & dv2dSig,
+                            double Pertubation=1.0e-7, double Tol=1.0e-14)
+{
+    // check eigenvalues
+    if (fabs(L(0))<Tol) throw new Fatal("matvec.h::EigenVecDerivs: Principal values cannot be zero (Tol=%g).\n L = [%g, %g, %g]",Tol,L(0),L(1),L(2));
+    if (fabs(L(1))<Tol) throw new Fatal("matvec.h::EigenVecDerivs: Principal values cannot be zero (Tol=%g).\n L = [%g, %g, %g]",Tol,L(0),L(1),L(2));
+    if (fabs(L(2))<Tol) throw new Fatal("matvec.h::EigenVecDerivs: Principal values cannot be zero (Tol=%g).\n L = [%g, %g, %g]",Tol,L(0),L(1),L(2));
+
+    // apply pertubation
+    Vec3_t l(L);
+    bool pert[3] = { false, false, false };
+    if (fabs(l(0)-l(1))<Pertubation) { l(0)+=Pertubation;  l(1)-=Pertubation;  pert[0]=true; }
+    if (fabs(l(1)-l(2))<Pertubation) { l(1)+=Pertubation;  l(2)-=Pertubation;  pert[1]=true; }
+    if (fabs(l(2)-l(0))<Pertubation) { l(2)+=Pertubation;  l(0)-=Pertubation;  pert[2]=true; }
+
+    // eigenvectors in tensor structure
+    Ten1_t V0,V1,V2;
+    V0 = v0(0), v0(1), v0(2);
+    V1 = v1(0), v1(1), v1(2);
+    V2 = v2(0), v2(1), v2(2);
+
+    // derivatives
+    double a0 = 0.5/(l(0)-l(1));   double b0 = 0.5/(l(0)-l(2));
+    double a1 = 0.5/(l(1)-l(2));   double b1 = 0.5/(l(1)-l(0));
+    double a2 = 0.5/(l(2)-l(0));   double b2 = 0.5/(l(2)-l(1));
+    dv0dSig = ((V1&V0&V1) + (V1&V1&V0))*a0  +  ((V2&V0&V2) + (V2&V2&V0))*b0;
+    dv1dSig = ((V2&V1&V2) + (V2&V2&V1))*a1  +  ((V0&V1&V0) + (V0&V0&V1))*b1;
+    dv2dSig = ((V0&V2&V0) + (V0&V0&V2))*a2  +  ((V1&V2&V1) + (V1&V1&V2))*b2;
+}
+#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////////////// Invariants ////////////
