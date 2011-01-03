@@ -27,6 +27,7 @@ SET(PROGS_C # tests requiring GSL
   quadrature
   monte_carlo
   test_numdiff1
+  test_dunitvec
   test_ode1
   test_timesteps)
 
@@ -34,6 +35,7 @@ SET(PROGS_D # other tests
  linalg01
  linalg02
  linalg03
+ linalg04
  tlaexpr
  linsolver
  test_maps
