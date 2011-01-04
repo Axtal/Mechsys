@@ -33,17 +33,21 @@ class AnisoInvs
 {
 public:
     // Constructor & Destructor
-     AnisoInvs (double b, double Alpha, Vec3_t const & a, bool Obliq=true);
+     AnisoInvs (double b, double Alpha, Vec3_t const & a, bool Obliq=true, bool Check=true);
     ~AnisoInvs () {}
 
     // Methods
-    void Calc (Vec_t const & Sig, bool WithDerivs=false);
+    void Calc     (Vec_t const & Sig, bool WithDerivs=false);
+    void CheckSym (char const * Name, Ten2_t const & T) const;
+    void CheckSym (char const * Name, Ten3_t const & T) const;
 
     // Constants
     double  b, Alpha;
     Vec3_t  a;
     bool    Obliq;
+    bool    Check;
     double  Tol;
+    double  Zero;
     Vec3_t  au;
 
     // Data
@@ -69,7 +73,7 @@ public:
     static Ten2_t dnudn;                     // AMP
     static Ten2_t tSig, I;                   // tensor Sig and Identity
     static Ten1_t tN, tNu, tn, tnu;          // tensors: normal vectors
-    static Ten3_t dtdSig;                    // traction
+    static Ten3_t M, dtdSig;                 // auxiliary tensor and traction
     static Ten1_t tt, tp, tq;                // tensor: traction and projections
     static Ten2_t tP;                        // tensor: projector
     static Ten2_t dsdSig;                    // auxiliary tensor for dpdSig
@@ -105,7 +109,7 @@ Ten3_t AnisoInvs::dndSig;    Ten3_t AnisoInvs::dnudSig;
 Ten2_t AnisoInvs::dnudn;
 Ten2_t AnisoInvs::tSig;      Ten2_t AnisoInvs::I;
 Ten1_t AnisoInvs::tN;        Ten1_t AnisoInvs::tNu;       Ten1_t AnisoInvs::tn;    Ten1_t AnisoInvs::tnu;
-Ten3_t AnisoInvs::dtdSig;
+Ten3_t AnisoInvs::M;         Ten3_t AnisoInvs::dtdSig;
 Ten1_t AnisoInvs::tt;        Ten1_t AnisoInvs::tp;        Ten1_t AnisoInvs::tq;
 Ten2_t AnisoInvs::tP;
 Ten2_t AnisoInvs::dsdSig;
@@ -118,8 +122,8 @@ Vec_t  AnisoInvs::dspdSig;   Vec_t  AnisoInvs::dsqdSig;
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation
 
 
-inline AnisoInvs::AnisoInvs (double Theb, double TheAlpha, Vec3_t const & Thea, bool TheObliq)
-    : b(Theb), Alpha(TheAlpha), a(Thea), Obliq(TheObliq), Tol(1.0e-8), _allocated(false)
+inline AnisoInvs::AnisoInvs (double Theb, double TheAlpha, Vec3_t const & Thea, bool TheObliq, bool TheCheck)
+    : b(Theb), Alpha(TheAlpha), a(Thea), Obliq(TheObliq), Check(TheCheck), Tol(1.0e-8), Zero(1.0e-14), _allocated(false)
 {
     if (!_allocated)
     {
@@ -218,7 +222,11 @@ inline void AnisoInvs::Calc (Vec_t const & Sig, bool WithDerivs)
         Vec2Tensor (q,    tq);
 
         // traction
-        dtdSig = (I & tnu) + (tSig * dnudSig);
+        for (size_t i=0; i<3; ++i)
+        for (size_t j=0; j<3; ++j)
+        for (size_t k=0; k<3; ++k)
+            M[i][j][k] = 0.5*(I[i][j]*nu[k] + I[i][k]*nu[j]);
+        dtdSig = M + (tSig * dnudSig);
 
         // normal projection
         if (Obliq)
@@ -234,18 +242,52 @@ inline void AnisoInvs::Calc (Vec_t const & Sig, bool WithDerivs)
         }
 
         // on-plane projection
-        dqdSig = dtdSig - dqdSig;
+        dqdSig = dtdSig - dpdSig;
+
+        // check symmetry
+        if (Check)
+        {
+            CheckSym ("dNdSig",  dNdSig );
+            CheckSym ("dNudSig", dNudSig);
+            CheckSym ("dndSig",  dndSig );
+            CheckSym ("dnudSig", dnudSig);
+            CheckSym ("dsdSig",  dsdSig );
+            CheckSym ("dpdSig",  dpdSig );
+            CheckSym ("M",       M      );
+            CheckSym ("dtdSig",  dtdSig );
+            CheckSym ("dqdSig",  dqdSig );
+        }
 
         // invariants
         if (sp>Tol) tdspdSig = (tp*(1.0/sp)) * dpdSig;   else tdspdSig.SetDiagonal (1.0);
         if (sq>Tol) tdsqdSig = (tq*(1.0/sq)) * dqdSig;   else tdsqdSig.SetDiagonal (1.0);
         size_t ncp = size(Sig);
-        //Tensor2Ten (tdspdSig, dspdSig, ncp);
-        //Tensor2Ten (tdsqdSig, dsqdSig, ncp);
-
+        Tensor2Ten (tdspdSig, dspdSig, ncp);
+        Tensor2Ten (tdsqdSig, dsqdSig, ncp);
 #else
         throw new Fatal("AnisoInvs::Calc: Tensors library is required in order to calculate derivatives");
 #endif
+    }
+}
+
+inline void AnisoInvs::CheckSym (char const * Name, Ten2_t const & T) const
+{
+    for (size_t i=0; i<3; ++i)
+    for (size_t j=0; j<3; ++j)
+    {
+        double error = fabs(T[i][j] - T[i][j]);
+        if (error>Zero) throw new Fatal("CheckSym: Second order tensor %s is not symmetric. error=%g",Name,error);
+    }
+}
+
+inline void AnisoInvs::CheckSym (char const * Name, Ten3_t const & T) const
+{
+    for (size_t i=0; i<3; ++i)
+    for (size_t j=0; j<3; ++j)
+    for (size_t k=0; k<3; ++k)
+    {
+        double error = fabs(T[i][j][k] - T[i][k][j]);
+        if (error>Zero) throw new Fatal("CheckSym: Third order tensor %s is not minor symmetric. error=%g",Name,error);
     }
 }
 

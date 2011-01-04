@@ -60,8 +60,8 @@ public:
         //Sig0 = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, -0.00000001*SQ2;
 
         Vec3_t a(0.2, 0.3, 1.0);
-        //AI = new AnisoInvs (0.5, 0.15, a, true); // b, alpha, a, obliq
-        AI = new AnisoInvs (0.5, 0.0, a, false); // b, alpha, a, obliq
+        AI = new AnisoInvs (0.5, 0.15, a, true); // b, alpha, a, obliq
+        //AI = new AnisoInvs (0.5, 0.0, a, false); // b, alpha, a, obliq
 
         dvdt.Resize (3);
     }
@@ -134,6 +134,10 @@ public:
 
         // on-plane projection
         dqdt = AI->dqdSig % dAdt;
+
+        // invariants
+        dspdt = dot (AI->dspdSig, dSigdt);
+        dsqdt = dot (AI->dsqdSig, dSigdt);
     }
 
     // Functions
@@ -201,6 +205,7 @@ public:
     Ten1_t        dtdt;              // traction
     Ten1_t        dpdt;              // normal projection
     Ten1_t        dqdt;              // on-plane projection
+    double        dspdt, dsqdt;      // invariants
 };
 
 typedef double (Problem::*pFun) (double t);
@@ -210,7 +215,7 @@ int main(int argc, char **argv) try
     // initialize problem
     Problem       prob;
     Diff<Problem> nd(&prob);
-    bool   verbose = true;
+    bool   verbose = false;
     size_t ndiv    = 20;
     if (argc>1) prob.test = atoi(argv[1]);
     if (argc>2) verbose   = atoi(argv[2]);
@@ -302,9 +307,9 @@ int main(int argc, char **argv) try
             if (verbose) printf("\n");
         }
     }
-    double tol_dvdt[3][3]= {{1.0e-7, 1.0e-7, 1.0e-7},
-                            {1.0e-7, 1.0e-6, 1.0e-7},
-                            {1.0e-6, 1.0e-6, 1.0e-7}};
+    double tol_dvdt[3][3]= {{1.0e-5, 1.0e-6, 1.0e-6},
+                            {1.0e-6, 1.0e-5, 1.0e-6},
+                            {1.0e-6, 1.0e-6, 1.0e-6}};
     for (size_t k=0; k<3; ++k)
     for (size_t i=0; i<3; ++i)
         printf("  max_err_dv%zd%zddt = %s%16.8e%s\n",k,i,(max_err_dvdt[k][i]>tol_dvdt[k][i]?TERM_RED:TERM_GREEN),max_err_dvdt[k][i],TERM_RST);
@@ -312,7 +317,7 @@ int main(int argc, char **argv) try
 
 
     // normal to the SMP in principal system : g
-    if (false)//verbose)
+    if (verbose)
     {
         printf("\n");
         printf("%6s %12s %12s %12s %16s  %12s %12s %12s %16s  %12s %12s %12s %16s\n",
@@ -336,7 +341,7 @@ int main(int argc, char **argv) try
         if (err_dg0dt > max_err_dg0dt) max_err_dg0dt = err_dg0dt;
         if (err_dg1dt > max_err_dg1dt) max_err_dg1dt = err_dg1dt;
         if (err_dg2dt > max_err_dg2dt) max_err_dg2dt = err_dg2dt;
-        if (false)//verbose)
+        if (verbose)
         {
             printf("%6.3f %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e\n",
                     t, prob.AI->t(0), dg0dt_num, prob.dgdt[0], err_dg0dt,
@@ -354,7 +359,7 @@ int main(int argc, char **argv) try
 
 
     // normal to the SMP in laboratory system : N
-    if (false)//verbose)
+    if (verbose)
     {
         printf("\n");
         printf("%6s %12s %12s %12s %16s  %12s %12s %12s %16s  %12s %12s %12s %16s\n",
@@ -378,7 +383,7 @@ int main(int argc, char **argv) try
         if (err_dN0dt > max_err_dN0dt) max_err_dN0dt = err_dN0dt;
         if (err_dN1dt > max_err_dN1dt) max_err_dN1dt = err_dN1dt;
         if (err_dN2dt > max_err_dN2dt) max_err_dN2dt = err_dN2dt;
-        if (false)//verbose)
+        if (verbose)
         {
             printf("%6.3f %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e\n",
                     t, prob.AI->t(0), dN0dt_num, prob.dNdt[0], err_dN0dt,
@@ -396,7 +401,7 @@ int main(int argc, char **argv) try
 
 
     // unit normal to the SMP in laboratory system : Nu
-    if (false)//verbose)
+    if (verbose)
     {
         printf("\n");
         printf("%6s %12s %12s %12s %16s  %12s %12s %12s %16s  %12s %12s %12s %16s\n",
@@ -420,7 +425,7 @@ int main(int argc, char **argv) try
         if (err_dNu0dt > max_err_dNu0dt) max_err_dNu0dt = err_dNu0dt;
         if (err_dNu1dt > max_err_dNu1dt) max_err_dNu1dt = err_dNu1dt;
         if (err_dNu2dt > max_err_dNu2dt) max_err_dNu2dt = err_dNu2dt;
-        if (false)//verbose)
+        if (verbose)
         {
             printf("%6.3f %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e\n",
                     t, prob.AI->t(0), dNu0dt_num, prob.dNudt[0], err_dNu0dt,
@@ -428,8 +433,8 @@ int main(int argc, char **argv) try
                        prob.AI->t(2), dNu2dt_num, prob.dNudt[2], err_dNu2dt);
         }
     }
-    double tol_dNu0dt = 1.0e-7;
-    double tol_dNu1dt = 1.0e-7;
+    double tol_dNu0dt = 1.0e-6;
+    double tol_dNu1dt = 1.0e-6;
     double tol_dNu2dt = 1.0e-7;
     printf("  max_err_dNu0dt = %s%16.8e%s\n",(max_err_dNu0dt >tol_dNu0dt?TERM_RED:TERM_GREEN),max_err_dNu0dt, TERM_RST);
     printf("  max_err_dNu1dt = %s%16.8e%s\n",(max_err_dNu1dt >tol_dNu1dt?TERM_RED:TERM_GREEN),max_err_dNu1dt, TERM_RST);
@@ -438,7 +443,7 @@ int main(int argc, char **argv) try
 
 
     // unit normal to the SMP in laboratory system : n
-    if (false)//verbose)
+    if (verbose)
     {
         printf("\n");
         printf("%6s %12s %12s %12s %16s  %12s %12s %12s %16s  %12s %12s %12s %16s\n",
@@ -462,7 +467,7 @@ int main(int argc, char **argv) try
         if (err_dn0dt > max_err_dn0dt) max_err_dn0dt = err_dn0dt;
         if (err_dn1dt > max_err_dn1dt) max_err_dn1dt = err_dn1dt;
         if (err_dn2dt > max_err_dn2dt) max_err_dn2dt = err_dn2dt;
-        if (false)//verbose)
+        if (verbose)
         {
             printf("%6.3f %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e\n",
                     t, prob.AI->t(0), dn0dt_num, prob.dndt[0], err_dn0dt,
@@ -470,8 +475,8 @@ int main(int argc, char **argv) try
                        prob.AI->t(2), dn2dt_num, prob.dndt[2], err_dn2dt);
         }
     }
-    double tol_dn0dt = 1.0e-7;
-    double tol_dn1dt = 1.0e-7;
+    double tol_dn0dt = 1.0e-6;
+    double tol_dn1dt = 1.0e-6;
     double tol_dn2dt = 1.0e-7;
     printf("  max_err_dn0dt  = %s%16.8e%s\n",(max_err_dn0dt >tol_dn0dt?TERM_RED:TERM_GREEN),max_err_dn0dt, TERM_RST);
     printf("  max_err_dn1dt  = %s%16.8e%s\n",(max_err_dn1dt >tol_dn1dt?TERM_RED:TERM_GREEN),max_err_dn1dt, TERM_RST);
@@ -480,7 +485,7 @@ int main(int argc, char **argv) try
 
 
     // unit normal to the AMP in laboratory system : nu
-    if (false)//verbose)
+    if (verbose)
     {
         printf("\n");
         printf("%6s %12s %12s %12s %16s  %12s %12s %12s %16s  %12s %12s %12s %16s\n",
@@ -504,7 +509,7 @@ int main(int argc, char **argv) try
         if (err_dnu0dt > max_err_dnu0dt) max_err_dnu0dt = err_dnu0dt;
         if (err_dnu1dt > max_err_dnu1dt) max_err_dnu1dt = err_dnu1dt;
         if (err_dnu2dt > max_err_dnu2dt) max_err_dnu2dt = err_dnu2dt;
-        if (false)//verbose)
+        if (verbose)
         {
             printf("%6.3f %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e\n",
                     t, prob.AI->t(0), dnu0dt_num, prob.dnudt[0], err_dnu0dt,
@@ -512,7 +517,7 @@ int main(int argc, char **argv) try
                        prob.AI->t(2), dnu2dt_num, prob.dnudt[2], err_dnu2dt);
         }
     }
-    double tol_dnu0dt = 1.0e-7;
+    double tol_dnu0dt = 1.0e-6;
     double tol_dnu1dt = 1.0e-7;
     double tol_dnu2dt = 1.0e-7;
     printf("  max_err_dnu0dt = %s%16.8e%s\n",(max_err_dnu0dt >tol_dnu0dt?TERM_RED:TERM_GREEN),max_err_dnu0dt, TERM_RST);
@@ -646,114 +651,6 @@ int main(int argc, char **argv) try
     printf("  max_err_dq2dt  = %s%16.8e%s\n",(max_err_dq2dt >tol_dq2dt?TERM_RED:TERM_GREEN),max_err_dq2dt, TERM_RST);
 
 
-    /*
-    // dNds
-    double max_err_dNdt[3] = {0., 0., 0.};
-    pFun   NFun[3] = {&Problem::N0Fun, &Problem::N1Fun, &Problem::N2Fun};
-    if (verbose)
-    {
-        printf("\n%6s","t");
-        printf("%12s %12s %16s  %12s %12s %16s  %12s %12s %16s\n", "dN0dt_num","dN0dt","err(dN0dt)", "dN1dt_num","dN1dt","err(dN1dt)", "dN2dt_num","dN2dt","err(dN2dt)");
-    }
-    for (size_t i=0; i<ndiv+1; ++i)
-    {
-        double t = (double)i/(double)ndiv;
-        prob.CalcState (t);
-        if (verbose) printf("%6.3f",t);
-        for (size_t k=0; k<3; ++k)
-        {
-            double dNdt_num = nd.DyDx (NFun[k], t);
-            double err_dNdt = fabs(dNdt_num - prob.dNdt(k));
-            if (err_dNdt > max_err_dNdt[k]) max_err_dNdt[k] = err_dNdt;
-            if (verbose) printf("%12.8f %12.8f %16.8e  ", dNdt_num,prob.dNdt(k),err_dNdt);
-        }
-        if (verbose) printf("\n");
-    }
-    double tol_dNdt[3] = {1.0e-3, 1.0e-6, 1.0e-6};
-    for (size_t k=0; k<3; ++k) printf("  max_err_dN%zddt  = %s%16.8e%s\n",k,(max_err_dNdt[k]>tol_dNdt[k]?TERM_RED:TERM_GREEN),max_err_dNdt[k], TERM_RST);
-
-
-
-    // dNuds
-    double max_err_dNudt[3] = {0., 0., 0.};
-    pFun   NuFun[3] = {&Problem::Nu0Fun, &Problem::Nu1Fun, &Problem::Nu2Fun};
-    if (verbose)
-    {
-        printf("\n%6s","t");
-        printf("%12s %12s %16s  %12s %12s %16s  %12s %12s %16s\n", "dNu0dt_num","dNu0dt","err(dNu0dt)", "dNu1dt_num","dNu1dt","err(dNu1dt)", "dNu2dt_num","dNu2dt","err(dNu2dt)");
-    }
-    for (size_t i=0; i<ndiv+1; ++i)
-    {
-        double t = (double)i/(double)ndiv;
-        prob.CalcState (t);
-        if (verbose) printf("%6.3f",t);
-        for (size_t k=0; k<3; ++k)
-        {
-            double dNudt_num = nd.DyDx (NuFun[k], t);
-            double err_dNudt = fabs(dNudt_num - prob.dNudt(k));
-            if (err_dNudt > max_err_dNudt[k]) max_err_dNudt[k] = err_dNudt;
-            if (verbose) printf("%12.8f %12.8f %16.8e  ", dNudt_num,prob.dNudt(k),err_dNudt);
-        }
-        if (verbose) printf("\n");
-    }
-    double tol_dNudt[3] = {1.0e-6, 1.0e-6, 1.0e-6};
-    for (size_t k=0; k<3; ++k) printf("  max_err_dNu%zddt  = %s%16.8e%s\n",k,(max_err_dNudt[k]>tol_dNudt[k]?TERM_RED:TERM_GREEN),max_err_dNudt[k], TERM_RST);
-
-
-
-    // dnds
-    double max_err_dndt[3] = {0., 0., 0.};
-    pFun   nFun[3] = {&Problem::n0Fun, &Problem::n1Fun, &Problem::n2Fun};
-    if (verbose)
-    {
-        printf("\n%6s","t");
-        printf("%12s %12s %16s  %12s %12s %16s  %12s %12s %16s\n", "dn0dt_num","dn0dt","err(dn0dt)", "dn1dt_num","dn1dt","err(dn1dt)", "dn2dt_num","dn2dt","err(dn2dt)");
-    }
-    for (size_t i=0; i<ndiv+1; ++i)
-    {
-        double t = (double)i/(double)ndiv;
-        prob.CalcState (t);
-        if (verbose) printf("%6.3f",t);
-        for (size_t k=0; k<3; ++k)
-        {
-            double dndt_num = nd.DyDx (nFun[k], t);
-            double err_dndt = fabs(dndt_num - prob.dndt(k));
-            if (err_dndt > max_err_dndt[k]) max_err_dndt[k] = err_dndt;
-            if (verbose) printf("%12.8f %12.8f %16.8e  ", dndt_num,prob.dndt(k),err_dndt);
-        }
-        if (verbose) printf("\n");
-    }
-    double tol_dndt[3] = {1.0e-6, 1.0e-6, 1.0e-6};
-    for (size_t k=0; k<3; ++k) printf("  max_err_dn%zddt  = %s%16.8e%s\n",k,(max_err_dndt[k]>tol_dndt[k]?TERM_RED:TERM_GREEN),max_err_dndt[k], TERM_RST);
-
-
-
-    // dnuds
-    double max_err_dnudt[3] = {0., 0., 0.};
-    pFun   nuFun[3] = {&Problem::nu0Fun, &Problem::nu1Fun, &Problem::nu2Fun};
-    if (verbose)
-    {
-        printf("\n%6s","t");
-        printf("%12s %12s %16s  %12s %12s %16s  %12s %12s %16s\n", "dnu0dt_num","dnu0dt","err(dnu0dt)", "dnu1dt_num","dnu1dt","err(dnu1dt)", "dnu2dt_num","dnu2dt","err(dnu2dt)");
-    }
-    for (size_t i=0; i<ndiv+1; ++i)
-    {
-        double t = (double)i/(double)ndiv;
-        prob.CalcState (t);
-        if (verbose) printf("%6.3f",t);
-        for (size_t k=0; k<3; ++k)
-        {
-            double dnudt_num = nd.DyDx (nuFun[k], t);
-            double err_dnudt = fabs(dnudt_num - prob.dnudt(k));
-            if (err_dnudt > max_err_dnudt[k]) max_err_dnudt[k] = err_dnudt;
-            if (verbose) printf("%12.8f %12.8f %16.8e  ", dnudt_num,prob.dnudt(k),err_dnudt);
-        }
-        if (verbose) printf("\n");
-    }
-    double tol_dnudt[3] = {1.0e-6, 1.0e-6, 1.0e-6};
-    for (size_t k=0; k<3; ++k) printf("  max_err_dnu%zddt  = %s%16.8e%s\n",k,(max_err_dnudt[k]>tol_dnudt[k]?TERM_RED:TERM_GREEN),max_err_dnudt[k], TERM_RST);
-
-
 
     // invariants
     double max_err_dspdt = 0.0;
@@ -783,12 +680,9 @@ int main(int argc, char **argv) try
     }
     double tol_dspdt = 1.0e-7;
     double tol_dsqdt = 1.0e-7;
-    printf("  max_err_dspdt = %s%16.8e%s\n",(max_err_dspdt>tol_dspdt?TERM_RED:TERM_GREEN),max_err_dspdt,TERM_RST);
-    printf("  max_err_dsqdt = %s%16.8e%s\n",(max_err_dsqdt>tol_dsqdt?TERM_RED:TERM_GREEN),max_err_dsqdt,TERM_RST);
+    printf("  max_err_dspdt  = %s%16.8e%s\n",(max_err_dspdt>tol_dspdt?TERM_RED:TERM_GREEN),max_err_dspdt,TERM_RST);
+    printf("  max_err_dsqdt  = %s%16.8e%s\n",(max_err_dsqdt>tol_dsqdt?TERM_RED:TERM_GREEN),max_err_dsqdt,TERM_RST);
     printf("\n");
-    if (max_err_dspdt > tol_dspdt) return 1;
-    if (max_err_dsqdt > tol_dsqdt) return 1;
-    */
 
 
 
@@ -796,6 +690,34 @@ int main(int argc, char **argv) try
     if (max_err_dL0dt > tol_dL0dt) return 1;
     if (max_err_dL1dt > tol_dL1dt) return 1;
     if (max_err_dL2dt > tol_dL2dt) return 1;
+    for (size_t k=0; k<3; ++k)
+    for (size_t i=0; i<3; ++i) if (max_err_dvdt[k][i] > tol_dvdt[k][i]) return 1;
+    if (max_err_dg0dt  > tol_dg0dt ) return 1;
+    if (max_err_dg1dt  > tol_dg1dt ) return 1;
+    if (max_err_dg2dt  > tol_dg2dt ) return 1;
+    if (max_err_dN0dt  > tol_dN0dt ) return 1;
+    if (max_err_dN1dt  > tol_dN1dt ) return 1;
+    if (max_err_dN2dt  > tol_dN2dt ) return 1;
+    if (max_err_dNu0dt > tol_dNu0dt) return 1;
+    if (max_err_dNu1dt > tol_dNu1dt) return 1;
+    if (max_err_dNu2dt > tol_dNu2dt) return 1;
+    if (max_err_dn0dt  > tol_dn0dt ) return 1;
+    if (max_err_dn1dt  > tol_dn1dt ) return 1;
+    if (max_err_dn2dt  > tol_dn2dt ) return 1;
+    if (max_err_dnu0dt > tol_dnu0dt) return 1;
+    if (max_err_dnu1dt > tol_dnu1dt) return 1;
+    if (max_err_dnu2dt > tol_dnu2dt) return 1;
+    if (max_err_dt0dt  > tol_dt0dt ) return 1;
+    if (max_err_dt1dt  > tol_dt1dt ) return 1;
+    if (max_err_dt2dt  > tol_dt2dt ) return 1;
+    if (max_err_dp0dt  > tol_dp0dt ) return 1;
+    if (max_err_dp1dt  > tol_dp1dt ) return 1;
+    if (max_err_dp2dt  > tol_dp2dt ) return 1;
+    if (max_err_dq0dt  > tol_dq0dt ) return 1;
+    if (max_err_dq1dt  > tol_dq1dt ) return 1;
+    if (max_err_dq2dt  > tol_dq2dt ) return 1;
+    if (max_err_dspdt  > tol_dspdt ) return 1;
+    if (max_err_dsqdt  > tol_dsqdt ) return 1;
     return 0;
 }
 MECHSYS_CATCH
