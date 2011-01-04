@@ -54,6 +54,7 @@ public:
         Sig0.change_dim(6);
         I    =  1.0,  1.0,  1.0,   0.0,      0.0,      0.0;
         Sig0 = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, -0.8*SQ2;
+        //Sig0 = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, -0.00000001*SQ2;
         Sig   .change_dim(6);
         S     .change_dim(6);
         dSigdt.change_dim(6);
@@ -140,7 +141,7 @@ public:
         {
             if (fabs(dpdL (i)-dpqthdL(0,i))>1.0e-15) throw new Fatal("Error with dpdL(%d)=%g, dpqthdL(0,%d)=%g", i,dpdL(i),i,dpqthdL(0,i));
             if (fabs(dqdL (i)-dpqthdL(1,i))>1.0e-15) throw new Fatal("Error with dqdL(%d)=%g, dpqthdL(1,%d)=%g", i,dqdL(i),i,dpqthdL(1,i));
-            if (fabs(dthdL(i)-dpqthdL(2,i))>1.0e-15) throw new Fatal("Error with dthdL(%d)=%g, dpqthdL(2,%d)=%g",i,dthdL(i),i,dpqthdL(2,i));
+            if (fabs(dthdL(i)-dpqthdL(2,i))>1.0e-13) throw new Fatal("Error with dthdL(%d)=%g, dpqthdL(2,%d)=%g",i,dthdL(i),i,dpqthdL(2,i));
         }
 #ifdef HAS_TENSORS
         // derivative of inverse w.r.t. sig
@@ -162,8 +163,12 @@ public:
         }
 
         // derivative of eigenvectors
+        Ten1_t V0, V1, V2;
         Ten3_t dv0dSig, dv1dSig, dv2dSig;
-        EigenVecDerivs (Sig, L, v0,v1,v2, dv0dSig,dv1dSig,dv2dSig);
+        Vec2Tensor     (v0,V0);
+        Vec2Tensor     (v1,V1);
+        Vec2Tensor     (v2,V2);
+        EigenVecDerivs (L, V0,V1,V2, dv0dSig,dv1dSig,dv2dSig);
         dvdt[0] = dv0dSig % dAdt;
         dvdt[1] = dv1dSig % dAdt;
         dvdt[2] = dv2dSig % dAdt;

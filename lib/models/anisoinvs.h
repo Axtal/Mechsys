@@ -70,6 +70,12 @@ public:
     static Ten2_t tSig, I;                   // tensor Sig and Identity
     static Ten1_t tN, tNu, tn, tnu;          // tensors: normal vectors
     static Ten3_t dtdSig;                    // traction
+    static Ten1_t tt, tp, tq;                // tensor: traction and projections
+    static Ten2_t tP;                        // tensor: projector
+    static Ten2_t dsdSig;                    // auxiliary tensor for dpdSig
+    static Ten3_t dpdSig, dqdSig;            // projections
+    static Ten2_t tdspdSig, tdsqdSig;        // invariants (tensor)
+    static Vec_t  dspdSig, dsqdSig;          // invariants (Mandel's basis)
 #endif
 
 private:
@@ -100,6 +106,12 @@ Ten2_t AnisoInvs::dnudn;
 Ten2_t AnisoInvs::tSig;      Ten2_t AnisoInvs::I;
 Ten1_t AnisoInvs::tN;        Ten1_t AnisoInvs::tNu;       Ten1_t AnisoInvs::tn;    Ten1_t AnisoInvs::tnu;
 Ten3_t AnisoInvs::dtdSig;
+Ten1_t AnisoInvs::tt;        Ten1_t AnisoInvs::tp;        Ten1_t AnisoInvs::tq;
+Ten2_t AnisoInvs::tP;
+Ten2_t AnisoInvs::dsdSig;
+Ten3_t AnisoInvs::dpdSig;    Ten3_t AnisoInvs::dqdSig;
+Ten2_t AnisoInvs::tdspdSig;  Ten2_t AnisoInvs::tdsqdSig;
+Vec_t  AnisoInvs::dspdSig;   Vec_t  AnisoInvs::dsqdSig;
 #endif
 
 
@@ -167,13 +179,15 @@ inline void AnisoInvs::Calc (Vec_t const & Sig, bool WithDerivs)
 #ifdef HAS_TENSORS
         // normal to SMP in principal system
         if (zero) dN123dL.SetDiagonal (1.0);
-        else dN123dL = -b/(L(0)*pow(fabs(L(0)),b)), 0.0, 0.0,
-                        0.0, -b/(L(1)*pow(fabs(L(1)),b)), 0.0,
-                        0.0, 0.0, -b/(L(2)*pow(fabs(L(2)),b)); // SMP(123)
+        else dN123dL =            -b/(L(0)*pow(fabs(L(0)),b)), 0.0, 0.0,
+                        0.0,      -b/(L(1)*pow(fabs(L(1)),b)), 0.0,
+                        0.0, 0.0, -b/(L(2)*pow(fabs(L(2)),b));
 
         // eigenvectors and eigenprojectors
-        Ten1Tensor (v0,V0);   Ten1Tensor (v1,V1);   Ten1Tensor (v2,V2);
-        EigenVecDerivs (Sig, L, v0,v1,v2, dv0dSig,dv1dSig,dv2dSig);
+        Vec2Tensor     (v0,V0);
+        Vec2Tensor     (v1,V1);
+        Vec2Tensor     (v2,V2);
+        EigenVecDerivs (L, V0,V1,V2, dv0dSig,dv1dSig,dv2dSig);
         E0 = (V0 & V0);
         E1 = (V1 & V1);
         E2 = (V2 & V2);
@@ -193,22 +207,41 @@ inline void AnisoInvs::Calc (Vec_t const & Sig, bool WithDerivs)
         dnudSig = dnudn * dndSig;
 
         // convert to tensors
-        Ten2Tensor (mSig, tSig);
-        Ten1Tensor (N,    tN);
-        Ten1Tensor (Nu,   tNu);
-        Ten1Tensor (n,    tn);
-        Ten1Tensor (nu,   tnu);
+        Mat2Tensor (P,    tP);
+        Mat2Tensor (mSig, tSig);
+        Vec2Tensor (t,    tt);
+        Vec2Tensor (N,    tN);
+        Vec2Tensor (Nu,   tNu);
+        Vec2Tensor (n,    tn);
+        Vec2Tensor (nu,   tnu);
+        Vec2Tensor (p,    tp);
+        Vec2Tensor (q,    tq);
 
         // traction
         dtdSig = (I & tnu) + (tSig * dnudSig);
-        //dtdSig.Clear ();
-        //for (int i=0; i<3; ++i)
-        //for (int k=0; k<3; ++k)
-        //for (int l=0; l<3; ++l)
-        //{
-            //for (int j=0; j<3; ++j) dtdSig[i][k][l] += I[i][k]*I[j][l]*nu[j];
-            //for (int j=0; j<3; ++j) dtdSig[i][k][l] += tSig[i][j]*dnudSig[j][k][l];
-        //}
+
+        // normal projection
+        if (Obliq)
+        {
+            double m = tn * tt;
+            dsdSig = (tn*dNdSig + tN*dndSig)*(-s*s);
+            dpdSig = (tN&dsdSig)*m + dNdSig*(s*m) + (tN&(tt*dndSig))*s + tP*dtdSig;
+        }
+        else
+        {
+            double m = tnu * tt;
+            dpdSig = dnudSig*m + (tnu&(tt*dnudSig)) + tP*dtdSig;
+        }
+
+        // on-plane projection
+        dqdSig = dtdSig - dqdSig;
+
+        // invariants
+        if (sp>Tol) tdspdSig = (tp*(1.0/sp)) * dpdSig;   else tdspdSig.SetDiagonal (1.0);
+        if (sq>Tol) tdsqdSig = (tq*(1.0/sq)) * dqdSig;   else tdsqdSig.SetDiagonal (1.0);
+        size_t ncp = size(Sig);
+        //Tensor2Ten (tdspdSig, dspdSig, ncp);
+        //Tensor2Ten (tdsqdSig, dsqdSig, ncp);
 
 #else
         throw new Fatal("AnisoInvs::Calc: Tensors library is required in order to calculate derivatives");

@@ -780,24 +780,8 @@ inline Vec3_t Tup2Vec3 (BPy::tuple const & T3)
 #endif
 
 
-///////////////////////////////////////////////////////////////////////////////////////////// Tensors ////////////
+//////////////////////////////////////////////////////////////////////////////////////////// Conversions /////////
 
-
-/** Deviator of 2nd order symmetric tensor Ten. */
-inline void Dev (Vec_t const & Ten, Vec_t & DevTen)
-{
-    double coef = (Ten(0)+Ten(1)+Ten(2))/3.0;
-    DevTen     = Ten;
-    DevTen(0) -= coef;
-    DevTen(1) -= coef;
-    DevTen(2) -= coef;
-}
-
-/** Trace of 2nd order symmetric tensor Ten. */
-inline double Tra (Vec_t const & Ten)
-{
-    return Ten(0)+Ten(1)+Ten(2);
-}
 
 /** Creates the matrix representation of 2nd order symmetric tensor Ten (Mandel's representation). */
 inline void Ten2Mat (Vec_t const & Ten, Mat3_t & Mat)
@@ -820,7 +804,7 @@ inline void Ten2Mat (Vec_t const & Ten, Mat3_t & Mat)
     else throw new Fatal("matvec.h::Ten2Mat: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
 }
 
-/** Creates the matrix representation of 2nd order symmetric tensor Ten (Mandel's representation). */
+/** (TinyMatrix) Creates the matrix representation of 2nd order symmetric tensor Ten (Mandel's representation). */
 inline void Ten2Mat (Vec_t const & Ten, Mat_t & Mat)
 {
     // matrix of tensor
@@ -841,101 +825,6 @@ inline void Ten2Mat (Vec_t const & Ten, Mat_t & Mat)
     }
     else throw new Fatal("matvec.h::Ten2Mat: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
 }
-
-/** Creates the matrix representation of 2nd order symmetric tensor Ten (Mandel's representation). */
-#ifdef HAS_TENSORS
-inline void Ten2Tensor (Mat3_t const & Ten, TensorsLib::Tensor2<double,3> & T)
-{
-    T = Ten(0,0),  Ten(0,1),  Ten(0,2),
-        Ten(1,0),  Ten(1,1),  Ten(1,2),
-        Ten(2,0),  Ten(2,1),  Ten(2,2);
-}
-
-inline void Ten2Tensor (Vec_t const & Ten, TensorsLib::Tensor2<double,3> & T)
-{
-    size_t ncp = size(Ten);
-    if (ncp==4)
-    {
-        T = Ten(0),            Ten(3)/Util::SQ2,     0.0,
-            Ten(3)/Util::SQ2,  Ten(1),               0.0,
-                         0.0,               0.0,  Ten(2);
-    }
-    else if (ncp==6)
-    {
-        T = Ten(0),            Ten(3)/Util::SQ2,  Ten(5)/Util::SQ2,
-            Ten(3)/Util::SQ2,  Ten(1),            Ten(4)/Util::SQ2,
-            Ten(5)/Util::SQ2,  Ten(4)/Util::SQ2,  Ten(2);
-    }
-    else throw new Fatal("matvec.h::Ten2Tensor: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation. NumComponents==%d is invalid",ncp);
-}
-
-inline void Tensor2Ten (TensorsLib::Tensor2<double,3> const & T, Vec_t & Ten, size_t NumComponents, bool CheckSymmetry=true, double Tol=1.0e-10)
-{
-    if (CheckSymmetry)
-    {
-        if (fabs(T[0][1]-T[1][0])>Tol) throw new Fatal("matvec.h::Tensor2Ten: Tensor is not symmetric");
-        if (fabs(T[1][2]-T[2][1])>Tol) throw new Fatal("matvec.h::Tensor2Ten: Tensor is not symmetric");
-        if (fabs(T[2][0]-T[0][2])>Tol) throw new Fatal("matvec.h::Tensor2Ten: Tensor is not symmetric");
-    }
-
-    // Mandel's tensor from Tensor
-    Ten.change_dim (NumComponents);
-    if (NumComponents==4)
-    {
-        Ten = T[0][0], T[1][1], T[2][2], T[0][1]*Util::SQ2;
-    }
-    else if (NumComponents==6)
-    {
-        Ten = T[0][0], T[1][1], T[2][2], T[0][1]*Util::SQ2, T[1][2]*Util::SQ2, T[2][0]*Util::SQ2;
-    }
-    else throw new Fatal("matvec.h::Tensor2Ten: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation. NumComponents==%d is invalid",NumComponents);
-}
-
-inline void Tensor2Ten (TensorsLib::Tensor4<double,3> const & T, Mat_t & Ten, size_t NumComponents, bool CheckSymmetry=true, double Tol=1.0e-10)
-{
-    if (!(NumComponents==4 || NumComponents==6)) throw new Fatal("matvec.h::Tensor2Ten: This method is only available for 4th order symmetric tensors with either 4x4 or 6x6 components according to Mandel's representation. NumComponents==%d is invalid",NumComponents);
-    Ten.change_dim (NumComponents,NumComponents);
-    for (size_t i=0; i<3; ++i)
-    for (size_t j=0; j<3; ++j)
-    for (size_t k=0; k<3; ++k)
-    for (size_t l=0; l<3; ++l)
-    {
-        if (CheckSymmetry)
-        {
-            if (fabs(T[i][j][k][l] - T[i][j][l][k])>Tol) throw new Fatal("matvec.h::Tensor2Ten: 4ht order Tensor is not super symmetric: ijkl != ijlk");
-            if (fabs(T[i][j][k][l] - T[j][i][k][l])>Tol) throw new Fatal("matvec.h::Tensor2Ten: 4ht order Tensor is not super symmetric: ijkl != jikl");
-            if (fabs(T[i][j][k][l] - T[k][l][i][j])>Tol) throw new Fatal("matvec.h::Tensor2Ten: 4ht order Tensor is not super symmetric: ijkl != klij");
-        }
-        size_t I = TensorsLib::Tensor4ToMandel_i[i][j][k][l];
-        size_t J = TensorsLib::Tensor4ToMandel_j[i][j][k][l];
-        double a = (k==l ? 1.0 : Util::SQ2);
-        double b = (i==j ? 1.0 : Util::SQ2);
-        if (I<NumComponents && J<NumComponents) Ten(I,J) = T[i][j][k][l]*a*b;
-    }
-}
-
-inline void Ten1Tensor (Vec3_t const & V, Ten1_t & Vec)
-{
-    Vec = V(0), V(1), V(2);
-}
-
-inline void Ten1Tensor (Vec_t const & V, Ten1_t & Vec)
-{
-    if (size(V)!=3) throw new Fatal("matvec.h::Ten1Tensor: Vector (Vec_t) must have size equal to 3");
-    Vec = V(0), V(1), V(2);
-}
-
-inline void Tensor1Ten (Ten1_t const & V, Vec_t & Vec)
-{
-    Vec.change_dim (3);
-    Vec = V[0], V[1], V[2];
-}
-
-inline void Tensor1Ten (Ten1_t const & V, Vec3_t & Vec)
-{
-    Vec = V[0], V[1], V[2];
-}
-#endif
 
 /** Creates a 2nd order symmetric tensor Ten (using Mandel's representation) based on its matrix components. */
 inline void Mat2Ten (Mat3_t const & Mat, Vec_t & Ten, size_t NumComponents, bool CheckSymmetry=true, double Tol=1.0e-10)
@@ -958,6 +847,216 @@ inline void Mat2Ten (Mat3_t const & Mat, Vec_t & Ten, size_t NumComponents, bool
         Ten = Mat(0,0), Mat(1,1), Mat(2,2), Util::SQ2*Mat(0,1), Util::SQ2*Mat(1,2), Util::SQ2*Mat(2,0);
     }
     else throw new Fatal("matvec.h::Mat2Ten: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
+}
+
+#ifdef HAS_TENSORS
+
+/** Converts a Vector to 1st order Tensor. */
+inline void Vec2Tensor (Vec_t const & V, Ten1_t & Vec)
+{
+    if (size(V)!=3) throw new Fatal("matvec.h::Ten1Tensor: Vector (Vec_t) must have size equal to 3");
+    Vec = V(0), V(1), V(2);
+}
+
+/** Converts a TinyVector to 1st order Tensor. */
+inline void Vec2Tensor (Vec3_t const & V, Ten1_t & Vec)
+{
+    Vec = V(0), V(1), V(2);
+}
+
+/** Converts a 1st order Tensor to Vector. */
+inline void Tensor2Vec (Ten1_t const & V, Vec_t & Vec)
+{
+    Vec.change_dim (3);
+    Vec = V[0], V[1], V[2];
+}
+
+/** Converts a 1st order Tensor to TinyVector. */
+inline void Tensor2Vec (Ten1_t const & V, Vec3_t & Vec)
+{
+    Vec = V[0], V[1], V[2];
+}
+
+/** Converts a 2nd order Tensor to TinyMatrix. */
+inline void Tensor2Mat (Ten2_t const & T, Mat3_t & M)
+{
+    M = T[0][0],  T[0][1],  T[0][2],
+        T[1][0],  T[1][1],  T[1][2],
+        T[2][0],  T[2][1],  T[2][2];
+}
+
+/** Converts a TinyMatrix to 2nd order Tensor. */
+inline void Mat2Tensor (Mat3_t const & M, Ten2_t & T)
+{
+    T = M(0,0),  M(0,1),  M(0,2),
+        M(1,0),  M(1,1),  M(1,2),
+        M(2,0),  M(2,1),  M(2,2);
+}
+
+/** Converts a 2nd order symmetric tensor Ten (using Mandel's basis) to 2nd order Tensor. */
+inline void Ten2Tensor (Vec_t const & Ten, Ten2_t & T)
+{
+    size_t ncp = size(Ten);
+    if (ncp==4)
+    {
+        T = Ten(0),            Ten(3)/Util::SQ2,     0.0,
+            Ten(3)/Util::SQ2,  Ten(1),               0.0,
+                         0.0,               0.0,  Ten(2);
+    }
+    else if (ncp==6)
+    {
+        T = Ten(0),            Ten(3)/Util::SQ2,  Ten(5)/Util::SQ2,
+            Ten(3)/Util::SQ2,  Ten(1),            Ten(4)/Util::SQ2,
+            Ten(5)/Util::SQ2,  Ten(4)/Util::SQ2,  Ten(2);
+    }
+    else throw new Fatal("matvec.h::Ten2Tensor: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation. NumComponents==%d is invalid",ncp);
+}
+
+/** Converts a 2nd order Tensor to tensor in Mandel's basis. */
+inline void Tensor2Ten (Ten2_t const & T, Vec_t & Ten, size_t NumComponents, bool CheckSymmetry=true, double Tol=1.0e-10)
+{
+    if (CheckSymmetry)
+    {
+        bool error = false;
+        if (fabs(T[0][1]-T[1][0])>Tol) error = true;
+        if (fabs(T[1][2]-T[2][1])>Tol) error = true;
+        if (fabs(T[2][0]-T[0][2])>Tol) error = true;
+        if (error)
+        {
+            Mat3_t mT;
+            Tensor2Mat (T, mT);
+            std::ostringstream oss;
+            oss << "T = \n" << PrintMatrix(mT);
+            throw new Fatal("matvec.h::Tensor2Ten: Tensor is not symmetric\n%s",oss.str().c_str());
+        }
+    }
+
+    Ten.change_dim (NumComponents);
+    if (NumComponents==4)
+    {
+        Ten = T[0][0], T[1][1], T[2][2], T[0][1]*Util::SQ2;
+    }
+    else if (NumComponents==6)
+    {
+        Ten = T[0][0], T[1][1], T[2][2], T[0][1]*Util::SQ2, T[1][2]*Util::SQ2, T[2][0]*Util::SQ2;
+    }
+    else throw new Fatal("matvec.h::Tensor2Ten: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation. NumComponents==%d is invalid",NumComponents);
+}
+
+/** Converts a 4th order Tensor to tensor in Mandel's basis. */
+inline void Tensor2Ten (Ten4_t const & T, Mat_t & Ten, size_t NumComponents, bool CheckSymmetry=true, double Tol=1.0e-10)
+{
+    if (!(NumComponents==4 || NumComponents==6)) throw new Fatal("matvec.h::Tensor2Ten: This method is only available for 4th order symmetric tensors with either 4x4 or 6x6 components according to Mandel's representation. NumComponents==%d is invalid",NumComponents);
+    Ten.change_dim (NumComponents,NumComponents);
+    for (size_t i=0; i<3; ++i)
+    for (size_t j=0; j<3; ++j)
+    for (size_t k=0; k<3; ++k)
+    for (size_t l=0; l<3; ++l)
+    {
+        if (CheckSymmetry)
+        {
+            if (fabs(T[i][j][k][l] - T[i][j][l][k])>Tol) throw new Fatal("matvec.h::Tensor2Ten: 4ht order Tensor is not super symmetric: ijkl != ijlk");
+            if (fabs(T[i][j][k][l] - T[j][i][k][l])>Tol) throw new Fatal("matvec.h::Tensor2Ten: 4ht order Tensor is not super symmetric: ijkl != jikl");
+            if (fabs(T[i][j][k][l] - T[k][l][i][j])>Tol) throw new Fatal("matvec.h::Tensor2Ten: 4ht order Tensor is not super symmetric: ijkl != klij");
+        }
+        size_t I = TensorsLib::Tensor4ToMandel_i[i][j][k][l];
+        size_t J = TensorsLib::Tensor4ToMandel_j[i][j][k][l];
+        double a = (k==l ? 1.0 : Util::SQ2);
+        double b = (i==j ? 1.0 : Util::SQ2);
+        if (I<NumComponents && J<NumComponents) Ten(I,J) = T[i][j][k][l]*a*b;
+    }
+}
+
+#endif
+
+
+//////////////////////////////////////////////////////////////////////////////////////// Derivatives /////////////
+
+
+/** Derivative of unit vector. */
+inline void UnitVecDeriv (Vec_t const & n, Vec_t & nu, Mat_t & dnudn, double Tol=1.0e-8)
+{
+    double norm_n = Norm(n);
+    Mat_t I;
+    Identity (size(n), I);
+    if (norm_n>Tol)
+    {
+        nu = n / norm_n;
+        Mat_t nu_dy_nu;
+        Dyad (nu, nu, nu_dy_nu);
+        dnudn = I/norm_n - nu_dy_nu/norm_n;
+    }
+    else
+    {
+        nu    = 1./Util::SQ3, 1./Util::SQ3, 1./Util::SQ3;
+        dnudn = I;
+    }
+}
+
+/** Derivative of unit vector. */
+inline void UnitVecDeriv (Vec3_t const & n, Vec3_t & nu, Mat3_t & dnudn, double Tol=1.0e-8)
+{
+    double norm_n = Norm(n);
+    if (norm_n>Tol)
+    {
+        double s = 1.0/norm_n;
+        nu = n / norm_n;
+        dnudn(0,0)=s-s*nu(0)*nu(0);   dnudn(0,1)= -s*nu(0)*nu(1);   dnudn(0,2)= -s*nu(0)*nu(2);
+        dnudn(1,0)= -s*nu(1)*nu(0);   dnudn(1,1)=s-s*nu(1)*nu(1);   dnudn(1,2)= -s*nu(1)*nu(2);
+        dnudn(2,0)= -s*nu(2)*nu(0);   dnudn(2,1)= -s*nu(2)*nu(1);   dnudn(2,2)=s-s*nu(2)*nu(2);
+    }
+    else
+    {
+        nu    = 1./Util::SQ3, 1./Util::SQ3, 1./Util::SQ3;
+        dnudn = 1.0, 0.0, 0.0,
+                0.0, 1.0, 0.0,
+                0.0, 0.0, 1.0;
+    }
+}
+
+#ifdef HAS_TENSORS
+
+/** Derivative of unit vector (saves results in Tensor). */
+inline void UnitVecDeriv (Vec3_t const & n, Vec3_t & nu, Ten2_t & dnudn, double Tol=1.0e-8)
+{
+    double norm_n = Norm(n);
+    if (norm_n>Tol)
+    {
+        double s = 1.0/norm_n;
+        nu = n / norm_n;
+        dnudn[0][0]=s-s*nu(0)*nu(0);   dnudn[0][1]= -s*nu(0)*nu(1);   dnudn[0][2]= -s*nu(0)*nu(2);
+        dnudn[1][0]= -s*nu(1)*nu(0);   dnudn[1][1]=s-s*nu(1)*nu(1);   dnudn[1][2]= -s*nu(1)*nu(2);
+        dnudn[2][0]= -s*nu(2)*nu(0);   dnudn[2][1]= -s*nu(2)*nu(1);   dnudn[2][2]=s-s*nu(2)*nu(2);
+    }
+    else
+    {
+        nu    = 1./Util::SQ3, 1./Util::SQ3, 1./Util::SQ3;
+        dnudn = 1.0, 0.0, 0.0,
+                0.0, 1.0, 0.0,
+                0.0, 0.0, 1.0;
+    }
+}
+
+#endif
+
+
+///////////////////////////////////////////////////////////////////////////////////////////// Tensors ////////////
+
+
+/** Deviator of 2nd order symmetric tensor Ten. */
+inline void Dev (Vec_t const & Ten, Vec_t & DevTen)
+{
+    double coef = (Ten(0)+Ten(1)+Ten(2))/3.0;
+    DevTen     = Ten;
+    DevTen(0) -= coef;
+    DevTen(1) -= coef;
+    DevTen(2) -= coef;
+}
+
+/** Trace of 2nd order symmetric tensor Ten. */
+inline double Tra (Vec_t const & Ten)
+{
+    return Ten(0)+Ten(1)+Ten(2);
 }
 
 /** 2nd order symmetric tensor Ten raised to the power of 2. */
@@ -1339,10 +1438,9 @@ inline void EigenProjDerivs (Vec_t const & A, Vec3_t & L, Vec3_t & v0,   Vec3_t 
 
 /** Derivatives of the eigenvectors of Sig w.r.t Sig (a third order tensor).  NOTE: the eigevalues and eigenvectors must be given as input. */
 #ifdef HAS_TENSORS
-inline void EigenVecDerivs (Vec_t  const & Sig,     Vec3_t const &  L,
-                            Vec3_t const &  v0,     Vec3_t const &  v1,     Vec3_t const & v2,
-                            Ten3_t       & dv0dSig, Ten3_t       & dv1dSig, Ten3_t       & dv2dSig,
-                            double Pertubation=1.0e-7, double Tol=1.0e-14)
+inline void EigenVecDerivs (Vec3_t const &  L, Ten1_t const &  v0,     Ten1_t const &  v1,     Ten1_t const &  v2,
+                                               Ten3_t       & dv0dSig, Ten3_t       & dv1dSig, Ten3_t       & dv2dSig,
+                            double Pertubation=1.0e-7, double Tol=1.0e-10)
 {
     // check eigenvalues
     if (fabs(L(0))<Tol) throw new Fatal("matvec.h::EigenVecDerivs: Principal values cannot be zero (Tol=%g).\n L = [%g, %g, %g]",Tol,L(0),L(1),L(2));
@@ -1356,19 +1454,13 @@ inline void EigenVecDerivs (Vec_t  const & Sig,     Vec3_t const &  L,
     if (fabs(l(1)-l(2))<Pertubation) { l(1)+=Pertubation;  l(2)-=Pertubation;  pert[1]=true; }
     if (fabs(l(2)-l(0))<Pertubation) { l(2)+=Pertubation;  l(0)-=Pertubation;  pert[2]=true; }
 
-    // eigenvectors in tensor structure
-    Ten1_t V0,V1,V2;
-    V0 = v0(0), v0(1), v0(2);
-    V1 = v1(0), v1(1), v1(2);
-    V2 = v2(0), v2(1), v2(2);
-
     // derivatives
     double a0 = 0.5/(l(0)-l(1));   double b0 = 0.5/(l(0)-l(2));
     double a1 = 0.5/(l(1)-l(2));   double b1 = 0.5/(l(1)-l(0));
     double a2 = 0.5/(l(2)-l(0));   double b2 = 0.5/(l(2)-l(1));
-    dv0dSig = ((V1&V0&V1) + (V1&V1&V0))*a0  +  ((V2&V0&V2) + (V2&V2&V0))*b0;
-    dv1dSig = ((V2&V1&V2) + (V2&V2&V1))*a1  +  ((V0&V1&V0) + (V0&V0&V1))*b1;
-    dv2dSig = ((V0&V2&V0) + (V0&V0&V2))*a2  +  ((V1&V2&V1) + (V1&V1&V2))*b2;
+    dv0dSig = ((v1&v0&v1) + (v1&v1&v0))*a0  +  ((v2&v0&v2) + (v2&v2&v0))*b0;
+    dv1dSig = ((v2&v1&v2) + (v2&v2&v1))*a1  +  ((v0&v1&v0) + (v0&v0&v1))*b1;
+    dv2dSig = ((v0&v2&v0) + (v0&v0&v2))*a2  +  ((v1&v2&v1) + (v1&v1&v2))*b2;
 }
 #endif
 
@@ -1510,197 +1602,6 @@ inline BPy::tuple Pypqth2L (double p, double q, double th, BPy::str const & Type
     return BPy::make_tuple (l(0), l(1), l(2));
 }
 #endif
-
-
-////////////////////////////////////////////////////////////////////////////// Anisotropic Invariants ////////////
-
-
-/** Derivative of unit vector. */
-inline void UnitVecDeriv (Vec_t const & n, Vec_t & nu, Mat_t & dnudn, double Tol=1.0e-8)
-{
-    double norm_n = Norm(n);
-    Mat_t I;
-    Identity (size(n), I);
-    if (norm_n>Tol)
-    {
-        nu = n / norm_n;
-        Mat_t nu_dy_nu;
-        Dyad (nu, nu, nu_dy_nu);
-        dnudn = I/norm_n - nu_dy_nu/norm_n;
-    }
-    else
-    {
-        nu    = 1./Util::SQ3, 1./Util::SQ3, 1./Util::SQ3;
-        dnudn = I;
-    }
-}
-
-/** Derivative of unit vector. */
-inline void UnitVecDeriv (Vec3_t const & n, Vec3_t & nu, Mat3_t & dnudn, double Tol=1.0e-8)
-{
-    double norm_n = Norm(n);
-    if (norm_n>Tol)
-    {
-        double s = 1.0/norm_n;
-        nu = n / norm_n;
-        dnudn(0,0)=s-s*nu(0)*nu(0);   dnudn(0,1)= -s*nu(0)*nu(1);   dnudn(0,2)= -s*nu(0)*nu(2);
-        dnudn(1,0)= -s*nu(1)*nu(0);   dnudn(1,1)=s-s*nu(1)*nu(1);   dnudn(1,2)= -s*nu(1)*nu(2);
-        dnudn(2,0)= -s*nu(2)*nu(0);   dnudn(2,1)= -s*nu(2)*nu(1);   dnudn(2,2)=s-s*nu(2)*nu(2);
-    }
-    else
-    {
-        nu    = 1./Util::SQ3, 1./Util::SQ3, 1./Util::SQ3;
-        dnudn = 1.0, 0.0, 0.0,
-                0.0, 1.0, 0.0,
-                0.0, 0.0, 1.0;
-    }
-}
-
-#ifdef HAS_TENSORS
-/** Derivative of unit vector. */
-inline void UnitVecDeriv (Vec3_t const & n, Vec3_t & nu, Ten2_t & dnudn, double Tol=1.0e-8)
-{
-    double norm_n = Norm(n);
-    if (norm_n>Tol)
-    {
-        double s = 1.0/norm_n;
-        nu = n / norm_n;
-        dnudn[0][0]=s-s*nu(0)*nu(0);   dnudn[0][1]= -s*nu(0)*nu(1);   dnudn[0][2]= -s*nu(0)*nu(2);
-        dnudn[1][0]= -s*nu(1)*nu(0);   dnudn[1][1]=s-s*nu(1)*nu(1);   dnudn[1][2]= -s*nu(1)*nu(2);
-        dnudn[2][0]= -s*nu(2)*nu(0);   dnudn[2][1]= -s*nu(2)*nu(1);   dnudn[2][2]=s-s*nu(2)*nu(2);
-    }
-    else
-    {
-        nu    = 1./Util::SQ3, 1./Util::SQ3, 1./Util::SQ3;
-        dnudn = 1.0, 0.0, 0.0,
-                0.0, 1.0, 0.0,
-                0.0, 0.0, 1.0;
-    }
-}
-#endif
-
-/** Anisotropic invariants and derivatives. */
-inline void Aniso (Vec_t const & Sig, double b, double Alp, Vec_t const & a, bool Obliq,
-                      double & sp, double & sq, Vec_t * dspdL=NULL, Vec_t * dsqdL=NULL, Vec_t * dspdSig=NULL, Vec_t * dsqdSig=NULL,double Tol=1.0e-8)
-{
-    // 'a' vector
-    double norm_a = Norm(a);
-    if (norm_a<Tol) throw new Fatal("AnisoInvs: 'a' vector must be non zero. a=[%g,%g,%g]. norm(a)=%g",a(0),a(1),a(2),norm_a);
-    Vec_t au(a / norm_a); // unit vector
-
-    // principal values and eigenprojectors
-    Mat_t  Qt(3,3);
-    Vec3_t L;
-    Vec3_t v0,v1,v2;
-    Vec_t  P0,P1,P2;
-    EigenProj (Sig, L, v0, v1, v2, P0, P1, P2);
-    for (size_t j=0; j<3; ++j)
-    {
-        Qt(0,j) = v0(j);
-        Qt(1,j) = v1(j);
-        Qt(2,j) = v2(j);
-    }
-
-    // normal vectors
-    Vec_t N(3), Nu;      // SMP
-    Vec_t n(3), nu;      // AMP
-    bool zero = (fabs(L(0))<Tol || fabs(L(1))<Tol || fabs(L(2))<Tol);
-    if (zero) N = 1.0, 1.0, 1.0;                                                       // SMP
-    else      N = 1.0/pow(fabs(L(0)),b), 1.0/pow(fabs(L(1)),b), 1.0/pow(fabs(L(2)),b); // SMP
-    Nu = N / Norm(N);    // SMP
-    n  = Alp*Qt*au + Nu; // AMP
-    nu = n / Norm(n);    // AMP
-
-    // traction
-    Vec_t t(3);
-    t = L(0)*nu(0), L(1)*nu(1), L(2)*nu(2);
-
-    // P projector
-    Mat_t P;
-    double s = 0.0;
-    if (Obliq)
-    {
-        s = 1.0 / dot(N, n);
-        Dyad (N, n, P);
-        P *= s;
-    }
-    else Dyad (nu, nu, P);
-
-    // invariants
-    Vec_t p(P*t);
-    sp = Norm(p);
-    Vec_t q(t - p);
-    sq = Norm(q);
-
-    // derivatives
-    if (dspdL!=NULL && dsqdL!=NULL)
-    {
-        // normal vectors
-        Mat_t dNudN, dNds(3,3), dNuds; // SMP
-        Mat_t dnudn, dnds(3,3), dnuds; // AMP
-        UnitVecDeriv (N, Nu, dNudN, Tol);               // SMP
-        if (zero) Identity (3, dNds);                   // SMP
-        else dNds = -b/pow(fabs(L(0)),b+1.0), 0.0, 0.0,
-                    0.0, -b/pow(fabs(L(1)),b+1.0), 0.0,
-                    0.0, 0.0, -b/pow(fabs(L(2)),b+1.0); // SMP
-        dNuds = dNudN * dNds;             // SMP
-        dnds  = dNuds;                    // AMP
-        UnitVecDeriv (n, nu, dnudn, Tol); // AMP
-        dnuds = dnudn * dnds;             // AMP
-
-        // traction
-        Mat_t dtds;
-        Mat_t sm(3,3), M(3,3);
-        sm =  L(0),   0.0,   0.0,
-               0.0,  L(1),   0.0,
-               0.0,   0.0,  L(2);
-        M  = nu(0),   0.0,   0.0,
-               0.0, nu(1),   0.0,
-               0.0,   0.0, nu(2);
-        dtds = sm*dnuds + M;
-
-        // dpds
-        Mat_t dpds;
-        if (Obliq)
-        {
-            double sc = dot(n, t);
-            Vec_t Ndnds, ndNds, dsds;
-            Mult (N, dnds, Ndnds);
-            Mult (n, dNds, ndNds);
-            dsds = (-s*s) * (Ndnds + ndNds);
-            Vec_t tdnds;
-            Mat_t N_dy_tdnds, N_dy_dsds;
-            Mult (t, dnds, tdnds);
-            Dyad (N, tdnds, N_dy_tdnds);
-            Dyad (N, dsds,  N_dy_dsds);
-            dpds = (s*sc)*dNds + s*N_dy_tdnds + sc*N_dy_dsds + P*dtds;
-        }
-        else
-        {
-            double sc = dot(nu, t);
-            Vec_t tdnuds;
-            Mat_t nu_dy_tdnuds;
-            Mult (t, dnuds, tdnuds);
-            Dyad (nu, tdnuds, nu_dy_tdnuds);
-            dpds = sc*dnuds + nu_dy_tdnuds + P*dtds;
-        }
-
-        // dqds
-        Mat_t dqds(dtds - dpds);
-
-        // invariants
-        Mult (p, dpds, (*dspdL));
-        Mult (q, dqds, (*dsqdL));
-        (*dspdL) /= sp;
-        (*dsqdL) /= sq;
-
-        if (dspdSig!=NULL && dsqdSig!=NULL)
-        {
-            (*dspdSig) = (*dspdL)(0)*P0 + (*dspdL)(1)*P1 + (*dspdL)(2)*P2;
-            (*dsqdSig) = (*dsqdL)(0)*P0 + (*dsqdL)(1)*P1 + (*dsqdL)(2)*P2;
-        }
-    }
-}
 
 
 ///////////////////////////////////////////////////////////////////////// Failure criteria constants /////////////

@@ -54,11 +54,14 @@ public:
         dSigdt.change_dim(6);
         M     .change_dim(6,6);
         dMdt  .change_dim(6,6);
-        Sig0 = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, -0.8*SQ2;
+        //Sig0 = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, -0.8*SQ2;
         //Sig0 = -1.5, -2.0, -0.5,  0., 0., 0;
+        Sig0 = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, 0.0;
+        //Sig0 = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, -0.00000001*SQ2;
 
         Vec3_t a(0.2, 0.3, 1.0);
-        AI = new AnisoInvs (0.5, 0.15, a, true); // b, alpha, a, obliq
+        //AI = new AnisoInvs (0.5, 0.15, a, true); // b, alpha, a, obliq
+        AI = new AnisoInvs (0.5, 0.0, a, false); // b, alpha, a, obliq
 
         dvdt.Resize (3);
     }
@@ -124,6 +127,13 @@ public:
 
         // traction
         dtdt = AI->dtdSig % dAdt;
+        //dtdt = (dAdt * AI->tnu) + (AI->tSig * dnudt);
+
+        // normal projection
+        dpdt = AI->dpdSig % dAdt;
+
+        // on-plane projection
+        dqdt = AI->dqdSig % dAdt;
     }
 
     // Functions
@@ -167,6 +177,14 @@ public:
     double t1Fun  (double t) { CalcState(t); return AI->t(1); }
     double t2Fun  (double t) { CalcState(t); return AI->t(2); }
 
+    double p0Fun  (double t) { CalcState(t); return AI->p(0); }
+    double p1Fun  (double t) { CalcState(t); return AI->p(1); }
+    double p2Fun  (double t) { CalcState(t); return AI->p(2); }
+
+    double q0Fun  (double t) { CalcState(t); return AI->q(0); }
+    double q1Fun  (double t) { CalcState(t); return AI->q(1); }
+    double q2Fun  (double t) { CalcState(t); return AI->q(2); }
+
     double spFun  (double t) { CalcState(t); return AI->sp; }
     double sqFun  (double t) { CalcState(t); return AI->sq; }
 
@@ -181,6 +199,8 @@ public:
     Ten1_t        dNdt, dNudt;       // normal to SMP in laboratory system
     Ten1_t        dndt, dnudt;       // normal to AMP in laboratory system
     Ten1_t        dtdt;              // traction
+    Ten1_t        dpdt;              // normal projection
+    Ten1_t        dqdt;              // on-plane projection
 };
 
 typedef double (Problem::*pFun) (double t);
@@ -199,7 +219,7 @@ int main(int argc, char **argv) try
 
 
     // L0, L1, L2 and derivatives
-    if (false)//verbose)
+    if (verbose)
     {
         printf("\n");
         printf("%6s %12s %12s %12s %16s  %12s %12s %12s %16s  %12s %12s %12s %16s\n",
@@ -223,7 +243,7 @@ int main(int argc, char **argv) try
         if (err_dL0dt > max_err_dL0dt) max_err_dL0dt = err_dL0dt;
         if (err_dL1dt > max_err_dL1dt) max_err_dL1dt = err_dL1dt;
         if (err_dL2dt > max_err_dL2dt) max_err_dL2dt = err_dL2dt;
-        if (false)//verbose)
+        if (verbose)
         {
             printf("%6.3f %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e\n",
                     t, prob.AI->L(0), dL0dt_num, prob.dLdt[0], err_dL0dt,
@@ -249,7 +269,7 @@ int main(int argc, char **argv) try
                          {&Problem::v20Fun, &Problem::v21Fun, &Problem::v22Fun}};
     for (size_t k=0; k<3; ++k)
     {
-        if (false)//verbose)
+        if (verbose)
         {
             if (verbose) printf("\n%6s","t");
             for (size_t j=0; j<3; ++j)
@@ -257,10 +277,12 @@ int main(int argc, char **argv) try
                 char str0[32];
                 char str1[32];
                 char str2[32];
-                sprintf(str0,"dv%zd%zddt_num",   k,j);
-                sprintf(str1,"dv%zd%zddt",       k,j);
-                sprintf(str2,"error(dv%zd%zddt)",k,j);
-                printf("%12s %12s %16s  ",str0,str1,str2);
+                char str3[32];
+                sprintf(str0,"v%zd%zd",          k,j);
+                sprintf(str1,"dv%zd%zddt_num",   k,j);
+                sprintf(str2,"dv%zd%zddt",       k,j);
+                sprintf(str3,"error(dv%zd%zddt)",k,j);
+                printf("%12s %12s %12s %16s  ",str0,str1,str2,str3);
             }
             printf("\n");
         }
@@ -268,15 +290,16 @@ int main(int argc, char **argv) try
         {
             double t = (double)i/(double)ndiv;
             prob.CalcState (t);
-            //if (verbose) printf("%6.3f",t);
+            if (verbose) printf("%6.3f",t);
             for (size_t j=0; j<3; ++j)
             {
                 double dvdt_num = nd.DyDx (vfuncs[k][j], t);
                 double err      = fabs(dvdt_num - prob.dvdt[k][j]);
                 if (err > max_err_dvdt[k][j]) max_err_dvdt[k][j] = err;
-                //if (verbose) printf("%12.8f %12.8f %16.8e  ", dvdt_num, prob.dvdt[k][j], err);
+                Vec3_t const & vv = (k==0 ? prob.AI->v0 : (k==1 ? prob.AI->v1 : prob.AI->v2));
+                if (verbose) printf("%12.8f %12.8f %12.8f %16.8e  ", vv(j), dvdt_num, prob.dvdt[k][j], err);
             }
-            //if (verbose) printf("\n");
+            if (verbose) printf("\n");
         }
     }
     double tol_dvdt[3][3]= {{1.0e-7, 1.0e-7, 1.0e-7},
@@ -534,9 +557,93 @@ int main(int argc, char **argv) try
     double tol_dt0dt = 1.0e-6;
     double tol_dt1dt = 1.0e-6;
     double tol_dt2dt = 1.0e-6;
-    printf("  max_err_dt0dt  = %s%16.8e%s\n",(max_err_dt0dt >tol_dt0dt ?TERM_RED:TERM_GREEN),max_err_dt0dt, TERM_RST);
-    printf("  max_err_dt1dt  = %s%16.8e%s\n",(max_err_dt1dt >tol_dt1dt ?TERM_RED:TERM_GREEN),max_err_dt1dt, TERM_RST);
-    printf("  max_err_dt2dt  = %s%16.8e%s\n",(max_err_dt2dt >tol_dt2dt ?TERM_RED:TERM_GREEN),max_err_dt2dt, TERM_RST);
+    printf("  max_err_dt0dt  = %s%16.8e%s\n",(max_err_dt0dt >tol_dt0dt?TERM_RED:TERM_GREEN),max_err_dt0dt, TERM_RST);
+    printf("  max_err_dt1dt  = %s%16.8e%s\n",(max_err_dt1dt >tol_dt1dt?TERM_RED:TERM_GREEN),max_err_dt1dt, TERM_RST);
+    printf("  max_err_dt2dt  = %s%16.8e%s\n",(max_err_dt2dt >tol_dt2dt?TERM_RED:TERM_GREEN),max_err_dt2dt, TERM_RST);
+
+
+
+    // normal projection
+    if (verbose)
+    {
+        printf("\n");
+        printf("%6s %12s %12s %12s %16s  %12s %12s %12s %16s  %12s %12s %12s %16s\n",
+                "t","p0","dp0dt_num","dp0dt","err(dp0dt)",
+                    "p1","dp1dt_num","dp1dt","err(dp1dt)",
+                    "p2","dp2dt_num","dp2dt","err(dp2dt)");
+    }
+    double max_err_dp0dt = 0.0;
+    double max_err_dp1dt = 0.0;
+    double max_err_dp2dt = 0.0;
+    for (size_t i=0; i<ndiv+1; ++i)
+    {
+        double t         = (double)i/(double)ndiv;
+        double dp0dt_num = nd.DyDx (&Problem::p0Fun, t);
+        double dp1dt_num = nd.DyDx (&Problem::p1Fun, t);
+        double dp2dt_num = nd.DyDx (&Problem::p2Fun, t);
+        prob.CalcState (t);
+        double err_dp0dt = fabs(dp0dt_num - prob.dpdt[0]);
+        double err_dp1dt = fabs(dp1dt_num - prob.dpdt[1]);
+        double err_dp2dt = fabs(dp2dt_num - prob.dpdt[2]);
+        if (err_dp0dt > max_err_dp0dt) max_err_dp0dt = err_dp0dt;
+        if (err_dp1dt > max_err_dp1dt) max_err_dp1dt = err_dp1dt;
+        if (err_dp2dt > max_err_dp2dt) max_err_dp2dt = err_dp2dt;
+        if (verbose)
+        {
+            printf("%6.3f %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e\n",
+                    t, prob.AI->p(0), dp0dt_num, prob.dpdt[0], err_dp0dt,
+                       prob.AI->p(1), dp1dt_num, prob.dpdt[1], err_dp1dt,
+                       prob.AI->p(2), dp2dt_num, prob.dpdt[2], err_dp2dt);
+        }
+    }
+    double tol_dp0dt = 1.0e-6;
+    double tol_dp1dt = 1.0e-6;
+    double tol_dp2dt = 1.0e-6;
+    printf("  max_err_dp0dt  = %s%16.8e%s\n",(max_err_dp0dt >tol_dp0dt?TERM_RED:TERM_GREEN),max_err_dp0dt, TERM_RST);
+    printf("  max_err_dp1dt  = %s%16.8e%s\n",(max_err_dp1dt >tol_dp1dt?TERM_RED:TERM_GREEN),max_err_dp1dt, TERM_RST);
+    printf("  max_err_dp2dt  = %s%16.8e%s\n",(max_err_dp2dt >tol_dp2dt?TERM_RED:TERM_GREEN),max_err_dp2dt, TERM_RST);
+
+
+
+    // on-plane projection
+    if (verbose)
+    {
+        printf("\n");
+        printf("%6s %12s %12s %12s %16s  %12s %12s %12s %16s  %12s %12s %12s %16s\n",
+                "t","q0","dq0dt_num","dq0dt","err(dq0dt)",
+                    "q1","dq1dt_num","dq1dt","err(dq1dt)",
+                    "q2","dq2dt_num","dq2dt","err(dq2dt)");
+    }
+    double max_err_dq0dt = 0.0;
+    double max_err_dq1dt = 0.0;
+    double max_err_dq2dt = 0.0;
+    for (size_t i=0; i<ndiv+1; ++i)
+    {
+        double t         = (double)i/(double)ndiv;
+        double dq0dt_num = nd.DyDx (&Problem::q0Fun, t);
+        double dq1dt_num = nd.DyDx (&Problem::q1Fun, t);
+        double dq2dt_num = nd.DyDx (&Problem::q2Fun, t);
+        prob.CalcState (t);
+        double err_dq0dt = fabs(dq0dt_num - prob.dqdt[0]);
+        double err_dq1dt = fabs(dq1dt_num - prob.dqdt[1]);
+        double err_dq2dt = fabs(dq2dt_num - prob.dqdt[2]);
+        if (err_dq0dt > max_err_dq0dt) max_err_dq0dt = err_dq0dt;
+        if (err_dq1dt > max_err_dq1dt) max_err_dq1dt = err_dq1dt;
+        if (err_dq2dt > max_err_dq2dt) max_err_dq2dt = err_dq2dt;
+        if (verbose)
+        {
+            printf("%6.3f %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e\n",
+                    t, prob.AI->p(0), dq0dt_num, prob.dqdt[0], err_dq0dt,
+                       prob.AI->p(1), dq1dt_num, prob.dqdt[1], err_dq1dt,
+                       prob.AI->p(2), dq2dt_num, prob.dqdt[2], err_dq2dt);
+        }
+    }
+    double tol_dq0dt = 1.0e-6;
+    double tol_dq1dt = 1.0e-6;
+    double tol_dq2dt = 1.0e-6;
+    printf("  max_err_dq0dt  = %s%16.8e%s\n",(max_err_dq0dt >tol_dq0dt?TERM_RED:TERM_GREEN),max_err_dq0dt, TERM_RST);
+    printf("  max_err_dq1dt  = %s%16.8e%s\n",(max_err_dq1dt >tol_dq1dt?TERM_RED:TERM_GREEN),max_err_dq1dt, TERM_RST);
+    printf("  max_err_dq2dt  = %s%16.8e%s\n",(max_err_dq2dt >tol_dq2dt?TERM_RED:TERM_GREEN),max_err_dq2dt, TERM_RST);
 
 
     /*
