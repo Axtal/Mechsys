@@ -28,12 +28,13 @@
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/linalg/matvec.h>
+#include <mechsys/linalg/jacobirot.h>
 
 class AnisoInvs
 {
 public:
     // Constructor & Destructor
-     AnisoInvs (double b, double Alpha, Vec3_t const & a, bool Obliq=true, bool Check=true);
+     AnisoInvs (double b, double Alpha, Vec3_t const & a, bool Obliq=true, bool Check=true, bool UseJacobi=false);
     ~AnisoInvs () {}
 
     // Methods
@@ -46,6 +47,7 @@ public:
     Vec3_t  a;
     bool    Obliq;
     bool    Check;
+    bool    UseJacobi;
     double  Tol;
     double  Zero;
     Vec3_t  au;
@@ -55,7 +57,6 @@ public:
     static Vec3_t  N123, N, Nu; // SMP
     static Vec3_t  n, nu;       // AMP
     static Mat3_t  Q;           // rotation matrix
-    static Mat3_t  mSig;        // matrix of Sig
     static Vec3_t  L;           // eigenvalues
     static Vec3_t  v0,v1,v2;    // eigenvectors
     static Vec3_t  t, p, q;     // traction and projections
@@ -91,7 +92,6 @@ double AnisoInvs::sp;       double AnisoInvs::sq;
 Vec3_t AnisoInvs::N123;     Vec3_t AnisoInvs::N;       Vec3_t AnisoInvs::Nu;
 Vec3_t AnisoInvs::n;        Vec3_t AnisoInvs::nu;
 Mat3_t AnisoInvs::Q;
-Mat3_t AnisoInvs::mSig;
 Vec3_t AnisoInvs::L;
 Vec3_t AnisoInvs::v0;       Vec3_t AnisoInvs::v1;      Vec3_t AnisoInvs::v2;
 Vec3_t AnisoInvs::t;        Vec3_t AnisoInvs::p;       Vec3_t AnisoInvs::q;
@@ -122,8 +122,8 @@ Vec_t  AnisoInvs::dspdSig;   Vec_t  AnisoInvs::dsqdSig;
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation
 
 
-inline AnisoInvs::AnisoInvs (double Theb, double TheAlpha, Vec3_t const & Thea, bool TheObliq, bool TheCheck)
-    : b(Theb), Alpha(TheAlpha), a(Thea), Obliq(TheObliq), Check(TheCheck), Tol(1.0e-8), Zero(1.0e-14), _allocated(false)
+inline AnisoInvs::AnisoInvs (double Theb, double TheAlpha, Vec3_t const & Thea, bool TheObliq, bool TheCheck, bool TheUseJacobi)
+    : b(Theb), Alpha(TheAlpha), a(Thea), Obliq(TheObliq), Check(TheCheck), UseJacobi(TheUseJacobi), Tol(1.0e-8), Zero(1.0e-14), _allocated(false)
 {
     if (!_allocated)
     {
@@ -139,28 +139,47 @@ inline AnisoInvs::AnisoInvs (double Theb, double TheAlpha, Vec3_t const & Thea, 
 
 inline void AnisoInvs::Calc (Vec_t const & Sig, bool WithDerivs)
 {
-    // principal values and eigenprojectors
-    Mat3_t  mSig;
-    Ten2Mat (Sig, mSig);
-    Eig     (mSig, L, v0, v1, v2);
-    //if (L(0)>0.0 || L(1)>0.0 || L(2)>0.0) throw new Fatal("AnisoInvs::Calc: This method only works when all principal values are negative (compression octant). L=[%g,%g,%g]",L(0),L(1),L(2));
+    // principal values and eigenvectors
+    if (UseJacobi)
+    {
+        // rotation matrix
+        JacobiRot (Sig, Q, L);
 
-    // rotation matrix
-    Q(0,0) = v0(0);   Q(0,1) = v1(0);   Q(0,2) = v2(0);
-    Q(1,0) = v0(1);   Q(1,1) = v1(1);   Q(1,2) = v2(1);
-    Q(2,0) = v0(2);   Q(2,1) = v1(2);   Q(2,2) = v2(2);
+        // eigenvectors
+        v0(0) = Q(0,0);   v1(0) = Q(0,1);   v2(0) = Q(0,2);
+        v0(1) = Q(1,0);   v1(1) = Q(1,1);   v2(1) = Q(1,2);
+        v0(2) = Q(2,0);   v1(2) = Q(2,1);   v2(2) = Q(2,2);
+    }
+    else
+    {
+        // eigenvectors
+        Eig (Sig, L, v0, v1, v2);
+
+        // rotation matrix
+        Q(0,0) = v0(0);   Q(0,1) = v1(0);   Q(0,2) = v2(0);
+        Q(1,0) = v0(1);   Q(1,1) = v1(1);   Q(1,2) = v2(1);
+        Q(2,0) = v0(2);   Q(2,1) = v1(2);   Q(2,2) = v2(2);
+    }
+    //if (L(0)>0.0 || L(1)>0.0 || L(2)>0.0) throw new Fatal("AnisoInvs::Calc: This method only works when all principal values are negative (compression octant). L=[%g,%g,%g]",L(0),L(1),L(2));
 
     // normal vectors
     bool zero = (fabs(L(0))<Tol || fabs(L(1))<Tol || fabs(L(2))<Tol);
     if (zero) N123 = 1.0, 1.0, 1.0;                                                       // SMP(123)
     else      N123 = 1.0/pow(fabs(L(0)),b), 1.0/pow(fabs(L(1)),b), 1.0/pow(fabs(L(2)),b); // SMP(123)
+
+    Mat3_t Qt;
+    Qt(0,0) = Q(0,0);   Qt(0,1) = Q(1,0);   Qt(0,2) = Q(2,0);
+    Qt(1,0) = Q(0,1);   Qt(1,1) = Q(1,1);   Qt(1,2) = Q(2,1);
+    Qt(2,0) = Q(0,2);   Qt(2,1) = Q(1,2);   Qt(2,2) = Q(2,2);
+
     N  = product (Q, N123); // SMP(xyz)
+    //N  = product (Qt, N123); // SMP(xyz)
     Nu = N / Norm(N);       // SMP
     n  = Alpha*au + Nu;     // AMP
     nu = n / Norm(n);       // AMP
 
     // traction
-    t = product (mSig, nu);
+    Mult (Sig, nu, t); // t = Sig * nu
 
     // P projector
     double s = 0.0;
@@ -212,7 +231,7 @@ inline void AnisoInvs::Calc (Vec_t const & Sig, bool WithDerivs)
 
         // convert to tensors
         Mat2Tensor (P,    tP);
-        Mat2Tensor (mSig, tSig);
+        Ten2Tensor (Sig,  tSig);
         Vec2Tensor (t,    tt);
         Vec2Tensor (N,    tN);
         Vec2Tensor (Nu,   tNu);

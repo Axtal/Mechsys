@@ -227,7 +227,7 @@ inline void SGrid::FilterV (double F, double Tol)
     {
         double   f = _scalars->GetTuple1(i);
         //double * v = _vectors->GetTuple3(i);
-        if (fabs(f)>Tol) _vectors->SetTuple3 (i, 0.0, 0.0, 0.0);
+        if (fabs(f-F)>Tol) _vectors->SetTuple3 (i, 0.0, 0.0, 0.0);
     }
 }
 

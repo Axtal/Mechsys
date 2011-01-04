@@ -50,14 +50,9 @@
  * \param v Out: is a vector with the eigenvalues
  * \return The number of iterations
  */
-inline int JacobiRot (Mat_t & A, Mat_t & Q, Vec_t & v, double errTol=DBL_EPSILON)
+template<typename MatrixType, typename VectorType>
+inline int _jacobi_rot (int N, MatrixType & A, MatrixType & Q, VectorType & v, double errTol=DBL_EPSILON)
 {
-    int N = A.num_rows();
-    if (N<2)                     throw new Fatal("JacobiRot: Matrix needs to be at least 2x2");
-    if (A.num_cols()!=(size_t)N) throw new Fatal("JacobiRot: Matrix must be square");
-    Q.change_dim (N,N);
-    v.change_dim (N);
-
     const int    maxIt = 20;          // max number of iterations
     const double Zero  = DBL_EPSILON; // tolerance
 
@@ -154,6 +149,31 @@ inline int JacobiRot (Mat_t & A, Mat_t & Q, Vec_t & v, double errTol=DBL_EPSILON
     delete [] z;
     throw new Fatal("JacobiRot: Jacobi rotation dit not converge after %d iterations",maxIt+1);
     return maxIt+1;
+}
+
+/** Eigenvalues and Eigenvectors (columns of Q) of Matrix. */
+inline int JacobiRot (Mat_t & A, Mat_t & Q, Vec_t & v, double errTol=DBL_EPSILON)
+{
+    int N = A.num_rows();
+    if (N<2)                     throw new Fatal("JacobiRot: Matrix needs to be at least 2x2");
+    if (A.num_cols()!=(size_t)N) throw new Fatal("JacobiRot: Matrix must be square");
+    Q.change_dim (N,N);
+    v.change_dim (N);
+    return _jacobi_rot (N, A, Q, v, errTol);
+}
+
+/** Eigenvalues and Eigenvectors (columns of Q) of TinyMatrix. */
+inline int JacobiRot (Mat3_t & A, Mat3_t & Q, Vec3_t & v, double errTol=DBL_EPSILON)
+{
+    return _jacobi_rot (/*N*/3, A, Q, v, errTol);
+}
+
+/** Eigenvalues and Eigenvectors (columns of Q) of 2nd order tensor in Mandel's basis. */
+inline int JacobiRot (Vec_t const & TenA, Mat3_t & Q, Vec3_t & v, double errTol=DBL_EPSILON)
+{
+    Mat3_t A;
+    Ten2Mat (TenA, A);
+    return _jacobi_rot (/*N*/3, A, Q, v, errTol);
 }
 
 #ifdef USE_BOOST_PYTHON

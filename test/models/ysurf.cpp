@@ -21,6 +21,7 @@
 
 // MechSys
 #include <mechsys/models/elastoplastic.h>
+#include <mechsys/models/anisoinvs.h>
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/vtk/axes.h>
@@ -46,14 +47,33 @@ void Func (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
     }
 }
 
+void AnisoFunc (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
+{
+    F = 1.0e+10;
+    V = 0.0, 0.0, 0.0;
+    if (X(0)<0.0 && X(1)<0.0 && X(2)<0.0)
+    {
+        Vec3_t a(0.2, 0.3, 1.0);
+        AnisoInvs AI(0.5, 0.3, a, true); // b, alpha, a, obliq
+        Vec_t sig(6);
+        sig = X(0), X(1), X(2), 0.0, 0.0, 0.0;
+        AI.Calc (sig, true); // true => derivs
+        double R = 0.2;
+        F = AI.sq - AI.sp * R;
+        Vec_t dFdSig(AI.dsqdSig - R*AI.dspdSig);
+        V = dFdSig(0), dFdSig(1), dFdSig(2);
+    }
+}
+
 int main (int argc, char **argv) try
 {
     // number:  nx ny nz
     Array<int> N(30, 30, 60);
-    double scale = 6.0;
-    if (argc>1) N[0] = atoi(argv[1]);
-    if (argc>2) N[1] = atoi(argv[2]);
-    if (argc>3) N[2] = atoi(argv[3]);
+    int tst = 1;
+    if (argc>1) tst  = atoi(argv[1]);
+    if (argc>2) N[0] = atoi(argv[2]);
+    if (argc>3) N[1] = atoi(argv[3]);
+    if (argc>4) N[2] = atoi(argv[4]);
     if (N[0]<2) throw new Fatal("nx must be greater than 1");
     if (N[1]<2) throw new Fatal("ny must be greater than 1");
     if (N[2]<2) throw new Fatal("nz must be greater than 1");
@@ -63,12 +83,6 @@ int main (int argc, char **argv) try
     //     0   1     2   3     4    5
     //   pmi pma   qmi qma  thmi thma
     L =   -5, 10,    0, 15,  -PI,  PI;
-
-    // model
-    SDPair prms;
-    //prms.Set("E nu fc c phi", 1000.0, 0.3, FAILCRIT("MC"), 1.0, 30.0);
-    prms.Set("E nu MN phi", 1000.0, 0.3, TRUE, 30.0);
-    ElastoPlastic mdl(/*NDim*/3, prms);
 
     // grid
     VTK::SGrid gri(N, L);
@@ -82,16 +96,23 @@ int main (int argc, char **argv) try
         gri.SetPoint (i, l);
     }
 
-    // set function
-    gri.SetFunc (&Func, &mdl);
+    // function
+    if (tst==1) { gri.SetFunc (&AnisoFunc); }
+    else
+    {
+        SDPair prms;
+        //prms.Set("E nu fc c phi", 1000.0, 0.3, FAILCRIT("MC"), 1.0, 30.0);
+        prms.Set("E nu MN phi", 1000.0, 0.3, TRUE, 30.0);
+        ElastoPlastic mdl(/*NDim*/3, prms);
+        gri.SetFunc (&Func, &mdl);
+    }
 
-    // write file
-    gri.WriteVTK ("ysurf");
-    cout << "file [1;34m<ysurf.vtk>[0m written" << endl;
+    // filter vectors
+    gri.FilterV (0.0, /*Tol*/1.0e-1); 
 
     // isosurf
     VTK::IsoSurf iso(gri);
-    iso.ShowVectors = false;
+    iso.ShowVectors = true;
 
     // window and axes
     VTK::Win  win;
@@ -101,6 +122,10 @@ int main (int argc, char **argv) try
     //gri.AddTo (win);
     iso.AddTo (win);
     win.Show  ();
+
+    // write file
+    gri.WriteVTK ("ysurf");
+    cout << "file [1;34m<ysurf.vtk>[0m written" << endl;
 
     // end
     return 0;

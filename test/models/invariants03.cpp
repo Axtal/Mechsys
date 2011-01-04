@@ -56,8 +56,8 @@ public:
         dMdt  .change_dim(6,6);
         //Sig0 = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, -0.8*SQ2;
         //Sig0 = -1.5, -2.0, -0.5,  0., 0., 0;
-        Sig0 = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, 0.0;
-        //Sig0 = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, -0.00000001*SQ2;
+        //Sig0 = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, 0.0;
+        Sig0 = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, -0.00000001*SQ2;
 
         Vec3_t a(0.2, 0.3, 1.0);
         AI = new AnisoInvs (0.5, 0.15, a, true); // b, alpha, a, obliq
@@ -308,7 +308,7 @@ int main(int argc, char **argv) try
         }
     }
     double tol_dvdt[3][3]= {{1.0e-5, 1.0e-6, 1.0e-6},
-                            {1.0e-6, 1.0e-5, 1.0e-6},
+                            {1.0e-6, 1.0e-5, 1.0e-5},
                             {1.0e-6, 1.0e-6, 1.0e-6}};
     for (size_t k=0; k<3; ++k)
     for (size_t i=0; i<3; ++i)
@@ -679,7 +679,7 @@ int main(int argc, char **argv) try
         if (verbose) printf("%12.8f %12.8f %16.8e  %12.8f %12.8f %16.8e\n", dspdt_num,prob.dspdt,err_dspdt, dsqdt_num,prob.dsqdt,err_dsqdt);
     }
     double tol_dspdt = 1.0e-7;
-    double tol_dsqdt = 1.0e-7;
+    double tol_dsqdt = 1.0e-6;
     printf("  max_err_dspdt  = %s%16.8e%s\n",(max_err_dspdt>tol_dspdt?TERM_RED:TERM_GREEN),max_err_dspdt,TERM_RST);
     printf("  max_err_dsqdt  = %s%16.8e%s\n",(max_err_dsqdt>tol_dsqdt?TERM_RED:TERM_GREEN),max_err_dsqdt,TERM_RST);
     printf("\n");

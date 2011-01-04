@@ -1043,6 +1043,25 @@ inline void UnitVecDeriv (Vec3_t const & n, Vec3_t & nu, Ten2_t & dnudn, double 
 ///////////////////////////////////////////////////////////////////////////////////////////// Tensors ////////////
 
 
+/** Multiplication of tensor's matrix by a vector (similar to Cauchy's rule). {t} = [Sig]*{n}. */
+inline void Mult (Vec_t const & Sig, Vec3_t const & n, Vec3_t & t)
+{
+    size_t ncp = size(Sig);
+    if (ncp==4)
+    {
+        t(0) = Sig(0)*n(0)           + Sig(3)*n(1)/Util::SQ2;
+        t(1) = Sig(3)*n(0)/Util::SQ2 + Sig(1)*n(1);
+        t(2) =                                               + Sig(2)*n(2);
+    }
+    else if (ncp==6)
+    {
+        t(0) = Sig(0)*n(0)           + Sig(3)*n(1)/Util::SQ2 + Sig(5)*n(2)/Util::SQ2;
+        t(1) = Sig(3)*n(0)/Util::SQ2 + Sig(1)*n(1)           + Sig(4)*n(2)/Util::SQ2;
+        t(2) = Sig(5)*n(0)/Util::SQ2 + Sig(4)*n(1)/Util::SQ2 + Sig(2)*n(2);
+    }
+    else throw new Fatal("matvec.h::Mult: (Cauchy) This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
+}
+
 /** Deviator of 2nd order symmetric tensor Ten. */
 inline void Dev (Vec_t const & Ten, Vec_t & DevTen)
 {
@@ -1205,6 +1224,14 @@ inline void DerivInv (Vec_t const & A, Vec_t & Ai, Mat_t & dInvA_dA, double Tol=
             -Ai(0)*Ai(5)     , -(Ai(3)*Ai(4))/s , -Ai(2)*Ai(5)     , -(Ai(3)*Ai(5))/2.-(Ai(0)*Ai(4))/s , -(Ai(4)*Ai(5))/2.-(Ai(2)*Ai(3))/s , -Ai(5)*Ai(5)/2.-Ai(0)*Ai(2)       ;
     }
     else throw new Fatal("matvec.h::DerivInv: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
+}
+
+/** Eigenvalues and eigenvectors of second order tensor in Mandel's basis. */
+inline void Eig (Vec_t const & Ten, Vec3_t & L, Vec3_t & V0, Vec3_t & V1, Vec3_t & V2, bool SortAsc=false, bool SortDesc=false)
+{
+    Mat3_t M;
+    Ten2Mat (Ten, M);
+    Eig (M, L, V0, V1, V2, SortAsc, SortDesc);
 }
 
 /** Eigenprojectors of 2nd order symmetric tensor Ten. */

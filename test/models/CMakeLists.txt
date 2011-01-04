@@ -29,7 +29,8 @@ SET(VTK_PROGS
 SET(TESTS
   invariants01
   invariants02
-  invariants03)
+  invariants03
+  invariants04)
 
 FOREACH(var ${PROGS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

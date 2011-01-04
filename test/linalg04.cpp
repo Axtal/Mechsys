@@ -29,6 +29,7 @@
 
 using std::cout;
 using std::endl;
+using Util::SQ2;
 
 int main(int argc, char **argv) try
 {
@@ -75,6 +76,28 @@ int main(int argc, char **argv) try
     if (err0>max_error) max_error = err0;
     if (err1>max_error) max_error = err1;
     if (err2>max_error) max_error = err2;
+
+    // tensor
+    printf("\n%s . . . . . . . . . . . . tensor ..%s\n\n",TERM_BLACK_WHITE,TERM_RST);
+    Vec_t sig(6);
+    Mat3_t msig, r;
+    Vec3_t v, n, t, tt;
+    sig = -1.5, -2.0, -0.5,  -0.1*SQ2, -0.5*SQ2, -0.8*SQ2;
+    n   = 1.0, 1.2, -0.8;
+    Ten2Mat   (sig, msig);
+    JacobiRot (msig, r, v);
+    //t = product (msig, n); // this does not work, since the (msig) matrix was modified by JacobiRot
+    Mat3_t msig_new;
+    Ten2Mat (sig, msig_new);
+    t = product (msig_new, n);
+    Mult (sig, n, tt);
+    cout << "sig =\n" << PrintMatrix (msig);
+    cout << "r  =\n"  << PrintMatrix (r);
+    cout << "v  ="    << PrintVector (v);
+    cout << "t  ="    << PrintVector (t);
+    cout << "tt ="    << PrintVector (tt);
+    double err3 = Norm(t-tt);
+    if (err3>max_error) max_error = err3;
 
     double tol = 1.0e-14;
     printf("\n Max error = %s%g%s\n", (max_error>tol ? TERM_RED : TERM_GREEN), max_error, TERM_RST);
