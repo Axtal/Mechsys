@@ -91,6 +91,7 @@ BPy::def("pqth2L",    Pypqth2L);
 BPy::def("Phi2M",     Phi2M,       FUN_PHI2M());
 BPy::def("M2Phi",     M2Phi,       FUN_M2PHI());
 BPy::def("JacobiRot", PyJacobiRot, FUN_JACOBIROT());
+BPy::def("EigenProjAnalytic", PyEigenProjAnalytic);
 
 ///////////////////////////////////////////////////////////////////////////////// InpFile /////
 

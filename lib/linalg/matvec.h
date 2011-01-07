@@ -1667,6 +1667,11 @@ inline double M2Phi (double M, char const * Type="oct")
 
 #ifdef USE_BOOST_PYTHON
 
+inline void Vec2List (Vec3_t const & V, BPy::list & L)
+{
+    for (size_t i=0; i<3; ++i) L.append(V(i));
+}
+
 inline void Vec2List (Vec_t const & V, BPy::list & L)
 {
     for (size_t i=0; i<size(V); ++i) L.append(V(i));
@@ -1707,6 +1712,18 @@ inline void List2Mat (BPy::list const & L, Mat_t & M)
             for (size_t j=0; j<n; ++j) M(i,j) = BPy::extract<double>(row[j])();
         }
     }
+}
+
+inline void PyEigenProjAnalytic (BPy::list const & Ten, BPy::list & L, BPy::list & P0, BPy::list & P1, BPy::list & P2)
+{
+    Vec3_t l;
+    Vec_t  ten, p0, p1, p2;
+    List2Vec          (Ten, ten);
+    EigenProjAnalytic (ten, l, p0, p1, p2);
+    Vec2List          (l, L);
+    Vec2List          (p0, P0);
+    Vec2List          (p1, P1);
+    Vec2List          (p2, P2);
 }
 
 #endif
