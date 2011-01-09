@@ -93,7 +93,7 @@ class Block
 {
 public:
     // Constructor
-    Block () : Nx(0), Ny(0), Nz(0) {}
+    Block () : Nx(1), Ny(1), Nz(1) {}
 
     /** Ex:
      *      Set (2, -1, 4,                 // 2D, Tag, 4 vertices
@@ -254,6 +254,7 @@ inline void Block::Set (int TheNDim, int TheTag, size_t NVerts, ...)
 
 inline void Block::SetNx (size_t TheNx, double Ax, bool NonLin)
 {
+    if (TheNx<1) throw new Fatal("Block::SetNx: Number of divisions of block for structured mesh must be greater than or equal to 1. Nx=%zd is invalid",TheNx);
     Nx = TheNx;
     Wx.Resize(Nx);
     if (NonLin) for (size_t i=0; i<Nx; ++i) Wx[i] = pow(i+1.0,Ax);
@@ -276,6 +277,7 @@ inline void Block::SetNx (Array<double> const & TheWx)
 
 inline void Block::SetNy (size_t TheNy, double Ay, bool NonLin)
 {
+    if (TheNy<1) throw new Fatal("Block::SetNy: Number of divisions of block for structured mesh must be greater than or equal to 1. Ny=%zd is invalid",TheNy);
     Ny = TheNy;
     Wy.Resize(Ny);
     if (NonLin) for (size_t i=0; i<Ny; ++i) Wy[i] = pow(i+1.0,Ay);
@@ -288,6 +290,7 @@ inline void Block::SetNy (size_t TheNy, double Ay, bool NonLin)
 
 inline void Block::SetNz (size_t TheNz, double Az, bool NonLin)
 {
+    if (TheNz<1) throw new Fatal("Block::SetNz: Number of divisions of block for structured mesh must be greater than or equal to 1. Nz=%zd is invalid",TheNz);
     Nz = TheNz;
     Wz.Resize(Nz);
     if (NonLin) for (size_t i=0; i<Nz; ++i) Wz[i] = pow(i+1.0,Az);

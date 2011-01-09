@@ -37,6 +37,7 @@
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/fem/element.h>   // for PROB
 #include <mechsys/fem/geomelem.h>  // for GEOM
+#include <mechsys/fem/solver.h>
 #include <mechsys/matfile.h>
 
 /*
@@ -78,6 +79,7 @@ public:
     void Read        (char const * FileName);
     void SetPrmsInis (MatFile const & Mat, bool ForceGTY=false);
     void GetIncs     (int PathKey, double Div, Vec_t & dsig, Vec_t & deps, Array<bool> & PrescDeps, double & dpw, double & dSw, bool & PrescDpw, bool & PrescDSw) const;
+    void SetSolver   (FEM::Solver & Sol);
 
     // Data
     int    matid;       ///<  1 material ID
@@ -124,6 +126,7 @@ public:
     String fnkey;       ///< 41 filename key
     double pcam0;       ///< 42 pcam0
     bool   haspcam0;    ///< has pcam0 ?
+    String scheme;      ///< 43 solver scheme
 
     // Additional data
     Dict * Prms; ///< parameters (set by SetMat)
@@ -256,6 +259,7 @@ inline void InpFile::Defaults ()
     fnkey      = "";     // 41
     pcam0      = 0;      // 42
     haspcam0   = false;
+    scheme     = "";     // 43
 }
 
 inline void InpFile::Read (char const * FileName)
@@ -440,6 +444,7 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="tolr")       tolr      = val;                        // 40
                 else if (key=="fnkey")      fnkey     = str_val;                    // 41
                 else if (key=="pcam0")    { pcam0     = val;     haspcam0 = true; } // 42
+                else if (key=="scheme")     scheme    = str_val;                    // 43
                 else if (key=="npath")    { npath     = (int)val;  reading_path   = true; }
                 else if (key=="nelemprps"){ nelemprps = (int)val;  reading_eprps  = true; }
                 else if (key=="nstages")  { nstages   = (int)val;  reading_stages = true; }
@@ -532,6 +537,25 @@ inline void InpFile::GetIncs (int PathKey, double Div, Vec_t & dsig, Vec_t & dep
     if (path.HasKey("dSw")) { dSw     = path("dSw")/Div;  PrescDSw     = true; }
 }
 
+inline void InpFile::SetSolver (FEM::Solver & Sol)
+{
+    if (ssout    ) Sol.SSOut  = ssout;
+    if (ctetg    ) Sol.CteTg  = ctetg;
+    if (hm       ) Sol.DampTy = FEM::Solver::HMCoup_t;
+    if (ray      ) Sol.DampTy = FEM::Solver::Rayleigh_t;
+    if (am    >=0) Sol.DampAm = am;
+    if (ak    >=0) Sol.DampAk = ak;
+    if (rk       )
+    {
+        Sol.DScheme = FEM::Solver::RK_t;
+        if (rkscheme!="") Sol.RKScheme = rkscheme;
+        if (rkstol   >=0) Sol.RKSTOL   = rkstol;
+    }
+    if (maxit  >0 ) Sol.MaxIt = maxit;
+    if (tolr   >=0) Sol.TolR  = tolr;
+    if (scheme!="") Sol.SetScheme (scheme.CStr());
+}
+
 std::ostream & operator<< (std::ostream & os, InpFile const & IF)
 {
     if (IF.matid       >=0) os << "matid     = " << IF.matid     << "\n"; //   1
@@ -575,7 +599,8 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     if (IF.maxit       >0 ) os << "maxit     = " << IF.maxit     << "\n"; //  39
     if (IF.tolr        >=0) os << "tolr      = " << IF.tolr      << "\n"; //  40
     if (IF.fnkey.size()>0 ) os << "fnkey     = " << IF.fnkey     << "\n"; //  41
-    if (IF.haspcam0       ) os << "pcam0     = " << IF.pcam0     << "\n"; //  41
+    if (IF.haspcam0       ) os << "pcam0     = " << IF.pcam0     << "\n"; //  42
+    if (IF.scheme     !="") os << "scheme    = " << IF.scheme    << "\n"; //  43
     os << "\nPath:\n"                        << (*IF.Path)      << "\n";
     os << "\nElements properties:\n"         << (*IF.Prps)      << "\n";
     os << "\nOutput nodes:\n"                << (*IF.OutNods)   << "\n";
@@ -622,13 +647,14 @@ inline InpFile::InpFile (wxFrame * Parent)
     ADD_WXBUTTON (pnl, szr, ID_INPFILE_SAVE, c1, "Save");
 
     // main
-    ADD_WXPANEL     (p_mai, sz_mai_t, sz_mai, 6, 2);
+    ADD_WXPANEL     (p_mai, sz_mai_t, sz_mai, 7, 2);
     ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_matid     , "matid    ", matid    ); //   1
     ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_flwid     , "flwid    ", flwid    ); //   2
     ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_ninc      , "ninc     ", ninc     ); //   3
     ADD_WXCHECKBOX2 (p_mai, sz_mai, wxID_ANY, c_fem       , "fem      ", fem      ); //   8
     ADD_WXCHECKBOX2 (p_mai, sz_mai, wxID_ANY, c_dyn       , "dyn      ", dyn      ); //   9
     ADD_WXCHECKBOX2 (p_mai, sz_mai, wxID_ANY, c_hm        , "hm       ", hm       ); //  10
+    ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_pcam0     , "pcam0    ", pcam0    ); //  42
                                                                                             
     // local integration                                                                    
     ADD_WXPANEL     (p_loc, sz_loc_t, sz_loc, 2, 2);                                        
@@ -636,7 +662,7 @@ inline InpFile::InpFile (wxFrame * Parent)
     ADD_WXNUMINPUT2 (p_loc, sz_loc, wxID_ANY, c_stol      , "stol     ", stol     ); //   5
                                                                                             
     // fem solution                                                                         
-    ADD_WXPANEL     (p_fem, sz_fem_t, sz_fem, 17, 2);                             
+    ADD_WXPANEL     (p_fem, sz_fem_t, sz_fem, 18, 2);                             
     ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_ssout     , "ssout    ", ssout    ); //   6
     ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_ctetg     , "ctetg    ", ctetg    ); //   7
     ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_tf        , "tf       ", tf       ); //  11
@@ -654,6 +680,7 @@ inline InpFile::InpFile (wxFrame * Parent)
     ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_rkstol    , "rkstol   ", rkstol   ); //  23
     ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_maxit     , "maxit    ", maxit    ); //  39
     ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_tolr      , "tolr     ", tolr     ); //  40
+    ADD_WXTEXTCTRL2 (p_fem, sz_fem, wxID_ANY, c_scheme    , "scheme   ", scheme   ); //  43
                                                                                             
     // reference files                                                                      
     ADD_WXPANEL     (p_rfi, sz_rfi_t, sz_rfi, 3, 2);                                        

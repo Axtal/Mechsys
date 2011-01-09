@@ -153,7 +153,7 @@ private:
     void   _cal_resid     ();                          ///< Calculate residual
     void   _cor_resid     (Vec_t & dU, Vec_t & dF);    ///< Correct residual
     void   _FE_update     (double tf);                 ///< (Forward-Euler)  Update Time and elements to tf
-    void   _ME_update     (double tf);                 ///< (Modified-Euler) Update Time and elements to tf
+    void   _ME_update     (double tf, char const*FNK); ///< (Modified-Euler) Update Time and elements to tf (FNK=FilenameKey)
     void   _NR_update     (double tf);                 ///< (Newton-Rhapson) Update Time and elements to tf
     void   _TH_update     (double tf, double dt);      ///< (theta) Transient: update Time and elements to tf
     void   _GN22_update   (double tf, double dt);      ///< (Generalized-Newmark) Update Time and elements to tf
@@ -250,7 +250,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey)
 
         // update U, F, Time and elements to tout
         if      (Scheme==FE_t) _FE_update (tout);
-        else if (Scheme==ME_t) _ME_update (tout);
+        else if (Scheme==ME_t) _ME_update (tout, FileKey);
         else if (Scheme==NR_t) _NR_update (tout);
 
         // update nodes to tout
@@ -1158,7 +1158,7 @@ inline void Solver::_FE_update (double tf)
     _cal_resid ();
 }
 
-inline void Solver::_ME_update (double tf)
+inline void Solver::_ME_update (double tf, char const * FNK)
 {
     // auxiliar vectors
     Vec_t dU_fe(NEq), dU_tm(NEq), dU_me(NEq), U_me(NEq), U_dif(NEq);
@@ -1217,7 +1217,7 @@ inline void Solver::_ME_update (double tf)
             if (m>mMax) m = mMax;
             if (SSOut || (DbgFun!=NULL)) UpdateNodes ();
             if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
-            if (SSOut) Dom.OutResults (NULL);
+            if (SSOut) Dom.OutResults (FNK);
         }
         else if (m<mMin) m = mMin;
 
