@@ -73,6 +73,22 @@ int main(int argc, char **argv) try
     cout << "left  = " << left  << endl;
     cout << "right = " << right << endl;
 
+    cout << TERM_CLR_GREEN_H << "\n// String Filename Key //////////////////////////////////////////////////////////\n" << TERM_RST << endl;
+
+    String filename1("this.is.a.filename.res");
+    String filename2("this_is_a_filename.res");
+    String filename3("this_is_a_filename_res");
+    String fnkey1, fnkey2, fnkey3;
+    filename1.GetFNKey (fnkey1);
+    filename2.GetFNKey (fnkey2);
+    filename3.GetFNKey (fnkey3);
+    cout << "filename1 = " << filename1 << endl;
+    cout << "fnkey1    = " << fnkey1    << endl;
+    cout << "filename2 = " << filename2 << endl;
+    cout << "fnkey2    = " << fnkey2    << endl;
+    cout << "filename3 = " << filename3 << endl;
+    cout << "fnkey3    = " << fnkey3    << endl;
+
     cout << TERM_CLR_GREEN_H << "\n// Array Find ///////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
 
     Array<int> A(7); A = 1, 4, 2, 6, 0, 3, -3;
@@ -88,6 +104,12 @@ int main(int argc, char **argv) try
     cout << "min(A)    = " << A.TheMin() << endl;
     cout << "First(A)  = " << (*A.GetPtr()) << endl;
     cout << "Last(A)   = " << A.Last() << endl;
+
+    cout << TERM_CLR_GREEN_H << "\n// Array DelItems ///////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
+
+    cout << "A                      = " << A << endl;
+    A.DelItems (Array<int>(1,3,5));
+    cout << "A - A[1] - A[3] - A[5] = " << A << endl;
 
     cout << TERM_CLR_GREEN_H << "\n// Table ////////////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
 

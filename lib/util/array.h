@@ -119,6 +119,7 @@ public:
     void            SetValues (Value_T const & V);                 ///< Set all values to be equal to V
     void            Clear     () { Resize(0); }                    ///< Clear array
     void            DelItem   (size_t i);                          ///< Delete item i from array (not efficient)
+    void            DelItems  (Array<int> const & Idxs);           ///< Delete items from array (not efficient)
     void            DelVal    (Value_T const & Value);             ///< Delete Value from array (not efficient)
 
     // Assign values separated by commas
@@ -706,7 +707,7 @@ template<typename Value_T>
 inline void Array<Value_T>::DelItem (size_t IdxToRemove)
 {
 #ifndef NDEBUG
-    if (IdxToRemove<0 || IdxToRemove>=Size()) throw new Fatal("Array::Del Subscript==%zd (size==%zd) is out of range.", IdxToRemove, Size());
+    if (IdxToRemove<0 || IdxToRemove>=Size()) throw new Fatal("Array::DelItem: Subscript==%zd (size==%zd) is out of range.", IdxToRemove, Size());
 #endif
     Array<Value_T> tmp((*this));
     this->Resize (tmp.Size()-1);
@@ -722,10 +723,27 @@ inline void Array<Value_T>::DelItem (size_t IdxToRemove)
 }
 
 template<typename Value_T>
+inline void Array<Value_T>::DelItems (Array<int> const & Idxs)
+{
+    if (Idxs.Size()>Size()) throw new Fatal("Array::DelItems: Array 'Idxs' with indices to be deleted must have size smaller than or equal to %zd. Idxs.Size()==%zd is invalid.",Size(),Idxs.Size());
+    Array<Value_T> tmp((*this));
+    this->Resize (tmp.Size()-Idxs.Size());
+    size_t k = 0;
+    for (size_t i=0; i<tmp.Size(); ++i)
+    {
+        if (!Idxs.Has(i))
+        {
+            (*this)[k] = tmp[i];
+            k++;
+        }
+    }
+}
+
+template<typename Value_T>
 inline void Array<Value_T>::DelVal (Value_T const & V)
 {
     size_t idx_to_remove = Find(V);
-    if (idx_to_remove<0) throw new Fatal("Array::Del: Value cannot be found for deletion");
+    if (idx_to_remove<0) throw new Fatal("Array::DelVal: Value cannot be found for deletion");
     DelItem (idx_to_remove);
 }
 

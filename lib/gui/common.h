@@ -125,6 +125,9 @@
   #define ADD_WXNOTEBOOK(WND, NBK) \
     wxAuiNotebook * NBK = new wxAuiNotebook(WND, wxID_ANY, wxDefaultPosition, wxDefaultSize, (wxAUI_NB_DEFAULT_STYLE | wxAUI_NB_TAB_EXTERNAL_MOVE | wxNO_BORDER | wxAUI_NB_WINDOWLIST_BUTTON) & ~(wxAUI_NB_CLOSE_BUTTON | wxAUI_NB_CLOSE_ON_ACTIVE_TAB | wxAUI_NB_CLOSE_ON_ALL_TABS));
 
+  #define ADD_WXNOTEBOOK_(WND, NBK) \
+    NBK = new wxAuiNotebook(WND, wxID_ANY, wxDefaultPosition, wxDefaultSize, (wxAUI_NB_DEFAULT_STYLE | wxAUI_NB_TAB_EXTERNAL_MOVE | wxNO_BORDER | wxAUI_NB_WINDOWLIST_BUTTON) & ~(wxAUI_NB_CLOSE_BUTTON | wxAUI_NB_CLOSE_ON_ACTIVE_TAB | wxAUI_NB_CLOSE_ON_ALL_TABS));
+
   #define ADD_WXBUTTON(PNL, SZR, ID, CTRL, LBL) \
     wxButton * CTRL = new wxButton (PNL, ID, LBL, wxDefaultPosition, wxDefaultSize, 0); \
     SZR->Add (CTRL, 0,wxALIGN_LEFT|wxALL|wxEXPAND,2);

@@ -101,6 +101,7 @@ public:
     int const & operator() (String const & Key) const  { return operator()(Key.CStr()); }
 
     // Methods
+    void Del    (const char * Key);             ///< Delete key (and value) from pair
     bool HasKey (char const   * Key) const;
     bool HasKey (String const & Key) const;
     void clear  () { Keys.Clear(); StrInt_t::clear(); }
@@ -489,6 +490,22 @@ inline int const & SIPair::operator() (char const * Key) const
         throw new Fatal("SIPair::operator(): String-Int pair: %s does not have a key = '%s'",oss.str().c_str(),Key);
     }
     return p->second;
+}
+
+inline void SIPair::Del (const char * Key)
+{
+    StrInt_t::iterator p = this->find(Key);
+    if (p==this->end())
+    {
+        std::ostringstream oss;
+        oss << (*this);
+        throw new Fatal("SIPair::Del: String-Int pair: %s does not have a key = '%s'",oss.str().c_str(),Key);
+    }
+    else
+    {
+        Keys.DelVal (Key);
+        this->erase (p);
+    }
 }
 
 inline bool SIPair::HasKey (char const * Key) const

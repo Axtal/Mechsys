@@ -53,3 +53,33 @@
 #include <mechsys/models/elastoplastic.h>
 #include <mechsys/models/camclay.h>
 #include <mechsys/models/unsatflow.h>
+
+#ifndef INCLUDE_MODELS_ONLY
+#define FEMALLOC(argc, argv, inpfn, matfn, verbose, mat, inp, msh, dom, sol, forcegty, solve)   \
+    String inpfn("input.inp");                                                                  \
+    String matfn("materials.mat");                                                              \
+    bool verbose = true;                                                                        \
+    if (argc>1) inpfn   =      argv[1];                                                         \
+    if (argc>2) matfn   =      argv[2];                                                         \
+    if (argc>3) verbose = atoi(argv[3]);                                                        \
+    MatFile mat;                                                                                \
+    InpFile inp;                                                                                \
+    mat.Read        (matfn.CStr());                                                             \
+    inp.Read        (inpfn.CStr());                                                             \
+    inp.SetPrmsInis (mat, forcegty);                                                            \
+    if (verbose) std::cout << "\nMaterials data:\n" << mat << std::endl;                        \
+    if (verbose) std::cout << "\nInput data:\n"     << inp << std::endl;                        \
+    FEM::Domain dom(msh, (*inp.Prps), (*inp.Prms), (*inp.Inis), inp.fnkey.CStr(), inp.OutNods); \
+    FEM::Solver sol(dom);                                                                       \
+    if (solve)                                                                                  \
+    {                                                                                           \
+        for (size_t i=0; i<inp.Stages.Size(); ++i)                                              \
+        {                                                                                       \
+            dom.SetBCs ((*inp.Stages[i]));                                                      \
+            if (verbose) dom.PrintBCs (cout);                                                   \
+            if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout, inp.fnkey.CStr());            \
+            else         sol.Solve    (inp.ninc, inp.fnkey.CStr());                             \
+        }                                                                                       \
+    }
+
+#endif

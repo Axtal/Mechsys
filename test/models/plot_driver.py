@@ -59,12 +59,12 @@ if opts.tst=='1':
     if not ana=='': p.plot (ana,marker='^',clr='c', label='Ana')
 
     if opts.both=='1':
-        p.lwd=2; p.plot (pnt,clr='blue', markevery=10, draw_ros=True, label='Point (%s)'%name)
-        p.lwd=2; p.plot (fem,clr='red',  markevery=10, draw_ros=True, label='FEM (%s)'%name)
+        p.lwd=2; p.plot (pnt,clr='blue', markevery=10, label='Point (%s)'%name)
+        p.lwd=2; p.plot (fem,clr='red',  markevery=10, label='FEM (%s)'%name)
     else:
-        p.lwd=2; p.plot (res,clr='blue', markevery=10, draw_ros=True, label='%s'%name)
+        p.lwd=2; p.plot (res,clr='blue', markevery=10, label='%s'%name)
     subplot(2,3,3)
-    l = legend(loc='upper left',prop=FontProperties(size=8))
+    #l = legend(loc='upper left',prop=FontProperties(size=8))
     show()
 
 elif opts.tst=='2':

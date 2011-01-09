@@ -26,6 +26,8 @@
 #ifdef USE_WXWIDGETS
   #include <mechsys/gui/common.h>
   #include <mechsys/gui/wxdict.h>
+  #include <mechsys/gui/wxsipair.h>
+  #include <mechsys/gui/wxarrayint.h>
 #endif
 
 // MechSys
@@ -33,6 +35,9 @@
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
 #include <mechsys/linalg/matvec.h>
+#include <mechsys/fem/element.h>   // for PROB
+#include <mechsys/fem/geomelem.h>  // for GEOM
+#include <mechsys/matfile.h>
 
 /*
 struct PathIncs
@@ -60,19 +65,19 @@ class InpFile
 #endif
 {
 public:
-    // Constructor
+    // Constructor & Destructor
 #ifdef USE_WXWIDGETS
      InpFile (wxFrame * Parent);
-    ~InpFile () { Aui.UnInit(); }
 #else
-     InpFile () { Defaults(); Path = new Dict; }
-    ~InpFile () { delete Path; }
+     InpFile ();
 #endif
+    ~InpFile ();
 
     // Methods
-    void Defaults ();
-    void Read     (char const * FileName);
-    void GetIncs  (int PathKey, double Div, Vec_t & dsig, Vec_t & deps, Array<bool> & PrescDeps, double & dpw, double & dSw, bool & PrescDpw, bool & PrescDSw) const;
+    void Defaults    ();
+    void Read        (char const * FileName);
+    void SetPrmsInis (MatFile const & Mat, bool ForceGTY=false);
+    void GetIncs     (int PathKey, double Div, Vec_t & dsig, Vec_t & deps, Array<bool> & PrescDeps, double & dpw, double & dSw, bool & PrescDpw, bool & PrescDSw) const;
 
     // Data
     int    matid;       ///<  1 material ID
@@ -116,6 +121,13 @@ public:
     double nldt_m;      ///< 38 nonlinear timesteps multiplier for larger timesteps in sch==1
     int    maxit;       ///< 39 max num of iterations
     double tolr;        ///< 40 tolerance for residual
+    String fnkey;       ///< 41 filename key
+    double pcam0;       ///< 42 pcam0
+    bool   haspcam0;    ///< has pcam0 ?
+
+    // Additional data
+    Dict * Prms; ///< parameters (set by SetMat)
+    Dict * Inis; ///< initial values (set by SetMat)
 
 #ifdef USE_WXWIDGETS
     // Methods
@@ -128,18 +140,75 @@ public:
     GUI::WxDictTable * Path;   ///< Path increments
     GUI::WxDict      * GPath;  ///< Grid for editing the path
 
+    // Additional data
+    GUI::WxDictTable     * Prps;       ///< elements properties
+    GUI::WxArrayIntTable * OutNods;    ///< output nodes
+    GUI::WxDict          * GPrps;      ///< grid: elements properties
+    GUI::WxArrayInt      * GOutNods;   ///< grid: output nodes
+    GUI::WxSIPairTable   * MatId2Tag;  ///< material ID to element tag
+    GUI::WxSIPair        * GMatId2Tag; ///< material ID to element tag
+
+    // Boundary conditions
+    Array<GUI::WxDictTable*> Stages;  ///< boundary conditions
+    //Array<GUI::WxDict*>      GStages; ///< grid: boundary conditions
+
     // Events
     void OnLoad (wxCommandEvent & Event);
     void OnSave (wxCommandEvent & Event);
     DECLARE_EVENT_TABLE();
+
 #else
+    // Data
     Dict * Path; ///< Path increments
+
+    // Additional data
+    Dict       * Prps;      ///< elements properties
+    Array<int> * OutNods;   ///< output nodes
+    SIPair     * MatId2Tag; ///< material ID to tag
+
+    // Boundary conditions
+    Array<Dict*> Stages; ///< boundary conditions
 #endif
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
+
+#ifdef USE_WXWIDGETS
+
+inline InpFile::~InpFile ()
+{
+    Aui.UnInit ();
+    delete Prms;
+    delete Inis;
+}
+
+#else
+
+inline InpFile::InpFile ()
+{
+    Defaults ();
+    Path      = new Dict;
+    Prps      = new Dict;
+    OutNods   = new Array<int>;
+    MatId2Tag = new SIPair;
+    Prms      = new Dict;
+    Inis      = new Dict;
+}
+
+inline InpFile::~InpFile ()
+{
+    delete Path;
+    delete Prps;
+    delete OutNods;
+    delete MatId2Tag;
+    delete Prms;
+    delete Inis;
+    for (size_t i=0; i<Stages.Size(); ++i) delete Stages[i];
+}
+
+#endif
 
 inline void InpFile::Defaults ()
 {
@@ -184,6 +253,9 @@ inline void InpFile::Defaults ()
     nldt_m     = -1;     // 38
     maxit      = -1;     // 39
     tolr       = -1;     // 40
+    fnkey      = "";     // 41
+    pcam0      = 0;      // 42
+    haspcam0   = false;
 }
 
 inline void InpFile::Read (char const * FileName)
@@ -191,13 +263,33 @@ inline void InpFile::Read (char const * FileName)
     // parse input file
     std::fstream inp_file(FileName, std::ios::in);
     if (!inp_file.is_open()) throw new Fatal("InpFile::Read: Could not open file <%s>",FileName);
-    bool   reading_path = false;
-    int    npath        = 0;
-    int    ndat         = -1;
-    size_t line_num     = 1;
-    int    idxdat       = 0;
-    int    idxpath      = 0;
-    Path->clear();
+    bool   reading_path   = false;
+    bool   reading_eprps  = false;
+    bool   reading_stages = false;
+    bool   reading_bcs    = false;
+    int    npath          = 0;
+    int    nelemprps      = 0;
+    int    nstages        = 0;
+    int    nbcs           = -1;
+    int    ndat           = -1;
+    size_t line_num       = 1;
+    int    idxdat         = 0;
+    int    idxbcs         = 0;
+    int    idxpath        = 0;
+    int    idxeprps       = 0;
+    int    idxstage       = 0;
+    int    elemtag        = -1;
+    int    bcstag         = 0;
+    SDPair elemprps;
+    SDPair bcs;
+    Path      -> clear();
+    Prps      -> clear();
+    OutNods   -> Resize(0);
+    MatId2Tag -> clear();
+    Prms      -> clear();
+    Inis      -> clear();
+    for (size_t i=0; i<Stages.Size(); ++i) delete Stages[i];
+    Stages.Resize(0);
     while (!inp_file.eof())
     {
         String line,key,equal,str_val;
@@ -211,7 +303,7 @@ inline void InpFile::Read (char const * FileName)
             if (reading_path)
             {
                 if      (key=="ndat") ndat = atoi(str_val.CStr());
-                else if (ndat<0) throw new Fatal("InpFile::Read: Error in file <%s> at line # %d: key 'ndat' must come before data. '%s' is in the wrong place",FileName,line_num,key.CStr());
+                else if (ndat<0) throw new Fatal("InpFile::Read: Reading path. Error in file <%s> at line # %d: key 'ndat' must come before data. '%s' is in the wrong place",FileName,line_num,key.CStr());
                 else if (key=="kcam")  { Path->Set(idxpath, "kcam" , val     ); idxdat++; }
                 else if (key=="dpcam") { Path->Set(idxpath, "dpcam", val     ); idxdat++; }
                 else if (key=="lode")  { Path->Set(idxpath, "lode" , val     ); idxdat++; if (val<30. || val>90.) throw new Fatal("InpFile::Read: Error in file <%s> at line # %d: Lode angle alpha must be inside [30,90]. Alpha==%g is invalid",FileName,line_num,val); }
@@ -230,13 +322,78 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="dpw")   { Path->Set(idxpath, "dpw"  , val     ); idxdat++; }
                 else if (key=="dSw")   { Path->Set(idxpath, "dSw"  , val     ); idxdat++; }
                 else if (key=="ninc")  { Path->Set(idxpath, "ninc" , val     ); idxdat++; }
-                else throw new Fatal("InpFile::Read: Error in file <%s> at line # %d when reading data of Path # %d. Key==%s is invalid or in the wrong place",FileName,line_num,idxpath,key.CStr());
+                else throw new Fatal("InpFile::Read: Reading path. Error in file <%s> at line # %d when reading data of Path # %d. Key==%s is invalid or in the wrong place",FileName,line_num,idxpath,key.CStr());
                 if (idxdat==ndat)
                 {
                     ndat   = -1;
                     idxdat = 0;
                     idxpath++;
-                    if (idxpath==npath) break;
+                    if (idxpath==npath) reading_path = false;
+                }
+            }
+            else if (reading_eprps)
+            {
+                if      (key=="ndat") ndat = atoi(str_val.CStr());
+                else if (ndat<0) throw new Fatal("InpFile::Read: Reading elements properties. Error in file <%s> at line # %d: key 'ndat' must come before data. '%s' is in the wrong place",FileName,line_num,key.CStr());
+                else if (key=="elemtag") { elemtag = atoi(str_val.CStr());                       idxdat++; }
+                else if (key=="prob")    { elemprps.Set (key.CStr(), FEM::PROB(str_val.CStr())); idxdat++; }
+                else if (key=="geom")    { elemprps.Set (key.CStr(), FEM::GEOM(str_val.CStr())); idxdat++; }
+                else if (key=="psa")     { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
+                else if (key=="pse")     { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
+                else if (key=="fra")     { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
+                else if (key=="d2d")     { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
+                else if (key=="d3d")     { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
+                else if (key=="rho")     { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
+                else throw new Fatal("InpFile::Read: Reading elements properties. Error in file <%s> at line # %d when reading data of Properties # %d. Key==%s is invalid or in the wrong place",FileName,line_num,idxeprps,key.CStr());
+                if (idxdat==ndat)
+                {
+                    Prps->Set (elemtag, elemprps);
+                    ndat    = -1;
+                    idxdat  = 0;
+                    elemtag = -1;
+                    elemprps.clear();
+                    idxeprps++;
+                    if (idxeprps==nelemprps) reading_eprps = false;
+                }
+            }
+            else if (reading_stages && !reading_bcs)
+            {
+#ifdef USE_WXWIDGETS
+                if (key=="nbcs") { nbcs = atoi(str_val.CStr());  Stages.Push(new GUI::WxDictTable);  reading_bcs=true; }
+#else
+                if (key=="nbcs") { nbcs = atoi(str_val.CStr());  Stages.Push(new Dict);  reading_bcs=true; }
+#endif
+                else throw new Fatal("InpFile::Read: Reading boundary conditions (stages). Error in file <%s> at line # %d: key '%s' is in the wrong place",FileName,line_num,key.CStr());
+            }
+            else if (reading_bcs)
+            {
+                if      (key=="ndat") ndat = atoi(str_val.CStr());
+                else if (ndat<0) throw new Fatal("InpFile::Read: Reading boundary conditions (stages). Error in file <%s> at line # %d: key 'ndat' must come after 'nbcs' and before data. '%s' is in the wrong place",FileName,line_num,key.CStr());
+                else if (key=="tag") { bcstag = atoi(str_val.CStr());              idxdat++; }
+                else if (key=="ux")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="uy")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="uz")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="fx")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="fy")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="fz")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="qn")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else throw new Fatal("InpFile::Read: Reading boundary conditions (stages). Error in file <%s> at line # %d when reading data of Stage # %d. Key==%s is invalid or in the wrong place",FileName,line_num,idxstage,key.CStr());
+                if (idxdat==ndat)
+                {
+                    Stages[idxstage]->Set (bcstag, bcs);
+                    ndat   = -1;
+                    idxdat = 0;
+                    bcstag = 0;
+                    bcs.clear ();
+                    idxbcs++;
+                    if (idxbcs==nbcs)
+                    {
+                        reading_bcs = false;
+                        nbcs        = -1;
+                        idxbcs      = 0;
+                        idxstage++;
+                        if (idxstage==nstages) reading_stages = false;
+                    }
                 }
             }
             else
@@ -281,19 +438,75 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="nldt_m")     nldt_m    = val;                        // 38
                 else if (key=="maxit")      maxit     = atoi(str_val.CStr());       // 39
                 else if (key=="tolr")       tolr      = val;                        // 40
-                else if (key=="npath")    { npath     = (int)val;  reading_path = true; }
-                else throw new Fatal("InpFile::Read: Error in file <%s> @ line # %d: Key==%s in invalid",FileName,line_num,key.CStr());
+                else if (key=="fnkey")      fnkey     = str_val;                    // 41
+                else if (key=="pcam0")    { pcam0     = val;     haspcam0 = true; } // 42
+                else if (key=="npath")    { npath     = (int)val;  reading_path   = true; }
+                else if (key=="nelemprps"){ nelemprps = (int)val;  reading_eprps  = true; }
+                else if (key=="nstages")  { nstages   = (int)val;  reading_stages = true; }
+                else if (key=="matids")
+                {
+                    String left, right, str_id, str_tag;
+                    line.Split (left, right, "=");
+                    std::istringstream subiss(right);
+                    while (subiss >> str_id >> str_tag)
+                    {
+                        int id  = atoi(str_id.CStr());
+                        int tag = atoi(str_tag.CStr());
+                        if (id<0 || tag>=0) throw new Fatal("InpFile::Read: Error in file <%s> @ line # %d with Key==%s. Material ids must be zero or positive and element tags must be negative. Ex.: matids = 0 -1  1 -2  2 -3",FileName,line_num,key.CStr());
+                        MatId2Tag->Set (str_id.CStr(), tag);
+                    }
+                }
+                else if (key=="outnods")
+                {
+                    String left, right, nod;
+                    line.Split (left, right, "=");
+                    std::istringstream subiss(right);
+                    while (subiss >> nod) OutNods->Push (atoi(nod.CStr()));
+                }
+                else throw new Fatal("InpFile::Read: Error in file <%s> @ line # %d: Key==%s in invalid (as general data)",FileName,line_num,key.CStr());
             }
         }
         line_num++;
     }
     if ((size_t)idxpath!=Path->Keys.Size()) throw new Fatal("InpFile::Read: Error in file <%s>: Not all Path data could be read for npath==%zd",FileName,npath);
 
+    // filename key
+    if (fnkey=="")
+    {
+        String buf(FileName);
+        buf.GetFNKey (fnkey);
+    }
 
 #ifdef USE_WXWIDGETS
     Sync (/*Dat2Ctrl*/true);
-    GPath->ReBuild ();
+    GPath      -> ReBuild ();
+    GPrps      -> ReBuild ();
+    GOutNods   -> ReBuild ();
+    GMatId2Tag -> ReBuild ();
 #endif
+}
+
+inline void InpFile::SetPrmsInis (MatFile const & Mat, bool ForceGTY)
+{
+    for (size_t i=0; i<MatId2Tag->Keys.Size(); ++i)
+    {
+        int            id   = atoi(MatId2Tag->Keys[i].CStr());
+        int            tag  = (*MatId2Tag)(MatId2Tag->Keys[i]);
+        SDPair const & prms = (*Mat.ID2Prms)(id);
+        SDPair const & inis = (*Mat.ID2Inis)(id);
+        Prms->Set (tag, prms);
+        Inis->Set (tag, inis);
+        if (ForceGTY)
+        {
+            SDPair const & prps = (*Prps)(tag);
+            Array<String> gtypes("d3d", "d2d", "psa", "pse", "fra");
+            for (size_t i=0; i<gtypes.Size(); ++i)
+            {
+                if (prps.HasKey(gtypes[i])) (*Prms)(tag).Set (gtypes[i].CStr(), 1.0);
+            }
+        }
+        if (haspcam0) (*Inis)(tag).Set ("sx sy sz", -pcam0, -pcam0, -pcam0);
+    }
 }
 
 inline void InpFile::GetIncs (int PathKey, double Div, Vec_t & dsig, Vec_t & deps, Array<bool> & PrescDeps, double & dpw, double & dSw, bool & PrescDpw, bool & PrescDSw) const
@@ -361,7 +574,20 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     if (IF.nldt_m      >0 ) os << "nldt_m    = " << IF.nldt_m    << "\n"; //  38
     if (IF.maxit       >0 ) os << "maxit     = " << IF.maxit     << "\n"; //  39
     if (IF.tolr        >=0) os << "tolr      = " << IF.tolr      << "\n"; //  40
-    os << "path      =\n"<< (*IF.Path) << std::endl;
+    if (IF.fnkey.size()>0 ) os << "fnkey     = " << IF.fnkey     << "\n"; //  41
+    if (IF.haspcam0       ) os << "pcam0     = " << IF.pcam0     << "\n"; //  41
+    os << "\nPath:\n"                        << (*IF.Path)      << "\n";
+    os << "\nElements properties:\n"         << (*IF.Prps)      << "\n";
+    os << "\nOutput nodes:\n"                << (*IF.OutNods)   << "\n";
+    os << "\nMaterial IDs => Tags:\n"        << (*IF.MatId2Tag) << "\n";
+    os << "\nParameters:\n"                  << (*IF.Prms)      << "\n";
+    os << "\nInitial values:\n"              << (*IF.Inis)      << "\n";
+    os << "\nBoundary conditions (stages):\n";
+    for (size_t i=0; i<IF.Stages.Size(); ++i)
+    {
+        os << "Stage # " << i << ":\n";
+        os << (*IF.Stages[i]) << "\n";
+    }
     return os;
 }
 
@@ -460,21 +686,36 @@ inline InpFile::InpFile (wxFrame * Parent)
     Path  = new GUI::WxDictTable;         Path->Transposed = false;
     GPath = new GUI::WxDict (this, Path); GPath->FitCol    = true;
 
+    // additional data
+    Prps       = new GUI::WxDictTable;
+    OutNods    = new GUI::WxArrayIntTable;
+    MatId2Tag  = new GUI::WxSIPairTable;
+    GPrps      = new GUI::WxDict     (this, Prps);
+    GOutNods   = new GUI::WxArrayInt (this, OutNods);
+    GMatId2Tag = new GUI::WxSIPair   (this, MatId2Tag);
+    Prms       = new Dict;
+    Inis       = new Dict;
+
     // notebook
     ADD_WXNOTEBOOK (this, nbk0);
     ADD_WXNOTEBOOK (this, nbk1);
-    nbk0->AddPage  (p_mai, "Main",              false);
-    nbk0->AddPage  (p_loc, "Local Integration", false);
-    nbk0->AddPage  (p_oth, "Others",            false);
-    nbk0->AddPage  (p_fem, "FEM Solution",      false);
-    nbk0->AddPage  (p_nls, "Nonlinear Steps",   false);
-    nbk0->AddPage  (p_rfi, "Reference Files",   false);
-    nbk1->AddPage  (GPath, "Path",              false);
+    ADD_WXNOTEBOOK (this, nbk2);
+    nbk0->AddPage  (p_mai,      "Main",                 false);
+    nbk0->AddPage  (p_loc,      "Local Integration",    false);
+    nbk0->AddPage  (p_oth,      "Others",               false);
+    nbk2->AddPage  (p_fem,      "FEM Solution",         false);
+    nbk2->AddPage  (p_nls,      "Nonlinear Steps",      false);
+    nbk0->AddPage  (p_rfi,      "Reference Files",      false);
+    nbk1->AddPage  (GPath,      "Path",                 false);
+    nbk2->AddPage  (GPrps,      "Elements Properties",  false);
+    nbk2->AddPage  (GOutNods,   "Output Nodes",         false);
+    nbk2->AddPage  (GMatId2Tag, "Material IDs => Tags", false);
 
     // commit all changes to wxAuiManager
     Aui.AddPane (pnl,  wxAuiPaneInfo().Name("cpnl").Caption("cpnl").Top().MinSize(wxSize(100,50)).DestroyOnClose(false).CaptionVisible(false) .CloseButton(false));
-    Aui.AddPane (nbk0, wxAuiPaneInfo().Name("nbk0").Caption("nbk0").Centre().Position(0).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
-    Aui.AddPane (nbk1, wxAuiPaneInfo().Name("nbk1").Caption("nbk1").Centre().Position(1).DestroyOnClose(false).CaptionVisible(false).CloseButton(false));
+    Aui.AddPane (nbk0, wxAuiPaneInfo().Name("nbk0").Caption("General Input Data").Centre().Position(0).DestroyOnClose(false).CaptionVisible(true).CloseButton(false));
+    Aui.AddPane (nbk1, wxAuiPaneInfo().Name("nbk1").Caption("Stress/Strain Path").Centre().Position(1).DestroyOnClose(false).CaptionVisible(true).CloseButton(false));
+    Aui.AddPane (nbk2, wxAuiPaneInfo().Name("nbk2").Caption("FEM Input Data")    .Centre().Position(2).DestroyOnClose(false).CaptionVisible(true).CloseButton(false));
     Aui.Update  ();
 }
 

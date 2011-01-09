@@ -1539,9 +1539,6 @@ inline void Domain::NodalResults (bool OnlyOutNods) const
 
 inline void Domain::OutResults (char const * VTUFName, bool HeaderOnly)
 {
-    // next index of files
-    IdxOut++;
-
     // VTU
     if (VTUFName!=NULL)
     {
@@ -1552,6 +1549,9 @@ inline void Domain::OutResults (char const * VTUFName, bool HeaderOnly)
         String fkey;
         fkey.Printf ("%s_%08d", VTUFName, IdxOut);
         WriteVTU    (fkey.CStr(), /*do_extrapolation*/false);
+
+        // next index of files
+        IdxOut++;
     }
     else if (OutNods.Size()>0)
     {

@@ -86,12 +86,13 @@ public:
     String (char        const * Other) : std::string(Other) {}
 
     // Methods
-    int          Printf  (String const & Fmt, ...);                                                        ///< Print with format
-    int          PrintfV (String const & Fmt, va_list ArgList) { return _set_msg (Fmt.c_str(), ArgList); } ///< Print with format and ArgList
-    char const * CStr    ()                              const { return this->c_str(); }                   ///< Get C-string
-    void         TextFmt (char const * NF);                                                                ///< Convert NF (ex: "%10g") to text Format (ex: "%10s")
-    void         Split   (String & Left, String & Right, char const * Separator=" ");
-    bool         HasWord (String const & Word) { return (find(Word)!=npos); }
+    int          Printf   (String const & Fmt, ...);                                                        ///< Print with format
+    int          PrintfV  (String const & Fmt, va_list ArgList) { return _set_msg (Fmt.c_str(), ArgList); } ///< Print with format and ArgList
+    char const * CStr     ()                              const { return this->c_str(); }                   ///< Get C-string
+    void         TextFmt  (char const * NF);                                                                ///< Convert NF (ex: "%10g") to text Format (ex: "%10s")
+    void         Split    (String & Left, String & Right, char const * Separator=" ");
+    bool         HasWord  (String const & Word) { return (find(Word)!=npos); }
+    void         GetFNKey (String & FNKey);
 
     // For compatibility with wxWidgets
     String       & ToStdString()       { return (*this); }
@@ -136,6 +137,12 @@ inline void String::Split (String & Left, String & Right, char const * Separator
     Left  = substr (0,pos);
     if (pos==npos) Right = "";
     else           Right = substr (pos+String(Separator).size());
+}
+
+inline void String::GetFNKey (String & FNKey)
+{
+    size_t pos = rfind(".");
+    FNKey = substr (0,pos);
 }
 
 inline int String::_set_msg (char const * Fmt, va_list ArgList)
