@@ -17,11 +17,13 @@
 ########################################################################
 
 from msys_invs import *
+from msys_fig import *
 
 # CamClay: closed-form solution: ev, ed
 # =====================================
 # Proportional loading: k = dq/dp (path)
-def CamClay_ev_ed(prms, inis, sig0, sig):
+# p and q: Octahedral invariants
+def CamClay_ev_ed_oct (prms, inis, p0, q0, p, q):
 
     # parameters and initial values
     lam = prms['lam']
@@ -33,12 +35,13 @@ def CamClay_ev_ed(prms, inis, sig0, sig):
 
     # auxiliary variables
     alp    = (3.0*(1.0-2.0*nu))/(2.0*(nu+1.0))
-    p0, q0 = sig_calc_p_q (sig0, 'oct')
-    p,  q  = sig_calc_p_q (sig,  'oct')
     dp, dq = p-p0, q-q0
     k      = dq/dp
     r      = q/(M*p)
     r0     = q0/(M*p0)
+
+    # check failure condition
+    if r>1.0: raise Exception('[1;31mCamClay_ev_ed_oct: Invalid stress state (failure condition). r=q/(M*p)=%g must be smaller than or equal to 1[0m'%r)
 
     # elastic strains
     eve = -(kap*log(p/p0))/v0
@@ -51,3 +54,20 @@ def CamClay_ev_ed(prms, inis, sig0, sig):
     ev  = eve + evp
     ed  = ede + edp
     return ev, ed
+
+def CamClay_ev_ed (prms, inis, kcam, pcam0, qcam0, dpcam, npts):
+    dp     = dpcam*sqrt(3.0)
+    k      = kcam*sqrt(2.0)/3.0
+    p0, q0 = pcam0*sqrt(3.0), qcam0*sqrt(2.0/3.0)
+    M      = phi_calc_M (prms['phi'], 'oct')
+    if k>M:
+        dpmax = (M*p0-q0)/(k-M)
+        if dp>dpmax: dp = 0.999*dpmax
+    pf, qf = p0+dp, q0+k*dp
+    p      = linspace (p0, pf, npts)
+    q      = q0 + k*(p-p0)
+    ev, ed = zeros(npts), zeros(npts)
+    for i in range(npts-1): ev[1+i], ed[1+i] = CamClay_ev_ed_oct (prms, inis, p0, q0, p[1+i], q[1+i])
+    pcam = p/sqrt(3.0)
+    qcam = q*sqrt(3.0/2.0)
+    return pcam, qcam, ev, ed
