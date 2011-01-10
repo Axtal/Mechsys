@@ -141,6 +141,10 @@ BPy::class_<InpFile>("InpFile")
     .def_readwrite("nldt_m"     , &InpFile::nldt_m    ) //  38
     .def_readwrite("maxit"      , &InpFile::maxit     ) //  39
     .def_readwrite("tolr"       , &InpFile::tolr      ) //  40
+    .def_readwrite("fnkey"      , &InpFile::fnkey     ) //  41
+    .def_readwrite("pcam0"      , &InpFile::pcam0     ) //  42
+    .def_readwrite("haspcam0"   , &InpFile::haspcam0  ) //  42b
+    .def_readwrite("scheme"     , &InpFile::scheme    ) //  43
     ;
 
 BPy::def("ReadMaterial", ReadMaterial, FUN_READMATERIAL());

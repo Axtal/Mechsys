@@ -24,13 +24,13 @@ SET(PROGS
 SET(VTK_PROGS
   smp
   fcrit
-  ysurf)
+  ysurf
+  invariants04)
 
 SET(TESTS
   invariants01
   invariants02
-  invariants03
-  invariants04)
+  invariants03)
 
 FOREACH(var ${PROGS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

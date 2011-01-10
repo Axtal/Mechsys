@@ -511,7 +511,7 @@ int main(int argc, char **argv) try
         printf("  max_err_dP%zd%zddt = %s%16.8e%s\n",k,i,(max_err_dPdt[k][i]>tol_dPdt[k][i]?TERM_RED:TERM_GREEN),max_err_dPdt[k][i],TERM_RST);
 #ifdef HAS_TENSORS
     double tol_dvdt[3][3]= {{1.0e-7, 1.0e-7, 1.0e-7},
-                            {1.0e-7, 1.0e-6, 1.0e-7},
+                            {1.0e-6, 1.0e-6, 1.0e-7},
                             {1.0e-6, 1.0e-6, 1.0e-7}};
     for (size_t k=0; k<3; ++k)
     for (size_t i=0; i<3; ++i)
