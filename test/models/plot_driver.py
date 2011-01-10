@@ -1,8 +1,7 @@
 import optparse
-from mechsys         import String, Dict, InpFile, ReadMaterial
-from msys_plotter    import *
-from msys_invariants import *
-from msys_fig        import *
+from mechsys  import String, Dict, InpFile, ReadMaterial
+from msys_plt import *
+from msys_fig import *
 
 # input
 op = optparse.OptionParser()

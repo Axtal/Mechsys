@@ -23,6 +23,7 @@ install_manifest.txt
 *.vtk
 *.pov
 *.png
+*.eps
 *.cal
 *.avi
 *.res

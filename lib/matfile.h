@@ -83,6 +83,15 @@ public:
     Dict * ID2Prms; ///< maps ID to parameters
     Dict * ID2Inis; ///< maps ID to initial values
 #endif
+
+#ifdef USE_BOOST_PYTHON
+    void PyGetPrmIni (int ID, BPy::dict & Prm, BPy::dict & Ini)
+    {
+        ID2Prms->PyGet (ID, Prm);
+        ID2Inis->PyGet (ID, Ini);
+    }
+#endif
+
 };
 
 

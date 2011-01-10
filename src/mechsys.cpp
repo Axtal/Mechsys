@@ -24,6 +24,7 @@
 namespace BPy = boost::python;
 
 // MechSys
+#include <mechsys/matfile.h>
 #include <mechsys/inpfile.h>
 #include <mechsys/linalg/jacobirot.h>
 
@@ -33,10 +34,10 @@ namespace BPy = boost::python;
 // functions overloadings
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_PHI2M,        Phi2M,        1, 2)
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_M2PHI,        M2Phi,        1, 2)
-BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_READMATERIAL, ReadMaterial, 6, 7)
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_JACOBIROT,    PyJacobiRot,  3, 4)
 
 // member overloadings
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (IN_SetPrmsInis,  SetPrmsInis,  1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_ReadMesh,     ReadMesh,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,      SetVert,      4, 5)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteVTU,     WriteVTU,     1, 2)
@@ -93,10 +94,20 @@ BPy::def("M2Phi",     M2Phi,       FUN_M2PHI());
 BPy::def("JacobiRot", PyJacobiRot, FUN_JACOBIROT());
 BPy::def("EigenProjAnalytic", PyEigenProjAnalytic);
 
+///////////////////////////////////////////////////////////////////////////////// MatFile /////
+
+BPy::class_<MatFile>("MatFile")
+    .def("Read",      &MatFile::Read)
+    .def("GetPrmIni", &MatFile::PyGetPrmIni)
+    .def(BPy::self_ns::str(BPy::self))
+    ;
+
 ///////////////////////////////////////////////////////////////////////////////// InpFile /////
 
 BPy::class_<InpFile>("InpFile")
-    .def("Read", &InpFile::Read)
+    .def("Read",        &InpFile::Read)
+    .def("SetPrmsInis", &InpFile::SetPrmsInis, IN_SetPrmsInis())
+    .def("GetPrmIni",   &InpFile::PyGetPrmIni)
     .def(BPy::self_ns::str(BPy::self))
     .def_readwrite("matid"      , &InpFile::matid     ) //   1
     .def_readwrite("flwid"      , &InpFile::flwid     ) //   2
@@ -146,8 +157,6 @@ BPy::class_<InpFile>("InpFile")
     .def_readwrite("haspcam0"   , &InpFile::haspcam0  ) //  42b
     .def_readwrite("scheme"     , &InpFile::scheme    ) //  43
     ;
-
-BPy::def("ReadMaterial", ReadMaterial, FUN_READMATERIAL());
 
 //////////////////////////////////////////////////////////////////////////////////// mesh /////
 

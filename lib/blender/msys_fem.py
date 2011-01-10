@@ -525,7 +525,7 @@ def plot_res(ele):
             eout = [int(e) for e in obj.properties['eout'].split()][di.key('fem_eout_plt')]
             fn   = obj.name+"_fem_ele_%d_-1.res"%eout
             if not Blender.sys.exists(fn): raise Exception('File <'+fn+'> does not exist (please, set elements for output and run analysis first)')
-            lin  = 'from msys_plotter import *\n'
+            lin  = 'from msys_plt import *\n'
             lin += 'plt = Plotter()\n'
             lin += 'plt.plot ("%s", draw_fl=True, draw_ros=True)\n'%fn
             lin += 'show()\n'
@@ -542,7 +542,7 @@ def plot_res(ele):
             nout = [int(n) for n in obj.properties['nout'].split()][di.key('fem_nout_plt')]
             fn   = obj.name+"_fem_nod_%d_-1.res"%nout
             if not Blender.sys.exists(fn): raise Exception('File <'+fn+'> does not exist (please, set nodes for output and run analysis first)')
-            lin  = 'from msys_plotter import *\n'
+            lin  = 'from msys_plt import *\n'
             lin += 'plt = Plotter()\n'
             lin += 'plt.plot_node ("%s")\n'%fn
             lin += 'show()\n'

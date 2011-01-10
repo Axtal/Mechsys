@@ -16,8 +16,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-from msys_invariants import *
-from msys_fig        import *
+from msys_invs import *
+from msys_fig  import *
 
 class Plotter:
     # Constructor

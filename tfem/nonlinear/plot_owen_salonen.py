@@ -1,9 +1,6 @@
 import optparse
-from numpy import array
-from pylab import *
-from msys_fig import *
-from msys_plotter  import Plotter
-from msys_linfit   import LinFit
+from msys_plt    import *
+from msys_linfit import LinFit
 
 # input
 op = optparse.OptionParser()

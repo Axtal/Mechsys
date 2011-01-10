@@ -172,6 +172,14 @@ public:
     // Boundary conditions
     Array<Dict*> Stages; ///< boundary conditions
 #endif
+
+#ifdef USE_BOOST_PYTHON
+    void PyGetPrmIni (int Tag, BPy::dict & Prm, BPy::dict & Ini)
+    {
+        Prms->PyGet (Tag, Prm);
+        Inis->PyGet (Tag, Ini);
+    }
+#endif
 };
 
 

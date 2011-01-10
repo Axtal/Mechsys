@@ -1,5 +1,4 @@
-from pylab import savefig
-from msys_plotter import *
+from msys_plt import *
 import mechsys as ms
 
 voronoi = 0 # 0 => spheres

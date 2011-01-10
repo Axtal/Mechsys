@@ -16,9 +16,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-from msys_invariants import *
-from msys_fig        import *
-from numpy           import ogrid
+from msys_invs import *
+from msys_fig  import *
+from numpy     import ogrid
 
 class FCrits:
     # Constructor

@@ -8,7 +8,7 @@ echo Considering that MechSys is in $MECHSYS_ROOT
 
 PYVER=2.6
 
-MODULES="drawmesh invariants linfit plotter fig matvec fcrits"
+MODULES="ana drawmesh fcrits fig invs linfit matvec plt"
 for m in $MODULES; do
   sudo ln -s $MECHSYS_ROOT/mechsys/lib/python/msys_$m.py /usr/lib/python$PYVER/dist-packages
 done

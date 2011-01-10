@@ -1,7 +1,5 @@
-from numpy import array
-from pylab import *
-from msys_fig     import *
-from msys_plotter import Plotter
+from msys_fig import *
+from msys_plt import *
 
 plt = 1
 
