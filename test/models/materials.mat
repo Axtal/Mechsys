@@ -1,3 +1,5 @@
+# materials.mat
+
 ID    = 0
 name  = LinElastic
 nprms = 2
@@ -10,22 +12,21 @@ name  = ElastoPlastic
 nprms = 5
 E     = 6000.0
 nu    = 0.3
-fc    = VM
+VM    = 1.0
 sY    = 150.0
 Hp    = 0.0
 ninis = 0
 
-ID       = 2
-name     = ElastoPlastic
-nprms    = 7
-E        = 6000.0
-nu       = 0.3
-fc       = MC
-c        = 0.1
-phi      = 25.376933525152303
-psi      = 1.0
-NonAssoc = 1.0
-ninis    = 0
+ID    = 2
+name  = ElastoPlastic
+nprms = 6
+E     = 6000.0
+nu    = 0.3
+MC    = 1.0
+c     = 0.1
+phi   = 25.376933525152303
+psi   = 1.0
+ninis = 0
 
 ID    = 3
 name  = CamClay
@@ -75,9 +76,7 @@ ninis = 0
 
 ID     = 6
 name   = UnsatFlow
-nprms  = 8
-rhoW   = 1.0
-rhoS   = 2.0
+nprms  = 6
 gamW   = 10.0
 kwsat  = 1.0e-2
 Mkw    = 1.0

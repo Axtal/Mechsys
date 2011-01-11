@@ -62,10 +62,12 @@ public:
     double  spsi;       ///< Sin(psi) dilatancy angle
     double  cbar;       ///< Cohesion_bar
     double  ftol;       ///< Tolerance to be used when finding the intersection
+    double  kDP;        ///< Drucker-Prager coefficient
     double  kMN;        ///< Matsuoka-Nakai coefficient
     bool    NewSU;      ///< New stress update ?
     double  BetSU;      ///< Beta coefficient for new stress update
     double  Gbar;       ///< G for new stress update
+    Vec_t   I;          ///< Idendity tensor
 
     // State data (mutable/scratch-pad)
     mutable Vec_t V;    ///< NCps: Gradient of the yield surface
@@ -88,7 +90,7 @@ private:
 
 inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived)
     : Model (NDim,Prms,"ElastoPlastic"),
-      E(0.0), nu(0.0), FC(VM_t), kY(0.0), Hb(0.0), NonAssoc(false), ftol(1.0e-5)
+      E(0.0), nu(0.0), FC(VM_t), kY(0.0), Hb(0.0), NonAssoc(false), ftol(1.0e-8), NewSU(false)
 {
     // resize scratchpad arrays
     V  .change_dim (NCps);
@@ -97,6 +99,11 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
     Dep.change_dim (NCps,NCps);
     VDe.change_dim (NCps);
     DeW.change_dim (NCps);
+    I  .change_dim (NCps);
+    set_to_zero(I);
+    I(0) = 1.0;
+    I(1) = 1.0;
+    I(2) = 1.0;
 
     if (!Derived) // for instance, CamClay
     {
@@ -132,7 +139,8 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
             sphi = sin(phi_rad);
             spsi = sin(psi_rad);
             cbar = sqrt(3.0)*c/tan(phi_rad);
-            ftol = 1.0e-5;
+            //ftol = 1.0e-5;
+            if (FC==DP_t) kDP = 2.0*sqrt(2.0)*sphi/(3.0-sphi);
             if (FC==MN_t) kMN = 9.0+8.0*pow(tan(phi_rad),2.0);
         }
 
@@ -409,20 +417,7 @@ inline void ElastoPlastic::Gradients (EquilibState const * Sta) const
         V    = s/qoct;
         Y(0) = -1.0; // dfdz0
     }
-    else if (FC==DP_t)
-    {
-        double p    = Calc_poct (Sta->Sig);
-        double M    = 6.0*sphi/(3.0-sphi);
-        double dfdp = -M;
-        double dfdq = 1.0;
-        double sq3  = Util::SQ3;
-        Vec_t dpdsig(NCps);
-        Vec_t dqdsig(NCps);
-        if (NCps==4) dpdsig = -p/sq3, -p/sq3, -p/sq3, 0., 0.;
-        else         dpdsig = -p/sq3, -p/sq3, -p/sq3, 0., 0., 0.;
-        Dev (Sta->Sig, dqdsig); // dqdsig = Dev(Sig)
-        V = dfdp*dpdsig + dfdq*dqdsig;
-    }
+    else if (FC==DP_t) V = s/qoct + (kDP/Util::SQ3)*I;
     else if (FC==MC_t) _MC_grads (Sta, sphi, V);
     else if (FC==MN_t)
     {
@@ -463,8 +458,7 @@ inline void ElastoPlastic::Hardening (EquilibState const * Sta) const
         else if (FC==DP_t)
         {
             double p = Calc_poct (Sta->Sig);
-            double M = 6.0*sphi/(3.0-sphi);
-            k = p*M;
+            k = p*kDP;
         }
         else if (FC==MC_t)
         {
@@ -488,18 +482,14 @@ inline double ElastoPlastic::YieldFunc (EquilibState const * Sta) const
     if (FC==VM_t)
     {
         double q = Calc_qoct (Sta->Sig);
-
-        // TODO: new stress update
-        if (NewSU) return q - kY;
-        
         return q - Sta->Ivs(0);
     }
     else if (FC==DP_t)
     {
         double p = Calc_poct (Sta->Sig);
         double q = Calc_qoct (Sta->Sig);
-        double M = 6.0*sphi/(3.0-sphi);
-        return q - p*M;
+        if (NewSU) return q - Sta->Ivs(0); // TODO: new stress update
+        return q - p*kDP;
     }
     else if (FC==MC_t)
     {
@@ -507,12 +497,14 @@ inline double ElastoPlastic::YieldFunc (EquilibState const * Sta) const
         OctInvs (Sta->Sig, p, q, t);
         double th = asin(t)/3.0;
         double g  = sqrt(2.0)*sphi/(sqrt(3.0)*cos(th)-sphi*sin(th));
+        if (NewSU) return q - Sta->Ivs(0); // TODO: new stress update
         return q - (p + cbar)*g;
     }
     else if (FC==MN_t)
     {
         double I1,I2,I3;
         CharInvs (Sta->Sig, I1,I2,I3);
+        if (NewSU) return I1*I2/I3 - Sta->Ivs(0); // TODO: new stress update
         return I1*I2/I3 - kMN;
     }
     return 0;
