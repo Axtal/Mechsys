@@ -114,6 +114,13 @@ Model * AllocModel(String const & Name, int NDim, SDPair const & Prms)
     return ptr;
 }
 
+Model * AllocModel(double IDinMODEL, int NDim, SDPair const & Prms)
+{
+    String model_name;
+    MODEL.Val2Key (IDinMODEL, model_name);
+    return AllocModel (model_name, NDim, Prms);
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////// Functions /////
 

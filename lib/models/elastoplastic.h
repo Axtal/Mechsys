@@ -63,6 +63,9 @@ public:
     double  cbar;       ///< Cohesion_bar
     double  ftol;       ///< Tolerance to be used when finding the intersection
     double  kMN;        ///< Matsuoka-Nakai coefficient
+    bool    NewSU;      ///< New stress update ?
+    double  BetSU;      ///< Beta coefficient for new stress update
+    double  Gbar;       ///< G for new stress update
 
     // State data (mutable/scratch-pad)
     mutable Vec_t V;    ///< NCps: Gradient of the yield surface
@@ -143,6 +146,11 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
         IvNames.Push ("z0");
         IvNames.Push ("evp");
         IvNames.Push ("edp");
+
+        // TODO: new stress update parmeters
+        NewSU  = (Prms.HasKey("newsu") ? (int)Prms("newsu") : false);
+        BetSU  = (Prms.HasKey("betsu") ? Prms("betsu") : 10.0);
+        Gbar   = (Prms.HasKey("Gbar")  ? Prms("Gbar")  : 0.5*E/(1.0+nu));
     }
 }
 
@@ -156,6 +164,19 @@ inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
     sta->Ivs(0) = kY;  // size of YS (von Mises only)
     sta->Ivs(1) = 0.0; // evp
     sta->Ivs(2) = 0.0; // edp
+
+    // TODO: new stress update
+    if (NewSU)
+    {
+        double q = Calc_qoct (sta->Sig);
+        if (FC==MN_t)
+        {
+            double I1,I2,I3;
+            CharInvs (sta->Sig, I1,I2,I3);
+            sta->Ivs(0) = I1*I2/I3;
+        }
+        else sta->Ivs(0) = q;
+    }
 
     // check initial yield function
     double f = YieldFunc (sta);
@@ -196,6 +217,9 @@ inline void ElastoPlastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig
     {
         DSig = De*DEps;
         for (size_t i=0; i<NIvs; ++i) DIvs(i) = 0.0;
+
+        // TODO: new stress update
+        if (NewSU) DIvs(0) = -dot(V, DSig) / Y(0);
     }
 
     // correct strain increment for plane stress
@@ -265,16 +289,39 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
     double f    = YieldFunc (sta);
     double f_tr = YieldFunc (&sta_tr);
 
+    // numerator of Lagrange multiplier
+    Gradients (sta);
+    double numL = dot(V, dsig_tr);
+
+    // TODO: new stress update
+    if (NewSU)
+    {
+        if (numL>0.0) ldg = true;
+        if (f_tr>0.0 && numL<0.0) throw new Fatal("ElastoPlastic::LoadCond (new update): Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
+        return ldg;
+    }
+
     // going outside
     if (f_tr>0.0)
     {
         ldg = true;
-        if (f*f_tr<0.0) // with crossing
+        bool crossing = false;
+        if (f<0.0 && f_tr>0.0) crossing = true;
+        else if (numL<0.0) // crossing to the other side
         {
+            f = -1.0e-10;
+            crossing = true;
+        }
+        if (crossing)
+        {
+            ldg = false; // unloading
             size_t k     = 0;
             size_t maxIt = 10;
             double tol   = ftol;
-            alpInt       = f/(f-f_tr);
+            //alpInt       = f/(f-f_tr); // this does not converge when the path is crossing to the other side
+            //alpInt       = 0.0; // this also does not converge
+            //alpInt       = 0.1; // this also does not converge
+            alpInt       = 0.5;
             sta_tr.Sig   = sta->Sig + alpInt*dsig_tr;
             for (k=0; k<maxIt; ++k)
             {
@@ -286,9 +333,11 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
             }
             if (k>=maxIt) throw new Fatal("ElastoPlastic::LoadCond: Newton-Rhapson (for calculating intersection) did not converge after %d iterations",k);
         }
+        //else if (numL<0.0) throw new Fatal("ElastoPlastic::LoadCond: Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
     }
 
-    // return true if there is loading (also when there is intersection)
+    // return true if there is loading
+    // with intersection, return false (unloading)
     return ldg;
 }
 
@@ -335,11 +384,28 @@ inline void ElastoPlastic::Gradients (EquilibState const * Sta) const
     Y(0) = 0.0; // dfdz0
     Y(1) = 0.0; // dfdz1
     Y(2) = 0.0; // dfdz2
+
+    double qoct = Calc_qoct (Sta->Sig);
+    Vec_t s;
+    Dev (Sta->Sig, s);
+    if (qoct<1.0e-8)
+    {
+        Vec_t sig(Sta->Sig);
+        sig(2) += 1.0e-5;
+        Dev (sig, s);
+        qoct = Calc_qoct (sig);
+        if (qoct<1.0e-8)
+        {
+            std::ostringstream oss;
+            oss << "Sig = "      << PrintVector(Sta->Sig);
+            oss << "sig = "      << PrintVector(sig);
+            oss << "dev(sig) = " << PrintVector(s);
+            throw new Fatal("ElastoPlastic::Gradients:: __internal_error__ qoct=%g is too small\n%s",qoct,oss.str().c_str());
+        }
+    }
+
     if (FC==VM_t)
     {
-        double qoct = Calc_qoct (Sta->Sig);
-        Vec_t s;
-        Dev (Sta->Sig, s);
         V    = s/qoct;
         Y(0) = -1.0; // dfdz0
     }
@@ -365,6 +431,9 @@ inline void ElastoPlastic::Gradients (EquilibState const * Sta) const
         CharInvs (Sta->Sig, I1,I2,I3, dI1ds,dI2ds,dI3ds);
         V = (I2/I3)*dI1ds + (I1/I3)*dI2ds - (I1*I2/pow(I3,2.0))*dI3ds;
     }
+
+    // TODO: new stress update
+    if (NewSU) Y(0) = -1.0; // dfdz0
 }
 
 inline void ElastoPlastic::FlowRule (EquilibState const * Sta) const
@@ -385,6 +454,33 @@ inline void ElastoPlastic::Hardening (EquilibState const * Sta) const
     else          H(0) = 0.0;
     H(1) = Tra  (W);
     H(2) = Norm (dev_W);
+
+    // TODO: new stress update
+    if (NewSU)
+    {
+        double k;
+        if (FC==VM_t) k = kY;
+        else if (FC==DP_t)
+        {
+            double p = Calc_poct (Sta->Sig);
+            double M = 6.0*sphi/(3.0-sphi);
+            k = p*M;
+        }
+        else if (FC==MC_t)
+        {
+            double p, q, t;
+            OctInvs (Sta->Sig, p, q, t);
+            double th = asin(t)/3.0;
+            double g  = sqrt(2.0)*sphi/(sqrt(3.0)*cos(th)-sphi*sin(th));
+            k = (p + cbar)*g;
+        }
+        else if (FC==MN_t) k = kMN;
+
+        double D = 2.0*k/(k+Sta->Ivs(0))-1.0;
+        double m = 1.0-exp(-BetSU*D);
+        if (D<0.0) D = 0.0;
+        H(0) = Gbar*m*Norm(dev_W);
+    }
 }
 
 inline double ElastoPlastic::YieldFunc (EquilibState const * Sta) const
@@ -392,6 +488,10 @@ inline double ElastoPlastic::YieldFunc (EquilibState const * Sta) const
     if (FC==VM_t)
     {
         double q = Calc_qoct (Sta->Sig);
+
+        // TODO: new stress update
+        if (NewSU) return q - kY;
+        
         return q - Sta->Ivs(0);
     }
     else if (FC==DP_t)
@@ -488,8 +588,8 @@ int ElastoPlasticRegister()
 {
     ModelFactory   ["ElastoPlastic"] = ElastoPlasticMaker;
     MODEL.Set      ("ElastoPlastic", (double)MODEL.Keys.Size());
-    MODEL_PRM_NAMES["ElastoPlastic"].Resize (12);
-    MODEL_PRM_NAMES["ElastoPlastic"] = "E", "nu", "sY", "c", "phi", "Hp", "psi", "VM", "DP", "MC", "MN", "AN";
+    MODEL_PRM_NAMES["ElastoPlastic"].Resize (15);
+    MODEL_PRM_NAMES["ElastoPlastic"] = "E", "nu", "sY", "c", "phi", "Hp", "psi", "VM", "DP", "MC", "MN", "AN", "newsu", "betsu", "Gbar";
     MODEL_IVS_NAMES["ElastoPlastic"].Resize (0);
     return 0;
 }

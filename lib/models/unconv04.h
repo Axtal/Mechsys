@@ -231,8 +231,14 @@ Model * Unconv04Maker(int NDim, SDPair const & Prms) { return new Unconv04(NDim,
 
 int Unconv04Register()
 {
-    ModelFactory["Unconv04"] = Unconv04Maker;
-    MODEL.Set ("Unconv04", (double)MODEL.Keys.Size());
+    ModelFactory   ["Unconv04"] = Unconv04Maker;
+    MODEL.Set      ("Unconv04", (double)MODEL.Keys.Size());
+    MODEL_PRM_NAMES["Unconv04"].Resize(21);
+    MODEL_PRM_NAMES["Unconv04"] = "lam0", "lam1", "lam2", "x1", "x2", "bet0", "bet1",
+                                  "psi0", "psi1", "ev1", "ev2", "bet2", "bet3",
+                                  "g0", "g1", "Mcs", "Mso", "bet4", "bet5",
+                                  "K", "G";
+    MODEL_IVS_NAMES["Unconv04"].Resize(0);
     return 0;
 }
 

@@ -30,6 +30,9 @@
 class StressUpdate
 {
 public:
+    // callbacks
+    typedef void (*pDbgFun) (StressUpdate const & SU, void * UserData); ///< Pointer to debug function
+
     // enum
     enum Scheme_t { ME_t, SingleFE_t }; ///< Integration scheme
 
@@ -41,6 +44,8 @@ public:
 
     // Data
     Model const * Mdl;
+    pDbgFun       DbgFun;
+    void        * DbgDat;
 
     // Constants for integration
     Scheme_t Scheme; ///< Scheme: ME_t (Modified-Euler)
@@ -50,6 +55,9 @@ public:
     double   mMax;
     size_t   MaxSS;
     bool     CDrift; ///< correct drift ?
+    mutable double T;
+    mutable double dT;
+    mutable size_t k;
 };
 
 
@@ -58,13 +66,18 @@ public:
 
 inline StressUpdate::StressUpdate (Model const * TheMdl)
     : Mdl    (TheMdl),
+      DbgFun (NULL),
+      DbgDat (NULL),
       Scheme (ME_t),
       STOL   (1.0e-5),
       dTini  (1.0),
       mMin   (0.1),
       mMax   (10.0),
       MaxSS  (2000),
-      CDrift (true)
+      CDrift (true),
+      T      (0.0),
+      dT     (dTini),
+      k      (0)
 {
 }
 
@@ -90,6 +103,7 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
         sta->Eps += deps;
         sta->Sig += dsig;
         sta->Ivs += divs;
+        if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
     else if (Scheme==ME_t)
     {
@@ -102,7 +116,12 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
 
         // loading-unloading ?
         double aint = -1.0; // no intersection
-        bool   ldg  = Mdl->LoadCond (sta, DEps, aint); // returns true if there is loading (also when there is intersection)
+        bool   ldg  = Mdl->LoadCond (sta, DEps, aint);
+
+        // set loading flag
+        sta  ->Ldg = ldg;
+        sta_1 .Ldg = ldg;
+        sta_ME.Ldg = ldg;
 
         // with intersection ?
         if (aint>0.0 && aint<1.0)
@@ -115,20 +134,25 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
             sta->Ivs += divs;
             deps = fabs(1.0-aint)*DEps; // remaining of DEps to be applied
 
+            // change loading flag
+            ldg        = true;
+            sta  ->Ldg = ldg;
+            sta_1 .Ldg = ldg;
+            sta_ME.Ldg = ldg;
+
             // drift correction
+            //if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
             if (CDrift) Mdl->CorrectDrift (sta);
+
+            // debug
+            if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
         }
         else deps = DEps; // update with full DEps
 
-        // set loading flag (must be after intersection because the TgIncs during intersection must be calc with Ldg=false)
-        sta  ->Ldg = ldg;
-        sta_1 .Ldg = ldg;
-        sta_ME.Ldg = ldg;
-
         // for each pseudo time T
-        double T  = 0.0;
-        double dT = dTini;
-        size_t k  = 0;
+        T  = 0.0;
+        dT = dTini;
+        k  = 0;
         for (k=0; k<MaxSS; ++k)
         {
             // exit point
@@ -164,6 +188,7 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
                 sta->Ivs = sta_ME.Ivs;
 
                 // drift correction
+                //if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
                 if (CDrift) Mdl->CorrectDrift (sta);
 
                 // update stress path in model
@@ -171,6 +196,9 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
 
                 // limit change on stepsize
                 if (m>mMax) m = mMax;
+
+                // debug
+                if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
             }
             else if (m<mMin) m = mMin;
 
@@ -186,6 +214,9 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
 
     // return total stress increment
     DSig = sta->Sig - DSig;
+
+    // debug
+    if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
 }
 
 #endif // MECHSYS_STRESSUPDATE_H
