@@ -27,6 +27,7 @@ class FCrits:
         # data
         self.c       = 0.0                   # cohesion
         self.phi     = 30.0                  # friction angle for FC
+        self.kY      = None                  # von Mises coefficient
         self.b       = None                  # anisotropic fc: b coefficient
         self.alp     = None                  # anisotropic fc: alpha coefficient
         self.a       = None                  # anisotropic fc: bedding planes normal
@@ -69,6 +70,34 @@ class FCrits:
             plot ([sa], [sb], 'go')
 
 
+    # Set sc
+    # ======
+    def set_sc (self, pcam=1.0/sqrt(3.0)):
+        self.sc = pcam*sqrt(3.0)
+        print 'sc    = ', self.sc
+
+
+    # Set constants
+    # =============
+    def set_ctes (self, phi_deg=30.0, c=None, pcam=None, sY=None, psa=False):
+        self.c     = 0.0 if c==None else c
+        self.phi   = phi_deg
+        self.sphi  = sin(self.phi*pi/180.0)
+        self.tgphi = tan(self.phi*pi/180.0)
+        self.kDP   = 2.0*sqrt(2.0)*self.sphi/(3.0-self.sphi)
+        self.kNM   = 9.0 + 8.0*self.tgphi**2.0
+        self.kLD   = ((3.0-self.sphi)**3.0)/((1.0+self.sphi)*((1.0-self.sphi)**2))
+        self.cbar = sqrt(3.0)*self.c/self.tgphi
+        if sY==None:
+            if c==None: self.kVM = self.sc*self.kDP
+            else:       self.kVM = sqrt(2.0)*self.c if psa else 2.0*sqrt(2.0/3.0)*self.c
+        else: self.kVM = sqrt(2.0/3.0)*sY
+        print 'c     = ', self.c
+        print 'phi   = ', self.phi
+        print 'kDP   = ', self.kDP
+        print 'kNM   = ', self.kNM
+        print 'kLD   = ', self.kLD
+        print 'kVM   = ', self.kVM
 
 
     # Set constants of anisotropic criterion
@@ -82,6 +111,12 @@ class FCrits:
         self.alp   = alpha
         self.a     = a / norm(a)
         self.sstar = sig_star
+        self.set_ctes (phi_deg=phi_deg)
+        print 'phi   = ', self.phi
+        print 'b     = ', self.b
+        print 'alp   = ', self.alp
+        print 'a     = ', self.a[0,0], self.a[1,0], self.a[2,0]
+        print 'sstar = ', self.sstar
 
         # assemble l, vector with principal values
         sphi = sin(self.phi*pi/180.0)
@@ -140,79 +175,50 @@ class FCrits:
             typ   = typ[1:]
             pc    = self.sc/2.0
 
-        # sin phi
-        sphi = sin(self.phi*pi/180.0)
+        # invariants
+        p, q = sig_calc_p_q (sig)
 
         # von Mises
         if typ=='VM':
-            p, q = sig_calc_p_q(sig)
-            if self.fc_psa: k = sqrt(2.0)*self.fc_cu
-            else:           k = 2.0*(sqrt(2.0)/sqrt(3.0))*self.fc_cu
             if ysurf: raise Exception('func: ysurf is not available with VM')
-            else: f = q - k
+            else: f = q - self.kVM
 
         # Drucker/Prager
         elif typ=='DP':
-            cbar = sqrt(3.0)*self.c/tan(self.phi*pi/180.0)
-            kdp  = 2.0*sqrt(2.0)*sphi/(3.0-sphi)
-            p, q = sig_calc_p_q(sig)
-            if ysurf: f = ((p-pc)/pc)**2.0 + (q/(kdp*pc))**2.0 - 1.0
-            else:     f = q - (p + cbar)*kdp
+            if ysurf: f = ((p-pc)/pc)**2.0 + (q/(self.kDP*pc))**2.0 - 1.0
+            else:     f = q - (p + self.cbar)*self.kDP
 
         # Mohr/Coulomb
         elif typ=='MC':
-            p, q = sig_calc_p_q (sig)
-            t    = sig_calc_t   (sig)
-            th   = arcsin(t)/3.0
-            cbar = sqrt(3.0)*self.c/tan(self.phi*pi/180.0)
-            g    = sqrt(2.0)*sphi/(sqrt(3.0)*cos(th)-sphi*sin(th))
+            t  = sig_calc_t (sig)
+            th = arcsin(t)/3.0
+            g  = sqrt(2.0)*self.sphi/(sqrt(3.0)*cos(th)-self.sphi*sin(th))
             if ysurf: raise Exception('func: ysurf is not available with MC')
-            else: f = q - (p + cbar)*g
+            else: f = q - (p + self.cbar)*g
 
         # Nakai/Matsuoka
         elif typ=='NM':
-            #cbar     = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
-            #kmn      = (9.0-sphi**2.0)/(1.0-sphi**2.0)
-            #sig0     = cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
-            #sig_     = sig+sig0
-            tgphi2   = tan(self.phi*pi/180.0)**2.0
-            kmn      = 9.0 + 8.0*tgphi2
-            sig_     = sig
-            l        = sig_calc_s123(sig_)
-            if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
-            I1,I2,I3 = char_invs(sig_)
-            if ysurf: raise Exception('func: ysurf is not available with NM')
-            else: f = I1*I2 - kmn*I3
-
-        # Nakai/Matsuoka nonlinear
-        elif typ=='NMnl':
-            p, q = sig_calc_p_q (sig, 'cam')
-            M    = self.refcurve(p)/p if p>0.0 else self.fc_prms['A']
-            sphi = 3.0*M/(M+6.0)
-            kmn  = (9.0-sphi**2.0)/(1.0-sphi**2.0)
-            l    = sig_calc_s123(sig)
+            l = sig_calc_s123(sig)
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
             I1,I2,I3 = char_invs(sig)
-            if ysurf: raise Exception('func: ysurf is not available with NMnl')
-            else: f = I1*I2 - kmn*I3
+            if ysurf: raise Exception('func: ysurf is not available with NM')
+            else: f = I1*I2 - self.kNM*I3
 
         # Lade/Duncan
         elif typ=='LD':
-            cbar     = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
-            kld      = ((3.0-sphi)**3.0)/((1.0+sphi)*((1.0-sphi)**2))
-            sig0     = cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
-            sig_     = sig+sig0
-            l        = sig_calc_s123(sig_)
+            sig0 = self.cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
+            sig_ = sig+sig0
+            l    = sig_calc_s123(sig_)
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
             I1,I2,I3 = char_invs(sig_)
             if ysurf: raise Exception('func: ysurf is not available with LD')
-            else: f = I1**3.0 - kld*I3
+            else: f = I1**3.0 - self.kLD*I3
 
         # Argyris/Sheng
         elif typ=='AS':
             p, q, t = sig_calc_pqt (sig, 'cam')
-            Mcs     = 6.0*sphi/(3.0-sphi)
-            om      = ((3.0-sphi)/(3.0+sphi))**4.0
+            Mcs     = 6.0*self.sphi/(3.0-self.sphi)
+            om      = ((3.0-self.sphi)/(3.0+self.sphi))**4.0
             M       = Mcs*(2.0*om/(1.0+om-(1.0-om)*t))**0.25;
             if ysurf: raise Exception('func: ysurf is not available with AS')
             else: f = q/p - M
@@ -336,9 +342,9 @@ class FCrits:
         contour (sa,sb,f, [0.0], colors=clr, linestyles=lst, linewidths=lwd)
 
         # set axis
-        gca().set_xticks([])
-        gca().set_yticks([])
-        gca().set_frame_on (False)
+        #gca().set_xticks([])
+        #gca().set_yticks([])
+        #gca().set_frame_on (False)
         axis ('equal')
 
         # legend

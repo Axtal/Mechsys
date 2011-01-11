@@ -24,30 +24,33 @@ class Plotter:
     # ===========
     def __init__(self):
         # data
-        self.show_k    = False     # show k=dq/dp ?
-        self.div_by_p  = False     # divide q by p ?
-        self.log_p     = True      # use log(p) instead of p ?
-        self.lnplus1   = False     # plot ln(p+1) instead of ln(p) ?
-        self.q_neg_ext = False     # multiply q by -1 for extension (t<0, where t=sin(3th)
-        self.pq_ty     = 'cam'     # invariants type
-        self.evd_ty    = 'cam'     # strain invariants type
-        self.mark_max  = False     # mark max (failure) point ?
-        self.mark_lst  = False     # mark residual (failure) point ?
-        self.oct_norm  = False     # normalize plot in octahedral plane by p ?
-        self.oct_sxyz  = False     # use Sx,Sy,Sz in oct plane instead of S1,S2,S3
-        self.isxyz     = (-1,0)    # indices for sxyz plot, use negative numbers for principal components
-        self.devplot   = True      # plot s3-s1, s3-s2 instead of Ek, Sk
-        self.pcte      = -1        # if pcte>0 => pcte in Ev x p (logp) plot?
-        self.maxed     = -1        # max Ed to stop the lines
-        self.maxev     = -1        # max Ev to stop the lines
-        self.one       = -1        # all plots = -1
-        self.six       = False     # only 2 x 3 instead of 3 x 3 plots?
-        self.four      = False     # only 2 x 4 instead of others
+        self.show_k     = False     # show k=dq/dp ?
+        self.div_by_p   = False     # divide q by p ?
+        self.log_p      = True      # use log(p) instead of p ?
+        self.lnplus1    = False     # plot ln(p+1) instead of ln(p) ?
+        self.q_neg_ext  = True      # multiply q by -1 for extension (t<0, where t=sin(3th)
+        self.ed_neg_ext = False     # multiply ed by -1 for extension (t<0, where t=sin(3th)
+        self.pq_ty      = 'cam'     # invariants type
+        self.evd_ty     = 'cam'     # strain invariants type
+        self.mark_max   = False     # mark max (failure) point ?
+        self.mark_lst   = False     # mark residual (failure) point ?
+        self.oct_norm   = False     # normalize plot in octahedral plane by p ?
+        self.oct_sxyz   = True      # use Sx,Sy,Sz in oct plane instead of S1,S2,S3
+        self.isxyz      = (1,0)     # indices for sxyz plot, use negative numbers for principal components
+        self.devplot    = True      # plot s3-s1, s3-s2 instead of Ek, Sk
+        self.pcte       = -1        # if pcte>0 => pcte in Ev x p (logp) plot?
+        self.maxed      = -1        # max Ed to stop the lines
+        self.maxev      = -1        # max Ev to stop the lines
+        self.one        = -1        # all plots = -1
+        self.six        = False     # only 2 x 3 instead of 3 x 3 plots?
+        self.four       = False     # only 2 x 4 instead of others
 
 
     # Plot results
     # ============
-    def plot(self, filename, clr='red', lwd=2, label=None, marker='None', markevery=None, ms=None):
+    def plot(self, filename, clr='red', lwd=2, label=None, zorder=None,
+             marker='None', markevery=None, ms=rcParams['lines.markersize']):
+
         # load data
         Sig, Eps = self.load_data (filename)
 
@@ -73,7 +76,8 @@ class Plotter:
             e123                = eps_calc_e123  (Eps[i])
             E1[i], E2[i], E3[i] = e123  [0], e123  [1], e123  [2]
             Ex[i], Ey[i], Ez[i] = Eps[i][0], Eps[i][1], Eps[i][2]
-            if self.q_neg_ext and T[i]<0.0: Q[i] = -Q[i]
+            if self.q_neg_ext  and T[i]<0.0: Q [i] = -Q [i]
+            if self.ed_neg_ext and T[i]<0.0: Ed[i] = -Ed[i]
             if self.isxyz[0]<0 or self.isxyz[1]<0:
                 Si[i] = s123[-self.isxyz[0]]
                 Sj[i] = s123[-self.isxyz[1]]
@@ -132,6 +136,7 @@ class Plotter:
         if self.one==3 or self.one<0:
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot   (Ed, Ev, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
+            if self.mark_lst: plot (Ed[-1], Ev[-1], '^', color=clr)
             xlabel (r'$\varepsilon_d$ [%]');  ylabel(r'$\varepsilon_v$ [%]'); grid(True)
 
         # 4) lnp, Ev ---------------------------------------------------------------------------
