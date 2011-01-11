@@ -78,6 +78,20 @@ void GetRandom (size_t Num, Array<String> & Clrs)
     }
 }
 
+char const * GetNext (size_t Idx)
+{
+    CLR_t::const_iterator p = CLR.begin();
+    size_t k = Idx % CLR.size();
+    for (size_t i=0; i<k; ++i) p++;
+    return p->first.CStr();
+}
+
+char const * GetRandom ()
+{
+    size_t k = (rand()%(size_t)CLR.size());
+    return GetNext (k);
+}
+
 int __init_colors__()
 {
     // 191 colors

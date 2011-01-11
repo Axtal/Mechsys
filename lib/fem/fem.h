@@ -53,25 +53,9 @@
 #include <mechsys/models/elastoplastic.h>
 #include <mechsys/models/camclay.h>
 #include <mechsys/models/unsatflow.h>
+#include <mechsys/models/unconv04.h>
 
 #ifndef INCLUDE_MODELS_ONLY
-
-#define FEMINIT(argc, argv, inpfn, matfn, verbose, forcegty,   MAT, INP) \
-    if (argc>1) inpfn   =      argv[1];                                  \
-    if (argc>2) matfn   =      argv[2];                                  \
-    if (argc>3) verbose = atoi(argv[3]);                                 \
-    MatFile MAT;                                                         \
-    InpFile INP;                                                         \
-    MAT.Read        (matfn.CStr());                                      \
-    INP.Read        (inpfn.CStr());                                      \
-    INP.SetPrmsInis (MAT, forcegty);                                     \
-    if (verbose)                                                         \
-    {                                                                    \
-        printf("\n%s--- Materials data <%s> ----------------------------------------------------%s\n",TERM_CLR1,matfn.CStr(),TERM_RST); \
-        std::cout << MAT << std::endl;                                   \
-        printf("\n%s--- Input data <%s> --------------------------------------------------------%s\n",TERM_CLR1,inpfn.CStr(),TERM_RST); \
-        std::cout << INP << std::endl;                                   \
-    }
 
 #define FEMALLOC(msh, mat, inp,   DOM, SOL)                                                     \
     FEM::Domain DOM(msh, (*inp.Prps), (*inp.Prms), (*inp.Inis), inp.fnkey.CStr(), inp.OutNods); \

@@ -1,3 +1,5 @@
+# driver.inp
+
 matid    = 3
 ninc     = 10
 cdrift   = 1
@@ -27,7 +29,7 @@ npath    = 1
 #  dez  = -10
 
 ndat = 1
-  dez = -10
+  dez = -5.5
 
 #ndat = 3
 #  dsx = 0

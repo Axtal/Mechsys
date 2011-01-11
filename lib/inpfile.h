@@ -833,4 +833,33 @@ inline void InpFile::OnSave (wxCommandEvent & Event)
 
 #endif
 
+
+/////////////////////////////////////////////////////////////////////////////////////////// Macros ///////
+
+
+#define INIT_MAT_INP(argc, argv, inpfn, matfn, verbose, forcegty,   MAT, INP) \
+    if (argc>1) inpfn   =      argv[1];                                       \
+    if (argc>2) matfn   =      argv[2];                                       \
+    if (argc>3) verbose = atoi(argv[3]);                                      \
+    MatFile MAT;                                                              \
+    InpFile INP;                                                              \
+    MAT.Read        (matfn.CStr());                                           \
+    INP.Read        (inpfn.CStr());                                           \
+    INP.SetPrmsInis (MAT, forcegty);                                          \
+    if (verbose)                                                              \
+    {                                                                         \
+        printf("\n%s--- Materials data <%s> ----------------------------------------------------%s\n",TERM_CLR1,matfn.CStr(),TERM_RST); \
+        std::cout << MAT << std::endl;                                        \
+        printf("\n%s--- Input data <%s> --------------------------------------------------------%s\n",TERM_CLR1,inpfn.CStr(),TERM_RST); \
+        std::cout << INP << std::endl;                                        \
+    }
+
+#define INIT_MAT_INP_(argc, argv,   MAT, INP) \
+    String inpfn("input.inp");                \
+    String matfn("materials.mat");            \
+    bool   verbose  = true;                   \
+    bool   forcegty = false;                  \
+    INIT_MAT_INP(argc, argv, inpfn, matfn, verbose, forcegty,   MAT, INP);
+
+
 #endif // MECHSYS_INPFILE_H

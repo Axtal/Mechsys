@@ -275,7 +275,7 @@ int main(int argc, char **argv) try
 {
     // input filename
     String inp_fname("driver.inp");
-    String mat_fname("materials.inp");
+    String mat_fname("materials.mat");
     double pcam0    = 100.0;
     bool   new_algo = false;
     if (argc>1) inp_fname  =      argv[1];
@@ -537,6 +537,11 @@ int main(int argc, char **argv) try
                 double aint = -1.0; // no intersection
                 bool   ldg  = mdl->LoadCond (&sta, deps_tr, aint); // returns true if there is loading (also when there is intersection)
 
+                // set loading flag
+                sta   .Ldg = ldg;
+                sta_1 .Ldg = ldg;
+                sta_ME.Ldg = ldg;
+
                 // with intersection ?
                 if (aint>0.0 && aint<1.0)
                 {
@@ -549,17 +554,18 @@ int main(int argc, char **argv) try
                     sta.Ivs += divs_tr;
                     deps = fabs(1.0-aint)*deps; // remaining of deps to be applied
 
+                    // change loading flag
+                    ldg        = true;
+                    sta   .Ldg = ldg;
+                    sta_1 .Ldg = ldg;
+                    sta_ME.Ldg = ldg;
+
                     // drift correction
                     if (inp.cdrift) mdl->CorrectDrift (&sta);
 
                     // output
                     sta.Output (oss, false, "%17.8e"); // false => header
                 }
-
-                // set loading flag (must be after intersection because the tgIncs during intersection must be calc with Ldg=false)
-                sta   .Ldg = ldg;
-                sta_1 .Ldg = ldg;
-                sta_ME.Ldg = ldg;
 
                 // update stress path in model
                 mdl->UpdatePath (&sta, deps_tr, dsig_tr);

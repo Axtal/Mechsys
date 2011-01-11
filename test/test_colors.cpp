@@ -32,12 +32,20 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
+    cout << "\n----------------------------- GetRandom -- (many) ------------------\n";
     int seed = 123;
     if (argc>1) seed = atoi(argv[1]);
     srand(seed);
     Array<String> clrs;
     Colors::GetRandom (10, clrs);
     for (size_t i=0; i<clrs.Size(); ++i) cout << clrs[i] << endl;
+
+    cout << "\n----------------------------- GetRandom ----------------------------\n";
+    for (size_t i=0; i<10; ++i) cout << Colors::GetRandom() << endl;
+
+    cout << "\n-------------------------------- GetNext ---------------------------\n";
+    for (size_t i=0; i<10; ++i) cout << Colors::GetNext(i) << endl;
+
     return 0;
 }
 MECHSYS_CATCH

@@ -1,31 +1,23 @@
 import optparse
-from mechsys  import String, Dict, InpFile, ReadMaterial
+from mechsys  import *
 from msys_plt import *
 from msys_fig import *
 
 # input
 op = optparse.OptionParser()
 op.add_option('--inp',  '-i', dest='inp',  default='driver.inp',    help='input filename, ex: driver.inp')
-op.add_option('--mat',  '-m', dest='mat',  default='materials.inp', help='materials filename, ex: materials.inp')
+op.add_option('--mat',  '-m', dest='mat',  default='materials.mat', help='materials filename, ex: materials.inp')
 op.add_option('--tst',  '-t', dest='tst',  default='1',             help='test number')
 op.add_option('--fem',  '-f', dest='fem',  default='0')
 op.add_option('--both', '-b', dest='both', default='0')
 opts, args = op.parse_args()
 
-# input file
+# materials and input file
+mat = MatFile()
 inp = InpFile()
+mat.Read (opts.mat)
 inp.Read (opts.inp)
-
-# parse materials file
-inis = Dict()
-prms = Dict()
-name = String()
-ReadMaterial (-1, inp.matid, opts.mat, name, prms, inis)
-print inp
-print "Material data:"
-print "  name = ", name
-print "  prms : ", prms
-print "  inis : ", inis
+inp.SetPrmsInis (mat, True)
 
 if inp.o2:
     if inp.ndiv==3: out_nods = [48,51,60,68, 0,3,12,15]
@@ -35,10 +27,10 @@ else:
     else:           out_nods = [0,1,2,3, 4,5,6,7]
 
 # res file
-fkey = opts.inp[:-4]
-fem = fkey + '_nod_%d.res'%out_nods[2]
-pnt = fkey + '.res'
-res = fem if opts.fem=='1' else pnt
+name = inp.fnkey.PyStr()
+fem  = name + '_nod_%d.res'%out_nods[2]
+pnt  = name + '.res'
+res  = fem if opts.fem=='1' else pnt
 
 if opts.tst=='1':
     p = Plotter()
@@ -48,6 +40,7 @@ if opts.tst=='1':
     p.show_k   = True
     p.oct_sxyz = True
     p.fsz      = 14
+    p.six      = True
 
     dat = inp.refdat.PyStr()
     sim = inp.refsim.PyStr()
@@ -63,7 +56,7 @@ if opts.tst=='1':
     else:
         p.lwd=2; p.plot (res,clr='blue', markevery=10, label='%s'%name)
     subplot(2,3,3)
-    #l = legend(loc='upper left',prop=FontProperties(size=8))
+    l = legend(loc='upper left',prop=FontProperties(size=8))
     show()
 
 elif opts.tst=='2':

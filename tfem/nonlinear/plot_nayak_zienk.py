@@ -3,7 +3,7 @@ from msys_fig import *
 
 # input
 op = optparse.OptionParser()
-op.add_option('--tst',  '-t', dest='tst',  default='0', help='test number')
+op.add_option('--tst',  '-t', dest='tst',  default='1', help='test number')
 opts, args = op.parse_args()
 
 if opts.tst=='0':

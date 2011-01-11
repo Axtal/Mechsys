@@ -42,12 +42,12 @@ elif opts.tst=='1':
     plot(dat['r'],dat['st'],'r*')
 
     if two_stages:
-        #rs1 = read_table("owen_hinton_02_stg1_P%d.res"%P)
+        rs1 = read_table("owen_hinton_02_stg1_P%d.res"%P)
         rs2 = read_table("owen_hinton_02_stg2_P%d.res"%P)
-        #plot (rs1['r'],rs1['st'],'b-',marker='o',lw=2)
+        plot (rs1['r'],rs1['st'],'b-',marker='o',lw=2)
         plot (rs2['r'],rs2['st'],'g-',marker='o',lw=2)
     else:
-        res = read_table("owen_hinton_02_P%d.res"%P)
+        res = read_table("owen_hinton_02_stg1_P%d.res"%P)
         plot (res['r'],res['st'],'b-',marker='o',lw=2)
 
     Grid()
