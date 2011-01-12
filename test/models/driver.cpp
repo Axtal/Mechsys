@@ -470,8 +470,9 @@ int main(int argc, char **argv) try
         D22.AllocSpace (6,6, 50);
 
         // output initial state
-        std::ostringstream oss; // output string
-        sta.Output (oss, true, "%17.8e"); // true => header
+        String res_fname = fkey + ".res";
+        std::ofstream of(res_fname.CStr(), std::ios::out);
+        sta.Output (of, true, "%17.8e"); // true => header
 
         // auxiliar variables
         size_t niv = size(sta.Ivs);                 // number of internal values
@@ -524,7 +525,7 @@ int main(int argc, char **argv) try
                     drv.DEps      = deps;
                     drv.DSig      = dsig;
                     drv.Update ();
-                    drv.Sta->Output (oss, false, "%17.8e"); // false => header
+                    drv.Sta->Output (of, false, "%17.8e"); // false => header
                     continue;
                 }
 
@@ -564,7 +565,7 @@ int main(int argc, char **argv) try
                     if (inp.cdrift) mdl->CorrectDrift (&sta);
 
                     // output
-                    sta.Output (oss, false, "%17.8e"); // false => header
+                    sta.Output (of, false, "%17.8e"); // false => header
                 }
 
                 // update stress path in model
@@ -626,7 +627,7 @@ int main(int argc, char **argv) try
                         if (m>mMax) m = mMax;
 
                         // output
-                        if (inp.ssout) sta.Output (oss, false, "%17.8e"); // false => header
+                        if (inp.ssout) sta.Output (of, false, "%17.8e"); // false => header
                     }
                     else if (m<mMin) m = mMin;
 
@@ -640,15 +641,12 @@ int main(int argc, char **argv) try
                 cout << j << " ";
 
                 // output
-                if (!inp.ssout) sta.Output (oss, false, "%17.8e"); // false => header
+                if (!inp.ssout) sta.Output (of, false, "%17.8e"); // false => header
             }
             cout << "\n";
         }
 
         // write output file
-        String res_fname = fkey + ".res";
-        std::ofstream of(res_fname.CStr(), std::ios::out);
-        of << oss.str();
         of.close();
         cout << "\nFile <" << TERM_CLR_BLUE_H << res_fname << TERM_RST << "> written\n\n";
 
