@@ -23,10 +23,27 @@
 // MechSys
 #include <mechsys/models/model.h>
 #include <mechsys/models/equilibstate.h>
+#include <mechsys/numerical/root.h>
 
 class ElastoPlastic : public Model
 {
 public:
+    // struct
+    struct AlphaData
+    {
+        AlphaData (int NDim, Mat_t const & De, EquilibState const & Sta, Vec_t const & DEps)
+        {
+            DSig_tr     = De * DEps;
+            StaAlp      = new EquilibState (NDim);
+            StaAlp->Ivs = Sta.Ivs;
+            Sig         = Sta.Sig;
+        }
+        ~AlphaData () { delete StaAlp; }
+        Vec_t          Sig;
+        Vec_t          DSig_tr;
+        EquilibState * StaAlp;
+    };
+
     // enums
     enum FCrit_t { VM_t, DP_t, MC_t, MN_t, AN_t }; ///< Failure criterion type
 
@@ -79,8 +96,12 @@ public:
     mutable Vec_t VDe;  ///< V*De
     mutable Vec_t DeW;  ///< De*W
 
+    // Methods for yield surface crossing
+    double Falpha  (double Alp, void * UserData);
+    double dFalpha (double Alp, void * UserData);
+
 private:
-    // Auxiliar methods
+    // Auxiliary methods
     void _MC_grads (EquilibState const * Sta, double SinPhiOrSinPsi, Vec_t & VorW) const; ///< Mohr-Coulomb gradients of YS or potential
 };
 
@@ -315,13 +336,21 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
         ldg = true;
         bool crossing = false;
         if (f<0.0 && f_tr>0.0) crossing = true;
-        else if (numL<0.0) // crossing to the other side
-        {
-            f = -1.0e-10;
-            crossing = true;
-        }
+        //else if (numL<0.0) // crossing to the other side
+        //{
+            //f = -1.0e-10;
+            //crossing = true;
+        //}
         if (crossing)
         {
+            AlphaData dat(NDim, De, (*sta), DEps);
+            Numerical::Root<ElastoPlastic> root(const_cast<ElastoPlastic*>(this), &ElastoPlastic::Falpha, &ElastoPlastic::dFalpha);
+            root.Scheme = "Newton";
+            alpInt = root.Solve (0.0, 1.0, NULL, &dat);
+            /*
+            std::cout << "\nDEps = " << PrintVector(DEps, "%30.20e");
+            std::cout << "\nSig = " << PrintVector(sta->Sig, "%30.20e");
+            printf("f=%30.20e, f_tr=%30.20e, z0=%30.20e\n\n",f,f_tr,sta->Ivs(0));
             ldg = false; // unloading
             size_t k     = 0;
             size_t maxIt = 10;
@@ -338,10 +367,18 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
                 Gradients (&sta_tr);
                 alpInt    += (-f_tr/dot(V,dsig_tr));
                 sta_tr.Sig = sta->Sig + alpInt*dsig_tr;
+                printf("alpInt=%g\n",alpInt);
             }
             if (k>=maxIt) throw new Fatal("ElastoPlastic::LoadCond: Newton-Rhapson (for calculating intersection) did not converge after %d iterations",k);
+            */
+            double dpcam = Calc_pcam(dsig_tr);
+            double dqcam = Calc_qcam(dsig_tr);
+            double pcam  = Calc_pcam(sta->Sig);
+            double qcam  = Calc_qcam(sta->Sig);
+            printf("pcam=%g, qcam=%g, dpcam=%g, dqcam=%g, dqcam/dpcam=%g, alpInt=%g\n",pcam,qcam,dpcam,dqcam,dqcam/dpcam,alpInt);
+            if (alpInt<0) throw new Fatal("ElastoPlastic::LoadCond: alpInt=%g must be positive",alpInt);
         }
-        //else if (numL<0.0) throw new Fatal("ElastoPlastic::LoadCond: Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
+        else if (numL<0.0) throw new Fatal("ElastoPlastic::LoadCond: Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
     }
 
     // return true if there is loading
@@ -535,6 +572,21 @@ inline void ElastoPlastic::CorrectDrift (State * Sta) const
         it++;
     }
     if (it>=maxIt) throw new Fatal("ElastoPlastic::CorrectDrift: Yield surface drift correction did not converge after %d iterations",it);
+}
+
+inline double ElastoPlastic::Falpha (double Alp, void * UserData)
+{
+    AlphaData const & dat = (*static_cast<AlphaData const *>(UserData));
+    dat.StaAlp->Sig = dat.Sig + Alp * dat.DSig_tr;
+    return YieldFunc (dat.StaAlp);
+}
+
+inline double ElastoPlastic::dFalpha (double Alp, void * UserData)
+{
+    AlphaData const & dat = (*static_cast<AlphaData const *>(UserData));
+    dat.StaAlp->Sig = dat.Sig + Alp * dat.DSig_tr;
+    Gradients (dat.StaAlp);
+    return dot (V, dat.DSig_tr);
 }
 
 inline void ElastoPlastic::_MC_grads (EquilibState const * Sta, double sinp, Vec_t & VorW) const

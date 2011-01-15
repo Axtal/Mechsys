@@ -29,6 +29,7 @@ SET(PROGS_C # tests requiring GSL
   test_numdiff1
   test_dunitvec
   test_ode1
+  test_root
   test_timesteps)
 
 SET(PROGS_D # other tests 

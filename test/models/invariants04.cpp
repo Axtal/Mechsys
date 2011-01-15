@@ -62,18 +62,23 @@ int main(int argc, char **argv) try
     cout << "sig0 = " << PrintVector(sig0);
     cout << "sig1 = " << PrintVector(sig1);
     cout << endl;
+
+    Vec3_t v0,v1,v2, L, La;
+    Vec_t  E0,E1,E2, E0a,E1a,E2a;
+    EigenProj         (sig0, L, v0,v1,v2, E0,E1,E2);
+    EigenProjAnalytic (sig0, La, E0a,E1a,E2a);
     
     AI.Calc (sig0, /*derivs*/false);
-    cout << "sig0: L0    = " << AI.L(0) << endl;
-    cout << "sig0: L1    = " << AI.L(1) << endl;
-    cout << "sig0: L2    = " << AI.L(2) << endl;
-    cout << "sig0: v0    = " << PrintVector(AI.v0);
-    cout << "sig0: v1    = " << PrintVector(AI.v1);
-    cout << "sig0: v2    = " << PrintVector(AI.v2);
-    cout << "sig0: t     = " << PrintVector(AI.t);
-    cout << "sig0: sp    = " << AI.sp << endl;
-    cout << "sig0: sq    = " << AI.sq << endl;
-    cout << "sig0: sq/sp = " << AI.sq/AI.sp << endl;
+    cout << "sig0: L0    = "  << AI.L(0) << endl;
+    cout << "sig0: L1    = "  << AI.L(1) << endl;
+    cout << "sig0: L2    = "  << AI.L(2) << endl;
+    cout << "sig0: v0    = "  << PrintVector(AI.v0);
+    cout << "sig0: v1    = "  << PrintVector(AI.v1);
+    cout << "sig0: v2    = "  << PrintVector(AI.v2);
+    cout << "sig0: t     = "  << PrintVector(AI.t);
+    cout << "sig0: sp    = "  << AI.sp << endl;
+    cout << "sig0: sq    = "  << AI.sq << endl;
+    cout << "sig0: sq/sp = "  << AI.sq/AI.sp << endl;
     cout << endl;
     VTK::Arrow vtk_v0_0(zero, AI.v0);   vtk_v0_0.SetColor("yellow",0.5);   vtk_v0_0.AddTo(win);
     VTK::Arrow vtk_v1_0(zero, AI.v1);   vtk_v1_0.SetColor("yellow",0.5);   vtk_v1_0.AddTo(win);
@@ -83,6 +88,11 @@ int main(int argc, char **argv) try
     //VTK::Arrow vtk_p_0 (zero, AI.p);    vtk_p_0 .SetColor("gold",0.5);     vtk_p_0 .AddTo(win);
     //VTK::Arrow vtk_q_0 (zero, AI.q);    vtk_q_0 .SetColor("gold",0.5);     vtk_q_0 .AddTo(win);
     VTK::Plane vtk_pl0 (zero, AI.Nu);   vtk_pl0 .SetColor("yellow",0.5);   vtk_pl0 .AddTo(win);
+
+    Vec3_t v0_,v1_,v2_, L_, La_;
+    Vec_t  E0_,E1_,E2_, E0a_,E1a_,E2a_;
+    EigenProj         (sig1, L_, v0_,v1_,v2_, E0_,E1_,E2_);
+    EigenProjAnalytic (sig1, La_, E0a_,E1a_,E2a_);
 
     AI.Calc (sig1, /*derivs*/false);
     cout << "sig1: L0    = " << AI.L(0) << endl;
@@ -103,6 +113,32 @@ int main(int argc, char **argv) try
     //VTK::Arrow vtk_p_1 (zero, AI.p);                     vtk_p_1 .SetColor("cyan",  0.5);    vtk_p_1 .AddTo(win);
     //VTK::Arrow vtk_q_1 (zero, AI.q);                     vtk_q_1 .SetColor("cyan",  0.5);    vtk_q_1 .AddTo(win);
     VTK::Plane vtk_pl1 (zero, AI.Nu);                    vtk_pl1 .SetColor("blue",  0.5);    vtk_pl1 .AddTo(win);
+
+    cout << endl;
+    cout << "sig0: L     = " << PrintVector(L);
+    cout << "sig1: L_    = " << PrintVector(L_);
+    cout << "sig0: La    = " << PrintVector(La);
+    cout << "sig1: La_   = " << PrintVector(La_);
+    cout << endl;
+    cout << "sig0: E0    = " << PrintVector(E0);
+    cout << "sig1: E0    = " << PrintVector(E0_);
+    cout << "sig0: E0a   = " << PrintVector(E0a);
+    cout << "sig1: E0a   = " << PrintVector(E0a_);
+    cout << endl;
+    cout << "sig0: E1    = " << PrintVector(E1);
+    cout << "sig1: E1    = " << PrintVector(E1_);
+    cout << "sig0: E1a   = " << PrintVector(E1a);
+    cout << "sig1: E1a   = " << PrintVector(E1a_);
+    cout << endl;
+    cout << "sig0: E2    = " << PrintVector(E2);
+    cout << "sig1: E2    = " << PrintVector(E2_);
+    cout << "sig0: E2a   = " << PrintVector(E2a);
+    cout << "sig1: E2a   = " << PrintVector(E2a_);
+    cout << endl;
+
+
+
+    return 0;
 
     VTK::Axes ax(/*scale*/1, /*hydroline*/true, /*reverse*/false, /*full*/true);
     ax.AddTo (win);

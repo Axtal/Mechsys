@@ -1292,7 +1292,7 @@ inline void EigenProjAnalytic (Vec_t const & Ten, Vec3_t & L, Vec_t & P0, Vec_t 
     for (size_t k=0; k<3; ++k)
     {
         L(k) = (I1+alpha*cos((theta+2.0*Util::PI*(1.0+k))/3.0))/3.0;
-        if (fabs(L(k)<1.0e-14)) throw new Fatal("matvec.h:EigenProjAnalytic: L(%d)=%g must be non-zero",k,L(k));
+        if (fabs(L(k))<1.0e-14) throw new Fatal("matvec.h:EigenProjAnalytic: L(%d)=%g must be non-zero",k,L(k));
         double coef = L(k)/(2.0*L(k)*L(k)-L(k)*I1+I3/L(k));
         (*P[k]) = coef*(Ten+(L(k)-I1)*I+(I3/L(k))*Ti);
     }
