@@ -335,8 +335,8 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
     {
         ldg = true;
         bool crossing = false;
-        //if (f<-1.0e-8 && f_tr>0.0) crossing = true; // works
-        if (f<0.0 && f_tr>0.0) crossing = true; // does not work
+        if (f<-1.0e-8 && f_tr>0.0) crossing = true; // works
+        //if (f<0.0 && f_tr>0.0) crossing = true; // does not work
         //else if (numL<0.0) // crossing to the other side
         //{
             //f = -1.0e-10;
@@ -348,7 +348,7 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
             AlphaData dat(NDim, De, (*sta), DEps);
             Numerical::Root<ElastoPlastic> root(const_cast<ElastoPlastic*>(this), &ElastoPlastic::Falpha, &ElastoPlastic::dFalpha);
             //root.Scheme = "Newton";
-            root.Verbose = true;
+            //root.Verbose = true;
             alpInt = root.Solve (0.0, 1.0, NULL, &dat);
             if (alpInt<0) throw new Fatal("ElastoPlastic::LoadCond: alpInt=%g must be positive",alpInt);
         }

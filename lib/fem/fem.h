@@ -61,14 +61,22 @@
     FEM::Domain DOM(msh, (*inp.Prps), (*inp.Prms), (*inp.Inis), inp.fnkey.CStr(), inp.OutNods); \
     FEM::Solver SOL(dom);
 
-#define FEMSOLVE(verbose, inp, dom, sol)                                         \
-    inp.SetSolver (sol);                                                         \
-    for (size_t i=0; i<inp.Stages.Size(); ++i)                                   \
-    {                                                                            \
-        dom.SetBCs ((*inp.Stages[i]));                                           \
-        if (verbose) dom.PrintBCs (cout);                                        \
-        if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout, inp.fnkey.CStr()); \
-        else         sol.Solve    (inp.ninc, inp.fnkey.CStr());                  \
-    }                                                                            \
+#define FEMSOLVE(verbose, inp, dom, sol)                                             \
+    inp.SetSolver (sol);                                                             \
+    for (size_t i=0; i<inp.Stages.Size(); ++i)                                       \
+    {                                                                                \
+        dom.SetBCs ((*inp.Stages[i]));                                               \
+        if (verbose) dom.PrintBCs (cout);                                            \
+        if (inp.vtufile)                                                             \
+        {                                                                            \
+            if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout, inp.fnkey.CStr()); \
+            else         sol.Solve    (inp.ninc, inp.fnkey.CStr());                  \
+        }                                                                            \
+        else                                                                         \
+        {                                                                            \
+            if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout);                   \
+            else         sol.Solve    (inp.ninc);                                    \
+        }                                                                            \
+    }
 
 #endif

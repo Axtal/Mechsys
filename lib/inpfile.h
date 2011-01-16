@@ -127,6 +127,7 @@ public:
     double pcam0;       ///< 42 pcam0
     bool   haspcam0;    ///< has pcam0 ?
     String scheme;      ///< 43 solver scheme
+    bool   vtufile;     ///< 44 write vtu file ?
 
     // Additional data
     Dict * Prms; ///< parameters (set by SetMat)
@@ -268,6 +269,7 @@ inline void InpFile::Defaults ()
     pcam0      = 0;      // 42
     haspcam0   = false;
     scheme     = "";     // 43
+    vtufile    = false;  // 44
 }
 
 inline void InpFile::Read (char const * FileName)
@@ -453,6 +455,7 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="fnkey")      fnkey     = str_val;                    // 41
                 else if (key=="pcam0")    { pcam0     = val;     haspcam0 = true; } // 42
                 else if (key=="scheme")     scheme    = str_val;                    // 43
+                else if (key=="vtufile")    vtufile   = (int)val;                   // 44
                 else if (key=="npath")    { npath     = (int)val;  reading_path   = true; }
                 else if (key=="nelemprps"){ nelemprps = (int)val;  reading_eprps  = true; }
                 else if (key=="nstages")  { nstages   = (int)val;  reading_stages = true; }
@@ -609,6 +612,7 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     if (IF.fnkey.size()>0 ) os << "fnkey     = " << IF.fnkey     << "\n"; //  41
     if (IF.haspcam0       ) os << "pcam0     = " << IF.pcam0     << "\n"; //  42
     if (IF.scheme     !="") os << "scheme    = " << IF.scheme    << "\n"; //  43
+    if (IF.vtufile        ) os << "vtufile   = " << IF.vtufile   << "\n"; //  44
     os << "\nPath:\n"                        << (*IF.Path)      << "\n";
     os << "\nElements properties:\n"         << (*IF.Prps)      << "\n";
     os << "\nOutput nodes:\n"                << (*IF.OutNods)   << "\n";
@@ -689,6 +693,7 @@ inline InpFile::InpFile (wxFrame * Parent)
     ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_maxit     , "maxit    ", maxit    ); //  39
     ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_tolr      , "tolr     ", tolr     ); //  40
     ADD_WXTEXTCTRL2 (p_fem, sz_fem, wxID_ANY, c_scheme    , "scheme   ", scheme   ); //  43
+    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_vtufile   , "vtufile  ", vtufile  ); //  44
                                                                                             
     // reference files                                                                      
     ADD_WXPANEL     (p_rfi, sz_rfi_t, sz_rfi, 3, 2);                                        
