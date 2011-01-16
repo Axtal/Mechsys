@@ -335,7 +335,8 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
     {
         ldg = true;
         bool crossing = false;
-        if (f<0.0 && f_tr>0.0) crossing = true;
+        //if (f<-1.0e-8 && f_tr>0.0) crossing = true; // works
+        if (f<0.0 && f_tr>0.0) crossing = true; // does not work
         //else if (numL<0.0) // crossing to the other side
         //{
             //f = -1.0e-10;
@@ -343,39 +344,12 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
         //}
         if (crossing)
         {
+            ldg = false;
             AlphaData dat(NDim, De, (*sta), DEps);
             Numerical::Root<ElastoPlastic> root(const_cast<ElastoPlastic*>(this), &ElastoPlastic::Falpha, &ElastoPlastic::dFalpha);
-            root.Scheme = "Newton";
+            //root.Scheme = "Newton";
+            root.Verbose = true;
             alpInt = root.Solve (0.0, 1.0, NULL, &dat);
-            /*
-            std::cout << "\nDEps = " << PrintVector(DEps, "%30.20e");
-            std::cout << "\nSig = " << PrintVector(sta->Sig, "%30.20e");
-            printf("f=%30.20e, f_tr=%30.20e, z0=%30.20e\n\n",f,f_tr,sta->Ivs(0));
-            ldg = false; // unloading
-            size_t k     = 0;
-            size_t maxIt = 10;
-            double tol   = ftol;
-            //alpInt       = f/(f-f_tr); // this does not converge when the path is crossing to the other side
-            //alpInt       = 0.0; // this also does not converge
-            //alpInt       = 0.1; // this also does not converge
-            alpInt       = 0.5;
-            sta_tr.Sig   = sta->Sig + alpInt*dsig_tr;
-            for (k=0; k<maxIt; ++k)
-            {
-                f_tr = YieldFunc (&sta_tr);
-                if (fabs(f_tr)<tol) break;
-                Gradients (&sta_tr);
-                alpInt    += (-f_tr/dot(V,dsig_tr));
-                sta_tr.Sig = sta->Sig + alpInt*dsig_tr;
-                printf("alpInt=%g\n",alpInt);
-            }
-            if (k>=maxIt) throw new Fatal("ElastoPlastic::LoadCond: Newton-Rhapson (for calculating intersection) did not converge after %d iterations",k);
-            */
-            double dpcam = Calc_pcam(dsig_tr);
-            double dqcam = Calc_qcam(dsig_tr);
-            double pcam  = Calc_pcam(sta->Sig);
-            double qcam  = Calc_qcam(sta->Sig);
-            printf("pcam=%g, qcam=%g, dpcam=%g, dqcam=%g, dqcam/dpcam=%g, alpInt=%g\n",pcam,qcam,dpcam,dqcam,dqcam/dpcam,alpInt);
             if (alpInt<0) throw new Fatal("ElastoPlastic::LoadCond: alpInt=%g must be positive",alpInt);
         }
         else if (numL<0.0) throw new Fatal("ElastoPlastic::LoadCond: Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
@@ -490,7 +464,7 @@ inline void ElastoPlastic::Hardening (EquilibState const * Sta) const
     // TODO: new stress update
     if (NewSU)
     {
-        double k;
+        double k = 0;
         if (FC==VM_t) k = kY;
         else if (FC==DP_t)
         {

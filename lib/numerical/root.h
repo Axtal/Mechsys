@@ -132,6 +132,7 @@ inline double Root<Instance>::Solve (double xa, double xb, double * x_guess, voi
             double new_step = (c-b)/2.0;                          // Step at this iteration
 
             // Check for convergence
+            if (Verbose) printf("It=%d, xnew=%g, f(xnew)=%g, err=%g\n", It, b, fb, fabs(new_step));
             if (fabs(new_step)<=tol_act || fb==0.0) return b; // Acceptable approx. is found
 
             // Decide if the interpolation can be tried
