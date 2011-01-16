@@ -25,7 +25,6 @@
 
 // MechSys
 #include <mechsys/models/model.h>
-#include <mechsys/models/stressupdate.h>
 #include <mechsys/numerical/odesolver.h>
 
 using std::cout;
@@ -48,7 +47,6 @@ public:
 
     // Data
     Model        * Mdl;              ///< Model
-    StressUpdate * Sup;              ///< Stress update
     EquilibState * Sta;              ///< State
     double         Tol;              ///< Tolerance to check for division by zero
     bool           CheckModelTgIncs; ///< Check model TgIncs ?
@@ -76,7 +74,6 @@ inline Driver::Driver (String const & ModelName, SDPair const & Prms, SDPair con
       Linear(false)
 {
     Mdl = AllocModel (ModelName, 3, Prms);
-    Sup = new StressUpdate (Mdl);
     Sta = new EquilibState (3);
     Mdl->InitIvs (Inis, Sta);
 
@@ -93,7 +90,6 @@ inline Driver::Driver (String const & ModelName, SDPair const & Prms, SDPair con
 inline Driver::~Driver ()
 {
     delete Mdl;
-    delete Sup;
     delete Sta;
     delete _RK_state;
 }

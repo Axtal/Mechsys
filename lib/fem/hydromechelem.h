@@ -481,7 +481,6 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     Vec_t kBpdpwe (NDim);
 
     // update state at each IP
-    StressUpdate su(Mdl);
     double detJ, coef;
     Mat_t  C, B, Bp, N, Np;
     Vec_t  dFe(NDu), dsig(NCo), deps(NCo), dfe(NDp);
@@ -500,7 +499,7 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         // strain and effective stress increments
         deps = B * dUe;
         // TODO: The model expects __effective__ stresses => Sta[i] has to be corrected here
-        su.Update (deps, Sta[i], dsig);
+        Mdl->SUp.Update (deps, Sta[i], dsig);
 
 #ifdef DO_DEBUG
         double normdsig = Norm(dsig);

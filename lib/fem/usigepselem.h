@@ -529,8 +529,7 @@ inline void USigEpsElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
             // (internal) strain increment
             Vec_t dsig_i(NCo);
-            StressUpdate steup(Mdl);
-            steup.Update (deps, Sta[i], dsig_i);
+            Mdl->SUp.Update (deps, Sta[i], dsig_i);
 
             // (internal) forces
             dF1 += (coef) * trans(Ns)*(dsig_i - dsig);

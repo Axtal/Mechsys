@@ -17,15 +17,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_STRESSUPDATE_H
-#define MECHSYS_STRESSUPDATE_H
-
-// Std Lib
-#include <iostream>
-
-// MechSys
-#include <mechsys/models/model.h>
-#include <mechsys/models/equilibstate.h>
+#ifdef STRESSUPDATE_DECLARE
 
 class StressUpdate
 {
@@ -34,13 +26,16 @@ public:
     typedef void (*pDbgFun) (StressUpdate const & SU, void * UserData); ///< Pointer to debug function
 
     // enum
-    enum Scheme_t { ME_t, SingleFE_t }; ///< Integration scheme
+    enum Scheme_t { ME_t, SingleFE_t, RK_t }; ///< Integration scheme
 
-    // Constructor
-    StressUpdate (Model const * Mdl);
+    // Constructor & Destructor
+     StressUpdate ();
 
     // Methods
-    void Update (Vec_t const & DEps, State * Sta, Vec_t & DSig) const;
+    void SetModel  (Model const * TheMdl) { Mdl = TheMdl; }
+    void SetScheme (String const & Name);
+    void Update    (Vec_t const & DEps, State * Sta, Vec_t & DSig);
+    void GetInfo   (std::ostream & os, bool Header=false) const;
 
     // Data
     Model const * Mdl;
@@ -48,53 +43,87 @@ public:
     void        * DbgDat;
 
     // Constants for integration
-    Scheme_t Scheme; ///< Scheme: ME_t (Modified-Euler)
-    double   STOL;
-    double   dTini;
-    double   mMin;
-    double   mMax;
-    size_t   MaxSS;
-    bool     CDrift; ///< correct drift ?
-    mutable double T;
-    mutable double dT;
-    mutable size_t k;
+    Scheme_t       Scheme; ///< Scheme: ME_t (Modified-Euler)
+    double         STOL;
+    double         dTini;
+    double         mMin;
+    double         mMax;
+    size_t         MaxSS;
+    bool           CDrift; ///< correct drift ?
+    double         Error;
+    String         RKScheme;
+    double         T;
+    double         dT;
+    size_t         k;
+    size_t         ncp; // num of stress components
+    size_t         niv; // num of internal variables
+    Vec_t          dsig;
+    Vec_t          deps;
+    Vec_t          divs;
+    Vec_t          eps0;
+    EquilibState * sta;
+
+private:
+    // Auxiliary methods
+    int  _RK_fun    (double t, double const Y[], double dYdt[]);
+    void _RK_up_fun (double t, double Y[]);
 };
+
+#endif // STRESSUPDATE_DECLARE
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline StressUpdate::StressUpdate (Model const * TheMdl)
-    : Mdl    (TheMdl),
-      DbgFun (NULL),
-      DbgDat (NULL),
-      Scheme (ME_t),
-      STOL   (1.0e-5),
-      dTini  (1.0),
-      mMin   (0.1),
-      mMax   (10.0),
-      MaxSS  (2000),
-      CDrift (true),
-      T      (0.0),
-      dT     (dTini),
-      k      (0)
+#ifdef STRESSUPDATE_IMPLEMENT
+
+#include <mechsys/numerical/odesolver.h>
+
+inline Model::StressUpdate::StressUpdate ()
+    : Mdl      (NULL),
+      DbgFun   (NULL),
+      DbgDat   (NULL),
+      Scheme   (ME_t),
+      STOL     (1.0e-5),
+      dTini    (1.0),
+      mMin     (0.1),
+      mMax     (10.0),
+      MaxSS    (2000),
+      CDrift   (true),
+      Error    (0.0),
+      RKScheme ("RKF45"),
+      T        (0.0),
+      dT       (dTini),
+      k        (0),
+      sta      (NULL)
 {
 }
 
-inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig) const
+inline void Model::StressUpdate::SetScheme (String const & Name)
 {
+    if      (Name=="ME")       Scheme = ME_t;
+    else if (Name=="SingleFE") Scheme = SingleFE_t;
+    else if (Name=="RK")       Scheme = RK_t;
+    else throw new Fatal("StressUpdate::SetScheme: Scheme named %s is invalid",Name.CStr());
+}
+
+inline void Model::StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
+{
+    // scheme
+    if (Mdl->Prms.HasKey("newsu")) { if ((int)Mdl->Prms("newsu")) Scheme = RK_t; }
+
     // current state
-    EquilibState * sta = static_cast<EquilibState*>(Sta);
+    sta  = static_cast<EquilibState*>(Sta);
     DSig = sta->Sig; // temporary copy to calculate increment later
 
     // constants
-    size_t ncp = size(sta->Sig); // num of stress components
-    size_t niv = size(sta->Ivs); // num of internal variables
+    ncp = size(sta->Sig); // num of stress components
+    niv = size(sta->Ivs); // num of internal variables
 
-    // auxiliar variables
-    Vec_t dsig(ncp);
-    Vec_t deps(ncp);
-    Vec_t divs(niv);
+    // auxiliary variables
+    dsig.change_dim (ncp);
+    deps.change_dim (ncp);
+    divs.change_dim (niv);
 
     if (Scheme==SingleFE_t) // without intersection detection (should be used for linear elasticity only)
     {
@@ -107,7 +136,7 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
     }
     else if (Scheme==ME_t)
     {
-        // auxiliar variables
+        // auxiliary variables
         EquilibState sta_1 (Mdl->NDim);              // intermediate state
         EquilibState sta_ME(Mdl->NDim);              // Modified-Euler state
         Vec_t deps_1(ncp), dsig_1(ncp), divs_1(niv); // intermediate increments
@@ -173,13 +202,13 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
             double sig_err = Norm(sig_dif)/(1.0+Norm(sta_ME.Sig));
             double ivs_err = 0.0;
             for (size_t i=0; i<niv; ++i) ivs_err += fabs(sta_ME.Ivs(i)-sta_1.Ivs(i))/(1.0+fabs(sta_ME.Ivs(i)));
-            double error = sig_err + ivs_err;
+            Error = sig_err + ivs_err;
 
             // step multiplier
-            double m = (error>0.0 ? 0.9*sqrt(STOL/error) : mMax);
+            double m = (Error>0.0 ? 0.9*sqrt(STOL/Error) : mMax);
 
             // update
-            if (error<STOL)
+            if (Error<STOL)
             {
                 // update state
                 T += dT;
@@ -210,6 +239,35 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
         }
         if (k>=MaxSS) throw new Fatal("StressUpdate::Update: Modified-Euler (local) did not converge after %d substeps",k);
     }
+    else if (Scheme==RK_t)
+    {
+        // initial strain and increment
+        eps0 = sta->Eps;
+        deps = DEps;
+
+        // loading condition
+        double aint;
+        sta->Ldg = Mdl->LoadCond (sta, deps, aint);
+
+        // ode solver
+        size_t neq = ncp + niv;
+        //Numerical::ODESolver<StressUpdate> ode(this, &StressUpdate::_RK_fun, neq, RKScheme.CStr(), STOL, dTini);
+        Numerical::ODESolver<StressUpdate> ode(this, &StressUpdate::_RK_fun, neq, "RK12", STOL, dTini);
+        ode.UpFun = &StressUpdate::_RK_up_fun;
+
+        // initial state
+        ode.t = 0.0;
+        for (size_t i=0; i<ncp; ++i) ode.Y[    i] = sta->Sig(i);
+        for (size_t i=0; i<niv; ++i) ode.Y[ncp+i] = sta->Ivs(i);
+
+        // evolve
+        ode.Evolve (1.0);
+
+        // final state
+        for (size_t i=0; i<ncp; ++i) sta->Sig(i) = ode.Y[    i];
+        for (size_t i=0; i<niv; ++i) sta->Ivs(i) = ode.Y[ncp+i];
+        sta->Eps = eps0 + deps;
+    }
     else throw new Fatal("StressUpdate::Update: Scheme is not available yet");
 
     // return total stress increment
@@ -219,4 +277,70 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
     if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
 }
 
-#endif // MECHSYS_STRESSUPDATE_H
+
+inline void Model::StressUpdate::GetInfo (std::ostream & os, bool Header) const
+{
+    if (Scheme==ME_t)
+    {
+        String buf;
+        if (Header)
+        {
+            os << "\n" << TERM_BLACK_WHITE << "----------------------------- StressUpdate/Scheme: ME ------------------------------" << TERM_RST << "\n\n";
+            os << "STOL   = " << STOL   << std::endl;
+            os << "dTini  = " << dTini  << std::endl;
+            os << "mMin   = " << mMin   << std::endl;
+            os << "mMax   = " << mMax   << std::endl;
+            os << "MaxSS  = " << MaxSS  << std::endl;
+            os << "CDrift = " << CDrift << std::endl;
+            buf.Printf("\n%6s %6s %12s %12s %16s\n\n", "Scheme", "k", "T", "dT", "Error");
+            os << buf;
+        }
+        buf.Printf("%6s %6zd %12.8f %12.8f %16.8e\n", "ME", k, T, dT, Error);
+        os << buf;
+    }
+    else if (Scheme==SingleFE_t)
+    {
+        if (Header) os << "\n" << TERM_BLACK_WHITE << "----------------------------- StressUpdate/Scheme: SingleFE ------------------------" << TERM_RST << "\n\n";
+    }
+    else if (Scheme==RK_t)
+    {
+        if (Header) os << "\n" << TERM_BLACK_WHITE << "----------------------------- StressUpdate/Scheme: RK ------------------------------" << TERM_RST << "\n\n";
+    }
+}
+
+inline int Model::StressUpdate::_RK_fun (double t, double const Y[], double dYdt[])
+{
+    // current strain, stress, and internal values
+    sta->Eps = eps0 + t*deps;
+    for (size_t i=0; i<ncp; ++i) sta->Sig(i) = Y[    i];
+    for (size_t i=0; i<niv; ++i) sta->Ivs(i) = Y[ncp+i];
+
+    // tangent increments
+    Mdl->TgIncs (sta, deps, dsig, divs);
+    for (size_t i=0; i<ncp; ++i) dYdt[    i] = dsig(i);
+    for (size_t i=0; i<niv; ++i) dYdt[ncp+i] = divs(i);
+
+    // return success
+    return GSL_SUCCESS;
+}
+
+inline void Model::StressUpdate::_RK_up_fun (double t, double Y[])
+{
+    // current strain, stress, and internal values
+    sta->Eps = eps0 + t*deps;
+    for (size_t i=0; i<ncp; ++i) sta->Sig(i) = Y[    i];
+    for (size_t i=0; i<niv; ++i) sta->Ivs(i) = Y[ncp+i];
+
+    // correct drift
+    if (CDrift)
+    {
+        Mdl->CorrectDrift (sta);
+        for (size_t i=0; i<ncp; ++i) Y[    i] = sta->Sig(i);
+        for (size_t i=0; i<niv; ++i) Y[ncp+i] = sta->Ivs(i);
+    }
+
+    // debug function
+    if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
+}
+
+#endif // STRESSUPDATE_IMPLEMENT

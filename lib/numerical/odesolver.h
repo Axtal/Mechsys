@@ -41,6 +41,7 @@ class ODESolver
 public:
     // Typedefs
     typedef int (Instance::*pFun) (double t, double const Y[], double dYdt[]); ///< Callback function
+    typedef void (Instance::*pUpFun) (double t, double Y[]); ///< update function (for successful steps)
 
     // Constructor
     ODESolver (Instance * p2Inst, pFun p2Fun, size_t NEq, char const * Scheme="RKDP89",
@@ -55,6 +56,7 @@ public:
     // Data
     double   t; ///< Current time
     double * Y; ///< Current vector of state variables
+    pUpFun   UpFun; ///< Update function
 
     // Internal methods
     int _call_fun (double time, double const y[], double dydt[]) { return (_p2inst->*_p2fun)(time, y, dydt); }
@@ -94,7 +96,7 @@ int __ode_call_fun__ (double time, double const y[], double dydt[], void * not_u
 
 template<typename Instance>
 inline ODESolver<Instance>::ODESolver (Instance * p2Inst, pFun p2Fun, size_t NEq, char const * Scheme, double STOL, double h, double EPSREL)
-    : t(-1.0), Y(NULL), _p2inst(p2Inst), _p2fun(p2Fun), _h(h), _FE(false), _ME(false), yFE(NULL), yME(NULL), dy1(NULL), dy2(NULL), stol(STOL)
+    : t(-1.0), Y(NULL), UpFun(NULL), _p2inst(p2Inst), _p2fun(p2Fun), _h(h), _FE(false), _ME(false), yFE(NULL), yME(NULL), dy1(NULL), dy2(NULL), stol(STOL)
 {
     // set scheme
     gsl_odeiv_step_type const * scheme = gsl_odeiv_step_rk8pd;
@@ -212,6 +214,9 @@ inline void ODESolver<Instance>::Evolve (double tf)
                 T += dT;
                 t += dt;
                 for (int j=0; j<neq; ++j) Y[j] = yME[j];
+
+                // callback
+                if (UpFun!=NULL) (_p2inst->*UpFun) (t, Y);
 
                 // limit change on stepsize
                 if (m>mMax) m = mMax;

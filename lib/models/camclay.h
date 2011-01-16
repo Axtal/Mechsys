@@ -170,8 +170,8 @@ int CamClayRegister()
 {
     ModelFactory   ["CamClay"] = CamClayMaker;
     MODEL.Set      ("CamClay", (double)MODEL.Keys.Size());
-    MODEL_PRM_NAMES["CamClay"].Resize(4);
-    MODEL_PRM_NAMES["CamClay"] = "lam", "kap", "nu", "phi";
+    MODEL_PRM_NAMES["CamClay"].Resize(6);
+    MODEL_PRM_NAMES["CamClay"] = "lam", "kap", "nu", "phi", "newsu", "betsu";
     MODEL_IVS_NAMES["CamClay"].Resize(1);
     MODEL_IVS_NAMES["CamClay"] = "v0";
     return 0;

@@ -157,6 +157,9 @@ BPy::class_<InpFile>("InpFile")
     .def_readwrite("haspcam0"   , &InpFile::haspcam0  ) //  42b
     .def_readwrite("scheme"     , &InpFile::scheme    ) //  43
     .def_readwrite("vtufile"    , &InpFile::vtufile   ) //  44
+    .def_readwrite("suscheme"   , &InpFile::suscheme  ) //  45
+    .def_readwrite("sustol"     , &InpFile::sustol    ) //  46
+    .def_readwrite("surkscheme" , &InpFile::surkscheme) //  47
     ;
 
 //////////////////////////////////////////////////////////////////////////////////// mesh /////

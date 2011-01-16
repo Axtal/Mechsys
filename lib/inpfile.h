@@ -39,6 +39,7 @@
 #include <mechsys/fem/geomelem.h>  // for GEOM
 #include <mechsys/fem/solver.h>
 #include <mechsys/matfile.h>
+#include <mechsys/models/model.h>
 
 /*
 struct PathIncs
@@ -79,7 +80,8 @@ public:
     void Read        (char const * FileName);
     void SetPrmsInis (MatFile const & Mat, bool ForceGTY=false);
     void GetIncs     (int PathKey, double Div, Vec_t & dsig, Vec_t & deps, Array<bool> & PrescDeps, double & dpw, double & dSw, bool & PrescDpw, bool & PrescDSw) const;
-    void SetSolver   (FEM::Solver & Sol);
+    void SetSolver   (FEM::Solver & Sol) const;
+    void SetSUp      (Model const * Mdl, Model::StressUpdate::pDbgFun pFun=NULL, void * UserData=NULL) const;
 
     // Data
     int    matid;       ///<  1 material ID
@@ -128,6 +130,9 @@ public:
     bool   haspcam0;    ///< has pcam0 ?
     String scheme;      ///< 43 solver scheme
     bool   vtufile;     ///< 44 write vtu file ?
+    String suscheme;    ///< 45 stress-update scheme
+    double sustol;      ///< 46 stress-update STOL
+    String surkscheme;  ///< 47 stress-update RK scheme
 
     // Additional data
     Dict * Prms; ///< parameters (set by SetMat)
@@ -270,6 +275,9 @@ inline void InpFile::Defaults ()
     haspcam0   = false;
     scheme     = "";     // 43
     vtufile    = false;  // 44
+    suscheme   = "";     // 45
+    sustol     = -1;     // 46
+    surkscheme = "";     // 47
 }
 
 inline void InpFile::Read (char const * FileName)
@@ -456,6 +464,9 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="pcam0")    { pcam0     = val;     haspcam0 = true; } // 42
                 else if (key=="scheme")     scheme    = str_val;                    // 43
                 else if (key=="vtufile")    vtufile   = (int)val;                   // 44
+                else if (key=="suscheme")   suscheme  = str_val;                    // 45
+                else if (key=="sustol")     sustol    = val;                        // 46
+                else if (key=="surkscheme") surkscheme= str_val;                    // 47
                 else if (key=="npath")    { npath     = (int)val;  reading_path   = true; }
                 else if (key=="nelemprps"){ nelemprps = (int)val;  reading_eprps  = true; }
                 else if (key=="nstages")  { nstages   = (int)val;  reading_stages = true; }
@@ -548,7 +559,7 @@ inline void InpFile::GetIncs (int PathKey, double Div, Vec_t & dsig, Vec_t & dep
     if (path.HasKey("dSw")) { dSw     = path("dSw")/Div;  PrescDSw     = true; }
 }
 
-inline void InpFile::SetSolver (FEM::Solver & Sol)
+inline void InpFile::SetSolver (FEM::Solver & Sol) const
 {
     if (ssout    ) Sol.SSOut  = ssout;
     if (ctetg    ) Sol.CteTg  = ctetg;
@@ -565,6 +576,16 @@ inline void InpFile::SetSolver (FEM::Solver & Sol)
     if (maxit  >0 ) Sol.MaxIt = maxit;
     if (tolr   >=0) Sol.TolR  = tolr;
     if (scheme!="") Sol.SetScheme (scheme.CStr());
+}
+
+inline void InpFile::SetSUp (Model const * Mdl, Model::StressUpdate::pDbgFun pFun, void * UserData) const
+{
+    Mdl->SUp.CDrift = cdrift;
+    Mdl->SUp.DbgFun = pFun;
+    Mdl->SUp.DbgDat = UserData;
+    if (suscheme  !="") Mdl->SUp.SetScheme (suscheme);
+    if (surkscheme!="") Mdl->SUp.RKScheme = surkscheme;
+    if (sustol      >0) Mdl->SUp.STOL     = sustol;
 }
 
 std::ostream & operator<< (std::ostream & os, InpFile const & IF)
@@ -613,6 +634,9 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     if (IF.haspcam0       ) os << "pcam0     = " << IF.pcam0     << "\n"; //  42
     if (IF.scheme     !="") os << "scheme    = " << IF.scheme    << "\n"; //  43
     if (IF.vtufile        ) os << "vtufile   = " << IF.vtufile   << "\n"; //  44
+    if (IF.suscheme   !="") os << "suscheme  = " << IF.suscheme  << "\n"; //  45
+    if (IF.sustol      >=0) os << "sustol    = " << IF.sustol    << "\n"; //  46
+    if (IF.surkscheme !="") os << "surkscheme= " << IF.surkscheme<< "\n"; //  47
     os << "\nPath:\n"                        << (*IF.Path)      << "\n";
     os << "\nElements properties:\n"         << (*IF.Prps)      << "\n";
     os << "\nOutput nodes:\n"                << (*IF.OutNods)   << "\n";

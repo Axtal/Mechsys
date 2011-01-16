@@ -175,12 +175,12 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
         IvNames.Push ("z0");
         IvNames.Push ("evp");
         IvNames.Push ("edp");
-
-        // TODO: new stress update parmeters
-        NewSU  = (Prms.HasKey("newsu") ? (int)Prms("newsu") : false);
-        BetSU  = (Prms.HasKey("betsu") ? Prms("betsu") : 10.0);
-        Gbar   = (Prms.HasKey("Gbar")  ? Prms("Gbar")  : 0.5*E/(1.0+nu));
     }
+
+    // TODO: new stress update parmeters
+    NewSU  = (Prms.HasKey("newsu") ? (int)Prms("newsu") : false);
+    BetSU  = (Prms.HasKey("betsu") ? Prms("betsu") : 10.0);
+    Gbar   = (Prms.HasKey("Gbar")  ? Prms("Gbar")  : 0.5*E/(1.0+nu));
 }
 
 inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
@@ -325,8 +325,18 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
     // TODO: new stress update
     if (NewSU)
     {
-        if (numL>0.0) ldg = true;
-        if (f_tr>0.0 && numL<0.0) throw new Fatal("ElastoPlastic::LoadCond (new update): Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
+        double q = Calc_qoct (sta->Sig);
+        if (q>1.0e-7)
+        {
+            if (numL>0.0) ldg = true;
+            if (f_tr>0.0 && numL<0.0) throw new Fatal("ElastoPlastic::LoadCond (new update): Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
+        }
+        else
+        {
+            double qf = Calc_qoct (sta_tr.Sig);
+            double Dq = qf - q;
+            if (Dq>0.0) ldg = true;
+        }
         return ldg;
     }
 

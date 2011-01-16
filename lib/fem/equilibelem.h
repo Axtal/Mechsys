@@ -559,7 +559,6 @@ inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     for (size_t i=0; i<loc.Size(); ++i) dUe(i) = dU(loc[i]);
 
     // update state at each IP
-    StressUpdate su(Mdl);
     double detJ, coef;
     Mat_t  C, B;
     Vec_t  dFe(NDu), dsig(NCo), deps(NCo);
@@ -572,7 +571,7 @@ inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
         // strain and stress increments
         deps = B * dUe;
-        su.Update (deps, Sta[i], dsig);
+        Mdl->SUp.Update (deps, Sta[i], dsig);
 
         // element nodal forces
         dFe += (coef) * trans(B)*dsig;

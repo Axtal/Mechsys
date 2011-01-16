@@ -43,6 +43,8 @@ public:
     virtual void   Unpack  (Array<double> const & V)       =0; ///< Unpack all values from V
 };
 
+#include <mechsys/models/equilibstate.h>
+
 class Model
 {
 public:
@@ -69,6 +71,11 @@ public:
     size_t        NCps;    ///< Number of stress/strain components
     size_t        NIvs;    ///< Number of internal values
     Array<String> IvNames; ///< Names of internal values
+
+#define STRESSUPDATE_DECLARE
+    #include <mechsys/models/stressupdate.h>
+    mutable StressUpdate SUp;
+#undef STRESSUPDATE_DECLARE
 };
 
 
@@ -79,6 +86,7 @@ inline Model::Model (int TheNDim, SDPair const & ThePrms, char const * TheName)
     : NDim(TheNDim), Prms(ThePrms), GTy(SDPairToGType(ThePrms,(TheNDim==3?"d3d":"d2d"))), 
       Name(TheName), NCps(2*NDim),  NIvs(0)
 {
+    SUp.SetModel (this);
 }
 
 std::ostream & operator<< (std::ostream & os, Model const & D)
@@ -86,6 +94,11 @@ std::ostream & operator<< (std::ostream & os, Model const & D)
     os << D.Name << " " << D.NDim << "D " << GTypeToStr(D.GTy) << " " << D.Prms;
     return os;
 }
+
+
+#define STRESSUPDATE_IMPLEMENT
+  #include <mechsys/models/stressupdate.h>
+#undef STRESSUPDATE_IMPLEMENT
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
