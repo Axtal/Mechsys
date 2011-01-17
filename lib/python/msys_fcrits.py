@@ -79,7 +79,7 @@ class FCrits:
 
     # Set constants
     # =============
-    def set_ctes (self, phi_deg=30.0, c=None, pcam=None, sY=None, psa=False):
+    def set_ctes (self, phi_deg=30.0, c=None, sY=None, psa=False):
         self.c     = 0.0 if c==None else c
         self.phi   = phi_deg
         self.sphi  = sin(self.phi*pi/180.0)
@@ -266,7 +266,7 @@ class FCrits:
     def rst (self, th=False, ref=False, pos=False, fsz=10):
 
         # radius
-        r = 1.*phi_calc_M(self.phi,'oct') if self.r==None else self.r
+        r = self.sc*phi_calc_M(self.phi,'oct') if self.r==None else self.r
 
         # constants
         cf = 0.2
@@ -319,7 +319,7 @@ class FCrits:
     def plot (self, typ='NM', clr='red', lst='-', lwd=1, label=None, np=40, leg_set=True, show_phi=True, fsz=10):
 
         # radius
-        r = 1.*phi_calc_M(self.phi,'oct') if self.r==None else self.r
+        r = self.sc*phi_calc_M(self.phi,'oct') if self.r==None else self.r
 
         # contour
         f     = zeros ((np,np))

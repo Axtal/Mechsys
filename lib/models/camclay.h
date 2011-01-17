@@ -59,6 +59,8 @@ public:
 inline CamClay::CamClay (int NDim, SDPair const & Prms)
     : ElastoPlastic (NDim,Prms,/*derived*/true)
 {
+    Name = "CamClay";
+
     // parameters
     lam = Prms("lam");
     kap = Prms("kap");
@@ -74,9 +76,11 @@ inline CamClay::CamClay (int NDim, SDPair const & Prms)
 
     // internal values
     NIvs = 1;
+    if (NewSU) NIvs = 2;
     Y.change_dim (NIvs);
     H.change_dim (NIvs);
     IvNames.Push ("z0");
+    if (NewSU) IvNames.Push ("z1");
 }
 
 inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const
@@ -94,8 +98,16 @@ inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const
     OctInvs (sta->Sig, p,q,t);
 
     // internal variables
-    double M = CalcM(t);
-    sta->Ivs(0) = (Ini.HasKey("z0") ? Ini("z0") : p+(q*q)/(p*M*M));
+    double M   = CalcM(t);
+    double p0  = p+(q*q)/(p*M*M);
+    double OCR = (Ini.HasKey("OCR") ? Ini("OCR") : 1.0);
+    sta->Ivs(0) = OCR*p0;
+
+    if (NewSU)
+    {
+        sta->Ivs(1) = sta->Ivs(0);
+        sta->Ivs(0) = p0;
+    }
 
     // check initial yield function
     double f = YieldFunc (sta);
@@ -114,6 +126,8 @@ inline void CamClay::Gradients (EquilibState const * Sta) const
     double M = CalcM(t);
     V    = (M*M*(Sta->Ivs(0)-2.0*p)/(Util::SQ3))*I + 2.0*dev_sig;
     Y(0) = -M*M*p;
+
+    if (NewSU) Y(1) = 0.0;
 
     if (false)//q>1.0e-10)
     {
@@ -137,6 +151,15 @@ inline void CamClay::Gradients (EquilibState const * Sta) const
 inline void CamClay::Hardening (EquilibState const * Sta) const
 {
     H(0) = Sta->Ivs(0)*Tra(W)/chi;
+
+    if (NewSU)
+    {
+        double D = 2.0*Sta->Ivs(1)/(Sta->Ivs(1)+Sta->Ivs(0))-1.0;
+        if (D<0.0) D = 0.0;
+        H(1) = exp(-BetSU*D)*H(0); //  (D>0.0 ? 0.0 : H(0));
+        H(0) = H(0) + Gbar*(1.0-exp(-BetSU*D));
+        //printf("z0=%g, z1=%g, D=%g, H0=%g, H1=%g\n",Sta->Ivs(0),Sta->Ivs(1),D,H(0),H(1));
+    }
 }
 
 inline double CamClay::YieldFunc (EquilibState const * Sta) const
@@ -170,10 +193,10 @@ int CamClayRegister()
 {
     ModelFactory   ["CamClay"] = CamClayMaker;
     MODEL.Set      ("CamClay", (double)MODEL.Keys.Size());
-    MODEL_PRM_NAMES["CamClay"].Resize(6);
-    MODEL_PRM_NAMES["CamClay"] = "lam", "kap", "nu", "phi", "newsu", "betsu";
-    MODEL_IVS_NAMES["CamClay"].Resize(1);
-    MODEL_IVS_NAMES["CamClay"] = "v0";
+    MODEL_PRM_NAMES["CamClay"].Resize(7);
+    MODEL_PRM_NAMES["CamClay"] = "lam", "kap", "nu", "phi", "newsu", "betsu", "Gbar";
+    MODEL_IVS_NAMES["CamClay"].Resize(2);
+    MODEL_IVS_NAMES["CamClay"] = "v0", "OCR";
     return 0;
 }
 

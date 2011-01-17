@@ -45,7 +45,7 @@ public:
     };
 
     // enums
-    enum FCrit_t { VM_t, DP_t, MC_t, MN_t, AN_t }; ///< Failure criterion type
+    enum FCrit_t { VM_t, DP_t, MC_t, MN_t, AN_t, MNnl_t }; ///< Failure criterion type
 
     // Constructor & Destructor
     ElastoPlastic (int NDim, SDPair const & Prms, bool DerivedModel=false);
@@ -133,10 +133,11 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
         if (!Prms.HasKey("nu")) throw new Fatal("ElastoPlastic::ElastoPlastic: Poisson's coefficient (nu) must be provided");
         E  = Prms("E");
         nu = Prms("nu");
-        if (Prms.HasKey("DP")) FC = DP_t;
-        if (Prms.HasKey("MC")) FC = MC_t;
-        if (Prms.HasKey("MN")) FC = MN_t;
-        if (Prms.HasKey("AN")) FC = AN_t;
+        if (Prms.HasKey("DP"))   FC = DP_t;
+        if (Prms.HasKey("MC"))   FC = MC_t;
+        if (Prms.HasKey("MN"))   FC = MN_t;
+        if (Prms.HasKey("AN"))   FC = AN_t;
+        if (Prms.HasKey("MNnl")) FC = MNnl_t;
         if (FC==VM_t)
         {
             if      (Prms.HasKey("sY")) kY = sqrt(2.0/3.0)*Prms("sY");
@@ -162,7 +163,7 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
             cbar = sqrt(3.0)*c/tan(phi_rad);
             //ftol = 1.0e-5;
             if (FC==DP_t) kDP = 2.0*sqrt(2.0)*sphi/(3.0-sphi);
-            if (FC==MN_t) kMN = 9.0+8.0*pow(tan(phi_rad),2.0);
+            if (FC==MN_t || FC==MNnl_t) kMN = 9.0+8.0*pow(tan(phi_rad),2.0);
         }
 
         // hardening
@@ -197,13 +198,15 @@ inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
     // TODO: new stress update
     if (NewSU)
     {
+        double p = Calc_poct (sta->Sig);
         double q = Calc_qoct (sta->Sig);
-        if (FC==MN_t)
+        if (FC==MN_t || FC==MNnl_t)
         {
             double I1,I2,I3;
             CharInvs (sta->Sig, I1,I2,I3);
             sta->Ivs(0) = I1*I2/I3;
         }
+        else if (FC==DP_t) sta->Ivs(0) = q/p;
         else sta->Ivs(0) = q;
     }
 
@@ -329,7 +332,8 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
         if (q>1.0e-7)
         {
             if (numL>0.0) ldg = true;
-            if (f_tr>0.0 && numL<0.0) throw new Fatal("ElastoPlastic::LoadCond (new update): Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
+            //if (f_tr>0.0 && numL<0.0) throw new Fatal("ElastoPlastic::LoadCond (new update): Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
+            //if (f_tr>0.0 && numL<0.0) printf("ElastoPlastic::LoadCond (new update): Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.\n",f,f_tr,numL);
         }
         else
         {
@@ -449,7 +453,12 @@ inline void ElastoPlastic::Gradients (EquilibState const * Sta) const
     }
 
     // TODO: new stress update
-    if (NewSU) Y(0) = -1.0; // dfdz0
+    if (NewSU)
+    {
+        double poct = Calc_poct (Sta->Sig);
+        if (FC==DP_t) Y(0) = -poct;
+        else          Y(0) = -1.0; // dfdz0
+    }
 }
 
 inline void ElastoPlastic::FlowRule (EquilibState const * Sta) const
@@ -475,12 +484,9 @@ inline void ElastoPlastic::Hardening (EquilibState const * Sta) const
     if (NewSU)
     {
         double k = 0;
-        if (FC==VM_t) k = kY;
-        else if (FC==DP_t)
-        {
-            double p = Calc_poct (Sta->Sig);
-            k = p*kDP;
-        }
+        if      (FC==VM_t) k = kY;
+        else if (FC==DP_t) k = kDP;
+        else if (FC==MN_t) k = kMN;
         else if (FC==MC_t)
         {
             double p, q, t;
@@ -489,12 +495,35 @@ inline void ElastoPlastic::Hardening (EquilibState const * Sta) const
             double g  = sqrt(2.0)*sphi/(sqrt(3.0)*cos(th)-sphi*sin(th));
             k = (p + cbar)*g;
         }
-        else if (FC==MN_t) k = kMN;
+        else throw new Fatal("ElastoPlastic::Hardening: NewSU FC not implemented");
+
+
+        double qoct = Calc_qoct (Sta->Sig);
+        Vec_t s;
+        Dev (Sta->Sig, s);
+        if (qoct<1.0e-8)
+        {
+            Vec_t sig(Sta->Sig);
+            sig(2) += 1.0e-5;
+            Dev (sig, s);
+            qoct = Calc_qoct (sig);
+            if (qoct<1.0e-8)
+            {
+                std::ostringstream oss;
+                oss << "Sig = "      << PrintVector(Sta->Sig);
+                oss << "sig = "      << PrintVector(sig);
+                oss << "dev(sig) = " << PrintVector(s);
+                throw new Fatal("ElastoPlastic::Hardening:: __internal_error__ qoct=%g is too small\n%s",qoct,oss.str().c_str());
+            }
+        }
+
 
         double D = 2.0*k/(k+Sta->Ivs(0))-1.0;
-        double m = 1.0-exp(-BetSU*D);
         if (D<0.0) D = 0.0;
-        H(0) = Gbar*m*Norm(dev_W);
+        double m = 1.0-exp(-BetSU*D);
+        //H(0) = Gbar*m*Norm(dev_W);
+        H(0) = Gbar*m;//*Norm(s);
+        printf("z0=%g, H0=%g, Norm(devW)=%g, D=%g, m=%g\n",Sta->Ivs(0),H(0),Norm(dev_W),D,m);
     }
 }
 
@@ -509,7 +538,7 @@ inline double ElastoPlastic::YieldFunc (EquilibState const * Sta) const
     {
         double p = Calc_poct (Sta->Sig);
         double q = Calc_qoct (Sta->Sig);
-        if (NewSU) return q - Sta->Ivs(0); // TODO: new stress update
+        if (NewSU) return q - p*Sta->Ivs(0); // TODO: new stress update
         return q - p*kDP;
     }
     else if (FC==MC_t)
