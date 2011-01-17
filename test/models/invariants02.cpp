@@ -93,6 +93,13 @@ public:
             Sig    = 0.1*Sig0 + M*Sig0;
             dSigdt = dMdt*Sig0;
         }
+
+        // characteristic invariants
+        CharInvs (Sig, I1,I2,I3, dI1dsig,dI2dsig,dI3dsig);
+        dI1dt = dot (dI1dsig , dSigdt);
+        dI2dt = dot (dI2dsig , dSigdt);
+        dI3dt = dot (dI3dsig , dSigdt);
+
         EigenProjDerivs (Sig, L, v0,v1,v2, P0,P1,P2, dP0dSig, dP1dSig, dP2dSig, sort);
         //EigenProj (Sig,    L,     P0,  P1,  P2, sort);
         //EigenProj (dSigdt, dLdt, dP0, dP1, dP2);
@@ -102,6 +109,7 @@ public:
         Dev          (Sig,    S);
         Dev          (dSigdt, dSdt);
         OctInvs      (L, p1, q1, T1, dpdL, dqdL, dTdL);
+        OctInvs      (Sig, p4, q4, T4, th4, devSig4, 1.0e-8, &dthdSig4);
         OctDerivs    (L, p2, q2, T2, dpqthdL);
         if (use_iod) InvOctDerivs (L, p3, q3, T3, dLdpqth); // L need to be sorted
         else         Inv          (dpqthdL, dLdpqth);
@@ -111,11 +119,17 @@ public:
         DerivInv     (Sig, invSig, diSig_dSig);
         p = Calc_poct (Sig);
         q = Calc_qoct (Sig);
+        Vec_t dif_devSig4(S - devSig4);
+        double err_devSig4 = Norm(dif_devSig4);
+        if (err_devSig4>1.0e-14) throw new Fatal("Error with devSig4 = %g",err_devSig4);
         if (fabs(p-p1) >1.0e-14) throw new Fatal("Error with p=%g, p1=%g",p,p1);
         if (fabs(q-q1) >1.0e-14) throw new Fatal("Error with q=%g, q1=%g",q,q1);
         if (fabs(p-p2) >1.0e-14) throw new Fatal("Error with p=%g, p2=%g",p,p1);
         if (fabs(q-q2) >1.0e-14) throw new Fatal("Error with q=%g, q2=%g",q,q1);
+        if (fabs(p-p4) >1.0e-14) throw new Fatal("Error with p=%g, p4=%g",p,p4);
+        if (fabs(q-q4) >1.0e-14) throw new Fatal("Error with q=%g, q4=%g",q,q4);
         if (fabs(T1-T2)>1.0e-14) throw new Fatal("Error with T1=%g, T2=%g",T1,T2);
+        if (fabs(T1-T4)>1.0e-14) throw new Fatal("Error with T1=%g, T4=%g",T1,T4);
         if (use_iod)
         {
             if (fabs(p-p3) >1.0e-14) throw new Fatal("Error with p=%g, p3=%g",p,p3);
@@ -137,12 +151,16 @@ public:
         dL2dt2  = dLdpqth(2,0)*dpdt1 + dLdpqth(2,1)*dqdt1 + dLdpqth(2,2)*dthdt1;
         diSdt   = diSig_dSig * dSigdt;
         pqth2L (p, q, th, L1);
+        Vec_t dif_dthdSig(dthdSig - dthdSig4);
+        double err_dthdSig = Norm(dif_dthdSig);
+        if (err_dthdSig>1.0e-14) throw new Fatal("Error with dthdSig4 = %g",err_dthdSig);
         for (size_t i=0; i<3; ++i)
         {
             if (fabs(dpdL (i)-dpqthdL(0,i))>1.0e-15) throw new Fatal("Error with dpdL(%d)=%g, dpqthdL(0,%d)=%g", i,dpdL(i),i,dpqthdL(0,i));
             if (fabs(dqdL (i)-dpqthdL(1,i))>1.0e-15) throw new Fatal("Error with dqdL(%d)=%g, dpqthdL(1,%d)=%g", i,dqdL(i),i,dpqthdL(1,i));
             if (fabs(dthdL(i)-dpqthdL(2,i))>1.0e-13) throw new Fatal("Error with dthdL(%d)=%g, dpqthdL(2,%d)=%g",i,dthdL(i),i,dpqthdL(2,i));
         }
+
 #ifdef HAS_TENSORS
         // derivative of inverse w.r.t. sig
         Tensor2<double,3> A, iA, dAdt, dInvAdt;
@@ -178,6 +196,11 @@ public:
         dPdt[1] = dP1dSig * dSigdt;
         dPdt[2] = dP2dSig * dSigdt;
     }
+
+    double I1Fun  (double t) { CalcState(t); return I1;        }
+    double I2Fun  (double t) { CalcState(t); return I2;        }
+    double I3Fun  (double t) { CalcState(t); return I3;        }
+
     double pFun   (double t) { CalcState(t); return p;         }
     double qFun   (double t) { CalcState(t); return q;         }
     double thFun  (double t) { CalcState(t); return th;        }
@@ -238,6 +261,11 @@ public:
     double c, p, q, th, dpdt1, dqdt1, dqdt2, dpdt2, dthdt1, dthdt2, dL0dt2, dL1dt2, dL2dt2;
     double p1,q1,T1, p2,q2,T2, p3,q3,T3;
     Mat_t  dP0dSig, dP1dSig, dP2dSig;
+    double p4, q4, T4, th4;
+    Vec_t  devSig4, dthdSig4;
+    Vec_t  dI1dsig,dI2dsig,dI3dsig; ///< derivative of characteristic invariants
+    double I1, I2, I3, dI1dt, dI2dt, dI3dt; ///< Invariants
+
     Array<Vec_t> dPdt;
 #ifdef HAS_TENSORS
     Array<Ten1_t> dvdt;
@@ -262,9 +290,43 @@ int main(int argc, char **argv) try
     if (prob.use_iod) printf("  . . . Using InvOctDerivs method\n");
     if (prob.sort)    printf("  . . . Sorting eigenvalues\n");
 
+    // I1, I2, I3 and derivatives
+    if (verbose)
+    {
+        printf("%6s %12s %12s %12s %16s  %12s %12s %12s %16s  %12s %12s %12s %16s\n",
+                "t", "I1", "dI1dt_num", "dI1dt", "err(dI1dt)",
+                     "I2", "dI2dt_num", "dI2dt", "err(dI2dt)",
+                     "I3", "dI3dt_num", "dI3dt", "err(dI3dt)");
+    }
+    double max_err_dI1dt = 0.0;
+    double max_err_dI2dt = 0.0;
+    double max_err_dI3dt = 0.0;
+    for (size_t i=0; i<ndiv+1; ++i)
+    {
+        double t         = (double)i/(double)ndiv;
+        double dI1dt_num = nd.DyDx (&Problem::I1Fun, t);
+        double dI2dt_num = nd.DyDx (&Problem::I2Fun, t);
+        double dI3dt_num = nd.DyDx (&Problem::I3Fun, t);
+        prob.CalcState (t);
+        double err_dI1dt = fabs(dI1dt_num - prob.dI1dt);
+        double err_dI2dt = fabs(dI2dt_num - prob.dI2dt);
+        double err_dI3dt = fabs(dI3dt_num - prob.dI3dt);
+        if (err_dI1dt > max_err_dI1dt) max_err_dI1dt = err_dI1dt;
+        if (err_dI2dt > max_err_dI2dt) max_err_dI2dt = err_dI2dt;
+        if (err_dI3dt > max_err_dI3dt) max_err_dI3dt = err_dI3dt;
+        if (verbose)
+        {
+            printf("%6.3f %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e  %12.8f %12.8f %12.8f %16.8e\n",
+                    t, prob.I1, dI1dt_num, prob.dI1dt, err_dI1dt,
+                       prob.I2, dI2dt_num, prob.dI2dt, err_dI2dt,
+                       prob.I3, dI3dt_num, prob.dI3dt, err_dI3dt);
+        }
+    }
+
     // p, q, t and derivatives
     if (verbose)
     {
+        printf("\n");
         printf("%6s %12s %12s %12s %12s %16s %16s  %12s %12s %12s %12s %16s %16s  %12s %12s %12s %12s %16s %16s\n",
                 "t","p", "dpdt_num", "dpdt1", "dpdt2", "err(dpdt1)", "err(dpdt2)",
                     "q", "dqdt_num", "dqdt1", "dqdt2", "err(dqdt1)", "err(dqdt2)",
@@ -478,6 +540,9 @@ int main(int argc, char **argv) try
 #endif
 
     // error
+    double tol_dI1dt  = 1.0e-7;
+    double tol_dI2dt  = 1.0e-6;
+    double tol_dI3dt  = 1.0e-7;
     double tol_dpdt   = 1.0e-6;
     double tol_dqdt   = 1.0e-7;
     double tol_dthdt  = 1.0e-6;
@@ -488,12 +553,15 @@ int main(int argc, char **argv) try
     double tol_diS1dt = 1.0e-5;
     double tol_diS2dt = 1.0e-4;
     double tol_diS3dt = 1.0e-5;
-    double tol_diS4dt = 1.0e-5;
+    double tol_diS4dt = 1.0e-4;
     double tol_diS5dt = 1.0e-4;
     double tol_dPdt[3][6]= {{1.0e-6, 1.0e-6, 1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6},
                             {1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6, 1.0e-6, 1.0e-6},
                             {1.0e-6, 1.0e-6, 1.0e-7, 1.0e-6, 1.0e-6, 1.0e-7}};
     printf("\n");
+    printf("  max_err_dI1dt  = %s%16.8e%s\n",(max_err_dI1dt >tol_dI1dt ?TERM_RED:TERM_GREEN),max_err_dI1dt, TERM_RST);
+    printf("  max_err_dI2dt  = %s%16.8e%s\n",(max_err_dI2dt >tol_dI2dt ?TERM_RED:TERM_GREEN),max_err_dI2dt, TERM_RST);
+    printf("  max_err_dI3dt  = %s%16.8e%s\n",(max_err_dI3dt >tol_dI3dt ?TERM_RED:TERM_GREEN),max_err_dI3dt, TERM_RST);
     printf("  max_err_dpdt   = %s%16.8e%s\n",(max_err_dpdt  >tol_dpdt  ?TERM_RED:TERM_GREEN),max_err_dpdt,  TERM_RST);
     printf("  max_err_dqdt   = %s%16.8e%s\n",(max_err_dqdt  >tol_dqdt  ?TERM_RED:TERM_GREEN),max_err_dqdt,  TERM_RST);
     printf("  max_err_dthdt  = %s%16.8e%s\n",(max_err_dthdt >tol_dthdt ?TERM_RED:TERM_GREEN),max_err_dthdt, TERM_RST);

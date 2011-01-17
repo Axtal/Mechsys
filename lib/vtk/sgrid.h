@@ -81,7 +81,7 @@ public:
     void ShowIds    (double OriX=90, double OriY=90, double OriZ=45, double Scale=0.003, int SizePt=14, bool Shadow=true, char const * Color="blue");
     void AddTo      (VTK::Win & win);
     void WriteVTK   (char const * Filekey);
-    void FilterV    (double F=0.0, double Tol=1.0e-3);
+    void FilterV    (double F=0.0, double Tol=1.0e-3, bool Normalize=false);
 
 private:
     GridCallBack             _func;
@@ -221,12 +221,17 @@ inline void SGrid::WriteVTK (char const * Filekey)
     writer -> Delete      ();
 }
 
-inline void SGrid::FilterV (double F, double Tol)
+inline void SGrid::FilterV (double F, double Tol, bool Normalize)
 {
     for (int i=0; i<_scalars->GetNumberOfTuples(); ++i)
     {
-        double   f = _scalars->GetTuple1(i);
-        //double * v = _vectors->GetTuple3(i);
+        double f = _scalars->GetTuple1(i);
+        if (Normalize)
+        {
+            double * v = _vectors->GetTuple3(i);
+            double norm = sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+            if (norm>0.0) _vectors->SetTuple3 (i, v[0]/norm, v[1]/norm, v[2]/norm);
+        }
         if (fabs(f-F)>Tol) _vectors->SetTuple3 (i, 0.0, 0.0, 0.0);
     }
 }

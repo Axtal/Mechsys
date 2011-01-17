@@ -157,7 +157,7 @@ inline void CamClay::Hardening (EquilibState const * Sta) const
         double D = 2.0*Sta->Ivs(1)/(Sta->Ivs(1)+Sta->Ivs(0))-1.0;
         if (D<0.0) D = 0.0;
         H(1) = exp(-BetSU*D)*H(0); //  (D>0.0 ? 0.0 : H(0));
-        H(0) = H(0) + Gbar*(1.0-exp(-BetSU*D));
+        H(0) = H(0) + AlpSU*(1.0-exp(-BetSU*D));
         //printf("z0=%g, z1=%g, D=%g, H0=%g, H1=%g\n",Sta->Ivs(0),Sta->Ivs(1),D,H(0),H(1));
     }
 }
@@ -194,7 +194,7 @@ int CamClayRegister()
     ModelFactory   ["CamClay"] = CamClayMaker;
     MODEL.Set      ("CamClay", (double)MODEL.Keys.Size());
     MODEL_PRM_NAMES["CamClay"].Resize(7);
-    MODEL_PRM_NAMES["CamClay"] = "lam", "kap", "nu", "phi", "newsu", "betsu", "Gbar";
+    MODEL_PRM_NAMES["CamClay"] = "lam", "kap", "nu", "phi", "newsu", "betsu", "alpsu";
     MODEL_IVS_NAMES["CamClay"].Resize(2);
     MODEL_IVS_NAMES["CamClay"] = "v0", "OCR";
     return 0;

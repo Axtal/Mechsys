@@ -1507,6 +1507,9 @@ inline double Calc_evoct (Vec_t const & Eps) { return  (Eps(0)+Eps(1)+Eps(2))/sq
 inline double Calc_qoct  (Vec_t const & Sig) { double m = (size(Sig)>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(3.0); }
 inline double Calc_edoct (Vec_t const & Eps) { double m = (size(Eps)>4 ? pow(Eps(4),2.0)+pow(Eps(5),2.0) : 0.0); return sqrt(pow(Eps(0)-Eps(1),2.0) + pow(Eps(1)-Eps(2),2.0) + pow(Eps(2)-Eps(0),2.0) + 3.0*(pow(Eps(3),2.0)+m))/sqrt(3.0); }
 
+// Octahedral invariants of Sig. */
+inline void Calc_pqoct (Vec_t const & Sig, double & p, double & q) { p = Calc_poct(Sig);  q = Calc_qoct(Sig); }
+
 
 /** Octahedral invariants of Sig. */
 inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, double qTol=1.0e-8)
@@ -1525,6 +1528,52 @@ inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, doub
         if (t<=-1.0) t = -1.0;
         if (t>= 1.0) t =  1.0;
     }
+}
+
+/** Octahedral invariants of Sig (and deviator s). */
+inline void OctInvs (Vec_t const & Sig, double & p, double & q, Vec_t & s, double qTol=1.0e-8)
+{
+    q = Calc_qoct (Sig);
+    if (q>qTol)
+    {
+        p = Calc_poct (Sig);
+        Dev (Sig, s);
+    }
+    else
+    {
+        Vec_t sig(Sig);
+        sig(3) += (-qTol*Util::SQ2);
+        q = Calc_qoct (sig);
+        p = Calc_poct (sig);
+        Dev (sig, s);
+        if (q<=qTol) throw new Fatal("matvec.h::OctInvs: __internal_error__ Pertubation for q<=qTol failed (q=%g, qTol=%g)",q,qTol);
+    }
+}
+
+/** Octahedral invariants of Sig (and derivatives). */
+inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, double & th, Vec_t & s, double qTol=1.0e-8, Vec_t * dthdSig=NULL)
+{
+    OctInvs (Sig, p, q, s, qTol);
+    t  = 0.0;
+    th = asin(t)/3.0;
+    double q3 = pow(q,3.0);
+    if (q3>qTol)
+    {
+        double det_s = Det(s);
+        t = -3.0*Util::SQ6*det_s/q3;
+        if (t<=-1.0) t = -1.0;
+        if (t>= 1.0) t =  1.0;
+        th = asin(t)/3.0;
+        if (dthdSig!=NULL)
+        {
+            Vec_t ss, devss;
+            Pow2 (s, ss);
+            Dev  (ss, devss);
+            if (t>-0.999 && t<0.999) (*dthdSig) = (-1.0/(q*q*cos(3.0*th)))*(t*s + (Util::SQ6/q)*devss);
+            else set_to_zero ((*dthdSig));
+        }
+    }
+    else if (dthdSig!=NULL) set_to_zero ((*dthdSig));
 }
 
 /** Octahedral invariants of Sig (L = principal values). */
