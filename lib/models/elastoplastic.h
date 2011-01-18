@@ -509,7 +509,8 @@ inline void ElastoPlastic::FlowRule (EquilibState const * Sta) const
             if (NonAssoc)
             {
                 Calc_dgdsig (Sta->Sig, true);
-                W = (q/(g*p*p*Util::SQ3))*I + (1.0/(p*q*g))*s - (q/(p*g*g))*dgdsig;
+                //W = (q/(g*p*p*Util::SQ3))*I + (1.0/(p*q*g))*s - (q/(p*g*g))*dgdsig;
+                W = (g/Util::SQ3)*I + (1.0/q)*s - p*dgdsig;
             }
             else W = V;
             break;

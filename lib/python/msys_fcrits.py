@@ -36,6 +36,8 @@ class FCrits:
         self.obliq1  = False                 # anisotropic fc: oblique projection type 1
         self.obliq2  = False                 # anisotropic fc: oblique projection type 2
         self.Imat    = matrix(diag(ones(3))) # identity matrix 3x3
+        self.t       = 1.0                   # t=sin(3th) for p-q plane
+        self.pqty    = 'cam'                 # pq type for p-q plane
         self.r       = None                  # radius in Pi plane
         self.sc      = 1.0                   # mean pressure => distance of cross-section to the origin of Haigh-Westergaard space
         self.samin   = None                  # min sa in Pi plane
@@ -85,7 +87,7 @@ class FCrits:
         self.sphi  = sin(self.phi*pi/180.0)
         self.tgphi = tan(self.phi*pi/180.0)
         self.kDP   = 2.0*sqrt(2.0)*self.sphi/(3.0-self.sphi)
-        self.kNM   = 9.0 + 8.0*self.tgphi**2.0
+        self.kMN   = 9.0 + 8.0*self.tgphi**2.0
         self.kLD   = ((3.0-self.sphi)**3.0)/((1.0+self.sphi)*((1.0-self.sphi)**2))
         self.cbar = sqrt(3.0)*self.c/self.tgphi
         if sY==None:
@@ -95,7 +97,7 @@ class FCrits:
         print 'c     = ', self.c
         print 'phi   = ', self.phi
         print 'kDP   = ', self.kDP
-        print 'kNM   = ', self.kNM
+        print 'kMN   = ', self.kMN
         print 'kLD   = ', self.kLD
         print 'kVM   = ', self.kVM
 
@@ -197,12 +199,12 @@ class FCrits:
             else: f = q - (p + self.cbar)*g
 
         # Nakai/Matsuoka
-        elif typ=='NM':
+        elif typ=='MN':
             l = sig_calc_s123(sig)
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
             I1,I2,I3 = char_invs(sig)
-            if ysurf: raise Exception('func: ysurf is not available with NM')
-            else: f = I1*I2 - self.kNM*I3
+            if ysurf: raise Exception('func: ysurf is not available with MN')
+            else: f = I1*I2 - self.kMN*I3
 
         # Lade/Duncan
         elif typ=='LD':
@@ -247,8 +249,8 @@ class FCrits:
         if   typ=='VM':    return 'von Mises'
         elif typ=='DP':    return 'Drucker/Prager'
         elif typ=='MC':    return 'Mohr/Coulomb'
-        elif typ=='NM':    return 'Nakai/Matsuoka'
-        elif typ=='NMnl':  return 'Nakai/Matsuoka (non-linear)'
+        elif typ=='MN':    return 'Matsuoka/Nakai'
+        elif typ=='MNnl':  return 'Matsuoka/Nakai(non-linear)'
         elif typ=='LD':    return 'Lade/Duncan'
         elif typ=='AS':    return 'Argyris/Sheng'
         elif typ=='AMP':   return 'Anisotropic'
@@ -314,34 +316,91 @@ class FCrits:
             self.rst_txt.append (t5)
 
 
+    # Get boundaries of active axes
+    # ==============================
+    def get_bounds (self, sf=0.05):
+            xmin, xmax = gca().get_xbound()
+            ymin, ymax = gca().get_ybound()
+            Dx  , Dy   = xmax-xmin, ymax-ymin
+            xmin, xmax = xmin-sf*Dx, xmax+sf*Dx
+            ymin, ymax = ymin-sf*Dy, ymax+sf*Dy
+            return xmin, xmax, ymin, ymax
+
+
     # Plot failure criteria
     # =====================
-    def plot (self, typ='NM', clr='red', lst='-', lwd=1, label=None, np=40, leg_set=True, show_phi=True, fsz=10):
+    def plot (self, typ='MN', clr='red', lst='-', lwd=1, label=None, np=40, leg_set=True, show_phi=False, fsz=10,
+              plane='oct'):
 
-        # radius
+        # data
         r = self.sc*phi_calc_M(self.phi,'oct') if self.r==None else self.r
+        x, y, f = zeros((np,np)), zeros((np,np)), zeros((np,np))
+
+        # data for octahedral plane
+        if plane=='oct':
+            samin = -1.1*r if self.samin==None else self.samin
+            samax =  1.1*r if self.samax==None else self.samax
+            sbmin = -1.1*r if self.sbmin==None else self.sbmin
+            sbmax =  1.1*r if self.sbmax==None else self.sbmax
+            dsa = (samax-samin)/np
+            dsb = (sbmax-sbmin)/np
+            for i in range(np):
+                for j in range(np):
+                    x[i,j] = samin + i*dsa
+                    y[i,j] = sbmin + j*dsb
+                    if self.sxyz: s = oct_calc_sxyz (x[i,j], y[i,j], self.sc)
+                    else:         s = oct_calc_s123 (x[i,j], y[i,j], self.sc)
+                    sig    = matrix([[s[0]],[s[1]],[s[2]],[0.0]])
+                    f[i,j] = self.func (sig, typ)
+
+        # data for p-q plane
+        elif plane=='pq':
+            pmin, pmax, qmin, qmax = self.get_bounds ()
+            dp = (pmax-pmin)/np
+            dq = (qmax-qmin)/np
+            for i in range(np):
+                for j in range(np):
+                    x[i,j] = pmin + i*dp
+                    y[i,j] = qmin + j*dq
+                    s123   = pqt_calc_s123 (x[i,j], y[i,j], self.t, self.pqty)
+                    sig    = matrix([[s123[0]],[s123[1]],[s123[2]],[0.0]])
+                    f[i,j] = self.func (sig, typ)
+
+        # data for s3-s1, s3-s2 plane
+        elif plane=='dev':
+            cte = -sqrt(3.0)*self.sc
+            xmin, xmax, ymin, ymax = self.get_bounds (0.1)
+            dx = (xmax-xmin)/np
+            dy = (ymax-ymin)/np
+            for i in range(np):
+                for j in range(np):
+                    x[i,j] = xmin + i*dx
+                    y[i,j] = ymin + j*dy
+                    s1     = (y[i,j] - 2.0*x[i,j] + cte)/3.0
+                    s2     = (x[i,j] - 2.0*y[i,j] + cte)/3.0
+                    s3     = (x[i,j] +     y[i,j] + cte)/3.0
+                    sig    = matrix([[s1], [s2], [s3], [0.0]])
+                    f[i,j] = self.func (sig, typ)
+
+        # data for sxyz plane
+        elif plane=='xy':
+            xmin, xmax, ymin, ymax = self.get_bounds ()
+            dx  = (xmax-xmin)/np
+            dy  = (ymax-ymin)/np
+            sq2 = sqrt(2.0)
+            plot ([xmin,xmax], [xmin/sq2,xmax/sq2], 'k-') # hydrostatic line
+            for i in range(np):
+                for j in range(np):
+                    x[i,j] = xmin + i*dx
+                    y[i,j] = ymin + j*dy
+                    sig    = matrix([[-x[i,j]/sq2], [-x[i,j]/sq2], [-y[i,j]], [0.0]])
+                    f[i,j] = self.func (sig, typ)
+
+        # wrong plane
+        else: raise Exception('FCrits::plot: plane=%s is invalid'%plane)
 
         # contour
-        f     = zeros ((np,np))
-        sa    = zeros ((np,np))
-        sb    = zeros ((np,np))
-        samin = -1.1*r if self.samin==None else self.samin
-        samax =  1.1*r if self.samax==None else self.samax
-        sbmin = -1.1*r if self.sbmin==None else self.sbmin
-        sbmax =  1.1*r if self.sbmax==None else self.sbmax
-        dsa   = (samax-samin)/np
-        dsb   = (sbmax-sbmin)/np
-        for i in range(np):
-            for j in range(np):
-                sa[i,j] = samin + i*dsa
-                sb[i,j] = sbmin + j*dsb
-                if self.sxyz: s = oct_calc_sxyz (sa[i,j], sb[i,j], self.sc)
-                else:         s = oct_calc_s123 (sa[i,j], sb[i,j], self.sc)
-                sig    = matrix([[s[0]],[s[1]],[s[2]],[0.0]])
-                f[i,j] = self.func (sig, typ)
-        contour (sa,sb,f, [0.0], colors=clr, linestyles=lst, linewidths=lwd)
-
-        # set axis
+        contour (x,y,f, [0.0], colors=clr, linestyles=lst, linewidths=lwd)
         #gca().set_xticks([])
         #gca().set_yticks([])
         #gca().set_frame_on (False)
@@ -370,7 +429,7 @@ class FCrits:
 
     # Plot 3D failure criteria
     # ========================
-    def plot3d (self, typs=['MC','NM'], clr='red', np=40):
+    def plot3d (self, typs=['MC','MN'], clr='red', np=40):
 
         # radius
         r = 1.*phi_calc_M(self.phi,'oct') if self.r==None else self.r

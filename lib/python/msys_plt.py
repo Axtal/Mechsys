@@ -38,7 +38,10 @@ class Plotter:
         self.oct_sxyz   = True      # use Sx,Sy,Sz in oct plane instead of S1,S2,S3
         self.isxyz      = (1,0)     # indices for sxyz plot, use negative numbers for principal components
         self.devplot    = True      # plot s3-s1, s3-s2 instead of Ek, Sk
-        self.pcte       = -1        # if pcte>0 => pcte in Ev x p (logp) plot?
+        self.pcte       = False     # pcte ?
+        self.evcte      = False     # evcte ?
+        self.pctetol    = 1.0e-6    # tol for pcte
+        self.evctetol   = 1.0e-6    # tol for evcte
         self.maxed      = -1        # max Ed to stop the lines
         self.maxev      = -1        # max Ev to stop the lines
         self.one        = -1        # all plots = -1
@@ -88,6 +91,16 @@ class Plotter:
                 ikeys = ['x','y','z']
             Ev[i] *= 100.0 # convert strains to percentage
             Ed[i] *= 100.0
+        if self.pcte:
+            pmin, pmax = min(P), max(P)
+            err = abs(pmin-pmax)
+            if err>self.pctetol: raise Exception('Plotter::plot: pcte cannot be used with pmin=%g and pmax=%g (error=%g, tol=%g)'%(pmin,pmax,err,self.pctetol))
+            P = repeat (P[0], np)
+        if self.evcte:
+            evmin, evmax = min(Ev), max(Ev)
+            err = abs(evmin-evmax)
+            if err>self.evctetol: raise Exception('Plotter::plot: evcte cannot be used with evmin=%g and evmax=%g (error=%g, tol=%g)'%(evmin,evmax,err,self.evctetol))
+            Ev = repeat (Ev[0], np)
         QdivP = Q/P
 
         # constants
@@ -151,8 +164,6 @@ class Plotter:
             else:
                 X    = P
                 xlbl = r'$p_{%s}$'%(self.pq_ty)
-            if self.pcte>0:
-                for k, x in enumerate(X): X[k] = self.pcte
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot   (X, Ev, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
             xlabel (xlbl);  ylabel(r'$\varepsilon_v$ [%]');  grid(True)
