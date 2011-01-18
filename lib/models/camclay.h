@@ -30,13 +30,11 @@ public:
     CamClay (int NDim, SDPair const & Prms);
 
     // Derived methods
-    void   InitIvs   (SDPair const & Ini, State * Sta) const;
-    void   Gradients (EquilibState const * Sta)        const;
-    void   Hardening (EquilibState const * Sta)        const;
-    double YieldFunc (EquilibState const * Sta)        const;
-    double FailCrit  (EquilibState const * Sta)        const;
-    double CalcE     (EquilibState const * Sta) const { return fabs(Sta->Sig(0)+Sta->Sig(1)+Sta->Sig(2))*(1.0-2.0*nu)*v0/kap; }
-    //double CalcE     (EquilibState const * Sta) const { return 6000.0; }
+    void   InitIvs   (SDPair const & Ini, State * Sta)      const;
+    void   Gradients (Vec_t const & Sig, Vec_t const & Ivs) const;
+    void   Hardening (Vec_t const & Sig, Vec_t const & Ivs) const;
+    double YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) const;
+    double CalcE     (Vec_t const & Sig, Vec_t const & Ivs) const { return fabs(Sig(0)+Sig(1)+Sig(2))*(1.0-2.0*nu)*v0/kap; }
 
     // Data
     double         lam;
@@ -45,10 +43,10 @@ public:
     Vec_t          I;
     mutable double v0;
     mutable double chi;
-    double         Mcs;
-    double         wcs;
+    mutable double Mcs;
+    mutable double wcs;
 
-
+    // Internal methods
     double CalcM (double const & sin3th) const;
 };
 
@@ -110,21 +108,21 @@ inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const
     }
 
     // check initial yield function
-    double f = YieldFunc (sta);
+    double f = YieldFunc (sta->Sig, sta->Ivs);
     if (f>1.0e-8) throw new Fatal("CamClay:InitIvs: stress point (sig=(%g,%g,%g,%g], p=%g, q=%g) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,p,q,f,sta->Ivs(0));
 }
 
-inline void CamClay::Gradients (EquilibState const * Sta) const
+inline void CamClay::Gradients (Vec_t const & Sig, Vec_t const & Ivs) const
 {
     // invariants
     double p,q,t;
     Vec_t dev_sig;
-    OctInvs (Sta->Sig, p,q,t);
-    Dev     (Sta->Sig, dev_sig);
+    OctInvs (Sig, p,q,t);
+    Dev     (Sig, dev_sig);
 
     // gradients
     double M = CalcM(t);
-    V    = (M*M*(Sta->Ivs(0)-2.0*p)/(Util::SQ3))*I + 2.0*dev_sig;
+    V    = (M*M*(Ivs(0)-2.0*p)/(Util::SQ3))*I + 2.0*dev_sig;
     Y(0) = -M*M*p;
 
     if (NewSU) Y(1) = 0.0;
@@ -142,40 +140,32 @@ inline void CamClay::Gradients (EquilibState const * Sta) const
             Pow2 (dev_sig, SS);
             dev_SS   = SS - (I * (SS(0)+SS(1)+SS(2))/3.0);
             dth_dsig = (1.5/(q*q*cos3th)) * (dev_SS*(3.0/q) - dev_sig*t);
-            V       += dth_dsig*(2.0*M*p*(Sta->Ivs(0)-p)*dM_dth);
+            V       += dth_dsig*(2.0*M*p*(Ivs(0)-p)*dM_dth);
         }
     }
 
 }
 
-inline void CamClay::Hardening (EquilibState const * Sta) const
+inline void CamClay::Hardening (Vec_t const & Sig, Vec_t const & Ivs) const
 {
-    H(0) = Sta->Ivs(0)*Tra(W)/chi;
+    H(0) = Ivs(0)*Tra(W)/chi;
 
     if (NewSU)
     {
-        double D = 2.0*Sta->Ivs(1)/(Sta->Ivs(1)+Sta->Ivs(0))-1.0;
+        double D = 2.0*Ivs(1)/(Ivs(1)+Ivs(0))-1.0;
         if (D<0.0) D = 0.0;
         H(1) = exp(-BetSU*D)*H(0); //  (D>0.0 ? 0.0 : H(0));
         H(0) = H(0) + AlpSU*(1.0-exp(-BetSU*D));
-        //printf("z0=%g, z1=%g, D=%g, H0=%g, H1=%g\n",Sta->Ivs(0),Sta->Ivs(1),D,H(0),H(1));
+        //printf("z0=%g, z1=%g, D=%g, H0=%g, H1=%g\n",Ivs(0),Ivs(1),D,H(0),H(1));
     }
 }
 
-inline double CamClay::YieldFunc (EquilibState const * Sta) const
+inline double CamClay::YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) const
 {
     double p,q,t;
-    OctInvs (Sta->Sig, p,q,t);
+    OctInvs (Sig, p,q,t);
     double M = CalcM(t);
-    return q*q + (p - Sta->Ivs(0))*p*M*M;
-}
-
-inline double CamClay::FailCrit (EquilibState const * Sta) const
-{
-    double p,q,t;
-    OctInvs (Sta->Sig, p,q,t);
-    double M = CalcM(t);
-    return q - M*p;
+    return q*q + (p - Ivs(0))*p*M*M;
 }
 
 inline double CamClay::CalcM (double const & sin3th) const
