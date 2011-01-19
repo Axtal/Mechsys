@@ -365,7 +365,7 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
             Ivs0     = sta->Ivs;
             crossing = true;
         }
-        else if (numL<0.0)
+        else if (numL<-qTol) // (numL<0.0) does not work, since it may be equal to -0.0 => neutral loading
         {
             // moving stress state slighlty to the inside of the yield surface in order to have f=-FTol
             double df   = -FTol - f;
