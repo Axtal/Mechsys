@@ -29,6 +29,7 @@
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/linalg/matvec.h>
+#include <mechsys/numerical/odesolver.h>
 
 class State
 {
@@ -53,15 +54,15 @@ public:
     virtual ~Model () {}
 
     // Methods
-    virtual void InitIvs      (SDPair const & Ini, State * Sta)                              const =0;
-    virtual void TgIncs       (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs)  const { throw new Fatal("Model::TgIncs: This method is not available in this model (%s)",Name.CStr()); }
-    virtual void InvTgIncs    (State const * Sta, Vec_t & DSig, Vec_t & DEps, Vec_t & DIvs)  const { throw new Fatal("Model::InvTgIncs: This method is not available in this model (%s)",Name.CStr()); }
-    virtual void Stiffness    (State const * Sta, Mat_t & D)                                 const { throw new Fatal("Model::Stiffness: This method is not available in this model (%s)",Name.CStr()); }
-    virtual void Stiffness    (State const * Sta, Mat_t & D, Vec_t & Dw)                     const { throw new Fatal("Model::Stiffness(Dw): This method is not available in this model (%s)",Name.CStr()); }
-    virtual void Hydraulic    (State const * Sta, Mat_t & Kw, double & ChiW, double & InvQs) const { throw new Fatal("Model::Hydraulic: This method is not available in this model (%s)",Name.CStr()); }
-    virtual bool LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt)       const { alpInt=-1; return false; }
-    virtual void CorrectDrift (State * Sta)                                                  const {}
-    virtual void UpdatePath   (State const * Sta, Vec_t const & DEps, Vec_t const & DSig)    const {}
+    virtual void   InitIvs      (SDPair const & Ini, State * Sta)                              const =0;
+    virtual void   TgIncs       (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs)  const { throw new Fatal("Model::TgIncs: This method is not available in this model (%s)",Name.CStr()); }
+    virtual void   InvTgIncs    (State const * Sta, Vec_t & DSig, Vec_t & DEps, Vec_t & DIvs)  const { throw new Fatal("Model::InvTgIncs: This method is not available in this model (%s)",Name.CStr()); }
+    virtual void   Stiffness    (State const * Sta, Mat_t & D)                                 const { throw new Fatal("Model::Stiffness: This method is not available in this model (%s)",Name.CStr()); }
+    virtual void   Stiffness    (State const * Sta, Mat_t & D, Vec_t & Dw)                     const { throw new Fatal("Model::Stiffness(Dw): This method is not available in this model (%s)",Name.CStr()); }
+    virtual void   Hydraulic    (State const * Sta, Mat_t & Kw, double & ChiW, double & InvQs) const { throw new Fatal("Model::Hydraulic: This method is not available in this model (%s)",Name.CStr()); }
+    virtual bool   LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt)       const { alpInt=-1; return false; }
+    virtual size_t CorrectDrift (State * Sta)                                                  const { return 0; }
+    virtual void   UpdatePath   (State const * Sta, Vec_t const & DEps, Vec_t const & DSig)    const {}
 
     // Data
     int           NDim;    ///< Space dimension: 2 or 3
@@ -86,7 +87,6 @@ inline Model::Model (int TheNDim, SDPair const & ThePrms, char const * TheName)
     : NDim(TheNDim), Prms(ThePrms), GTy(SDPairToGType(ThePrms,(TheNDim==3?"d3d":"d2d"))), 
       Name(TheName), NCps(2*NDim),  NIvs(0)
 {
-    SUp.SetModel (this);
 }
 
 std::ostream & operator<< (std::ostream & os, Model const & D)

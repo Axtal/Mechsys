@@ -47,7 +47,7 @@ public:
     void   Unpack  (Array<double> const & V);
 
     // Auxiliar methods
-    void Output (std::ostream & os, bool WithHeader=false, char const * NF="%13g") const;
+    void Output (std::ostream & os, bool WithHeader=false, char const * NF="%16.8e") const;
 
     // Operators
     void operator= (EquilibState const & Another);

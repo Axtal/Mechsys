@@ -90,6 +90,9 @@ inline LinElastic::LinElastic (int NDim, SDPair const & Prms)
         }
         else throw new Fatal("LinElastic::Stiffness: 3D: This model is not available for GeometryType = %s",GTypeToStr(GTy).CStr());
     }
+
+    // set model in stress update
+    SUp.SetModel (this);
 }
 
 inline void LinElastic::InitIvs (SDPair const & Ini, State * Sta) const

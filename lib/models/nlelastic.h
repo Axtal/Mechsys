@@ -70,6 +70,9 @@ inline NLElastic::NLElastic (int NDim, SDPair const & Prms)
 
     // elastic stiffness
     De.change_dim (NCps,NCps);
+
+    // set model in stress update
+    SUp.SetModel (this);
 }
 
 inline void NLElastic::InitIvs (SDPair const & Ini, State * Sta) const

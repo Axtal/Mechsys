@@ -57,8 +57,6 @@ public:
 inline CamClay::CamClay (int NDim, SDPair const & Prms)
     : ElastoPlastic (NDim,Prms,/*derived*/true)
 {
-    Name = "CamClay";
-
     // parameters
     lam = Prms("lam");
     kap = Prms("kap");
@@ -79,6 +77,10 @@ inline CamClay::CamClay (int NDim, SDPair const & Prms)
     H.change_dim (NIvs);
     IvNames.Push ("z0");
     if (NewSU) IvNames.Push ("z1");
+
+    // set model in stress update
+    Name = "CamClay";
+    SUp.SetModel (this);
 }
 
 inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const

@@ -95,8 +95,8 @@ int main(int argc, char **argv) try
     FEM::Domain dom(mesh, prps, mdls, inis, "fig_11_19", &out_nods);
 
     // solver
-    FEM::RKSolver sol(dom);
-    //FEM::Solver sol(dom);
+    //FEM::RKSolver sol(dom);
+    FEM::Solver sol(dom);
     //sol.DScheme = FEM::Solver::RK_t;
     //sol.DScheme = FEM::Solver::GN22_t;
 

@@ -525,6 +525,7 @@ inline void InpFile::SetPrmsInis (MatFile const & Mat, bool ForceGTY)
         Inis->Set (tag, inis);
         if (ForceGTY)
         {
+            if (Prps->Keys.Size()==0) throw new Fatal("InpFile::SetPrmsInis: Dictionary of properties (Prps) is empty => ForceGTY (geometry type) cannot be applied");
             SDPair const & prps = (*Prps)(tag);
             Array<String> gtypes("d3d", "d2d", "psa", "pse", "fra");
             for (size_t i=0; i<gtypes.Size(); ++i)

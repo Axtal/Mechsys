@@ -36,10 +36,10 @@ public:
     virtual ~ElastoPlastic () {}
 
     // Derived methods
-    virtual void TgIncs       (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const;
-    virtual void Stiffness    (State const * Sta, Mat_t & D)                                const;
-    virtual void CorrectDrift (State       * Sta)                                           const;
-    virtual bool LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt)      const;
+    virtual void   TgIncs       (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const;
+    virtual void   Stiffness    (State const * Sta, Mat_t & D)                                const;
+    virtual size_t CorrectDrift (State       * Sta)                                           const;
+    virtual bool   LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt)      const;
 
     // Internal methods to be overloaded by derived classes
     virtual void   InitIvs   (SDPair const & Ini, State * Sta)      const;
@@ -191,6 +191,9 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
             case MC_t: { Name = "ElastoPlastic(MC)"; break; }
             case MN_t: { Name = "ElastoPlastic(MN)"; break; }
         }
+
+        // set model in stress update
+        SUp.SetModel (this);
     }
 
     // new stress update parmeters
@@ -286,7 +289,7 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D) const
     }
 }
 
-inline void ElastoPlastic::CorrectDrift (State * Sta) const
+inline size_t ElastoPlastic::CorrectDrift (State * Sta) const
 {
     EquilibState * sta = static_cast<EquilibState *>(Sta);
     double fnew  = YieldFunc (sta->Sig, sta->Ivs);
@@ -310,6 +313,7 @@ inline void ElastoPlastic::CorrectDrift (State * Sta) const
         it++;
     }
     if (it>=maxIt) throw new Fatal("ElastoPlastic::CorrectDrift: Yield surface drift correction did not converge after %d iterations (fnew=%g, CDFtol=%g)",it,fnew,CDFtol);
+    return it;
 }
 
 inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, double & alpInt) const

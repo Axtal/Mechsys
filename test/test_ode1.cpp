@@ -71,16 +71,19 @@ int main(int argc, char **argv) try
     sol.Y[0] = y0ini;
     sol.Y[1] = y1ini;
     double tout = 0.0 + dtOut;
+    size_t sumSS = 0;
     while (sol.t<tf)
     {
         sol.Evolve (tout);
         of << _8s<<sol.t << _8s<<sol.Y[0] << _8s<<sol.Y[1] << endl;
         tout += dtOut;
+        if (sol.Scheme=="RK12") sumSS += sol.SS;
     }
+    if (sol.Scheme=="RK12") printf("sumSS=%zd\n",sumSS);
 
     // close file
     of.close();
-    cout << "\nFile <" << TERM_CLR_BLUE_H << "test_ode1.res" << TERM_RST << "> written" << endl;
+    cout << "\nFile <" << TERM_CLR_BLUE_H << "test_ode1.dat" << TERM_RST << "> written" << endl;
     cout << endl;
 
     // end
