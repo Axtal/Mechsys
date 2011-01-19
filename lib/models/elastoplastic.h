@@ -62,7 +62,8 @@ public:
     double  sphi;       ///< Sin(phi) friction angle
     double  spsi;       ///< Sin(psi) dilatancy angle
     double  FTol;       ///< Tolerance to be used when finding the intersection
-    double  CDFtol;     ///< Tolerance to be used in correct drift
+    double  DCFTol;     ///< Drift correction ys function tolerance
+    size_t  DCMaxIt;    ///< Drift correction max iterations
     double  qTol;       ///< Tolerance for minium qoct
     bool    NewSU;      ///< New stress update ?
     double  BetSU;      ///< Beta coefficient for new stress update
@@ -109,7 +110,7 @@ public:
 
 inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived)
     : Model (NDim,Prms,"ElastoPlastic"),
-      E(0.0), nu(0.0), FC(VM_t), kVM(0.0), Hb(0.0), NonAssoc(false), FTol(1.0e-7), CDFtol(1.0e-8), qTol(1.0e-7), NewSU(false)
+      E(0.0), nu(0.0), FC(VM_t), kVM(0.0), Hb(0.0), NonAssoc(false), FTol(1.0e-7), DCFTol(1.0e-8), DCMaxIt(10), qTol(1.0e-7), NewSU(false)
 {
     // resize scratchpad arrays
     Sig0   .change_dim (NCps);
@@ -294,9 +295,8 @@ inline size_t ElastoPlastic::CorrectDrift (State * Sta) const
     EquilibState * sta = static_cast<EquilibState *>(Sta);
     double fnew  = YieldFunc (sta->Sig, sta->Ivs);
     size_t it    = 0;
-    size_t maxIt = 10;
     Vec_t  VDe(NCps), DeW(NCps);
-    while (fnew>CDFtol && it<maxIt)
+    while (fnew>DCFTol && it<DCMaxIt)
     {
         Gradients (sta->Sig, sta->Ivs);
         FlowRule  (sta->Sig, sta->Ivs);
@@ -309,10 +309,10 @@ inline size_t ElastoPlastic::CorrectDrift (State * Sta) const
         sta->Sig -= dgam*DeW;
         sta->Ivs += dgam*H;
         fnew = YieldFunc (sta->Sig, sta->Ivs);
-        if (fabs(fnew)<CDFtol) break;
+        if (fabs(fnew)<DCFTol) break;
         it++;
     }
-    if (it>=maxIt) throw new Fatal("ElastoPlastic::CorrectDrift: Yield surface drift correction did not converge after %d iterations (fnew=%g, CDFtol=%g)",it,fnew,CDFtol);
+    if (it>=DCMaxIt) throw new Fatal("ElastoPlastic::CorrectDrift: Yield surface drift correction did not converge after %d iterations (fnew=%g, DCFTol=%g)",it,fnew,DCFTol);
     return it;
 }
 
@@ -374,7 +374,7 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
             Ivs0        = sta->Ivs;
             crossing    = true;
             double fnew = YieldFunc (Sig0, Ivs0);
-            if (fnew>0.0) throw new Fatal("ElastoPlastic::LoadCond: __internal_error__: correctioon for numL<0 failed (dalp=%g, fnew=%g)",dalp,fnew);
+            if (fnew>0.0) throw new Fatal("ElastoPlastic::LoadCond: __internal_error__: correction for numL<0 failed (dalp=%g, fnew=%g)",dalp,fnew);
             //throw new Fatal("ElastoPlastic::LoadCond: Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
         }
         if (crossing)

@@ -133,6 +133,8 @@ public:
     String suscheme;    ///< 45 stress-update scheme
     double sustol;      ///< 46 stress-update STOL
     String surkscheme;  ///< 47 stress-update RK scheme
+    size_t dcmaxit;     ///< 48 drift correction max iterations
+    double dcftol;      ///< 49 drift correction f tolerance
 
     // Additional data
     Dict * Prms; ///< parameters (set by SetMat)
@@ -278,6 +280,8 @@ inline void InpFile::Defaults ()
     suscheme   = "";     // 45
     sustol     = -1;     // 46
     surkscheme = "";     // 47
+    dcmaxit    = 0;      // 48
+    dcftol     = -1;     // 49
 }
 
 inline void InpFile::Read (char const * FileName)
@@ -467,6 +471,8 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="suscheme")   suscheme  = str_val;                    // 45
                 else if (key=="sustol")     sustol    = val;                        // 46
                 else if (key=="surkscheme") surkscheme= str_val;                    // 47
+                else if (key=="dcmaxit")    dcmaxit   = (int)val;                   // 48
+                else if (key=="dcftol")     dcftol    = val;                        // 49
                 else if (key=="npath")    { npath     = (int)val;  reading_path   = true; }
                 else if (key=="nelemprps"){ nelemprps = (int)val;  reading_eprps  = true; }
                 else if (key=="nstages")  { nstages   = (int)val;  reading_stages = true; }
@@ -638,6 +644,8 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     if (IF.suscheme   !="") os << "suscheme  = " << IF.suscheme  << "\n"; //  45
     if (IF.sustol      >=0) os << "sustol    = " << IF.sustol    << "\n"; //  46
     if (IF.surkscheme !="") os << "surkscheme= " << IF.surkscheme<< "\n"; //  47
+    if (IF.dcmaxit      >0) os << "dcmaxit   = " << IF.dcmaxit   << "\n"; //  48
+    if (IF.dcftol       >0) os << "dcftol    = " << IF.dcftol    << "\n"; //  49
     os << "\nPath:\n"                        << (*IF.Path)      << "\n";
     os << "\nElements properties:\n"         << (*IF.Prps)      << "\n";
     os << "\nOutput nodes:\n"                << (*IF.OutNods)   << "\n";

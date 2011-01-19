@@ -160,6 +160,8 @@ BPy::class_<InpFile>("InpFile")
     .def_readwrite("suscheme"   , &InpFile::suscheme  ) //  45
     .def_readwrite("sustol"     , &InpFile::sustol    ) //  46
     .def_readwrite("surkscheme" , &InpFile::surkscheme) //  47
+    .def_readwrite("dcmaxit"    , &InpFile::dcmaxit   ) //  48
+    .def_readwrite("dcftol"     , &InpFile::dcftol    ) //  49
     ;
 
 //////////////////////////////////////////////////////////////////////////////////// mesh /////
