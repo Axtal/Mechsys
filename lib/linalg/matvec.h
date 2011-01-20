@@ -1531,10 +1531,10 @@ inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, doub
 }
 
 /** Octahedral invariants of Sig (and deviator s). */
-inline void OctInvs (Vec_t const & Sig, double & p, double & q, Vec_t & s, double qTol=1.0e-8)
+inline void OctInvs (Vec_t const & Sig, double & p, double & q, Vec_t & s, double qTol=1.0e-8, bool ApplyPertub=false)
 {
     q = Calc_qoct (Sig);
-    if (q>qTol)
+    if (q>qTol || !ApplyPertub)
     {
         p = Calc_poct (Sig);
         Dev (Sig, s);
@@ -1542,11 +1542,18 @@ inline void OctInvs (Vec_t const & Sig, double & p, double & q, Vec_t & s, doubl
     else
     {
         Vec_t sig(Sig);
-        sig(3) += (-qTol*Util::SQ2);
+        if (sig(3)<0.0) sig(3) -= qTol*Util::SQ2;
+        else            sig(3) += qTol*Util::SQ2;
         q = Calc_qoct (sig);
         p = Calc_poct (sig);
         Dev (sig, s);
-        if (q<=qTol) throw new Fatal("matvec.h::OctInvs: __internal_error__ Pertubation for q<=qTol failed (q=%g, qTol=%g)",q,qTol);
+        if (q<=qTol)
+        {
+            std::ostringstream oss;
+            oss << "Sig = " << PrintVector(Sig);
+            oss << "sig = " << PrintVector(sig);
+            throw new Fatal("matvec.h::OctInvs: __internal_error__ Pertubation for q<=qTol failed (q=%g, qTol=%g)\n%s",q,qTol,oss.str().c_str());
+        }
     }
 }
 

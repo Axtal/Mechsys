@@ -219,28 +219,29 @@ inline void ElastoPlastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig
     DIvs.change_dim (NIvs);
     set_to_zero     (DIvs);
 
-    // limit tensile strength
-    if (FC!=VM_t)
-    {
-        p = Calc_poct (sta->Sig);
-        if (p<pTol)
-        {
-            if (!Derived) // plastic strains
-            {
-                DIvs(1) = Calc_ev (DEps); // devp
-                DIvs(2) = Calc_ed (DEps); // dedp
-            }
-            set_to_zero (DSig);
-            return;
-        }
-    }
-
     // De: elastic stiffness
     ELStiff (sta->Sig, sta->Ivs);
 
     // increments
     if (sta->Ldg)
     {
+        // limit tensile strength
+        if (FC!=VM_t)
+        {
+            p = Calc_poct (sta->Sig);
+            if (p<pTol)
+            {
+                printf("ElastoPlastic::TgIncs: __tensile_loading__\n");
+                if (!Derived) // plastic strains
+                {
+                    DIvs(1) = Calc_ev (DEps); // devp
+                    DIvs(2) = Calc_ed (DEps); // dedp
+                }
+                set_to_zero (DSig);
+                return;
+            }
+        }
+
         // gradients, flow rule, hardening, and hp
         Gradients (sta->Sig, sta->Ivs);
         FlowRule  (sta->Sig, sta->Ivs);
@@ -285,24 +286,24 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D) const
     // state
     EquilibState const * sta = static_cast<EquilibState const *>(Sta);
 
-    // limit tensile strength
-    if (FC!=VM_t)
-    {
-        p = Calc_poct (sta->Sig);
-        if (p<pTol)
-        {
-            D.change_dim (NCps,NCps);
-            set_to_zero  (D);
-            return;
-        }
-    }
-
     // De: elastic stiffness
     ELStiff (sta->Sig, sta->Ivs);
 
     // stiffness
     if (sta->Ldg)
     {
+        // limit tensile strength
+        if (FC!=VM_t)
+        {
+            p = Calc_poct (sta->Sig);
+            if (p<pTol)
+            {
+                D.change_dim (NCps,NCps);
+                set_to_zero  (D);
+                return;
+            }
+        }
+
         // gradients, flow rule, hardening, and hp
         Gradients (sta->Sig, sta->Ivs);
         FlowRule  (sta->Sig, sta->Ivs);
@@ -400,6 +401,7 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
     // numerator of Lagrange multiplier
     Gradients (sta->Sig, sta->Ivs);
     double numL = dot(V, DSigTr);
+    printf("f=%g,  ftr=%g,  numL=%g\n",f,f_tr,numL);
 
     // new stress update
     if (NewSU)
@@ -423,7 +425,7 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
     if (f_tr>0.0)
     {
         bool crossing = false;
-        if (f<-FTol) // (f<0.0) does not work
+        if (f<-FTol && f_tr>FTol) // (f<0.0) does not work, (f<-FTol) does not work
         {
             Sig0     = sta->Sig;
             Ivs0     = sta->Ivs;
@@ -618,6 +620,13 @@ inline void ElastoPlastic::Hardening (Vec_t const & Sig, Vec_t const & Ivs) cons
 
 inline double ElastoPlastic::YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) const
 {
+    // limit tensile strength
+    if (FC!=VM_t)
+    {
+        p = Calc_poct (Sig);
+        if (p<pTol) { return FTol; }
+    }
+
     double f;
     switch (FC)
     {
