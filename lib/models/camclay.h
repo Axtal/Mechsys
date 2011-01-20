@@ -79,6 +79,7 @@ inline CamClay::CamClay (int NDim, SDPair const & Prms)
     if (NewSU) IvNames.Push ("z1");
 
     // set model in stress update
+    FC   = DP_t;
     Name = "CamClay";
     SUp.SetModel (this);
 }

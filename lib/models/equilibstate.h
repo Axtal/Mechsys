@@ -94,6 +94,9 @@ inline EquilibState::EquilibState (int NDim)
 
 inline void EquilibState::Init (SDPair const & Ini, size_t NIvs)
 {
+    set_to_zero (Sig);
+    set_to_zero (Eps);
+
     if (Ini.HasKey("sx"))  Sig(0) = Ini("sx");
     if (Ini.HasKey("sy"))  Sig(1) = Ini("sy");
     if (Ini.HasKey("sz"))  Sig(2) = Ini("sz");
@@ -111,6 +114,9 @@ inline void EquilibState::Init (SDPair const & Ini, size_t NIvs)
         if (Ini.HasKey("sxz")) { error=true; key="sxz"; }
         if (error) throw new Fatal("EquilibState::Init: For a 2D state, there are only 4 stress components. %s is not available",key.CStr());
     }
+    SigBkp = Sig;
+    EpsBkp = Eps;
+
     if (NIvs>0)
     {
         Ivs.change_dim (NIvs);
@@ -123,18 +129,6 @@ inline void EquilibState::Init (SDPair const & Ini, size_t NIvs)
         }
         IvsBkp.change_dim (NIvs);
         IvsBkp = Ivs;
-    }
-    if (Ini.HasKey("zero"))
-    {
-        set_to_zero (Sig   );
-        set_to_zero (Eps   );
-        set_to_zero (SigBkp);
-        set_to_zero (EpsBkp);
-        if (NIvs>0)
-        {
-            set_to_zero (Ivs   );
-            set_to_zero (IvsBkp);
-        }
     }
 }
 

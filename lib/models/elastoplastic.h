@@ -51,6 +51,7 @@ public:
     virtual void   ELStiff   (Vec_t const & Sig, Vec_t const & Ivs) const;
 
     // Constants
+    bool    Derived;    ///< Derived model (such as CamClay)
     double  E;          ///< Young
     double  nu;         ///< Poisson
     FCrit_t FC;         ///< Failure criterion: VM:Von-Mises
@@ -64,7 +65,8 @@ public:
     double  FTol;       ///< Tolerance to be used when finding the intersection
     double  DCFTol;     ///< Drift correction ys function tolerance
     size_t  DCMaxIt;    ///< Drift correction max iterations
-    double  qTol;       ///< Tolerance for minium qoct
+    double  pTol;       ///< Tolerance for minimum poct
+    double  qTol;       ///< Tolerance for minimum qoct
     bool    NewSU;      ///< New stress update ?
     double  BetSU;      ///< Beta coefficient for new stress update
     double  AlpSU;      ///< Alpha coefficient for new stress update
@@ -73,6 +75,7 @@ public:
     // State data (mutable/scratch-pad)
     mutable Vec_t Sig0, Ivs0, SigA, DSigTr;    ///< Variables for yield crossing detection
     mutable Vec_t DEpsEl;                      ///< Elastic strain increment
+    mutable Vec_t DEpsPl;                      ///< Plastic strain increment == Lam*W
     mutable Vec_t V;                           ///< NCps: Gradient of the yield surface
     mutable Vec_t W, devW;                     ///< NCps: Plastic flow rule direction
     mutable Vec_t Y;                           ///< NIvs: Derivative of the yield surface w.r.t internal variables
@@ -108,9 +111,10 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived)
-    : Model (NDim,Prms,"ElastoPlastic"),
-      E(0.0), nu(0.0), FC(VM_t), kVM(0.0), Hb(0.0), NonAssoc(false), FTol(1.0e-7), DCFTol(1.0e-8), DCMaxIt(10), qTol(1.0e-7), NewSU(false)
+inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
+    : Model (NDim,Prms,"ElastoPlastic"), Derived(Deriv),
+      E(0.0), nu(0.0), FC(VM_t), kVM(0.0), Hb(0.0), NonAssoc(false), FTol(1.0e-7), DCFTol(1.0e-8), DCMaxIt(10),
+      pTol(1.0e-6), qTol(1.0e-7), NewSU(false)
 {
     // resize scratchpad arrays
     Sig0   .change_dim (NCps);
@@ -211,11 +215,30 @@ inline void ElastoPlastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig
     // state
     EquilibState const * sta = static_cast<EquilibState const *>(Sta);
 
+    // zero internal values (if any)
+    DIvs.change_dim (NIvs);
+    set_to_zero     (DIvs);
+
+    // limit tensile strength
+    if (FC!=VM_t)
+    {
+        p = Calc_poct (sta->Sig);
+        if (p<pTol)
+        {
+            if (!Derived) // plastic strains
+            {
+                DIvs(1) = Calc_ev (DEps); // devp
+                DIvs(2) = Calc_ed (DEps); // dedp
+            }
+            set_to_zero (DSig);
+            return;
+        }
+    }
+
     // De: elastic stiffness
     ELStiff (sta->Sig, sta->Ivs);
 
     // increments
-    DIvs.change_dim (NIvs);
     if (sta->Ldg)
     {
         // gradients, flow rule, hardening, and hp
@@ -227,19 +250,27 @@ inline void ElastoPlastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig
         // plastic multiplier
         Mult (V, De, VDe);
         double phi = dot(VDe,W) - hp;
-        double gam = dot(VDe,DEps)/phi;
+        double Lam = dot(VDe,DEps)/phi;
 
-        // stress increment
-        DEpsEl = DEps - gam*W;
+        // increments
+        DEpsPl = Lam*W;
+        DEpsEl = DEps - DEpsPl;
         DSig   = De*DEpsEl;
 
         // increment of internal values
-        for (size_t i=0; i<NIvs; ++i) DIvs(i) = gam*H(i);
+        DIvs = Lam*H;
+
+        // plastic strains
+        if (!Derived)
+        {
+            DIvs(1) = Calc_ev (DEpsPl); // devp
+            DIvs(2) = Calc_ed (DEpsPl); // dedp
+        }
     }
     else
     {
+        // stress increment
         DSig = De*DEps;
-        for (size_t i=0; i<NIvs; ++i) DIvs(i) = 0.0;
 
         // new stress update
         if (NewSU) DIvs(0) = -dot(V, DSig) / Y(0);
@@ -254,6 +285,18 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D) const
     // state
     EquilibState const * sta = static_cast<EquilibState const *>(Sta);
 
+    // limit tensile strength
+    if (FC!=VM_t)
+    {
+        p = Calc_poct (sta->Sig);
+        if (p<pTol)
+        {
+            D.change_dim (NCps,NCps);
+            set_to_zero  (D);
+            return;
+        }
+    }
+
     // De: elastic stiffness
     ELStiff (sta->Sig, sta->Ivs);
 
@@ -266,7 +309,7 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D) const
         Hardening (sta->Sig, sta->Ivs);
         double hp = (NIvs>0 ? Y(0)*H(0) : 0.0);
 
-        // auxiliar vectors
+        // auxiliary vectors
         Mult (V, De, VDe);
         double phi = dot(VDe,W) - hp;
         DeW = De*W;
@@ -292,26 +335,46 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D) const
 
 inline size_t ElastoPlastic::CorrectDrift (State * Sta) const
 {
+    // state
     EquilibState * sta = static_cast<EquilibState *>(Sta);
-    double fnew  = YieldFunc (sta->Sig, sta->Ivs);
-    size_t it    = 0;
-    Vec_t  VDe(NCps), DeW(NCps);
+
+    // limit tensile strength
+    if (FC!=VM_t)
+    {
+        p = Calc_poct (sta->Sig);
+        if (p<pTol) { p = pTol; return 666; }
+    }
+
+    // iterations
+    double fnew = YieldFunc (sta->Sig, sta->Ivs);
+    size_t it   = 0;
     while (fnew>DCFTol && it<DCMaxIt)
     {
+        // gradients, flow rule, hardening, and hp
         Gradients (sta->Sig, sta->Ivs);
         FlowRule  (sta->Sig, sta->Ivs);
         Hardening (sta->Sig, sta->Ivs);
         double hp = (NIvs>0 ? Y(0)*H(0) : 0.0);
+
+        // elastic stiffness
         if (it==0) ELStiff (sta->Sig, sta->Ivs);
+
+        // auxiliary vectors
         Mult (V, De, VDe);
         double dgam = fnew/(dot(VDe,W)-hp);
         DeW = De*W;
+
+        // update stress and ivs (only)
         sta->Sig -= dgam*DeW;
         sta->Ivs += dgam*H;
         fnew = YieldFunc (sta->Sig, sta->Ivs);
+
+        // check convergence
         if (fabs(fnew)<DCFTol) break;
         it++;
     }
+
+    // check number of iterations
     if (it>=DCMaxIt) throw new Fatal("ElastoPlastic::CorrectDrift: Yield surface drift correction did not converge after %d iterations (fnew=%g, DCFTol=%g)",it,fnew,DCFTol);
     return it;
 }
@@ -352,6 +415,7 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
             double Dq = qf - q;
             if (Dq>0.0) ldg = true;
         }
+        printf(">>>>>>> (new su) >>>>>>>>>>> f=%g,  ftr=%g,  ldg=%d\n",f,f_tr,ldg);
         return ldg;
     }
 
@@ -443,9 +507,20 @@ inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
 
 inline void ElastoPlastic::Gradients (Vec_t const & Sig, Vec_t const & Ivs) const
 {
+    // derivative of internal values
     Y(0) = 0.0; // dfdz0
     Y(1) = 0.0; // dfdz1
     Y(2) = 0.0; // dfdz2
+
+    // new stress update
+    if (NewSU) Y(0) = -1.0;
+
+    // limit tensile strength
+    if (FC!=VM_t)
+    {
+        p = Calc_poct (Sig);
+        if (p<pTol) { V = I; return; }
+    }
 
     switch (FC)
     {
@@ -474,9 +549,6 @@ inline void ElastoPlastic::Gradients (Vec_t const & Sig, Vec_t const & Ivs) cons
             break;
         }
     }
-
-    // new stress update
-    if (NewSU) Y(0) = -1.0;
 }
 
 inline void ElastoPlastic::FlowRule (Vec_t const & Sig, Vec_t const & Ivs) const
@@ -502,10 +574,10 @@ inline void ElastoPlastic::FlowRule (Vec_t const & Sig, Vec_t const & Ivs) const
 
 inline void ElastoPlastic::Hardening (Vec_t const & Sig, Vec_t const & Ivs) const
 {
-    Dev (W, devW);
+    // internal values
     H(0) = 0.0;
-    H(1) = Tra  (W);
-    H(2) = Norm (devW);
+    H(1) = 0.0;
+    H(2) = 0.0;
 
     // new stress update
     if (NewSU)

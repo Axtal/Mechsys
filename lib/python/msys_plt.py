@@ -27,7 +27,7 @@ class Plotter:
         self.show_k     = False     # show k=dq/dp ?
         self.div_by_p   = False     # divide q by p ?
         self.log_p      = True      # use log(p) instead of p ?
-        self.lnplus1    = False     # plot ln(p+1) instead of ln(p) ?
+        self.lnplus1    = True      # plot ln(p+1) instead of ln(p) ?
         self.q_neg_ext  = True      # multiply q by -1 for extension (t<0, where t=sin(3th)
         self.ed_neg_ext = False     # multiply ed by -1 for extension (t<0, where t=sin(3th)
         self.pq_ty      = 'cam'     # invariants type
@@ -37,7 +37,7 @@ class Plotter:
         self.oct_norm   = False     # normalize plot in octahedral plane by p ?
         self.oct_sxyz   = True      # use Sx,Sy,Sz in oct plane instead of S1,S2,S3
         self.isxyz      = (1,0)     # indices for sxyz plot, use negative numbers for principal components
-        self.devplot    = True      # plot s3-s1, s3-s2 instead of Ek, Sk
+        self.dev        = True      # plot s3-s1, s3-s2 instead of Ek, Sk
         self.pcte       = False     # pcte ?
         self.evcte      = False     # evcte ?
         self.pctetol    = 1.0e-6    # tol for pcte
@@ -91,15 +91,21 @@ class Plotter:
                 ikeys = ['x','y','z']
             Ev[i] *= 100.0 # convert strains to percentage
             Ed[i] *= 100.0
+            E1[i] *= 100.0
+            E2[i] *= 100.0
+            E3[i] *= 100.0
+            Ex[i] *= 100.0
+            Ey[i] *= 100.0
+            Ez[i] *= 100.0
         if self.pcte:
             pmin, pmax = min(P), max(P)
             err = abs(pmin-pmax)
-            if err>self.pctetol: raise Exception('Plotter::plot: pcte cannot be used with pmin=%g and pmax=%g (error=%g, tol=%g)'%(pmin,pmax,err,self.pctetol))
+            if err>self.pctetol: raise Exception('[1;31mPlotter::plot: pcte cannot be used with pmin=%g and pmax=%g (error=%g, tol=%g)[0m'%(pmin,pmax,err,self.pctetol))
             P = repeat (P[0], np)
         if self.evcte:
             evmin, evmax = min(Ev), max(Ev)
             err = abs(evmin-evmax)
-            if err>self.evctetol: raise Exception('Plotter::plot: evcte cannot be used with evmin=%g and evmax=%g (error=%g, tol=%g)'%(evmin,evmax,err,self.evctetol))
+            if err>self.evctetol: raise Exception('[1;31mPlotter::plot: evcte cannot be used with evmin=%g and evmax=%g (error=%g, tol=%g)[0m'%(evmin,evmax,err,self.evctetol))
             Ev = repeat (Ev[0], np)
         QdivP = Q/P
 
@@ -126,20 +132,28 @@ class Plotter:
             plot (Ed, Y, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=ms)
             if self.mark_max: plot (Ed[imaQP], Y[imaQP], '^', color=clr)
             if self.mark_lst: plot (Ed[-1],    Y[-1],    '^', color=clr)
-            xlabel (r'$\varepsilon_d$ [%]');  ylabel(Ylbl);  grid(True)
+            xlabel (r'$\varepsilon_d$ [%]')
+            ylabel (Ylbl)
+            Grid   ()
 
         # 1) q/p, Ev ---------------------------------------------------------------------------
         if self.one==1 or self.one<0:
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            if self.mark_lst: plot (Ev[-1], Y[-1], '^', color=clr)
             plot   (Ev, Y, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
-            xlabel (r'$\varepsilon_v$ [%]');  ylabel(Ylbl);  grid(True)
+            xlabel (r'$\varepsilon_v$ [%]')
+            ylabel (Ylbl)
+            Grid   ()
 
         # 2) p, q ---------------------------------------------------------------------------
         if self.one==2 or self.one<0 and not self.four:
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            if self.mark_lst: plot (P[-1], Q[-1], '^', color=clr)
             axhline (0.0,color='black'); axvline(0.0,color='black')
             plot    (P, Q, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
-            xlabel  (r'$p_{%s}$'%(self.pq_ty));  ylabel(r'$q_{%s}$'%(self.pq_ty));  grid(True)
+            xlabel  (r'$p_{%s}$'%(self.pq_ty))
+            ylabel  (r'$q_{%s}$'%(self.pq_ty))
+            Grid    ()
             axis    ('equal')
             if self.show_k:
                 k = (Q[-1]-Q[0])/(P[-1]-P[0])
@@ -148,9 +162,12 @@ class Plotter:
         # 3) Ed, Ev ---------------------------------------------------------------------------
         if self.one==3 or self.one<0:
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            if self.mark_lst: plot (Ed[-1], Ev[-1], '^', color=clr)
             plot   (Ed, Ev, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
             if self.mark_lst: plot (Ed[-1], Ev[-1], '^', color=clr)
-            xlabel (r'$\varepsilon_d$ [%]');  ylabel(r'$\varepsilon_v$ [%]'); grid(True)
+            xlabel (r'$\varepsilon_d$ [%]')
+            ylabel (r'$\varepsilon_v$ [%]')
+            Grid   ()
 
         # 4) lnp, Ev ---------------------------------------------------------------------------
         if self.one==4 or self.one<0:
@@ -165,49 +182,69 @@ class Plotter:
                 X    = P
                 xlbl = r'$p_{%s}$'%(self.pq_ty)
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            if self.mark_lst: plot (X[-1], Ev[-1], '^', color=clr)
             plot   (X, Ev, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
-            xlabel (xlbl);  ylabel(r'$\varepsilon_v$ [%]');  grid(True)
+            xlabel (xlbl)
+            ylabel (r'$\varepsilon_v$ [%]')
+            Grid   ()
 
-        # 5) Sa, Sb ---------------------------------------------------------------------------
+        # 5) Sa, Sb --- (octahedral plane) ----------------------------------------------------
         if self.one==5 or self.one<0 and not self.four:
             pcoef = self.fc_poct if self.oct_norm else 1.0
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot (Sa/pcoef, Sb/pcoef, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=ms)
             if self.mark_max: plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
             if self.mark_lst: plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, '^', color=clr)
+            Grid ()
             axis ('equal')
 
         # 6) Ek, Q/P ---------------------------------------------------------------------------
         if self.one==6 or self.one<0 and not self.six and not self.four:
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (E1, Y, lw=lwd,linestyle='-',  color=clr)
-            plot   (E2, Y, lw=lwd,linestyle='--', color=clr)
-            plot   (E3, Y, lw=lwd,linestyle='-.', color=clr)
-            xlabel (r'$\varepsilon_1$[--], $\varepsilon_2$[- -], $\varepsilon_3$[- .]')
-            ylabel (Ylbl);  grid(True)
+            if self.mark_lst: plot (Ex[-1], Y[-1], '^', color=clr)
+            plot    (Ex, Y, lw=lwd,linestyle='-',  color=clr)
+            plot    (Ey, Y, lw=lwd,linestyle='--', color=clr)
+            plot    (Ez, Y, lw=lwd,linestyle='-.', color=clr)
+            Grid    ()
+            axvline (0,   color='black')
+            axhline (Y[0],color='black')
+            xlabel  (r'$\varepsilon_x$[----], $\varepsilon_y$[- - -], $\varepsilon_z$[- . -]')
+            ylabel  (Ylbl)
+            Grid    ()
 
-        if self.devplot:
-            if self.one==7 or self.one<0 and not self.six and not self.four:
-                # 7) s3-s1, s3-s2
-                if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-                plot   (S3-S1, S3-S2, lw=lwd,linestyle='-', color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
-                xlabel (r'$\sigma_3-\sigma_1$');  ylabel(r'$\sigma_3-\sigma_2$');  grid(True)
-                axis   ('equal')
-        else:
-            # 7) Ek, Sk ---------------------------------------------------------------------------
-            if self.one==7 or self.one<0 and not self.six and not self.four:
-                if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-                plot   (Ex, -Sx, lw=lwd,linestyle='-', color=clr)
-                plot   (Ey, -Sy, lw=lwd,linestyle='--', color=clr)
-                plot   (Ez, -Sz, lw=lwd,linestyle='-.', color=clr)
-                xlabel (r'$\varepsilon_x$[--], $\varepsilon_y$[- -], $\varepsilon_z$[- .]')
-                ylabel (r'$-\sigma_x$[--], $-\sigma_y$[- -], $-\sigma_z$[- .]');  grid(True)
+        # 7) (s3-s1, s3-s2) or (Ek, Sk) ----------------------------------------------------------
+        if self.one==7 or self.one<0 and not self.six and not self.four:
+            if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            if self.dev:
+                if self.mark_lst: plot (S3[-1]-S1[-1], S3[-1]-S2[-1], '^', color=clr)
+                plot    (S3-S1, S3-S2, lw=lwd,linestyle='-', color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
+                xlabel  (r'$\sigma_3-\sigma_1$')
+                ylabel  (r'$\sigma_3-\sigma_2$')
+                axvline (0,color='black')
+                axhline (0,color='black')
+                Grid    ()
+                axis    ('equal')
+            else:
+                if self.mark_lst: plot (Ex[-1], Sx[-1], '^', color=clr)
+                if self.mark_lst: plot (Ey[-1], Sy[-1], '^', color=clr)
+                if self.mark_lst: plot (Ez[-1], Sz[-1], '^', color=clr)
+                plot    (Ex, Sx, lw=lwd,linestyle='-',  color=clr)
+                plot    (Ey, Sy, lw=lwd,linestyle='--', color=clr)
+                plot    (Ez, Sz, lw=lwd,linestyle='-.', color=clr)
+                xlabel  (r'$\varepsilon_x$[----], $\varepsilon_y$[- - -], $\varepsilon_z$[- . -]')
+                ylabel  (r'$\sigma_x$[----], $\sigma_y$[- - -], $\sigma_z$[- . -]')
+                axhline (Sx[0],color='black')
+                axvline (0,    color='black')
+                Grid    ()
 
         # 8) sqrt(2.0)*Si, Sj ---------------------------------------------------------------------------
         if self.one==8 or self.one<0 and not self.six and not self.four:
             if self.one<0: self.ax = subplot (nhplt,nvplt,iplot);  iplot += 1
+            if self.mark_lst: plot (-sqrt(2.0)*Si[-1], -Sj[-1], '^', color=clr)
             plot   (-sqrt(2.0)*Si, -Sj,  lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
-            xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]));  ylabel(r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]));  grid(True)
+            xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]))
+            ylabel (r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]))
+            Grid   ()
             axis   ('equal')
 
         # 9) Mohr-circles -----------------------------------------------------------------------------
@@ -228,7 +265,9 @@ class Plotter:
                 Arc (C0,0.,R0, 0.,pi, ec=clr, res=30)
                 Arc (C1,0.,R1, 0.,pi, ec=clr, res=30)
                 Arc (C2,0.,R2, 0.,pi, ec=clr, res=30)
-            xlabel (r'$-\sigma_i$');  ylabel(r'$\tau$');  grid(True)
+            xlabel (r'$-\sigma_i$')
+            ylabel (r'$\tau$')
+            Grid   ()
             axis   ('equal')
 
         # return failure criterion constants
