@@ -17,24 +17,23 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_ELASTOPLASTIC_H
-#define MECHSYS_ELASTOPLASTIC_H
+#ifndef MECHSYS_PROBLEMEP_H
+#define MECHSYS_PROBLEMEP_H
 
 // MechSys
 #include <mechsys/models/model.h>
 #include <mechsys/models/equilibstate.h>
-#include <mechsys/models/smpinvs.h>
 #include <mechsys/numerical/root.h>
 
-class ElastoPlastic : public Model
+class ProblemEP : public Model
 {
 public:
     // enums
-    enum FCrit_t { VM_t, MC_t, GE_t }; ///< Failure criterion type
+    enum FCrit_t { VM_t, DP_t, MC_t, MN_t }; ///< Failure criterion type
 
     // Constructor & Destructor
-    ElastoPlastic (int NDim, SDPair const & Prms, bool DerivedModel=false);
-    virtual ~ElastoPlastic () {}
+    ProblemEP (int NDim, SDPair const & Prms, bool DerivedModel=false);
+    virtual ~ProblemEP () {}
 
     // Derived methods
     virtual void   TgIncs       (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const;
@@ -57,10 +56,8 @@ public:
     double  nu;         ///< Poisson
     FCrit_t FC;         ///< Failure criterion: VM:Von-Mises
     double  kVM;        ///< von Mises coefficient
-	double  kGE;        ///< General FC coefficient
-    double  pRef;       ///< Reference pressure
-    double  pR2;        ///< pRef squared
-    double  pTol;       ///< Tolerance for minimum poct
+    double  kDP;        ///< Drucker-Prager coefficient
+    double  kMN;        ///< Matsuoka-Nakai coefficient
     double  Hb;         ///< Hardening coefficient H_bar
     bool    NonAssoc;   ///< Non-associated flow rule ?
     double  sphi;       ///< Sin(phi) friction angle
@@ -68,6 +65,7 @@ public:
     double  FTol;       ///< Tolerance to be used when finding the intersection
     double  DCFTol;     ///< Drift correction ys function tolerance
     size_t  DCMaxIt;    ///< Drift correction max iterations
+    double  pTol;       ///< Tolerance for minimum poct
     double  qTol;       ///< Tolerance for minimum qoct
     bool    NewSU;      ///< New stress update ?
     double  BetSU;      ///< Beta coefficient for new stress update
@@ -75,9 +73,6 @@ public:
     Vec_t   I;          ///< Idendity tensor
 
     // State data (mutable/scratch-pad)
-    mutable double  M, pc, pm, r2;             ///< Variables for smoothing with arc
-    mutable SMPInvs SMP;                       ///< SMP invariants
-    mutable Vec_t SigB;                        ///< SigmaBar: shifted sigma for cohesion
     mutable Vec_t Sig0, Ivs0, SigA, DSigTr;    ///< Variables for yield crossing detection
     mutable Vec_t DEpsEl;                      ///< Elastic strain increment
     mutable Vec_t DEpsPl;                      ///< Plastic strain increment == Lam*W
@@ -110,41 +105,18 @@ public:
         double dgdth = g*(Util::SQ3*sin(th)+sinp*cos(th))/(Util::SQ3*cos(th)-sinp*sin(th));
         dgdsig = dgdth * dthdsig;
     }
-
-    void Calc_arc (Vec_t const & Sig, Vec_t const & Ivs) const
-    {
-        M = kGE;
-        double den = 1.0 + M*M;
-        pc = pTol/(1.0-M/sqrt(den));
-        pm = pc/den;
-        r2 = pow(pc*M,2.0)/den;
-        printf("M=%g, ptol=%g, pc=%g, pm=%g\n",M,pTol,pc,pm);
-    }
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
-    : Model    (NDim,Prms,"ElastoPlastic(VM)"),
-      Derived  (Deriv),
-      E        (0.0),
-      nu       (0.0),
-      FC       (VM_t),
-      kVM      (0.0),
-      pRef     (1.0),
-      pTol     (1.0e-5),
-      Hb       (0.0),
-      NonAssoc (false),
-      FTol     (1.0e-7),
-      DCFTol   (1.0e-8),
-      DCMaxIt  (10),
-      qTol     (1.0e-7),
-      NewSU    (false)
+inline ProblemEP::ProblemEP (int NDim, SDPair const & Prms, bool Deriv)
+    : Model (NDim,Prms,"ProblemEP"), Derived(Deriv),
+      E(0.0), nu(0.0), FC(VM_t), kVM(0.0), Hb(0.0), NonAssoc(false), FTol(1.0e-7), DCFTol(1.0e-8), DCMaxIt(10),
+      pTol(1.0e-6), qTol(1.0e-7), NewSU(false)
 {
     // resize scratchpad arrays
-    SigB   .change_dim (NCps);
     Sig0   .change_dim (NCps);
     Ivs0   .change_dim (NIvs);
     SigA   .change_dim (NCps);
@@ -169,37 +141,31 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
     I(1) = 1.0;
     I(2) = 1.0;
 
-    // reference pressure
-    if (Prms.HasKey("pref")) pRef = Prms("pref");
-    if (Prms.HasKey("ptol")) pTol = Prms("ptol");
-    pR2 = pRef*pRef;
-
     if (!Derived) // for instance, CamClay
     {
         // parameters
-        if (!Prms.HasKey("E"))  throw new Fatal("ElastoPlastic::ElastoPlastic: Young modulus (E) must be provided");
-        if (!Prms.HasKey("nu")) throw new Fatal("ElastoPlastic::ElastoPlastic: Poisson coefficient (nu) must be provided");
+        if (!Prms.HasKey("E"))  throw new Fatal("ProblemEP::ProblemEP: Young modulus (E) must be provided");
+        if (!Prms.HasKey("nu")) throw new Fatal("ProblemEP::ProblemEP: Poisson coefficient (nu) must be provided");
         E  = Prms("E");
         nu = Prms("nu");
-        if (Prms.HasKey("MC")) { Name="ElastoPlastic(MC)";  FC = MC_t;                     }
-        if (Prms.HasKey("DP")) { Name="ElastoPlastic(DP)";  FC = GE_t;  SMP.b = 0.0;       }
-        if (Prms.HasKey("MN")) { Name="ElastoPlastic(MN)";  FC = GE_t;  SMP.b = 0.5;       }
-        if (Prms.HasKey("GE")) { Name="ElastoPlastic(GE)";  FC = GE_t;  SMP.b = Prms("b"); }
+        if (Prms.HasKey("DP")) FC = DP_t;
+        if (Prms.HasKey("MC")) FC = MC_t;
+        if (Prms.HasKey("MN")) FC = MN_t;
         if (FC==VM_t)
         {
             if      (Prms.HasKey("sY")) kVM = sqrt(2.0/3.0)*Prms("sY");
             else if (Prms.HasKey("c"))  kVM = (GTy==psa_t ? sqrt(2.0)*Prms("c") : 2.0*sqrt(2.0/3.0)*Prms("c"));
-            else throw new Fatal("ElastoPlastic::ElastoPlastic: With VM (von Mises), either sY (uniaxial yield stress) or c (undrained cohesion) must be provided");
+            else throw new Fatal("ProblemEP::ProblemEP: With VM (von Mises), either sY (uniaxial yield stress) or c (undrained cohesion) must be provided");
         }
         else
         {
-            if (!Prms.HasKey("phi")) throw new Fatal("ElastoPlastic::ElastoPlastic: friction angle phi (degrees) must be provided");
+            if (!Prms.HasKey("phi")) throw new Fatal("ProblemEP::ProblemEP: friction angle phi (degrees) must be provided");
             double c       = (Prms.HasKey("c") ? Prms("c") : 0.0);
             double phi_deg = Prms("phi");
             double phi_rad = phi_deg*Util::PI/180.0;
             double psi_rad = 0.0;
-            if (phi_deg<1.0e-3) throw new Fatal("ElastoPlastic::ElastoPlastic: Friction angle (phi [deg]) must be greater than zero (1.0e-3). phi=%g is invalid",phi_deg);
-            if (c<0.0)          throw new Fatal("ElastoPlastic::ElastoPlastic: 'cohesion' must be greater than zero. c=%g is invalid",c);
+            if (phi_deg<1.0e-3) throw new Fatal("ProblemEP::ProblemEP: Friction angle (phi [deg]) must be greater than zero (1.0e-3). phi=%g is invalid",phi_deg);
+            if (c<0.0)          throw new Fatal("ProblemEP::ProblemEP: 'cohesion' must be greater than zero. c=%g is invalid",c);
             if (Prms.HasKey("psi"))
             {
                 NonAssoc = true;
@@ -207,13 +173,8 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
             }
             sphi = sin(phi_rad);
             spsi = sin(psi_rad);
-            if (FC==GE_t)
-            {
-                double A = (1.0+sphi)/(1.0-sphi);
-                SigA = -A, -1., -1., 0., 0., 0.;
-                SMP.Calc (SigA, false);
-                kGE = SMP.sq/SMP.sp;
-            }
+            if (FC==DP_t) kDP = 2.0*sqrt(2.0)*sphi/(3.0-sphi);
+            if (FC==MN_t) kMN = 9.0+8.0*pow(tan(phi_rad),2.0);
         }
 
         // hardening
@@ -226,6 +187,15 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
         IvNames.Push ("z0");
         IvNames.Push ("evp");
         IvNames.Push ("edp");
+
+        // name
+        switch (FC)
+        {
+            case VM_t: { Name = "ProblemEP(VM)"; break; }
+            case DP_t: { Name = "ProblemEP(DP)"; break; }
+            case MC_t: { Name = "ProblemEP(MC)"; break; }
+            case MN_t: { Name = "ProblemEP(MN)"; break; }
+        }
 
         // set model in stress update
         SUp.SetModel (this);
@@ -240,7 +210,7 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
     }
 }
 
-inline void ElastoPlastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const
+inline void ProblemEP::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const
 {
     // state
     EquilibState const * sta = static_cast<EquilibState const *>(Sta);
@@ -255,6 +225,25 @@ inline void ElastoPlastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig
     // increments
     if (sta->Ldg)
     {
+        // limit tensile strength
+        /*
+        if (FC!=VM_t)
+        {
+            p = Calc_poct (sta->Sig);
+            if (p<pTol)
+            {
+                printf("ProblemEP::TgIncs: __tensile_loading__\n");
+                if (!Derived) // plastic strains
+                {
+                    DIvs(1) = Calc_ev (DEps); // devp
+                    DIvs(2) = Calc_ed (DEps); // dedp
+                }
+                set_to_zero (DSig);
+                return;
+            }
+        }
+        */
+
         // gradients, flow rule, hardening, and hp
         Gradients (sta->Sig, sta->Ivs);
         FlowRule  (sta->Sig, sta->Ivs);
@@ -294,7 +283,7 @@ inline void ElastoPlastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig
     if (GTy==pse_t) DEps(2) = -nu*(DSig(0)+DSig(1))/CalcE(sta->Sig, sta->Ivs);
 }
 
-inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D) const
+inline void ProblemEP::Stiffness (State const * Sta, Mat_t & D) const
 {
     // state
     EquilibState const * sta = static_cast<EquilibState const *>(Sta);
@@ -305,6 +294,20 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D) const
     // stiffness
     if (sta->Ldg)
     {
+        // limit tensile strength
+        /*
+        if (FC!=VM_t)
+        {
+            p = Calc_poct (sta->Sig);
+            if (p<pTol)
+            {
+                D.change_dim (NCps,NCps);
+                set_to_zero  (D);
+                return;
+            }
+        }
+        */
+
         // gradients, flow rule, hardening, and hp
         Gradients (sta->Sig, sta->Ivs);
         FlowRule  (sta->Sig, sta->Ivs);
@@ -335,10 +338,19 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D) const
     }
 }
 
-inline size_t ElastoPlastic::CorrectDrift (State * Sta) const
+inline size_t ProblemEP::CorrectDrift (State * Sta) const
 {
     // state
     EquilibState * sta = static_cast<EquilibState *>(Sta);
+
+    // limit tensile strength
+    /*
+    if (FC!=VM_t)
+    {
+        p = Calc_poct (sta->Sig);
+        if (p<pTol) { p = pTol; return 666; }
+    }
+    */
 
     // iterations
     double fnew = YieldFunc (sta->Sig, sta->Ivs);
@@ -370,11 +382,11 @@ inline size_t ElastoPlastic::CorrectDrift (State * Sta) const
     }
 
     // check number of iterations
-    if (it>=DCMaxIt) throw new Fatal("ElastoPlastic::CorrectDrift: Yield surface drift correction did not converge after %d iterations (fnew=%g, DCFTol=%g)",it,fnew,DCFTol);
+    if (it>=DCMaxIt) throw new Fatal("ProblemEP::CorrectDrift: Yield surface drift correction did not converge after %d iterations (fnew=%g, DCFTol=%g)",it,fnew,DCFTol);
     return it;
 }
 
-inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, double & alpInt) const
+inline bool ProblemEP::LoadCond (State const * Sta, Vec_t const & DEps, double & alpInt) const
 {
     // default return values
     alpInt   = -1.0;  // no intersection
@@ -434,16 +446,16 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
             Ivs0        = sta->Ivs;
             crossing    = true;
             double fnew = YieldFunc (Sig0, Ivs0);
-            if (fnew>0.0) throw new Fatal("ElastoPlastic::LoadCond: __internal_error__: correction for numL<0 failed (dalp=%g, fnew=%g)",dalp,fnew);
-            //throw new Fatal("ElastoPlastic::LoadCond: Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
+            if (fnew>0.0) throw new Fatal("ProblemEP::LoadCond: __internal_error__: correction for numL<0 failed (dalp=%g, fnew=%g)",dalp,fnew);
+            //throw new Fatal("ProblemEP::LoadCond: Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
         }
         if (crossing)
         {
-            Numerical::Root<ElastoPlastic> root(const_cast<ElastoPlastic*>(this), &ElastoPlastic::Fa, &ElastoPlastic::dFada);
+            Numerical::Root<ProblemEP> root(const_cast<ProblemEP*>(this), &ProblemEP::Fa, &ProblemEP::dFada);
             //root.Scheme = "Newton";
             //root.Verbose = true;
             alpInt = root.Solve (0.0, 1.0);
-            if (alpInt<0) throw new Fatal("ElastoPlastic::LoadCond: alpInt=%g must be positive",alpInt);
+            if (alpInt<0) throw new Fatal("ProblemEP::LoadCond: alpInt=%g must be positive",alpInt);
         }
         else ldg = true;
     }
@@ -452,7 +464,7 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
     return ldg;
 }
 
-inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
+inline void ProblemEP::InitIvs (SDPair const & Ini, State * Sta) const
 {
     // initialize state
     EquilibState * sta = static_cast<EquilibState*>(Sta);
@@ -474,15 +486,22 @@ inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
                 sta->Ivs(0) = q/kVM;
                 break;
             }
+            case DP_t:
+            {
+                Calc_pq (sta->Sig);
+                sta->Ivs(0) = q/(p*kDP);
+                break;
+            }
             case MC_t:
             {
                 Calc_pqg (sta->Sig);
                 sta->Ivs(0) = q/(p*g);
                 break;
             }
-            case GE_t:
+            case MN_t:
             {
-                sta->Ivs(0) = 0.0;
+                CharInvs (sta->Sig, I1,I2,I3);
+                sta->Ivs(0) = I1*I2/(I3*kMN);
                 break;
             }
         }
@@ -490,11 +509,11 @@ inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
 
     // check initial yield function
     double f = YieldFunc (sta->Sig, sta->Ivs);
-    if (f>FTol)           throw new Fatal("ElastoPlastic:InitIvs: stress point (sig=(%g,%g,%g,%g]) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,f,sta->Ivs(0));
-    if (NewSU && f<-FTol) throw new Fatal("ElastoPlastic:InitIvs: stress point (sig=(%g,%g,%g,%g]) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,f,sta->Ivs(0));
+    if (f>FTol)           throw new Fatal("ProblemEP:InitIvs: stress point (sig=(%g,%g,%g,%g]) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,f,sta->Ivs(0));
+    if (NewSU && f<-FTol) throw new Fatal("ProblemEP:InitIvs: stress point (sig=(%g,%g,%g,%g]) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,f,sta->Ivs(0));
 }
 
-inline void ElastoPlastic::Gradients (Vec_t const & Sig, Vec_t const & Ivs) const
+inline void ProblemEP::Gradients (Vec_t const & Sig, Vec_t const & Ivs) const
 {
     // derivative of internal values
     Y(0) = 0.0; // dfdz0
@@ -504,6 +523,15 @@ inline void ElastoPlastic::Gradients (Vec_t const & Sig, Vec_t const & Ivs) cons
     // new stress update
     if (NewSU) Y(0) = -1.0;
 
+    // limit tensile strength
+    /*
+    if (FC!=VM_t)
+    {
+        p = Calc_poct (Sig);
+        if (p<pTol) { V = I; return; }
+    }
+    */
+
     switch (FC)
     {
         case VM_t:
@@ -512,31 +540,33 @@ inline void ElastoPlastic::Gradients (Vec_t const & Sig, Vec_t const & Ivs) cons
             V = s/(q*kVM);
             break;
         }
+        case DP_t:
+        {
+            OctInvs (Sig, p,q,s, qTol);
+            V = (1.0/(p*q*kDP))*s + (q/(p*p*kDP*Util::SQ3))*I;
+            break;
+        }
         case MC_t:
         {
             Calc_dgdsig (Sig);
             V = (q/(g*p*p*Util::SQ3))*I + (1.0/(p*q*g))*s - (q/(p*g*g))*dgdsig;
             break;
         }
-        case GE_t:
+        case MN_t:
         {
-            SMP.Calc (Sig, true);
-            Calc_arc (Sig, Ivs);
-            double dfdp = -M/pRef;
-            double dfdq = 1.0/pRef;
-            if (SMP.sp<pm) { dfdp=2.0*(SMP.sp-pc)/pR2;  dfdq=2.0*SMP.sq/pR2; }
-            V = dfdp*SMP.dspdSig + dfdq*SMP.dsqdSig;
-            V /= Norm(V);
+            CharInvs (Sig, I1,I2,I3, dI1dsig,dI2dsig,dI3dsig);
+            V = (I2/(I3*kMN))*dI1dsig + (I1/(I3*kMN))*dI2dsig - (I1*I2/(I3*I3*kMN))*dI3dsig;
             break;
         }
     }
 }
 
-inline void ElastoPlastic::FlowRule (Vec_t const & Sig, Vec_t const & Ivs) const
+inline void ProblemEP::FlowRule (Vec_t const & Sig, Vec_t const & Ivs) const
 {
     switch (FC)
     {
         case VM_t: { W = V; break; }
+        case DP_t: { W = V; break; }
         case MC_t:
         {
             if (NonAssoc)
@@ -548,11 +578,11 @@ inline void ElastoPlastic::FlowRule (Vec_t const & Sig, Vec_t const & Ivs) const
             else W = V;
             break;
         }
-        case GE_t: { W = V; break; }
+        case MN_t: { W = V; break; }
     }
 }
 
-inline void ElastoPlastic::Hardening (Vec_t const & Sig, Vec_t const & Ivs) const
+inline void ProblemEP::Hardening (Vec_t const & Sig, Vec_t const & Ivs) const
 {
     // internal values
     H(0) = 0.0;
@@ -571,15 +601,22 @@ inline void ElastoPlastic::Hardening (Vec_t const & Sig, Vec_t const & Ivs) cons
                 F = q/kVM - 1.0;
                 break;
             }
+            case DP_t:
+            {
+                Calc_pq (Sig);
+                F = q/(p*kDP) - 1.0;
+                break;
+            }
             case MC_t:
             {
                 Calc_pqg (Sig);
                 F = q/(p*g) - 1.0;
                 break;
             }
-            case GE_t:
+            case MN_t:
             {
-                throw new Fatal("not yet");
+                CharInvs (Sig, I1,I2,I3);
+                F = I1*I2/(I3*kMN) - 1.0;
                 break;
             }
         }
@@ -589,8 +626,17 @@ inline void ElastoPlastic::Hardening (Vec_t const & Sig, Vec_t const & Ivs) cons
     }
 }
 
-inline double ElastoPlastic::YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) const
+inline double ProblemEP::YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) const
 {
+    // limit tensile strength
+    /*
+    if (FC!=VM_t)
+    {
+        p = Calc_poct (Sig);
+        if (p<pTol) { return FTol; }
+    }
+    */
+
     double f;
     switch (FC)
     {
@@ -600,24 +646,29 @@ inline double ElastoPlastic::YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) co
             f = q/kVM - Ivs(0);
             break;
         }
+        case DP_t:
+        {
+            Calc_pq (Sig);
+            f = q/(p*kDP) - Ivs(0);
+            break;
+        }
         case MC_t:
         {
             Calc_pqg (Sig);
             f = q/(p*g) - Ivs(0);
             break;
         }
-        case GE_t:
+        case MN_t:
         {
-            SMP.Calc (Sig, false);
-            Calc_arc (Sig, Ivs);
-            if (SMP.sp<pm) f = SMP.sq*SMP.sq/pR2 + pow(SMP.sp-pc,2.0)/pR2 - r2/pR2;
-            else           f = SMP.sq/pRef - kGE*SMP.sp/pRef;
+            CharInvs (Sig, I1,I2,I3);
+            f = I1*I2/(I3*kMN) - Ivs(0);
+            break;
         }
     }
     return f;
 }
 
-inline void ElastoPlastic::ELStiff (Vec_t const & Sig, Vec_t const & Ivs) const
+inline void ProblemEP::ELStiff (Vec_t const & Sig, Vec_t const & Ivs) const
 {
     if (NDim==2)
     {
@@ -637,7 +688,7 @@ inline void ElastoPlastic::ELStiff (Vec_t const & Sig, Vec_t const & Ivs) const
                       c*nu ,       c*nu , c*(1.0-nu),            0.0,
                        0.0 ,        0.0 ,       0.0 , c*(1.0-2.0*nu);
         }
-        else throw new Fatal("ElastoPlastic::Stiffness: 2D: This model is not available for GeometryType = %s",GTypeToStr(GTy).CStr());
+        else throw new Fatal("ProblemEP::Stiffness: 2D: This model is not available for GeometryType = %s",GTypeToStr(GTy).CStr());
     }
     else
     {
@@ -651,7 +702,7 @@ inline void ElastoPlastic::ELStiff (Vec_t const & Sig, Vec_t const & Ivs) const
                        0.0 ,        0.0 ,       0.0 ,            0.0, c*(1.0-2.0*nu),            0.0,
                        0.0 ,        0.0 ,       0.0 ,            0.0,            0.0, c*(1.0-2.0*nu);
         }
-        else throw new Fatal("ElastoPlastic::Stiffness: 3D: This model is not available for GeometryType = %s",GTypeToStr(GTy).CStr());
+        else throw new Fatal("ProblemEP::Stiffness: 3D: This model is not available for GeometryType = %s",GTypeToStr(GTy).CStr());
     }
 }
 
@@ -659,19 +710,19 @@ inline void ElastoPlastic::ELStiff (Vec_t const & Sig, Vec_t const & Ivs) const
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-Model * ElastoPlasticMaker(int NDim, SDPair const & Prms) { return new ElastoPlastic(NDim,Prms); }
+Model * ProblemEPMaker(int NDim, SDPair const & Prms) { return new ProblemEP(NDim,Prms); }
 
-int ElastoPlasticRegister()
+int ProblemEPRegister()
 {
-    ModelFactory   ["ElastoPlastic"] = ElastoPlasticMaker;
-    MODEL.Set      ("ElastoPlastic", (double)MODEL.Keys.Size());
-    MODEL_PRM_NAMES["ElastoPlastic"].Resize (18);
-    MODEL_PRM_NAMES["ElastoPlastic"] = "E", "nu", "sY", "c", "phi", "Hp", "psi", "VM", "DP", "MC", "MN", "GE", "b", "pref", "ptol", "newsu", "betsu", "alpsu";
-    MODEL_IVS_NAMES["ElastoPlastic"].Resize (0);
+    ModelFactory   ["ProblemEP"] = ProblemEPMaker;
+    MODEL.Set      ("ProblemEP", (double)MODEL.Keys.Size());
+    MODEL_PRM_NAMES["ProblemEP"].Resize (14);
+    MODEL_PRM_NAMES["ProblemEP"] = "E", "nu", "sY", "c", "phi", "Hp", "psi", "VM", "DP", "MC", "MN", "newsu", "betsu", "alpsu";
+    MODEL_IVS_NAMES["ProblemEP"].Resize (0);
     return 0;
 }
 
-int __ElastoPlastic_dummy_int = ElastoPlasticRegister();
+int __ProblemEP_dummy_int = ProblemEPRegister();
 
 
-#endif // MECHSYS_ELASTOPLASTIC_H
+#endif // MECHSYS_PROBLEMEP_H

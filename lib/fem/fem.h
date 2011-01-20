@@ -51,6 +51,7 @@
 #include <mechsys/models/linelastic.h>
 #include <mechsys/models/nlelastic.h>
 #include <mechsys/models/elastoplastic.h>
+#include <mechsys/models/problemep.h>
 #include <mechsys/models/camclay.h>
 #include <mechsys/models/unsatflow.h>
 #include <mechsys/models/unconv04.h>

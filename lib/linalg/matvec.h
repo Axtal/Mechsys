@@ -610,6 +610,14 @@ inline double Det (Mat3_t const & M)
     return det;
 }
 
+/** Identity. */
+inline void Identity (Mat3_t & I)
+{
+    I = 1.0, 0.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 0.0, 1.0;
+}
+
 /** Inverse.*/
 inline void Inv (Mat3_t const & M, Mat3_t & Mi, double Tol=1.0e-10)
 {
@@ -726,6 +734,14 @@ inline void Dyad (double s, Vec3_t const & A, Vec3_t const & B, Mat3_t & M)
     M(0,0)=s*A(0)*B(0);  M(0,1)=s*A(0)*B(1);  M(0,2)=s*A(0)*B(2);
     M(1,0)=s*A(1)*B(0);  M(1,1)=s*A(1)*B(1);  M(1,2)=s*A(1)*B(2);
     M(2,0)=s*A(2)*B(0);  M(2,1)=s*A(2)*B(1);  M(2,2)=s*A(2)*B(2);
+}
+
+/** Left multiplication. {B} = {A}^T*[M].  */
+inline void Mult (Vec3_t const & A, Mat3_t const & M, Vec3_t & B)
+{
+    B(0) = A(0)*M(0,0) + A(1)*M(1,0) + A(2)*M(2,0);
+    B(1) = A(0)*M(0,1) + A(1)*M(1,1) + A(2)*M(2,1);
+    B(2) = A(0)*M(0,2) + A(1)*M(1,2) + A(2)*M(2,2);
 }
 
 /** Matrix multiplication. */
