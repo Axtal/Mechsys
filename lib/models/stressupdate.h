@@ -78,6 +78,13 @@ public:
     Vec_t dsig_2, divs_2;         // ME increments
     Vec_t sig_dif;                // ME - FE stress difference
 
+    // auxiliary methods
+    size_t GetMax (size_t PrevMax, size_t NewMax)
+    {
+        if (NewMax>PrevMax) return NewMax;
+        else                return PrevMax;
+    }
+
 private:
     // Auxiliary methods
     int  _RK_fun    (double t, double const Y[], double dYdt[]);
@@ -201,7 +208,7 @@ inline void Model::StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t 
 
             // drift correction
             //if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
-            if (CDrift) DCitEl = Mdl->CorrectDrift (sta);
+            if (CDrift) DCitEl = GetMax (DCitEl, Mdl->CorrectDrift(sta));
 
             // debug
             if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
@@ -209,10 +216,12 @@ inline void Model::StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t 
         else deps = DEps; // update with full DEps
 
         // for each pseudo time T
-        T   = 0.0;
-        dT  = dTini;
-        SS  = 0;
-        SSs = 0;
+        T      = 0.0;
+        dT     = dTini;
+        SS     = 0;
+        SSs    = 0;
+        DCitEl = 0;
+        DCit   = 0;
         for (SS=0; SS<MaxSS; ++SS)
         {
             // exit point
@@ -250,7 +259,7 @@ inline void Model::StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t 
 
                 // drift correction
                 //if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
-                if (CDrift) DCit = Mdl->CorrectDrift (sta);
+                if (CDrift) DCit = GetMax (DCit, Mdl->CorrectDrift (sta));
 
                 // update stress path in model
                 Mdl->UpdatePath (sta, deps_1, Vec_t(0.5*(dsig_1+dsig_2)));
@@ -302,7 +311,6 @@ inline void Model::StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t 
     // debug
     if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
 }
-
 
 inline void Model::StressUpdate::GetInfo (std::ostream & os, bool Header) const
 {
@@ -379,7 +387,7 @@ inline void Model::StressUpdate::_RK_up_fun (double t, double Y[])
     // correct drift
     if (CDrift)
     {
-        DCit = Mdl->CorrectDrift (sta);
+        DCit = GetMax (DCit, Mdl->CorrectDrift (sta));
         for (size_t i=0; i<ncp; ++i) Y[    i] = sta->Sig(i);
         for (size_t i=0; i<niv; ++i) Y[ncp+i] = sta->Ivs(i);
     }

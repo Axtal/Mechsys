@@ -27,6 +27,7 @@ namespace BPy = boost::python;
 #include <mechsys/matfile.h>
 #include <mechsys/inpfile.h>
 #include <mechsys/linalg/jacobirot.h>
+#include <mechsys/models/smpinvs.h>
 
 // MechSys -- FEM
 #include <mechsys/fem/fem.h>
@@ -37,6 +38,7 @@ BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_M2PHI,        M2Phi,        1, 2)
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_JACOBIROT,    PyJacobiRot,  3, 4)
 
 // member overloadings
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SI_Calc,         PyCalc,       1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (IN_SetPrmsInis,  SetPrmsInis,  1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_ReadMesh,     ReadMesh,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,      SetVert,      4, 5)
@@ -93,6 +95,14 @@ BPy::def("Phi2M",     Phi2M,       FUN_PHI2M());
 BPy::def("M2Phi",     M2Phi,       FUN_M2PHI());
 BPy::def("JacobiRot", PyJacobiRot, FUN_JACOBIROT());
 BPy::def("EigenProjAnalytic", PyEigenProjAnalytic);
+
+/////////////////////////////////////////////////////////////////////////////// Invariants ////
+
+BPy::class_<SMPInvs>("SMPInvs")
+    .def("Calc", &SMPInvs::PyCalc, SI_Calc())
+    .def_readwrite("b", &SMPInvs::b)
+    .def(BPy::self_ns::str(BPy::self))
+    ;
 
 ///////////////////////////////////////////////////////////////////////////////// MatFile /////
 

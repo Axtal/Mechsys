@@ -45,7 +45,6 @@ public:
     // Data
     static double  sp, sq;   ///< invariants
     static Vec3_t  N, Nu;    ///< normal to SMP
-    static Mat3_t  Q;        ///< rotation matrix
     static Vec3_t  L;        ///< eigenvalues
     static Vec3_t  v0,v1,v2; ///< eigenvectors
     static Vec_t   P0,P1,P2; ///< eigenprojectors
@@ -61,12 +60,28 @@ public:
     static Mat3_t mTmp, dpdL, dqdL;   ///< projections
     static Vec3_t dspdL, dsqdL;       ///< invariants
     static Vec_t  dspdSig, dsqdSig;   ///< invariants w.r.t Sig
+
+#ifdef USE_BOOST_PYTHON
+    BPy::tuple PyCalc (BPy::list const & Sig, bool WithDerivs=false)
+    {
+        Vec_t sig;
+        List2Vec (Sig, sig);
+        Calc     (sig, WithDerivs);
+        if (WithDerivs)
+        {
+            BPy::list dspdsig, dsqdsig;
+            Vec2List (SMPInvs::dspdSig, dspdsig);
+            Vec2List (SMPInvs::dsqdSig, dsqdsig);
+            return BPy::make_tuple (SMPInvs::sp, SMPInvs::sq, dspdsig, dsqdsig);
+        }
+        else return BPy::make_tuple (SMPInvs::sp, SMPInvs::sq);
+    }
+#endif
 };
 
 // Data
 double SMPInvs::sp;       double SMPInvs::sq;
 Vec3_t SMPInvs::N;        Vec3_t SMPInvs::Nu;
-Mat3_t SMPInvs::Q;
 Vec3_t SMPInvs::L;
 Vec3_t SMPInvs::v0;       Vec3_t SMPInvs::v1;       Vec3_t SMPInvs::v2;
 Vec3_t SMPInvs::t;        Vec3_t SMPInvs::p;        Vec3_t SMPInvs::q;
@@ -153,5 +168,40 @@ inline void SMPInvs::Calc (Vec_t const & Sig, bool WithDerivs)
         dsqdSig = dsqdL(0)*E0 + dsqdL(1)*E1 + dsqdL(2)*E2;
     }
 }
+
+std::ostream & operator<< (std::ostream & os, SMPInvs const & SI)
+{
+    os << "SMP Invariants\n";
+    os << "sp" << SMPInvs::sp;
+    os << "sq" << SMPInvs::sq;
+    os << "N"  << PrintVector(SMPInvs::N);
+    os << "Nu" << PrintVector(SMPInvs::Nu);
+    os << "L"  << PrintVector(SMPInvs::L);
+    os << "v0" << PrintVector(SMPInvs::v0);
+    os << "v1" << PrintVector(SMPInvs::v1);
+    os << "v2" << PrintVector(SMPInvs::v2);
+    os << "t"  << PrintVector(SMPInvs::t);
+    os << "p"  << PrintVector(SMPInvs::p);
+    os << "q"  << PrintVector(SMPInvs::q);
+    os << "P"  << PrintMatrix(SMPInvs::P);
+
+    os << "\nSMP Derivatives\n";
+    os << "E0"      << PrintVector(SMPInvs::E0);
+    os << "E1"      << PrintVector(SMPInvs::E1);
+    os << "E2"      << PrintVector(SMPInvs::E2);
+    os << "dNdL"    << PrintMatrix(SMPInvs::dNdL);
+    os << "dNudN"   << PrintMatrix(SMPInvs::dNudN);
+    os << "dNudL"   << PrintMatrix(SMPInvs::dNudL);
+    os << "dtdL"    << PrintMatrix(SMPInvs::dtdL);
+    os << "dpdL"    << PrintMatrix(SMPInvs::dpdL);
+    os << "dqdL"    << PrintMatrix(SMPInvs::dqdL);
+    os << "dspdL"   << PrintVector(SMPInvs::dspdL);
+    os << "dsqdL"   << PrintVector(SMPInvs::dsqdL);
+    os << "dspdSig" << PrintVector(SMPInvs::dspdSig);
+    os << "dsqdSig" << PrintVector(SMPInvs::dsqdSig);
+
+    return os;
+}
+
 
 #endif // MECHSYS_SMPINVS_H

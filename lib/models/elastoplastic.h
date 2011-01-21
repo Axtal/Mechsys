@@ -118,7 +118,6 @@ public:
         pc = pTol/(1.0-M/sqrt(den));
         pm = pc/den;
         r2 = pow(pc*M,2.0)/den;
-        printf("M=%g, ptol=%g, pc=%g, pm=%g\n",M,pTol,pc,pm);
     }
 };
 
@@ -342,6 +341,7 @@ inline size_t ElastoPlastic::CorrectDrift (State * Sta) const
 
     // iterations
     double fnew = YieldFunc (sta->Sig, sta->Ivs);
+    //printf("CorrectDrift: (before) fnew = %g\n",fnew);
     size_t it   = 0;
     while (fnew>DCFTol && it<DCMaxIt)
     {
@@ -368,6 +368,7 @@ inline size_t ElastoPlastic::CorrectDrift (State * Sta) const
         if (fabs(fnew)<DCFTol) break;
         it++;
     }
+    //printf("CorrectDrift: (after)  fnew = %g,   it=%zd\n",fnew,it);
 
     // check number of iterations
     if (it>=DCMaxIt) throw new Fatal("ElastoPlastic::CorrectDrift: Yield surface drift correction did not converge after %d iterations (fnew=%g, DCFTol=%g)",it,fnew,DCFTol);
@@ -395,7 +396,7 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
     // numerator of Lagrange multiplier
     Gradients (sta->Sig, sta->Ivs);
     double numL = dot(V, DSigTr);
-    printf("f=%g,  ftr=%g,  numL=%g\n",f,f_tr,numL);
+    //printf("f=%g,  ftr=%g,  numL=%g\n",f,f_tr,numL);
 
     // new stress update
     if (NewSU)
@@ -526,7 +527,7 @@ inline void ElastoPlastic::Gradients (Vec_t const & Sig, Vec_t const & Ivs) cons
             double dfdq = 1.0/pRef;
             if (SMP.sp<pm) { dfdp=2.0*(SMP.sp-pc)/pR2;  dfdq=2.0*SMP.sq/pR2; }
             V = dfdp*SMP.dspdSig + dfdq*SMP.dsqdSig;
-            V /= Norm(V);
+            //V /= Norm(V);
             break;
         }
     }

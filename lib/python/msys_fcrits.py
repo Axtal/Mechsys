@@ -16,6 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+from mechsys   import *
 from msys_invs import *
 from msys_fig  import *
 from numpy     import ogrid
@@ -50,6 +51,11 @@ class FCrits:
         self.rst_txt = []                    # rosette text
         self.leg_plt = []                    # legend plots (items appended in plot)
         self.leg_txt = []                    # legend texts (items appended in plot)
+        self.smpinvs = SMPInvs()             # SMP invariants
+        self.pmin    = None                  # min p for pq plane
+        self.pmax    = None                  # max p for pq plane
+        self.qmin    = None                  # min q for pq plane
+        self.qmax    = None                  # max q for pq plane
 
 
     # Intersection and friction angle
@@ -81,7 +87,7 @@ class FCrits:
 
     # Set constants
     # =============
-    def set_ctes (self, phi_deg=30.0, c=None, sY=None, psa=False):
+    def set_ctes (self, phi_deg=30.0, c=None, sY=None, b=None, pTol=0.1, pRef=100.0, psa=False):
         self.c     = 0.0 if c==None else c
         self.phi   = phi_deg
         self.sphi  = sin(self.phi*pi/180.0)
@@ -94,12 +100,33 @@ class FCrits:
             if c==None: self.kVM = self.sc*self.kDP
             else:       self.kVM = sqrt(2.0)*self.c if psa else 2.0*sqrt(2.0/3.0)*self.c
         else: self.kVM = sqrt(2.0/3.0)*sY
+        if not b==None: self.smpinvs.b = b
+        A         = (1.0+self.sphi)/(1.0-self.sphi)
+        sig       = [-A, -1., -1., 0., 0., 0.]
+        sp, sq    = self.smpinvs.Calc (sig)
+        self.kGE  = sq/sp
+        self.pTol = pTol
+        self.pRef = pRef
         print 'c     = ', self.c
         print 'phi   = ', self.phi
         print 'kDP   = ', self.kDP
         print 'kMN   = ', self.kMN
         print 'kLD   = ', self.kLD
         print 'kVM   = ', self.kVM
+        print 'kGE   = ', self.kGE
+        print 'pTol  = ', self.pTol
+        print 'pRef  = ', self.pRef
+
+
+    # Generic FC constants
+    # ====================
+    def calc_arc (self):
+        M   = self.kGE
+        den = 1.0 + M*M
+        pc  = self.pTol/(1.0-M/sqrt(den))
+        pm  = pc/den
+        r2  =((pc*M)**2.0)/den
+        return pc, pm, r2
 
 
     # Set constants of anisotropic criterion
@@ -236,6 +263,14 @@ class FCrits:
                 #f  = ((sp-pc)/pc)**2.0 + (sq/(self.R*pc))**2.0 - 1.0
             else: f = sq - self.R * sp
 
+        # General
+        elif typ=='GE':
+            sp, sq     = self.smpinvs.Calc ([sig[0,0],sig[1,0],sig[2,0],sig[3,0]])
+            pc, pm, r2 = self.calc_arc ()
+            if ysurf: raise Exception('func: ysurf is not available with GE')
+            if (sp<pm): f = sq*sq/(self.pRef**2.0) +((sp-pc)**2.0)/(self.pRef**2.0) - r2/(self.pRef**2.0)
+            else:       f = sq/self.pRef - self.kGE*sp/self.pRef
+
         # error
         else: raise Exception('func: typ==%s is invalid' % typ)
 
@@ -256,6 +291,7 @@ class FCrits:
         elif typ=='AMP':   return 'Anisotropic'
         elif typ=='AMPb':  return r'$b=%g$'%self.b
         elif typ=='AMPba': return r'$b=%g,\,\alpha=%g$'%(self.b,self.alp)
+        elif typ=='GE':    return 'Generic(b=%g)'%self.smpinvs.b
         else: raise Exception('failure_crit_names: typ==%s is invalid' % typ)
 
 
@@ -356,6 +392,10 @@ class FCrits:
         # data for p-q plane
         elif plane=='pq':
             pmin, pmax, qmin, qmax = self.get_bounds ()
+            if not self.pmin==None: pmin = self.pmin
+            if not self.pmax==None: pmax = self.pmax
+            if not self.qmin==None: qmin = self.qmin
+            if not self.qmax==None: qmax = self.qmax
             dp = (pmax-pmin)/np
             dq = (qmax-qmin)/np
             for i in range(np):
