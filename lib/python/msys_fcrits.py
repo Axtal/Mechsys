@@ -120,8 +120,7 @@ class FCrits:
 
     # Generic FC constants
     # ====================
-    def calc_arc (self):
-        M   = self.kGE
+    def calc_arc (self, M):
         den = 1.0 + M*M
         pc  = self.pTol/(1.0-M/sqrt(den))
         pm  = pc/den
@@ -225,6 +224,16 @@ class FCrits:
             if ysurf: raise Exception('func: ysurf is not available with MC')
             else: f = q - (p + self.cbar)*g
 
+        # rounded Mohr/Coulomb
+        elif typ=='MCr':
+            t  = sig_calc_t (sig)
+            th = arcsin(t)/3.0
+            g  = sqrt(2.0)*self.sphi/(sqrt(3.0)*cos(th)-self.sphi*sin(th))
+            if ysurf: raise Exception('func: ysurf is not available with MC')
+            pc, pm, r2 = self.calc_arc (g)
+            if (p<pm): f = q*q/(self.pRef**2.0) +((p-pc)**2.0)/(self.pRef**2.0) - r2/(self.pRef**2.0)
+            else:      f = q/self.pRef - g*p/self.pRef
+
         # Nakai/Matsuoka
         elif typ=='MN':
             l = sig_calc_s123(sig)
@@ -266,7 +275,7 @@ class FCrits:
         # General
         elif typ=='GE':
             sp, sq     = self.smpinvs.Calc ([sig[0,0],sig[1,0],sig[2,0],sig[3,0]])
-            pc, pm, r2 = self.calc_arc ()
+            pc, pm, r2 = self.calc_arc (self.kGE)
             if ysurf: raise Exception('func: ysurf is not available with GE')
             if (sp<pm): f = sq*sq/(self.pRef**2.0) +((sp-pc)**2.0)/(self.pRef**2.0) - r2/(self.pRef**2.0)
             else:       f = sq/self.pRef - self.kGE*sp/self.pRef
@@ -284,6 +293,7 @@ class FCrits:
         if   typ=='VM':    return 'von Mises'
         elif typ=='DP':    return 'Drucker/Prager'
         elif typ=='MC':    return 'Mohr/Coulomb'
+        elif typ=='MCr':   return 'Mohr/Coulomb(rounded)'
         elif typ=='MN':    return 'Matsuoka/Nakai'
         elif typ=='MNnl':  return 'Matsuoka/Nakai(non-linear)'
         elif typ=='LD':    return 'Lade/Duncan'

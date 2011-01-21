@@ -43,13 +43,12 @@ public:
     virtual bool   LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt)      const;
 
     // Internal methods to be overloaded by derived classes
-    virtual void   InitIvs   (SDPair const & Ini, State * Sta)      const;
-    virtual void   Gradients (Vec_t const & Sig, Vec_t const & Ivs) const;
-    virtual void   FlowRule  (Vec_t const & Sig, Vec_t const & Ivs) const;
-    virtual void   Hardening (Vec_t const & Sig, Vec_t const & Ivs) const;
-    virtual double YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) const;
-    virtual double CalcE     (Vec_t const & Sig, Vec_t const & Ivs) const { return E; }
-    virtual void   ELStiff   (Vec_t const & Sig, Vec_t const & Ivs) const;
+    virtual void   InitIvs   (SDPair const & Ini, State * Sta)                            const;
+    virtual void   Gradients (Vec_t const & Sig, Vec_t const & Ivs, bool Potential=false) const;
+    virtual void   Hardening (Vec_t const & Sig, Vec_t const & Ivs)                       const;
+    virtual double YieldFunc (Vec_t const & Sig, Vec_t const & Ivs)                       const;
+    virtual double CalcE     (Vec_t const & Sig, Vec_t const & Ivs)                       const { return E; }
+    virtual void   ELStiff   (Vec_t const & Sig, Vec_t const & Ivs)                       const;
 
     // Constants
     bool    Derived;    ///< Derived model (such as CamClay)
@@ -58,11 +57,11 @@ public:
     FCrit_t FC;         ///< Failure criterion: VM:Von-Mises
     double  kVM;        ///< von Mises coefficient
 	double  kGE;        ///< General FC coefficient
+	double  kGEpot;     ///< General FC coefficient (for potential/flow rule)
     double  pRef;       ///< Reference pressure
-    double  pR2;        ///< pRef squared
+    double  pRef2;      ///< pRef squared
     double  pTol;       ///< Tolerance for minimum poct
     double  Hb;         ///< Hardening coefficient H_bar
-    bool    NonAssoc;   ///< Non-associated flow rule ?
     double  sphi;       ///< Sin(phi) friction angle
     double  spsi;       ///< Sin(psi) dilatancy angle
     double  FTol;       ///< Tolerance to be used when finding the intersection
@@ -75,7 +74,7 @@ public:
     Vec_t   I;          ///< Idendity tensor
 
     // State data (mutable/scratch-pad)
-    mutable double  M, pc, pm, r2;             ///< Variables for smoothing with arc
+    mutable double  pc, pm, r2;                ///< Variables for smoothing with arc
     mutable SMPInvs SMP;                       ///< SMP invariants
     mutable Vec_t SigB;                        ///< SigmaBar: shifted sigma for cohesion
     mutable Vec_t Sig0, Ivs0, SigA, DSigTr;    ///< Variables for yield crossing detection
@@ -111,9 +110,8 @@ public:
         dgdsig = dgdth * dthdsig;
     }
 
-    void Calc_arc (Vec_t const & Sig, Vec_t const & Ivs) const
+    void Calc_arc (double M, Vec_t const & Sig, Vec_t const & Ivs) const
     {
-        M = kGE;
         double den = 1.0 + M*M;
         pc = pTol/(1.0-M/sqrt(den));
         pm = pc/den;
@@ -135,7 +133,6 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
       pRef     (1.0),
       pTol     (1.0e-5),
       Hb       (0.0),
-      NonAssoc (false),
       FTol     (1.0e-7),
       DCFTol   (1.0e-8),
       DCMaxIt  (10),
@@ -171,7 +168,7 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
     // reference pressure
     if (Prms.HasKey("pref")) pRef = Prms("pref");
     if (Prms.HasKey("ptol")) pTol = Prms("ptol");
-    pR2 = pRef*pRef;
+    pRef2 = pRef*pRef;
 
     if (!Derived) // for instance, CamClay
     {
@@ -196,22 +193,24 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
             double c       = (Prms.HasKey("c") ? Prms("c") : 0.0);
             double phi_deg = Prms("phi");
             double phi_rad = phi_deg*Util::PI/180.0;
-            double psi_rad = 0.0;
+            double psi_rad = phi_rad;
             if (phi_deg<1.0e-3) throw new Fatal("ElastoPlastic::ElastoPlastic: Friction angle (phi [deg]) must be greater than zero (1.0e-3). phi=%g is invalid",phi_deg);
             if (c<0.0)          throw new Fatal("ElastoPlastic::ElastoPlastic: 'cohesion' must be greater than zero. c=%g is invalid",c);
-            if (Prms.HasKey("psi"))
-            {
-                NonAssoc = true;
-                psi_rad  = Prms("psi")*Util::PI/180.0;
-            }
+            if (Prms.HasKey("psi")) psi_rad = Prms("psi")*Util::PI/180.0;
             sphi = sin(phi_rad);
             spsi = sin(psi_rad);
             if (FC==GE_t)
             {
+                // yield surface
                 double A = (1.0+sphi)/(1.0-sphi);
                 SigA = -A, -1., -1., 0., 0., 0.;
                 SMP.Calc (SigA, false);
                 kGE = SMP.sq/SMP.sp;
+                // potential
+                A      = (1.0+spsi)/(1.0-spsi);
+                SigA   = -A, -1., -1., 0., 0., 0.;
+                SMP.Calc (SigA, false);
+                kGEpot = SMP.sq/SMP.sp;
             }
         }
 
@@ -256,7 +255,7 @@ inline void ElastoPlastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig
     {
         // gradients, flow rule, hardening, and hp
         Gradients (sta->Sig, sta->Ivs);
-        FlowRule  (sta->Sig, sta->Ivs);
+        Gradients (sta->Sig, sta->Ivs, true);
         Hardening (sta->Sig, sta->Ivs);
         double hp = (NIvs>0 ? Y(0)*H(0) : 0.0);
 
@@ -306,7 +305,7 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D) const
     {
         // gradients, flow rule, hardening, and hp
         Gradients (sta->Sig, sta->Ivs);
-        FlowRule  (sta->Sig, sta->Ivs);
+        Gradients (sta->Sig, sta->Ivs, true);
         Hardening (sta->Sig, sta->Ivs);
         double hp = (NIvs>0 ? Y(0)*H(0) : 0.0);
 
@@ -341,13 +340,12 @@ inline size_t ElastoPlastic::CorrectDrift (State * Sta) const
 
     // iterations
     double fnew = YieldFunc (sta->Sig, sta->Ivs);
-    //printf("CorrectDrift: (before) fnew = %g\n",fnew);
     size_t it   = 0;
     while (fnew>DCFTol && it<DCMaxIt)
     {
         // gradients, flow rule, hardening, and hp
         Gradients (sta->Sig, sta->Ivs);
-        FlowRule  (sta->Sig, sta->Ivs);
+        Gradients (sta->Sig, sta->Ivs, true);
         Hardening (sta->Sig, sta->Ivs);
         double hp = (NIvs>0 ? Y(0)*H(0) : 0.0);
 
@@ -368,7 +366,6 @@ inline size_t ElastoPlastic::CorrectDrift (State * Sta) const
         if (fabs(fnew)<DCFTol) break;
         it++;
     }
-    //printf("CorrectDrift: (after)  fnew = %g,   it=%zd\n",fnew,it);
 
     // check number of iterations
     if (it>=DCMaxIt) throw new Fatal("ElastoPlastic::CorrectDrift: Yield surface drift correction did not converge after %d iterations (fnew=%g, DCFTol=%g)",it,fnew,DCFTol);
@@ -396,7 +393,6 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
     // numerator of Lagrange multiplier
     Gradients (sta->Sig, sta->Ivs);
     double numL = dot(V, DSigTr);
-    //printf("f=%g,  ftr=%g,  numL=%g\n",f,f_tr,numL);
 
     // new stress update
     if (NewSU)
@@ -495,61 +491,61 @@ inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
     if (NewSU && f<-FTol) throw new Fatal("ElastoPlastic:InitIvs: stress point (sig=(%g,%g,%g,%g]) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,f,sta->Ivs(0));
 }
 
-inline void ElastoPlastic::Gradients (Vec_t const & Sig, Vec_t const & Ivs) const
+inline void ElastoPlastic::Gradients (Vec_t const & Sig, Vec_t const & Ivs, bool Potential) const
 {
-    // derivative of internal values
-    Y(0) = 0.0; // dfdz0
-    Y(1) = 0.0; // dfdz1
-    Y(2) = 0.0; // dfdz2
+    Vec_t * VorW = &V;
+    if (Potential) VorW = &W;
+    else
+    {
+        // derivative of internal values
+        Y(0) = 0.0; // dfdz0
+        Y(1) = 0.0; // dfdz1
+        Y(2) = 0.0; // dfdz2
 
-    // new stress update
-    if (NewSU) Y(0) = -1.0;
+        // new stress update
+        if (NewSU) Y(0) = -1.0;
+    }
 
     switch (FC)
     {
         case VM_t:
         {
             OctInvs (Sig, p,q,s, qTol);
-            V = s/(q*kVM);
+            (*VorW) = s/(q*kVM);
             break;
         }
         case MC_t:
         {
-            Calc_dgdsig (Sig);
-            V = (q/(g*p*p*Util::SQ3))*I + (1.0/(p*q*g))*s - (q/(p*g*g))*dgdsig;
+            Calc_dgdsig (Sig, Potential);
+            Calc_arc    (g, Sig, Ivs);
+            double dfdp = -g/pRef;
+            double dfdq = 1.0/pRef;
+            double dfdg = -p/pRef;
+            if (p<pm)
+            {
+                dfdp = 2.0*(p-pc)/pRef2;
+                dfdq = 2.0*q/pRef2;
+                dfdg = 2.0*g*r2/(1.0+g*g) - 2.0*r2/g; // dfdr2 * dr2dg
+            }
+            if (q>qTol) (*VorW) = (-dfdp/Util::SQ3)*I + (dfdq/q)*s + dfdg*dgdsig;
+            else        (*VorW) = (-dfdp/Util::SQ3)*I;
             break;
         }
         case GE_t:
         {
+            double M = (Potential ? kGEpot : kGE);
             SMP.Calc (Sig, true);
-            Calc_arc (Sig, Ivs);
+            Calc_arc (M, Sig, Ivs);
             double dfdp = -M/pRef;
             double dfdq = 1.0/pRef;
-            if (SMP.sp<pm) { dfdp=2.0*(SMP.sp-pc)/pR2;  dfdq=2.0*SMP.sq/pR2; }
-            V = dfdp*SMP.dspdSig + dfdq*SMP.dsqdSig;
-            //V /= Norm(V);
-            break;
-        }
-    }
-}
-
-inline void ElastoPlastic::FlowRule (Vec_t const & Sig, Vec_t const & Ivs) const
-{
-    switch (FC)
-    {
-        case VM_t: { W = V; break; }
-        case MC_t:
-        {
-            if (NonAssoc)
+            if (SMP.sp<pm)
             {
-                Calc_dgdsig (Sig, true);
-                //W = (q/(g*p*p*Util::SQ3))*I + (1.0/(p*q*g))*s - (q/(p*g*g))*dgdsig;
-                W = (g/Util::SQ3)*I + (1.0/q)*s - p*dgdsig;
+                dfdp = 2.0*(SMP.sp-pc)/pRef2;
+                dfdq = 2.0*SMP.sq/pRef2;
             }
-            else W = V;
+            (*VorW) = dfdp*SMP.dspdSig + dfdq*SMP.dsqdSig;
             break;
         }
-        case GE_t: { W = V; break; }
     }
 }
 
@@ -604,14 +600,16 @@ inline double ElastoPlastic::YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) co
         case MC_t:
         {
             Calc_pqg (Sig);
-            f = q/(p*g) - Ivs(0);
+            Calc_arc (g, Sig, Ivs);
+            if (p<pm) f = q*q/pRef2 + pow(p-pc,2.0)/pRef2 - r2/pRef2;
+            else      f = q/pRef - g*p/pRef;
             break;
         }
         case GE_t:
         {
             SMP.Calc (Sig, false);
-            Calc_arc (Sig, Ivs);
-            if (SMP.sp<pm) f = SMP.sq*SMP.sq/pR2 + pow(SMP.sp-pc,2.0)/pR2 - r2/pR2;
+            Calc_arc (kGE, Sig, Ivs);
+            if (SMP.sp<pm) f = SMP.sq*SMP.sq/pRef2 + pow(SMP.sp-pc,2.0)/pRef2 - r2/pRef2;
             else           f = SMP.sq/pRef - kGE*SMP.sp/pRef;
         }
     }

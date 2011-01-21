@@ -1574,9 +1574,9 @@ inline void OctInvs (Vec_t const & Sig, double & p, double & q, Vec_t & s, doubl
 }
 
 /** Octahedral invariants of Sig (and derivatives). */
-inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, double & th, Vec_t & s, double qTol=1.0e-8, Vec_t * dthdSig=NULL)
+inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, double & th, Vec_t & s, double qTol=1.0e-8, Vec_t * dthdSig=NULL, bool ApplyPertub=false)
 {
-    OctInvs (Sig, p, q, s, qTol);
+    OctInvs (Sig, p, q, s, qTol, ApplyPertub);
     t  = 0.0;
     th = asin(t)/3.0;
     double q3 = pow(q,3.0);

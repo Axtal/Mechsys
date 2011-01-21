@@ -30,11 +30,12 @@ public:
     CamClay (int NDim, SDPair const & Prms);
 
     // Derived methods
-    void   InitIvs   (SDPair const & Ini, State * Sta)      const;
-    void   Gradients (Vec_t const & Sig, Vec_t const & Ivs) const;
-    void   Hardening (Vec_t const & Sig, Vec_t const & Ivs) const;
-    double YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) const;
-    double CalcE     (Vec_t const & Sig, Vec_t const & Ivs) const { return fabs(Sig(0)+Sig(1)+Sig(2))*(1.0-2.0*nu)*v0/kap; }
+    void   InitIvs   (SDPair const & Ini, State * Sta)                            const;
+    void   Gradients (Vec_t const & Sig, Vec_t const & Ivs, bool Potential=false) const;
+    void   Hardening (Vec_t const & Sig, Vec_t const & Ivs)                       const;
+    double YieldFunc (Vec_t const & Sig, Vec_t const & Ivs)                       const;
+    double CalcE     (Vec_t const & Sig, Vec_t const & Ivs)                       const
+    { return fabs(Sig(0)+Sig(1)+Sig(2))*(1.0-2.0*nu)*v0/kap; }
 
     // Data
     double         lam;
@@ -115,7 +116,7 @@ inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const
     if (f>1.0e-8) throw new Fatal("CamClay:InitIvs: stress point (sig=(%g,%g,%g,%g], p=%g, q=%g) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,p,q,f,sta->Ivs(0));
 }
 
-inline void CamClay::Gradients (Vec_t const & Sig, Vec_t const & Ivs) const
+inline void CamClay::Gradients (Vec_t const & Sig, Vec_t const & Ivs, bool Potential) const
 {
     // invariants
     double p,q,t;
@@ -125,10 +126,14 @@ inline void CamClay::Gradients (Vec_t const & Sig, Vec_t const & Ivs) const
 
     // gradients
     double M = CalcM(t);
-    V    = (M*M*(Ivs(0)-2.0*p)/(Util::SQ3))*I + 2.0*dev_sig;
-    Y(0) = -M*M*p;
-
-    if (NewSU) Y(1) = 0.0;
+    Vec_t * VorW = &V;
+    if (Potential) VorW = &W;
+    else
+    {
+        Y(0) = -M*M*p;
+        if (NewSU) Y(1) = 0.0;
+    }
+    (*VorW) = (M*M*(Ivs(0)-2.0*p)/(Util::SQ3))*I + 2.0*dev_sig;
 
     if (false)//q>1.0e-10)
     {
