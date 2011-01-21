@@ -129,7 +129,7 @@ class Plotter:
         # 0) q/p, Ed ---------------------------------------------------------------------------
         if self.one==0 or self.one<0:
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot (Ed, Y, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=ms)
+            plot (Ed, Y, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=ms, zorder=zorder)
             if self.mark_max: plot (Ed[imaQP], Y[imaQP], '^', color=clr)
             if self.mark_lst: plot (Ed[-1],    Y[-1],    '^', color=clr)
             xlabel (r'$\varepsilon_d$ [%]')
@@ -140,7 +140,7 @@ class Plotter:
         if self.one==1 or self.one<0:
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             if self.mark_lst: plot (Ev[-1], Y[-1], '^', color=clr)
-            plot   (Ev, Y, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
+            plot   (Ev, Y, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms, zorder=zorder)
             xlabel (r'$\varepsilon_v$ [%]')
             ylabel (Ylbl)
             Grid   ()
@@ -150,7 +150,7 @@ class Plotter:
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             if self.mark_lst: plot (P[-1], Q[-1], '^', color=clr)
             axhline (0.0,color='black'); axvline(0.0,color='black')
-            plot    (P, Q, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
+            plot    (P, Q, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms, zorder=zorder)
             xlabel  (r'$p_{%s}$'%(self.pq_ty))
             ylabel  (r'$q_{%s}$'%(self.pq_ty))
             Grid    ()
@@ -163,7 +163,7 @@ class Plotter:
         if self.one==3 or self.one<0:
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             if self.mark_lst: plot (Ed[-1], Ev[-1], '^', color=clr)
-            plot   (Ed, Ev, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
+            plot   (Ed, Ev, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms, zorder=zorder)
             if self.mark_lst: plot (Ed[-1], Ev[-1], '^', color=clr)
             xlabel (r'$\varepsilon_d$ [%]')
             ylabel (r'$\varepsilon_v$ [%]')
@@ -183,7 +183,7 @@ class Plotter:
                 xlbl = r'$p_{%s}$'%(self.pq_ty)
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             if self.mark_lst: plot (X[-1], Ev[-1], '^', color=clr)
-            plot   (X, Ev, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
+            plot   (X, Ev, lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms, zorder=zorder)
             xlabel (xlbl)
             ylabel (r'$\varepsilon_v$ [%]')
             Grid   ()
@@ -192,7 +192,7 @@ class Plotter:
         if self.one==5 or self.one<0 and not self.four:
             pcoef = self.fc_poct if self.oct_norm else 1.0
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot (Sa/pcoef, Sb/pcoef, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=ms)
+            plot (Sa/pcoef, Sb/pcoef, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=ms, zorder=zorder)
             if self.mark_max: plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
             if self.mark_lst: plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, '^', color=clr)
             Grid ()
@@ -202,9 +202,9 @@ class Plotter:
         if self.one==6 or self.one<0 and not self.six and not self.four:
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             if self.mark_lst: plot (Ex[-1], Y[-1], '^', color=clr)
-            plot    (Ex, Y, lw=lwd,linestyle='-',  color=clr)
-            plot    (Ey, Y, lw=lwd,linestyle='--', color=clr)
-            plot    (Ez, Y, lw=lwd,linestyle='-.', color=clr)
+            plot    (Ex, Y, lw=lwd,linestyle='-',  color=clr, zorder=zorder)
+            plot    (Ey, Y, lw=lwd,linestyle='--', color=clr, zorder=zorder)
+            plot    (Ez, Y, lw=lwd,linestyle='-.', color=clr, zorder=zorder)
             Grid    ()
             axvline (0,   color='black')
             axhline (Y[0],color='black')
@@ -217,7 +217,7 @@ class Plotter:
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             if self.dev:
                 if self.mark_lst: plot (S3[-1]-S1[-1], S3[-1]-S2[-1], '^', color=clr)
-                plot    (S3-S1, S3-S2, lw=lwd,linestyle='-', color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
+                plot    (S3-S1, S3-S2, lw=lwd,linestyle='-', color=clr, label=label, marker=marker, markevery=markevery, ms=ms, zorder=zorder)
                 xlabel  (r'$\sigma_3-\sigma_1$')
                 ylabel  (r'$\sigma_3-\sigma_2$')
                 axvline (0,color='black')
@@ -228,9 +228,9 @@ class Plotter:
                 if self.mark_lst: plot (Ex[-1], Sx[-1], '^', color=clr)
                 if self.mark_lst: plot (Ey[-1], Sy[-1], '^', color=clr)
                 if self.mark_lst: plot (Ez[-1], Sz[-1], '^', color=clr)
-                plot    (Ex, Sx, lw=lwd,linestyle='-',  color=clr)
-                plot    (Ey, Sy, lw=lwd,linestyle='--', color=clr)
-                plot    (Ez, Sz, lw=lwd,linestyle='-.', color=clr)
+                plot    (Ex, Sx, lw=lwd,linestyle='-',  color=clr, zorder=zorder)
+                plot    (Ey, Sy, lw=lwd,linestyle='--', color=clr, zorder=zorder)
+                plot    (Ez, Sz, lw=lwd,linestyle='-.', color=clr, zorder=zorder)
                 xlabel  (r'$\varepsilon_x$[----], $\varepsilon_y$[- - -], $\varepsilon_z$[- . -]')
                 ylabel  (r'$\sigma_x$[----], $\sigma_y$[- - -], $\sigma_z$[- . -]')
                 axhline (Sx[0],color='black')
@@ -241,7 +241,9 @@ class Plotter:
         if self.one==8 or self.one<0 and not self.six and not self.four:
             if self.one<0: self.ax = subplot (nhplt,nvplt,iplot);  iplot += 1
             if self.mark_lst: plot (-sqrt(2.0)*Si[-1], -Sj[-1], '^', color=clr)
-            plot   (-sqrt(2.0)*Si, -Sj,  lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms)
+            axhline(0,color='black')
+            axvline(0,color='black')
+            plot   (-sqrt(2.0)*Si, -Sj,  lw=lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=ms, zorder=zorder)
             xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]))
             ylabel (r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]))
             Grid   ()
@@ -262,9 +264,9 @@ class Plotter:
                 R0 = abs((s1-s2)/2.)
                 R1 = abs((s2-s3)/2.)
                 R2 = abs((s3-s1)/2.)
-                Arc (C0,0.,R0, 0.,pi, ec=clr, res=30)
-                Arc (C1,0.,R1, 0.,pi, ec=clr, res=30)
-                Arc (C2,0.,R2, 0.,pi, ec=clr, res=30)
+                Arc (C0,0.,R0, 0.,pi, ec=clr, res=30, zorder=zorder)
+                Arc (C1,0.,R1, 0.,pi, ec=clr, res=30, zorder=zorder)
+                Arc (C2,0.,R2, 0.,pi, ec=clr, res=30, zorder=zorder)
             xlabel (r'$-\sigma_i$')
             ylabel (r'$\tau$')
             Grid   ()
