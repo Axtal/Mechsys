@@ -47,7 +47,7 @@ public:
 
 
 inline LinElastic::LinElastic (int NDim, SDPair const & Prms)
-    : Model (NDim,Prms,"LinElastic")
+    : Model (NDim,Prms,/*niv*/0,"LinElastic")
 {
     // parameters
     E  = Prms("E");

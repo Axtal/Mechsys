@@ -47,7 +47,7 @@ public:
 
 
 inline LinFlow::LinFlow (int NDim, SDPair const & Prms)
-    : Model (NDim,Prms,"LinFlow")
+    : Model (NDim,Prms,/*niv*/0,"LinFlow")
 {
     // parameters
     if (Prms.HasKey("k"))

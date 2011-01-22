@@ -61,7 +61,7 @@ public:
 
 
 inline Unconv04::Unconv04 (int NDim, SDPair const & Prms)
-    : Model (NDim,Prms,"Unconv04"), alpha(0.0)
+    : Model (NDim,Prms,/*niv*/0,"Unconv04"), alpha(0.0)
 {
     lam0 = Prms("lam0");
     lam1 = Prms("lam1");

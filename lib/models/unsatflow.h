@@ -157,7 +157,7 @@ inline void UnsatFlowState::Unpack (Array<double> const & V)
 }
 
 inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms)
-    : Model (NDim,Prms,"UnsatFlow")
+    : Model (NDim,Prms,/*niv*/0,"UnsatFlow")
 {
     gamW    = Prms("gamW");
     kwsat   = Prms("kwsat");

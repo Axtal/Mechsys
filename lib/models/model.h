@@ -50,7 +50,7 @@ class Model
 {
 public:
     // Constructor & Destructor
-    Model (int NDim, SDPair const & Prms, char const * Name="__unnamed_model__"); ///< NDim:space dimension, Prms:parameters
+    Model (int NDim, SDPair const & Prms, size_t NIvs=0, char const * Name="__unnamed_model__"); ///< NDim:space dimension, Prms:parameters
     virtual ~Model () {}
 
     // Methods
@@ -83,10 +83,12 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Model::Model (int TheNDim, SDPair const & ThePrms, char const * TheName)
+inline Model::Model (int TheNDim, SDPair const & ThePrms, size_t NIv, char const * TheName)
     : NDim(TheNDim), Prms(ThePrms), GTy(SDPairToGType(ThePrms,(TheNDim==3?"d3d":"d2d"))), 
-      Name(TheName), NCps(2*NDim),  NIvs(0)
+      Name(TheName), NCps(2*NDim),  NIvs(NIv)
 {
+    SUp.SetModel   (this);
+    IvNames.Resize (NIv);
 }
 
 std::ostream & operator<< (std::ostream & os, Model const & D)

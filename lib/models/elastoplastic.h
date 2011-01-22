@@ -33,7 +33,7 @@ public:
     enum FCrit_t { VM_t, MC_t, GE_t }; ///< Failure criterion type
 
     // Constructor & Destructor
-    ElastoPlastic (int NDim, SDPair const & Prms, bool DerivedModel=false);
+    ElastoPlastic (int NDim, SDPair const & Prms, size_t NIv=3, char const * Name="ElastoPlastic(VM)", bool DerivedModel=false);
     virtual ~ElastoPlastic () {}
 
     // Derived methods
@@ -47,6 +47,7 @@ public:
     virtual void   Gradients (Vec_t const & Sig, Vec_t const & Ivs, bool Potential=false) const;
     virtual void   Hardening (Vec_t const & Sig, Vec_t const & Ivs)                       const;
     virtual double YieldFunc (Vec_t const & Sig, Vec_t const & Ivs)                       const;
+    virtual void   ExtraDIvs (Vec_t & DIvs)                                               const;
     virtual double CalcE     (Vec_t const & Sig, Vec_t const & Ivs)                       const { return E; }
     virtual void   ELStiff   (Vec_t const & Sig, Vec_t const & Ivs)                       const;
 
@@ -58,8 +59,6 @@ public:
     double  kVM;        ///< von Mises coefficient
 	double  kGE;        ///< General FC coefficient
 	double  kGEpot;     ///< General FC coefficient (for potential/flow rule)
-    double  pRef;       ///< Reference pressure
-    double  pRef2;      ///< pRef squared
     double  pTol;       ///< Tolerance for minimum poct
     double  Hb;         ///< Hardening coefficient H_bar
     double  sphi;       ///< Sin(phi) friction angle
@@ -99,7 +98,8 @@ public:
     double dFada (double Alp, void*) { SigA=Sig0+Alp*DSigTr;  Gradients(SigA,Ivs0);  return dot(V,DSigTr); }
 
     // Auxiliary methods
-    void Calc_pq     (Vec_t const & Sig) const { p=Calc_poct(Sig);  q=Calc_qoct(Sig); }
+    void Calc_pq     (Vec_t const & Sig) const              { p=Calc_poct(Sig);  q=Calc_qoct(Sig); }
+    void Calc_pqt    (Vec_t const & Sig) const              { OctInvs(Sig,p,q,t);  th=asin(t)/3.0; }
     void Calc_pqg    (Vec_t const & Sig, double sinp) const { OctInvs(Sig,p,q,t);  th=asin(t)/3.0;  g=Util::SQ2*sinp/(Util::SQ3*cos(th)-sinp*sin(th)); }
     void Calc_dgdsig (Vec_t const & Sig, double sinp) const
     {
@@ -122,14 +122,13 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
-    : Model    (NDim,Prms,"ElastoPlastic(VM)"),
+inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, size_t NIv, char const * Name, bool Deriv)
+    : Model    (NDim, Prms, NIv, Name),
       Derived  (Deriv),
       E        (0.0),
       nu       (0.0),
       FC       (VM_t),
       kVM      (0.0),
-      pRef     (1.0),
       pTol     (1.0e-5),
       Hb       (0.0),
       FTol     (1.0e-7),
@@ -147,6 +146,8 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
     DEpsEl .change_dim (NCps);
     V      .change_dim (NCps);
     W      .change_dim (NCps);
+    Y      .change_dim (NIvs);
+    H      .change_dim (NIvs);
     De     .change_dim (NCps,NCps);
     Dep    .change_dim (NCps,NCps);
     VDe    .change_dim (NCps);
@@ -164,9 +165,7 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
     I(2) = 1.0;
 
     // reference pressure
-    if (Prms.HasKey("pref")) pRef = Prms("pref");
     if (Prms.HasKey("ptol")) pTol = Prms("ptol");
-    pRef2 = pRef*pRef;
 
     if (!Derived) // for instance, CamClay
     {
@@ -216,15 +215,7 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Deriv)
         if (Prms.HasKey("Hp")) Hb = (2.0/3.0)*Prms("Hp"); // Hp=H_prime
 
         // internal values
-        NIvs = 3;
-        Y.change_dim (NIvs);
-        H.change_dim (NIvs);
-        IvNames.Push ("z0");
-        IvNames.Push ("evp");
-        IvNames.Push ("edp");
-
-        // set model in stress update
-        SUp.SetModel (this);
+        IvNames = "z0", "evp", "edp";
     }
 
     // new stress update parmeters
@@ -270,12 +261,8 @@ inline void ElastoPlastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig
         // increment of internal values
         DIvs = Lam*H;
 
-        // plastic strains
-        if (!Derived)
-        {
-            DIvs(1) = Calc_ev (DEpsPl); // devp
-            DIvs(2) = Calc_ed (DEpsPl); // dedp
-        }
+        // plastic strains => extra DIvs
+        ExtraDIvs (DIvs);
     }
     else
     {
@@ -459,7 +446,7 @@ inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
     {
         switch (FC)
         {
-            case VM_t: { sta->Ivs(0) = kVM;  break; }
+            case VM_t: { sta->Ivs(0) = 1.0;  break; }
             case MC_t: { sta->Ivs(0) = sphi; break; }
             case GE_t: { sta->Ivs(0) = kGE;  break; }
         }
@@ -500,6 +487,7 @@ inline void ElastoPlastic::Gradients (Vec_t const & Sig, Vec_t const & Ivs, bool
         {
             OctInvs (SigA, p,q,s, qTol);
             (*VorW) = s/(q*kVM);
+            if (NewSU && !Potential) Y(0) = -1.0;
             break;
         }
         case MC_t:
@@ -507,14 +495,14 @@ inline void ElastoPlastic::Gradients (Vec_t const & Sig, Vec_t const & Ivs, bool
             // gradients: V
             Calc_dgdsig (SigA, (Potential ? spsi : Ivs(0)));
             Calc_arc    (g);
-            double dfdp = -g/pRef;
-            double dfdq = 1.0/pRef;
-            double dfdg = -p/pRef;
+            double dfdp = -g;
+            double dfdq = 1.0;
+            double dfdg = -p;
             if (p<pm)
             {
-                dfdp = 2.0*(p-pc)/pRef2;
-                dfdq = 2.0*q/pRef2;
-                dfdg = 2.0*g*(r2-pc*pc)/((1.0+g*g)*pRef2);
+                dfdp = 2.0*(p-pc);
+                dfdq = 2.0*q;
+                dfdg = 2.0*g*(r2-pc*pc)/(1.0+g*g);
             }
             if (q>qTol) (*VorW) = (-dfdp/Util::SQ3)*I + (dfdq/q)*s + dfdg*dgdsig;
             else        (*VorW) = (-dfdp/Util::SQ3)*I;
@@ -533,20 +521,20 @@ inline void ElastoPlastic::Gradients (Vec_t const & Sig, Vec_t const & Ivs, bool
             SMP.Calc (SigA, true);
             double M = (Potential ? kGEpot : Ivs(0));
             Calc_arc (M);
-            double dfdp = -M/pRef;
-            double dfdq = 1.0/pRef;
+            double dfdp = -M;
+            double dfdq = 1.0;
             if (SMP.sp<pm)
             {
-                dfdp = 2.0*(SMP.sp-pc)/pRef2;
-                dfdq = 2.0*SMP.sq/pRef2;
+                dfdp = 2.0*(SMP.sp-pc);
+                dfdq = 2.0*SMP.sq;
             }
             (*VorW) = dfdp*SMP.dspdSig + dfdq*SMP.dsqdSig;
 
             // gradients: y0
             if (NewSU && !Potential)
             {
-                if (SMP.sp<pm) Y(0) = 2.0*M*(r2-pc*pc)/((1.0+M*M)*pRef2);
-                else           Y(0) = -SMP.sp/pRef;
+                if (SMP.sp<pm) Y(0) = 2.0*M*(r2-pc*pc)/(1.0+M*M);
+                else           Y(0) = -SMP.sp;
             }
             break;
         }
@@ -563,35 +551,35 @@ inline void ElastoPlastic::Hardening (Vec_t const & Sig, Vec_t const & Ivs) cons
     // new stress update
     if (NewSU)
     {
-        double F;
+        double D;
         switch (FC)
         {
             case VM_t:
             {
                 q = Calc_qoct (Sig);
-                F = q/kVM - 1.0;
+                D = q/kVM - 1.0;
                 break;
             }
             case MC_t:
             {
                 Calc_pqg (Sig, sphi);
                 Calc_arc (g);
-                if (p<pm) F = q*q/pRef2 + pow(p-pc,2.0)/pRef2 - r2/pRef2;
-                else      F = q/pRef - g*p/pRef;
+                if (p<pm) D = q*q + pow(p-pc,2.0) - r2;
+                else      D = q - g*p;
                 break;
             }
             case GE_t:
             {
                 SMP.Calc (Sig, false);
                 Calc_arc (kGE);
-                if (SMP.sp<pm) F = SMP.sq*SMP.sq/pRef2 + pow(SMP.sp-pc,2.0)/pRef2 - r2/pRef2;
-                else           F = SMP.sq/pRef - kGE*SMP.sp/pRef;
+                if (SMP.sp<pm) D = SMP.sq*SMP.sq + pow(SMP.sp-pc,2.0) - r2;
+                else           D = SMP.sq - kGE*SMP.sp;
                 break;
             }
         }
         double H1 = 0.0;
-        if (F>0.0) F = 0.0;
-        H(0) = AlpSU + (H1-AlpSU)*exp(BetSU*F);
+        if (D>0.0) D = 0.0;
+        H(0) = AlpSU + (H1-AlpSU)*exp(BetSU*D);
     }
 }
 
@@ -610,19 +598,26 @@ inline double ElastoPlastic::YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) co
         {
             Calc_pqg (Sig, Ivs(0));
             Calc_arc (g);
-            if (p<pm) f = q*q/pRef2 + pow(p-pc,2.0)/pRef2 - r2/pRef2;
-            else      f = q/pRef - g*p/pRef;
+            if (p<pm) f = q*q + pow(p-pc,2.0) - r2;
+            else      f = q - g*p;
             break;
         }
         case GE_t:
         {
             SMP.Calc (Sig, false);
             Calc_arc (Ivs(0));
-            if (SMP.sp<pm) f = SMP.sq*SMP.sq/pRef2 + pow(SMP.sp-pc,2.0)/pRef2 - r2/pRef2;
-            else           f = SMP.sq/pRef - Ivs(0)*SMP.sp/pRef;
+            if (SMP.sp<pm) f = SMP.sq*SMP.sq + pow(SMP.sp-pc,2.0) - r2;
+            else           f = SMP.sq - Ivs(0)*SMP.sp;
         }
     }
     return f;
+}
+
+inline void ElastoPlastic::ExtraDIvs (Vec_t & DIvs) const
+{
+    if (Derived) return;
+    DIvs(1) = Calc_ev (DEpsPl); // devp
+    DIvs(2) = Calc_ed (DEpsPl); // dedp
 }
 
 inline void ElastoPlastic::ELStiff (Vec_t const & Sig, Vec_t const & Ivs) const
@@ -673,8 +668,8 @@ int ElastoPlasticRegister()
 {
     ModelFactory   ["ElastoPlastic"] = ElastoPlasticMaker;
     MODEL.Set      ("ElastoPlastic", (double)MODEL.Keys.Size());
-    MODEL_PRM_NAMES["ElastoPlastic"].Resize (18);
-    MODEL_PRM_NAMES["ElastoPlastic"] = "E", "nu", "sY", "c", "phi", "Hp", "psi", "VM", "DP", "MC", "MN", "GE", "b", "pref", "ptol", "newsu", "betsu", "alpsu";
+    MODEL_PRM_NAMES["ElastoPlastic"].Resize (17);
+    MODEL_PRM_NAMES["ElastoPlastic"] = "E", "nu", "sY", "c", "phi", "Hp", "psi", "VM", "DP", "MC", "MN", "GE", "b", "ptol", "newsu", "betsu", "alpsu";
     MODEL_IVS_NAMES["ElastoPlastic"].Resize (0);
     return 0;
 }

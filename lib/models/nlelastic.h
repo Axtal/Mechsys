@@ -54,7 +54,7 @@ public:
 
 
 inline NLElastic::NLElastic (int NDim, SDPair const & Prms)
-    : Model (NDim,Prms,"NLElastic")
+    : Model (NDim,Prms,/*niv*/0,"NLElastic")
 {
     if (GTy==pse_t) throw new Fatal("NLElastic::NLElastic: This model is not available for plane-stress (pse)");
 

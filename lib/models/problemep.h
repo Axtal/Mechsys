@@ -112,7 +112,7 @@ public:
 
 
 inline ProblemEP::ProblemEP (int NDim, SDPair const & Prms, bool Deriv)
-    : Model (NDim,Prms,"ProblemEP"), Derived(Deriv),
+    : Model (NDim,Prms,/*niv*/3,"ProblemEP"), Derived(Deriv),
       E(0.0), nu(0.0), FC(VM_t), kVM(0.0), Hb(0.0), NonAssoc(false), FTol(1.0e-7), DCFTol(1.0e-8), DCMaxIt(10),
       pTol(1.0e-6), qTol(1.0e-7), NewSU(false)
 {

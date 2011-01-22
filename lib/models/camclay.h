@@ -41,14 +41,21 @@ public:
     double         lam;
     double         kap;
     double         phi;
-    Vec_t          I;
     mutable double v0;
     mutable double chi;
     mutable double Mcs;
     mutable double wcs;
+    mutable double M;
+    mutable Vec_t  dMdsig;
 
     // Internal methods
-    double CalcM (double const & sin3th) const;
+    void Calc_dMdsig (Vec_t const & Sig) const
+    {
+        OctInvs (Sig, p,q,t,th,s, qTol, &dthdsig);
+        double dMdth = ((3.0/4.0)*M*(1.0-wcs)*cos(3.0*th)) / (1.0+wcs-(1.0-wcs)*t);
+        dMdsig = dMdth * dthdsig;
+    }
+    void Calc_M () const { M = Mcs*pow( 2.0*wcs/(1.0+wcs-(1.0-wcs)*t) , 1.0/4.0); }
 };
 
 
@@ -56,33 +63,22 @@ public:
 
 
 inline CamClay::CamClay (int NDim, SDPair const & Prms)
-    : ElastoPlastic (NDim,Prms,/*derived*/true)
+    : ElastoPlastic (NDim, Prms, /*niv*/4, "CamClay", /*derived*/true)
 {
+    // auxiliary vector
+    dMdsig.change_dim (NCps);
+
     // parameters
     lam = Prms("lam");
     kap = Prms("kap");
     nu  = Prms("nu");
     phi = Prms("phi");
     Mcs = Phi2M(phi,"oct");
-    wcs = 0;//pow((3.0-sin(phiRad))/(3.0+sin(phiRad)),4.0);
-
-    // constants
-    I.change_dim (NCps);
-    if (NDim==2) I = 1.0, 1.0, 1.0, 0.0;
-    else         I = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0;
+    double phi_rad = phi*Util::PI/180.0;
+    wcs = pow((3.0-sin(phi_rad))/(3.0+sin(phi_rad)),4.0);
 
     // internal values
-    NIvs = 1;
-    if (NewSU) NIvs = 2;
-    Y.change_dim (NIvs);
-    H.change_dim (NIvs);
-    IvNames.Push ("z0");
-    if (NewSU) IvNames.Push ("z1");
-
-    // set model in stress update
-    //FC   = DP_t;
-    Name = "CamClay";
-    SUp.SetModel (this);
+    IvNames = "z0", "z1", "evp", "edp";
 }
 
 inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const
@@ -95,90 +91,63 @@ inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const
     v0  = Ini("v0");
     chi = (kap-lam)/v0;
 
-    // invariants
-    double p,q,t;
-    OctInvs (sta->Sig, p,q,t);
-
     // internal variables
-    double M   = CalcM(t);
+    Calc_pqt (sta->Sig);
+    Calc_M   ();
     double p0  = p+(q*q)/(p*M*M);
     double OCR = (Ini.HasKey("OCR") ? Ini("OCR") : 1.0);
-    sta->Ivs(0) = OCR*p0;
-
     if (NewSU)
     {
-        sta->Ivs(1) = sta->Ivs(0);
         sta->Ivs(0) = p0;
+        sta->Ivs(1) = OCR*p0;
     }
+    else sta->Ivs(0) = OCR*p0;
 
     // check initial yield function
     double f = YieldFunc (sta->Sig, sta->Ivs);
-    if (f>1.0e-8) throw new Fatal("CamClay:InitIvs: stress point (sig=(%g,%g,%g,%g], p=%g, q=%g) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,p,q,f,sta->Ivs(0));
+    if (f>FTol)           throw new Fatal("CamClay:InitIvs: stress point (sig=(%g,%g,%g,%g]) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,f,sta->Ivs(0));
+    if (NewSU && f<-FTol) throw new Fatal("CamClay:InitIvs: stress point (sig=(%g,%g,%g,%g]) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,f,sta->Ivs(0));
 }
 
 inline void CamClay::Gradients (Vec_t const & Sig, Vec_t const & Ivs, bool Potential) const
 {
-    // invariants
-    double p,q,t;
-    Vec_t dev_sig;
-    OctInvs (Sig, p,q,t);
-    Dev     (Sig, dev_sig);
-
-    // gradients
-    double M = CalcM(t);
+    Calc_dMdsig (Sig);
+    Calc_M      ();
     Vec_t * VorW = &V;
     if (Potential) VorW = &W;
     else
     {
         Y(0) = -M*M*p;
-        if (NewSU) Y(1) = 0.0;
+        Y(1) = 0.0;
+        Y(2) = 0.0;
+        Y(3) = 0.0;
     }
-    (*VorW) = (M*M*(Ivs(0)-2.0*p)/(Util::SQ3))*I + 2.0*dev_sig;
-
-    if (false)//q>1.0e-10)
-    {
-        double ss3th = pow(t,2.0);
-        double cos3th;
-        if (ss3th>1.0) cos3th = 0.0;
-        else           cos3th = sqrt(1.0-ss3th);
-        if (cos3th>1.0e-10)
-        {
-            Vec_t SS,dev_SS,dth_dsig;
-            double dM_dth = (0.75*M*(1.0-wcs)*cos3th) / (1.0+wcs+(wcs-1.0)*t);
-            Pow2 (dev_sig, SS);
-            dev_SS   = SS - (I * (SS(0)+SS(1)+SS(2))/3.0);
-            dth_dsig = (1.5/(q*q*cos3th)) * (dev_SS*(3.0/q) - dev_sig*t);
-            V       += dth_dsig*(2.0*M*p*(Ivs(0)-p)*dM_dth);
-        }
-    }
-
+    double dfdp = M*M*(Ivs(0)-2.0*p);
+    double dfdM = 2.0*M*p*(Ivs(0)-p);
+    if (q>qTol) (*VorW) = (dfdp/Util::SQ3)*I + 2.0*s + dfdM*dMdsig;
+    else        (*VorW) = (dfdp/Util::SQ3)*I;
 }
 
 inline void CamClay::Hardening (Vec_t const & Sig, Vec_t const & Ivs) const
 {
     H(0) = Ivs(0)*Tra(W)/chi;
-
+    H(1) = 0.0;
+    H(2) = 0.0;
+    H(3) = 0.0;
     if (NewSU)
     {
         double D = 2.0*Ivs(1)/(Ivs(1)+Ivs(0))-1.0;
         if (D<0.0) D = 0.0;
         H(1) = exp(-BetSU*D)*H(0); //  (D>0.0 ? 0.0 : H(0));
         H(0) = H(0) + AlpSU*(1.0-exp(-BetSU*D));
-        //printf("z0=%g, z1=%g, D=%g, H0=%g, H1=%g\n",Ivs(0),Ivs(1),D,H(0),H(1));
     }
 }
 
 inline double CamClay::YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) const
 {
-    double p,q,t;
-    OctInvs (Sig, p,q,t);
-    double M = CalcM(t);
-    return q*q + (p - Ivs(0))*p*M*M;
-}
-
-inline double CamClay::CalcM (double const & sin3th) const
-{
-    return Mcs;//*pow(2.0*wcs/(1.0+wcs+(wcs-1.0)*sin3th),0.25);
+    Calc_pqt (Sig);
+    Calc_M   ();
+    return q*q + (p-Ivs(0))*p*M*M;
 }
 
 
