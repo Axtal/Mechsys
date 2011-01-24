@@ -223,6 +223,22 @@ int main(int argc, char **argv) try
     printf("ERROR(sk-skb)      = %g, %g, %g        \n",err[5], err[6], err[7]);
     printf("ERROR(Ik)          = %g, %g, %g        \n",err[8], err[9], err[10]);
 
+    printf("\n ----------------------------- Model functions --------------------------------\n");
+    double E   = 3000.0;
+    double nu  = 0.25;
+    double K   = Calc_K (E, nu);
+    double G   = Calc_G (E, nu);
+    double E1  = Calc_E (K, G);
+    double nu1 = Calc_nu (K, G);
+    printf("E  = %g,   E1  = %g\n", E,  E1);
+    printf("nu = %g,   nu1 = %g\n", nu, nu1);
+    printf("K  = %g\n", K);
+    printf("G  = %g\n", G);
+    bool err_E = (fabs(E-E1)>0.0);
+    bool err_nu = (fabs(nu-nu1)>0.0);
+
+    if (err_E)               return 1;
+    if (err_nu)              return 1;
     if (err_deriv)           return 1;
     if (err_inv)             return 1;
     if (err_zer)             return 1;

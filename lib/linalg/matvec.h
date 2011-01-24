@@ -1703,7 +1703,7 @@ inline BPy::tuple Pypqth2L (double p, double q, double th, BPy::str const & Type
 #endif
 
 
-///////////////////////////////////////////////////////////////////////// Failure criteria constants /////////////
+/////////////////////////////////////////////////////////////////////////////////// Model functions //////////////
 
 
 /** Calculate M = max q/p at compression (phi: friction angle at compression (degrees)). */
@@ -1732,6 +1732,18 @@ inline double M2Phi (double M, char const * Type="oct")
     else throw new Fatal("M2Phi: Method is not available for invariant Type==%s",Type);
     return asin(sphi)*180.0/Util::PI;
 }
+
+/** Calculate K given E and nu. */
+inline double Calc_K (double E, double nu) { return E/(3.0*(1.0-2.0*nu)); }
+
+/** Calculate G given E and nu. */
+inline double Calc_G (double E, double nu) { return E/(2.0*(1.0+nu)); }
+
+/** Calculate E given K and G. */
+inline double Calc_E (double K, double G) { return 9.0*K*G/(3.0*K+G); }
+
+/** Calculate nu given K and G. */
+inline double Calc_nu (double K, double G) { return (3.0*K-2.0*G)/(6.0*K+2.0*G); }
 
 
 ///////////////////////////////////////////////////////////////////////// Python functions ///////////////////////
