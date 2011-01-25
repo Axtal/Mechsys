@@ -10,6 +10,9 @@
 // proc
 #ifdef HAS_PROC
   #include <proc/readproc.h>
+  #ifdef FUNCTION
+    #undef FUNCTION
+  #endif
 #endif
 
 // mechsys

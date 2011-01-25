@@ -30,7 +30,7 @@ class Visualise
 {
 public:
     // Constuctor & Destructor
-     Visualise (DEM::Domain const & Dom, int TagPart, int ThRes=12, int PhiRes=12, int CylRes=12);
+     Visualise (DEM::Domain const & Dom, int TagPart, bool ShowVert=false, bool ShowEdge=false, int ThRes=12, int PhiRes=12, int CylRes=12);
     ~Visualise ();
 
     // Methods
@@ -40,6 +40,8 @@ public:
     // Data
     DEM::Domain const & Dom;         // domain
     int                 TagPart;     // tag of particles (everything else is wall)
+    bool                ShowVert;    // show all vertices of particles
+    bool                ShowEdge;    // show all edges of particles
     String              PartColor;   // color of particles
     String              WallColor;   // color of walls
     double              PartOpacity; // opacity of particles
@@ -63,9 +65,11 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Visualise::Visualise (DEM::Domain const & D, int TP, int ThRes, int PhiRes, int CylRes)
+inline Visualise::Visualise (DEM::Domain const & D, int TP, bool SV, bool SE, int ThRes, int PhiRes, int CylRes)
     : Dom         (D),
       TagPart     (TP),
+      ShowVert    (SV),
+      ShowEdge    (SE),
       PartColor   ("brown"),
       WallColor   ("peacock"),
       PartOpacity (0.8),
@@ -90,8 +94,18 @@ inline Visualise::Visualise (DEM::Domain const & D, int TP, int ThRes, int PhiRe
             // complex particles
             if (p.Tag==TagPart)
             {
+                // spheres
+                if (ShowVert)
+                {
+                    for (size_t j=0; j<p.Verts.Size(); ++j)
+                    {
+                        PartVerts.Push (new VTK::Sphere((*p.Verts[j]), p.Props.R, ThRes, PhiRes));
+                        PartVerts.Last () -> SetColor (PartColor.CStr(), PartOpacity);
+                    }
+                }
+
                 // only edges
-                if (p.Faces.Size()==0)
+                if (p.Faces.Size()==0 || ShowEdge)
                 {
                     for (size_t j=0; j<p.Edges.Size(); ++j)
                     {
@@ -171,7 +185,7 @@ inline void Visualise::Update ()
     size_t i_sph_part        = 0; // index of spherical particle
 
     // complex particles
-    //size_t i_part_vert       = 0; // index of particle vertex
+    size_t i_part_vert       = 0; // index of particle vertex
     size_t i_part_edge       = 0; // index of particle edge
     size_t i_part_face_point = 0; // index of particle point at face
 
@@ -196,8 +210,18 @@ inline void Visualise::Update ()
             // complex particles
             if (p.Tag==TagPart)
             {
+                // spheres
+                if (ShowVert)
+                {
+                    for (size_t j=0; j<p.Verts.Size(); ++j)
+                    {
+                        PartVerts[i_part_vert]->SetCenter ((*p.Verts[j]));
+                        i_part_vert++;
+                    }
+                }
+
                 // only edges
-                if (p.Faces.Size()==0)
+                if (p.Faces.Size()==0 || ShowEdge)
                 {
                     for (size_t j=0; j<p.Edges.Size(); ++j)
                     {
