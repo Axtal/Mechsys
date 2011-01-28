@@ -53,8 +53,10 @@ public:
     void Render   ();
     void Show     ();
     void WritePNG (char const * Filename);
+    void Camera   (double xUp, double yUp, double zUp, double xFoc, double yFoc, double zFoc, double xPos, double yPos, double zPos);
+    void Parallel (bool ParallelProjection=true) { _camera->SetParallelProjection(ParallelProjection); }
 
-    // Access methods
+    // (low level) Access methods
     vtkRenderer * GetRen    () { return _renderer; }
     vtkCamera   * GetCamera () { return _camera;   }
 
@@ -161,6 +163,14 @@ inline void Win::WritePNG (char const * Filename)
     // Clean up
     win_to_img -> Delete();
     writer     -> Delete();
+}
+
+inline void Win::Camera (double xUp, double yUp, double zUp, double xFoc, double yFoc, double zFoc, double xPos, double yPos, double zPos)
+{
+    _camera->SetViewUp     (xUp, yUp, zUp);
+    _camera->SetFocalPoint (xFoc,yFoc,zFoc);
+    _camera->SetPosition   (xPos,yPos,zPos);
+    _renderer->ResetCamera ();
 }
 
 inline Win & Win::SetViewDefault (bool RevCam)
