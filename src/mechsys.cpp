@@ -27,6 +27,7 @@ namespace BPy = boost::python;
 #include <mechsys/matfile.h>
 #include <mechsys/inpfile.h>
 #include <mechsys/linalg/jacobirot.h>
+#include <mechsys/numerical/odesolver.h>
 #include <mechsys/models/smpinvs.h>
 
 // MechSys -- FEM
@@ -38,6 +39,7 @@ BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_M2PHI,        M2Phi,        1, 2)
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_JACOBIROT,    PyJacobiRot,  3, 4)
 
 // member overloadings
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (OD_Init,         Init,         3, 8)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SI_Calc,         PyCalc,       1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (IN_SetPrmsInis,  SetPrmsInis,  1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_ReadMesh,     ReadMesh,     1, 2)
@@ -87,6 +89,14 @@ BPy::class_<Table>("Table")
 
 // Fatal
 BPy::register_exception_translator<Fatal *>(&PyExceptTranslator);
+
+/////////////////////////////////////////////////////////////////////////////// Numerical /////
+
+BPy::class_<Numerical::PyODESolver>("ODESolver")
+    .def("Init",        &Numerical::PyODESolver::Init, OD_Init())
+    .def("Evolve",      &Numerical::PyODESolver::Evolve)
+    .def_readwrite("Y", &Numerical::PyODESolver::y)
+    ;
 
 /////////////////////////////////////////////////////////////////////////////////// linalg ////
 

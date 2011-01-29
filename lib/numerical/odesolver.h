@@ -31,6 +31,7 @@
 
 // MechSys
 #include <mechsys/util/fatal.h>
+#include <mechsys/util/util.h>
 
 namespace Numerical
 {
@@ -45,7 +46,7 @@ public:
 
     // Constructor
     ODESolver (Instance * p2Inst, pFun p2Fun, size_t NEq, char const * Scheme="RKDP89",
-               double stol=1.0e-6, double h=1.0e-6, double EPSREL=DBL_EPSILON);
+               double stol=1.0e-6, double h=1.0, double EPSREL=DBL_EPSILON);
 
     // Destructor
     ~ODESolver ();
@@ -101,6 +102,51 @@ int __ode_call_fun__ (double time, double const y[], double dydt[], void * not_u
     ODESolver<Instance> * p2inst = static_cast<ODESolver<Instance>*>(not_used_for_params);
     return p2inst->_call_fun (time, y, dydt);
 }
+
+
+#ifdef USE_BOOST_PYTHON
+class PyODESolver
+{
+public:
+     PyODESolver () : Solver(NULL) {}
+    ~PyODESolver () { if (Solver!=NULL) delete Solver; }
+    void Init (double t0, BPy::list const & Y0, char const * ClassName, char const * FileName="__main__", 
+               char const * Scheme="RKDP89", double stol=1.0e-6, double h=1.0, double EPSREL=DBL_EPSILON)
+    {
+        Util::GetPyMethod (ClassName, "fun", Class, Method, FileName);
+        NEq = BPy::len(Y0);
+        if (Solver!=NULL) delete Solver;
+        Solver = new ODESolver<PyODESolver> (this, &PyODESolver::Fun, NEq, Scheme, stol, h, EPSREL);
+        Solver->t = t0;
+        for (size_t i=0; i<NEq; ++i)
+        {
+            double val = BPy::extract<double>(Y0[i])();
+            y   .append (val);
+            dydt.append (0.0);
+            Solver->Y[i] = val;
+        }
+    }
+    void Evolve (double tf)
+    {
+        if (Solver==NULL) throw new Fatal("PyODESolver::Evolve: Init must be called first");
+        Solver->Evolve (tf);
+        for (size_t i=0; i<NEq; ++i) y[i] = Solver->Y[i];
+    }
+    int Fun (double t, double const Y[], double dYdt[])
+    {
+        for (size_t i=0; i<NEq; ++i) y[i] = Y[i];
+        Method (Class, t,y,dydt);
+        for (size_t i=0; i<NEq; ++i) dYdt[i] = BPy::extract<double>(dydt[i])();
+        return GSL_SUCCESS;
+    }
+    size_t                   NEq;
+    ODESolver<PyODESolver> * Solver;
+    BPy::object              Class;
+    BPy::object              Method;
+    BPy::list                y;
+    BPy::list                dydt;
+};
+#endif
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

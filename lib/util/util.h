@@ -169,6 +169,36 @@ inline void Keys2Array (String const & KeysSepBySpace, Array<String> & Keys)
     while (iss>>key) Keys.Push (key);
 }
 
+
+#ifdef USE_BOOST_PYTHON
+
+inline void GetPyMethod (char const * ClassName, char const * MethodName, BPy::object & Class, BPy::object & Method, char const * Filename="__main__")
+{
+    try
+    {
+        BPy::object main_module((BPy::handle<>(BPy::borrowed(PyImport_AddModule("__main__")))));
+        BPy::object main_namespace = main_module.attr("__dict__");
+        if (strcmp(Filename,"__main__")!=0)
+        {
+            if (!FileExists(Filename)) throw new Fatal("Util::GetPyMethod: Could not file named %s",Filename);
+            BPy::exec_file (Filename, main_namespace, main_namespace);
+        }
+        Class = BPy::extract<BPy::object>(main_namespace[ClassName])();
+        BPy::object class_namespace = Class.attr("__dict__");
+        Method = BPy::extract<BPy::object>(class_namespace[MethodName])();
+    }
+    catch (BPy::error_already_set const & Err)
+    {
+        printf("\n%sUtil::GetPyMethod: Could not get method=='%s' of class=='%s' in '__main__'\nPython error message: ",TERM_CLR_RED_H,MethodName,ClassName);
+        PyErr_Print();
+        printf("%s\n",TERM_RST);
+        throw new Fatal("PyODESolver::Init: failed (see message above).");
+    }
+}
+
+#endif
+
+
 }; // namespace Util
 
 #endif // MECHSYS_SORT_H
