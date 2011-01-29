@@ -19,10 +19,10 @@
 import os.path
 from os.path import basename
 from numpy.linalg import norm
-from numpy import pi, sin, cos, tan, arcsin, arccos, arctan, log, log10, exp, sqrt
-from numpy import array, linspace, insert, repeat, zeros, matrix, ones
+from numpy import pi, sin, cos, tan, arcsin, arccos, arctan2, log, log10, exp, sqrt
+from numpy import array, linspace, insert, repeat, zeros, matrix, ones, arange
 from pylab import rcParams, gca, gcf, clf, savefig
-from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline, title
+from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline, title, xticks
 from pylab import contour, contourf, colorbar, clabel
 from pylab import cm as MPLcm
 from matplotlib.transforms   import offset_copy
@@ -30,6 +30,7 @@ from matplotlib.patches      import FancyArrowPatch, PathPatch
 from matplotlib.patches      import Arc  as MPLArc
 from matplotlib.path         import Path as MPLPath
 from matplotlib.font_manager import FontProperties
+from matplotlib.ticker       import FuncFormatter
 
 def SetForEps (proport=0.75, fig_width_pt=455.24):
     # fig_width_pt = 455.24411                  # Get this from LaTeX using \showthe\columnwidth
@@ -137,6 +138,50 @@ def read_tables(filenames):
     return dat
 
 
+# Radians formatting
+# ==================
+def rad_formatting (x, pos=None):
+  n = int((x/(pi/6.0))+pi/12.0)
+  if n== 0: return r'$0$'
+  if n== 1: return r'$\frac{\pi}{6}$'
+  if n== 2: return r'$\frac{\pi}{3}$'
+  if n== 3: return r'$\frac{\pi}{2}$'
+  if n== 4: return r'$2\frac{\pi}{3}$'
+  if n== 6: return r'$\pi$'
+  if n== 8: return r'$4\frac{\pi}{3}$'
+  if n== 9: return r'$3\frac{\pi}{2}$'
+  if n==10: return r'$5\frac{\pi}{3}$'
+  if n==12: return r'$2\pi$'
+  return r'$%d\frac{\pi}{6}$'%n
+
+
+# Radians and degrees formatting
+# ==============================
+def rad_deg_formatting (x, pos=None):
+  n = int((x/(pi/6.0))+pi/12.0)
+  if n== 0: return r'$0$'
+  if n== 1: return r'$\frac{\pi}{6}$''\n$30^\circ$'
+  if n== 2: return r'$\frac{\pi}{3}$''\n$60^\circ$'
+  if n== 3: return r'$\frac{\pi}{2}$''\n$90^\circ$'
+  if n== 4: return r'$2\frac{\pi}{3}$''\n$120^\circ$'
+  if n== 6: return r'$\pi$''\n$180^\circ$'
+  if n== 8: return r'$4\frac{\pi}{3}$''\n$240^\circ$'
+  if n== 9: return r'$3\frac{\pi}{2}$''\n$270^\circ$'
+  if n==10: return r'$5\frac{\pi}{3}$''\n$300^\circ$'
+  if n==12: return r'$2\pi$''\n$360^\circ$'
+  return r'$%d\frac{\pi}{6}$''\n$%g^\circ$'%(n,x*180.0/pi)
+
+
+# Set radians formatting
+# ======================
+def xRadFmt (gen_ticks=False, rad_and_deg=True):
+    if gen_ticks: xticks (linspace(0,2*pi,13))
+    if rad_and_deg: gca().xaxis.set_major_formatter(FuncFormatter(rad_deg_formatting))
+    else:           gca().xaxis.set_major_formatter(FuncFormatter(rad_formatting))
+
+
+# test
+# ====
 if __name__=='__main__':
     SetForEps ()
     x = linspace (0, 10, 100)
