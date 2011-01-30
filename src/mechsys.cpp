@@ -92,7 +92,7 @@ BPy::register_exception_translator<Fatal *>(&PyExceptTranslator);
 
 /////////////////////////////////////////////////////////////////////////////// Numerical /////
 
-BPy::class_<Numerical::PyODESolver>("ODESolver", "ODESolver", BPy::init<char const *, char const *, char const *>())
+BPy::class_<Numerical::PyODESolver>("ODESolver", "ODESolver", BPy::init<BPy::object &, char const *, char const *>())
     .def("Init",        &Numerical::PyODESolver::Init, OD_Init())
     .def("Evolve",      &Numerical::PyODESolver::Evolve)
     .def("EvolveOut",   &Numerical::PyODESolver::EvolveOut)

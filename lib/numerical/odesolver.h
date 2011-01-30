@@ -113,9 +113,10 @@ class PyODESolver
 {
 public:
     /** Constructor. */
-    PyODESolver (char const * InstanceName, char const * ClassName, char const * MethodName) : Solver(NULL)
+    PyODESolver (BPy::object & TheInstance, char const * ClassName, char const * MethodName)
+        : Solver(NULL), Instance(TheInstance)
     {
-        Util::GetPyMethod (InstanceName, ClassName, MethodName, Instance, Method, "__main__");
+        Util::GetPyMethod (ClassName, MethodName, Method, "__main__");
     }
 
     /** Destructor. */

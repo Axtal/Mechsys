@@ -41,7 +41,7 @@ dtOut = 0.1
 
 # solve
 ode = ODE(mu)
-sol = ODESolver('ode', 'ODE', 'fun')
+sol = ODESolver(ode, 'ODE', 'fun')
 y   = [y0ini, y1ini]
 sol.Init (0.0, y, "RK12", 1.e-2)
 sol.EvolveOut (tf, dtOut, "py_test_ode1.dat")
