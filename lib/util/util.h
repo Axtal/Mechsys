@@ -174,7 +174,7 @@ inline void Keys2Array (String const & KeysSepBySpace, Array<String> & Keys)
 
 #ifdef USE_BOOST_PYTHON
 
-inline void GetPyMethod (char const * ClassName, char const * MethodName, BPy::object & Class, BPy::object & Method, char const * Filename="__main__")
+inline void GetPyMethod (char const * InstanceName, char const * ClassName, char const * MethodName, BPy::object & Instance, BPy::object & Method, char const * Filename="__main__")
 {
     try
     {
@@ -185,13 +185,14 @@ inline void GetPyMethod (char const * ClassName, char const * MethodName, BPy::o
             if (!FileExists(Filename)) throw new Fatal("Util::GetPyMethod: Could not file named %s",Filename);
             BPy::exec_file (Filename, main_namespace, main_namespace);
         }
-        Class = BPy::extract<BPy::object>(main_namespace[ClassName])();
-        BPy::object class_namespace = Class.attr("__dict__");
+        Instance = BPy::extract<BPy::object>(main_namespace[InstanceName])();
+        BPy::object py_class        = BPy::extract<BPy::object>(main_namespace[ClassName])();
+        BPy::object class_namespace = py_class.attr("__dict__");
         Method = BPy::extract<BPy::object>(class_namespace[MethodName])();
     }
     catch (BPy::error_already_set const & Err)
     {
-        printf("\n%sUtil::GetPyMethod: Could not get method=='%s' of class=='%s' in '__main__'\nPython error message: ",TERM_CLR_RED_H,MethodName,ClassName);
+        printf("\n%sUtil::GetPyMethod: Could not get method=='%s' of object=='%s' in '__main__'\nPython error message: ",TERM_CLR_RED_H,MethodName,InstanceName);
         PyErr_Print();
         printf("%s\n",TERM_RST);
         throw new Fatal("PyODESolver::Init: failed (see message above).");

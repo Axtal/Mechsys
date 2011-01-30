@@ -39,7 +39,7 @@ BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_M2PHI,        M2Phi,        1, 2)
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_JACOBIROT,    PyJacobiRot,  3, 4)
 
 // member overloadings
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (OD_Init,         Init,         3, 8)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (OD_Init,         Init,         2, 6)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SI_Calc,         PyCalc,       1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (IN_SetPrmsInis,  SetPrmsInis,  1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_ReadMesh,     ReadMesh,     1, 2)
@@ -92,7 +92,7 @@ BPy::register_exception_translator<Fatal *>(&PyExceptTranslator);
 
 /////////////////////////////////////////////////////////////////////////////// Numerical /////
 
-BPy::class_<Numerical::PyODESolver>("ODESolver")
+BPy::class_<Numerical::PyODESolver>("ODESolver", "ODESolver", BPy::init<char const *, char const *, char const *>())
     .def("Init",        &Numerical::PyODESolver::Init, OD_Init())
     .def("Evolve",      &Numerical::PyODESolver::Evolve)
     .def_readwrite("Y", &Numerical::PyODESolver::y)

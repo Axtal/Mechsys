@@ -105,16 +105,18 @@ int __ode_call_fun__ (double time, double const y[], double dydt[], void * not_u
 
 
 #ifdef USE_BOOST_PYTHON
+
 class PyODESolver
 {
 public:
-     PyODESolver () : Solver(NULL) {}
-    ~PyODESolver () { if (Solver!=NULL) delete Solver; }
-    void Init (double t0, BPy::list const & Y0, char const * ClassName, char const * FileName="__main__", 
-               char const * Scheme="RKDP89", double stol=1.0e-6, double h=1.0, double EPSREL=DBL_EPSILON)
+    PyODESolver (char const * InstanceName, char const * ClassName, char const * MethodName) : Solver(NULL)
     {
-        Util::GetPyMethod (ClassName, "fun", Class, Method, FileName);
-        NEq = BPy::len(Y0);
+        Util::GetPyMethod (InstanceName, ClassName, MethodName, Instance, Method, "__main__");
+    }
+    ~PyODESolver () { if (Solver!=NULL) delete Solver; }
+    void Init (double t0, BPy::list const & Y0, char const * Scheme="RKDP89", double stol=1.0e-6, double h=1.0, double EPSREL=DBL_EPSILON)
+    {
+        NEq = BPy::len (Y0);
         if (Solver!=NULL) delete Solver;
         Solver = new ODESolver<PyODESolver> (this, &PyODESolver::Fun, NEq, Scheme, stol, h, EPSREL);
         Solver->t = t0;
@@ -135,17 +137,18 @@ public:
     int Fun (double t, double const Y[], double dYdt[])
     {
         for (size_t i=0; i<NEq; ++i) y[i] = Y[i];
-        Method (Class, t,y,dydt);
+        Method (Instance, t,y,dydt);
         for (size_t i=0; i<NEq; ++i) dYdt[i] = BPy::extract<double>(dydt[i])();
         return GSL_SUCCESS;
     }
     size_t                   NEq;
     ODESolver<PyODESolver> * Solver;
-    BPy::object              Class;
+    BPy::object              Instance;
     BPy::object              Method;
     BPy::list                y;
     BPy::list                dydt;
 };
+
 #endif
 
 

@@ -46,14 +46,10 @@ fi.write('%16.8e %16.8e %16.8e\n'%(0,y0ini,y1ini))
 
 # solver
 ode = ODE(mu)
-sol = ODESolver()
+sol = ODESolver('ode', 'ODE', 'fun')
 y   = [y0ini, y1ini]
 #sol.Init (0.0, y, "ODE")
-sol.Init (0.0, y, "ODE", "__main__", "RK12", 1.e-2)
-
-dyt = [0,0]
-ode.fun (0,y,dyt)
-print dyt
+sol.Init (0.0, y, "RK12", 1.e-2)
 
 # solve
 t    = 0.0
