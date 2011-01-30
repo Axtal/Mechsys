@@ -46,9 +46,11 @@ inline bool IsNan(double Val)
     return (std::isnan(Val) || ((Val==Val)==false)); // NaN is the only value, for which the expression Val==Val is always false
 }
 
+/** Signum function. */
+inline double Signum (double x, double Tol=DBL_EPSILON) { return (fabs(x)>Tol ? (x>=0.0 ? +1.0 : -1.0) : 0.0); }
+
 /*
 inline double Sgn        (double Val)              { return (Val>=0.0 ? +1.0 : -1.0);                                } ///< Sgn function where Sgn(0)=+1
-inline double Signal     (double Val, double Zero) { return (fabs(Val)<=Zero ? 0.0 : Sgn(Val));                      } ///< Sgn function where Sgn(0)=0
 inline double Sign       (double a, double b)      { return (b>=0.0 ? fabs(a) : -fabs(a));                           } ///< Composite Sgn function. Returns |a| or -|a| according to the sign of b
 inline double Acos       (double Val)              { return (Val>=1.0 ?  0.0 : (Val<=-1.0 ? Pi() : acos(Val)) );     } ///< Safe acos function
 inline bool   Str2Bool   (String const & Str)      { if (Str==String("true") || Str==String("TRUE") || Str==String("True")) return true; else return false; } ///< Converts "TRUE", "True", or "true" to bool
