@@ -58,11 +58,6 @@ int main(int argc, char **argv) try
     double tf    = 10.209022;
     double dtOut = 0.1;
 
-    // output file
-    std::ofstream of("test_ode1.dat", std::ios::out);
-    of << _8s<<"t" << _8s<<"y0"  << _8s<<"y1"  << endl;
-    of << _8s<<0.0 << _8s<<y0ini << _8s<<y1ini << endl;
-
     // solve
     ODE ode(mu);
     //Numerical::ODESolver<ODE> sol(&ode, &ODE::Fun, /*neq*/2, "FE", /*stol*/1.e-2, /*h*/1.0);
@@ -70,21 +65,7 @@ int main(int argc, char **argv) try
     sol.t    = 0.0;
     sol.Y[0] = y0ini;
     sol.Y[1] = y1ini;
-    double tout = 0.0 + dtOut;
-    size_t sumSS = 0;
-    while (sol.t<tf)
-    {
-        sol.Evolve (tout);
-        of << _8s<<sol.t << _8s<<sol.Y[0] << _8s<<sol.Y[1] << endl;
-        tout += dtOut;
-        if (sol.Scheme=="RK12") sumSS += sol.SS;
-    }
-    if (sol.Scheme=="RK12") printf("sumSS=%zd\n",sumSS);
-
-    // close file
-    of.close();
-    cout << "\nFile <" << TERM_CLR_BLUE_H << "test_ode1.dat" << TERM_RST << "> written" << endl;
-    cout << endl;
+    sol.Evolve (tf, dtOut, "test_ode1.dat");
 
     // end
     return 0;

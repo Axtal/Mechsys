@@ -24,6 +24,7 @@
 #include <cmath>   // for sqrt
 #include <cfloat>  // for DBL_EPSILON
 #include <cstring> // for strcmp
+#include <sstream> // for ostringstream
 
 // GSL
 #include <gsl/gsl_errno.h> // for GSL_SUCCESS
@@ -32,6 +33,7 @@
 // MechSys
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
+#include <mechsys/util/numstreams.h>
 
 namespace Numerical
 {
@@ -53,6 +55,7 @@ public:
 
     // Methods
     void Evolve (double tf); ///< Evolve from t to tf
+    void Evolve (double tf, double dtOut, char const * Filename);
 
     // Data
     double   t;      ///< Current time
@@ -109,11 +112,16 @@ int __ode_call_fun__ (double time, double const y[], double dydt[], void * not_u
 class PyODESolver
 {
 public:
+    /** Constructor. */
     PyODESolver (char const * InstanceName, char const * ClassName, char const * MethodName) : Solver(NULL)
     {
         Util::GetPyMethod (InstanceName, ClassName, MethodName, Instance, Method, "__main__");
     }
+
+    /** Destructor. */
     ~PyODESolver () { if (Solver!=NULL) delete Solver; }
+
+    /** Initialization method. */
     void Init (double t0, BPy::list const & Y0, char const * Scheme="RKDP89", double stol=1.0e-6, double h=1.0, double EPSREL=DBL_EPSILON)
     {
         NEq = BPy::len (Y0);
@@ -128,12 +136,24 @@ public:
             Solver->Y[i] = val;
         }
     }
+
+    /** Evolve to tf. */
     void Evolve (double tf)
     {
         if (Solver==NULL) throw new Fatal("PyODESolver::Evolve: Init must be called first");
         Solver->Evolve (tf);
         for (size_t i=0; i<NEq; ++i) y[i] = Solver->Y[i];
     }
+
+    /** Evolve to tf and output each dtOut. */
+    void EvolveOut (double tf, double dtOut, char const * Filename)
+    {
+        if (Solver==NULL) throw new Fatal("PyODESolver::EvolveOut: Init must be called first");
+        Solver->Evolve (tf, dtOut, Filename);
+        for (size_t i=0; i<NEq; ++i) y[i] = Solver->Y[i];
+    }
+
+    /** Internal callback function. */
     int Fun (double t, double const Y[], double dYdt[])
     {
         for (size_t i=0; i<NEq; ++i) y[i] = Y[i];
@@ -141,12 +161,14 @@ public:
         for (size_t i=0; i<NEq; ++i) dYdt[i] = BPy::extract<double>(dydt[i])();
         return GSL_SUCCESS;
     }
-    size_t                   NEq;
-    ODESolver<PyODESolver> * Solver;
-    BPy::object              Instance;
-    BPy::object              Method;
-    BPy::list                y;
-    BPy::list                dydt;
+
+    // Data
+    size_t                   NEq;      ///< Number of equations
+    ODESolver<PyODESolver> * Solver;   ///< Pointer to ODE solver
+    BPy::object              Instance; ///< Pointer to Python object
+    BPy::object              Method;   ///< Python method to be called in callback function
+    BPy::list                y;        ///< Array of unknowns
+    BPy::list                dydt;     ///< Derivative of y w.r.t time
 };
 
 #endif
@@ -325,6 +347,32 @@ inline void ODESolver<Instance>::Evolve (double tf)
            //if (h<hmin) { h = hmin; }
         }
     }
+}
+
+template<typename Instance>
+inline void ODESolver<Instance>::Evolve (double tf, double dtOut, char const * Filename)
+{
+    // header and first output
+    String buf;
+    std::ostringstream oss;
+    oss<<Util::_8s<<"t";  for (size_t i=0; i<_neq; ++i) { buf.Printf("y%zd",i);  oss<<Util::_8s<<buf;  }  oss<<std::endl;
+    oss<<Util::_8s<<t;    for (size_t i=0; i<_neq; ++i) {                        oss<<Util::_8s<<Y[i]; }  oss<<std::endl;
+
+    // solve
+    double tout = t + dtOut;
+    while (t<tf)
+    {
+        Evolve (tout);
+        tout += dtOut;
+        if (tout>tf) tout = tf;
+        oss<<Util::_8s<<t;  for (size_t i=0; i<_neq; ++i) { oss<<Util::_8s<<Y[i]; }  oss<<std::endl;
+    }
+
+    // file
+    std::ofstream of(Filename, std::ios::out);
+    of << oss.str();
+    of.close();
+    printf("File <%s%s%s> written\n", TERM_CLR_BLUE_H, Filename, TERM_RST);
 }
 
 }; // namespace Numerical

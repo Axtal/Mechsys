@@ -39,27 +39,9 @@ y1ini = 3.0
 tf    = 10.209022
 dtOut = 0.1
 
-# output file
-fi = open("py_test_ode1.dat", 'w')
-fi.write('%16s %16s %16s\n'%('t','y0','y1'))
-fi.write('%16.8e %16.8e %16.8e\n'%(0,y0ini,y1ini))
-
-# solver
+# solve
 ode = ODE(mu)
 sol = ODESolver('ode', 'ODE', 'fun')
 y   = [y0ini, y1ini]
-#sol.Init (0.0, y, "ODE")
 sol.Init (0.0, y, "RK12", 1.e-2)
-
-# solve
-t    = 0.0
-tout = t + dtOut
-while t<tf:
-    sol.Evolve (tout)
-    t     = tout
-    tout += dtOut
-    fi.write('%16.8e %16.8e %16.8e\n'%(t,sol.Y[0],sol.Y[1]))
-
-# close file
-fi.close()
-print 'File <py_test_ode1.dat> written'
+sol.EvolveOut (tf, dtOut, "py_test_ode1.dat")
