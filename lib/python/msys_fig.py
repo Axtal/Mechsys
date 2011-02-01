@@ -18,9 +18,9 @@
 
 import os.path
 from os.path import basename
-from numpy.linalg import norm
+from numpy.linalg import norm, eig
 from numpy import pi, sin, cos, tan, arcsin, arccos, arctan2, log, log10, exp, sqrt
-from numpy import array, linspace, insert, repeat, zeros, matrix, ones, arange
+from numpy import array, linspace, insert, repeat, zeros, matrix, ones, arange, diag, dot
 from pylab import rcParams, gca, gcf, clf, savefig
 from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline, title, xticks
 from pylab import contour, contourf, colorbar, clabel

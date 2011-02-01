@@ -174,6 +174,13 @@ inline void Keys2Array (String const & KeysSepBySpace, Array<String> & Keys)
 
 #ifdef USE_BOOST_PYTHON
 
+inline BPy::tuple PyFindBestSquare (int Size)
+{
+    int row, col;
+    FindBestSquare (Size, row, col);
+    return BPy::make_tuple (row, col);
+}
+
 inline void GetPyMethod (char const * ClassName, char const * MethodName, BPy::object & Method, char const * Filename="__main__")
 {
     try

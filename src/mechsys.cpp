@@ -90,6 +90,9 @@ BPy::class_<Table>("Table")
 // Fatal
 BPy::register_exception_translator<Fatal *>(&PyExceptTranslator);
 
+// Util
+BPy::def("FindBestSquare", Util::PyFindBestSquare);
+
 /////////////////////////////////////////////////////////////////////////////// Numerical /////
 
 BPy::class_<Numerical::PyODESolver>("ODESolver", "ODESolver", BPy::init<BPy::object &, char const *, char const *>())
