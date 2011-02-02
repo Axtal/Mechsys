@@ -89,7 +89,8 @@ def Contour (X,Y,Z, label, nlevels=16, cmap=None, fmt='%g'):
     clabel (c2, inline=0)
 
 def GetClr (idx=0): # color
-    C = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8']
+    #C = ['blue', 'green', 'red', 'cyan', 'magenta', 'orange', 'black', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8', 'yellow']
+    C = ['blue', 'green', 'cyan', 'black', 'magenta', 'orange', 'red', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8', 'yellow']
     return C[idx % len(C)]
 
 def GetLst (idx=0): # linestyle
