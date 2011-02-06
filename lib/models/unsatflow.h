@@ -19,7 +19,12 @@
 #ifndef MECHSYS_UNSATFLOW_H
 #define MECHSYS_UNSATFLOW_H
 
+// Std Lib
+#include <fstream>
+#include <sstream>
+
 // MechSys
+#include<mechsys/util/numstreams.h>
 #include<mechsys/models/model.h>
 #include<mechsys/linalg/matvec.h>
 #include<mechsys/numerical/odesolver.h>
@@ -54,13 +59,13 @@ public:
     UnsatFlow (int NDim, SDPair const & Prms);
 
     // Methods
-    void   InitIvs  (SDPair const & Ini, State * Sta) const;        ///< Initialize internal values
-    void   Update   (double Dpw, double DEv, UnsatFlowState * Sta); ///< Update state
-    void   TgVars   (UnsatFlowState const * Sta) const;             ///< Calculate c, C, chi, and kwb
-    double FindSw   (double pc);                                    ///< Find Sw corresponding to pc by integrating from (pc,Sw)=(0,1) to pc (disregarding Dev)
-    double Findpc   (double Sw);                                    ///< Find pc corresponding to Sw by integrating from (pc,Sw)=(0,1) to Sw (disregarding Dev)
-    double mkw      (double Sw) const;                              ///< kw multiplier
-    void   GenCurve (char const * Filekey) const;                   ///< Generate WRC
+    void   InitIvs  (SDPair const & Ini, State * Sta) const;                  ///< Initialize internal values
+    void   Update   (double Dpw, double DEv, UnsatFlowState * Sta);           ///< Update state
+    void   TgVars   (UnsatFlowState const * Sta) const;                       ///< Calculate c, C, chi, and kwb
+    double FindSw   (double pc);                                              ///< Find Sw corresponding to pc by integrating from (pc,Sw)=(0,1) to pc (disregarding Dev)
+    double Findpc   (double Sw);                                              ///< Find pc corresponding to Sw by integrating from (pc,Sw)=(0,1) to Sw (disregarding Dev)
+    double mkw      (double Sw) const;                                        ///< kw multiplier
+    void   GenCurve (Array<double> pcs, char const * Filekey, size_t Np=100); ///< Generate WRC
 
     // Data
     Mat_t  kwb_sat; ///< Saturated kw bar
@@ -307,8 +312,38 @@ inline int UnsatFlow::_RK_func_pc (double t, double const Y[], double dYdt[])
     return GSL_SUCCESS;
 }
 
-inline void UnsatFlow::GenCurve (char const * Filekey) const
+inline void UnsatFlow::GenCurve (Array<double> pcs, char const * Filekey, size_t Np)
 {
+    // initial state
+    UnsatFlowState sta(NDim);
+    SDPair ini;
+    ini.Set ("n",   Por);
+    ini.Set ("pw", -pcs[0]);
+    InitIvs (ini, &sta);
+
+    // header and initial output
+    std::ostringstream oss;
+    oss << Util::_8s<<"pc"   << Util::_8s<<"Sw"   << Util::_8s<<"n"   << std::endl;
+    oss << Util::_8s<<sta.pc << Util::_8s<<sta.Sw << Util::_8s<<sta.n << std::endl;
+
+    // update
+    for (size_t i=1; i<pcs.Size(); ++i)
+    {
+        double dpc = (pcs[i]-sta.pc)/Np;
+        for (size_t j=0; j<Np; ++j)
+        {
+            Update (-dpc, 0.0, &sta);
+            oss << Util::_8s<<sta.pc << Util::_8s<<sta.Sw << Util::_8s<<sta.n << std::endl;
+        }
+    }
+
+    // save file
+    String buf(Filekey);
+    buf += ".res";
+    std::ofstream of(buf.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
+    printf("\nFile <%s%s%s> written\n",TERM_CLR_BLUE_H,buf.CStr(),TERM_RST);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////

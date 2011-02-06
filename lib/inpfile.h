@@ -184,10 +184,16 @@ public:
 #endif
 
 #ifdef USE_BOOST_PYTHON
-    void PyGetPrmIni (int Tag, BPy::dict & Prm, BPy::dict & Ini)
+    BPy::tuple PyReadPrmIni (char const * MatFN, char const * InpFN, int Tag)
     {
-        Prms->PyGet (Tag, Prm);
-        Inis->PyGet (Tag, Ini);
+        BPy::dict prm, ini;
+        MatFile   mat;
+        mat.Read    (MatFN);
+        Read        (InpFN);
+        SetPrmsInis (mat);
+        Prms->PyGet (Tag, prm);
+        Inis->PyGet (Tag, ini);
+        return BPy::make_tuple (prm, ini);
     }
 #endif
 };
@@ -376,6 +382,7 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="d3d")     { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
                 else if (key=="rho")     { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
                 else if (key=="geosta")  { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
+                else if (key=="pospw")   { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
                 else if (key=="K0")      { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
                 else if (key=="surf")    { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
                 else if (key=="water")   { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }

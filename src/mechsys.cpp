@@ -131,7 +131,7 @@ BPy::class_<MatFile>("MatFile")
 BPy::class_<InpFile>("InpFile")
     .def("Read",        &InpFile::Read)
     .def("SetPrmsInis", &InpFile::SetPrmsInis, IN_SetPrmsInis())
-    .def("GetPrmIni",   &InpFile::PyGetPrmIni)
+    .def("ReadPrmIni",  &InpFile::PyReadPrmIni)
     .def(BPy::self_ns::str(BPy::self))
     .def_readwrite("matid"      , &InpFile::matid     ) //   1
     .def_readwrite("flwid"      , &InpFile::flwid     ) //   2
