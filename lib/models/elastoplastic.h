@@ -554,7 +554,7 @@ inline void ElastoPlastic::Hardening (Vec_t const & Sig, Vec_t const & Ivs) cons
     // new stress update
     if (NewSU)
     {
-        double D;
+        double D = 0.0;
         switch (FC)
         {
             case VM_t:
@@ -588,7 +588,7 @@ inline void ElastoPlastic::Hardening (Vec_t const & Sig, Vec_t const & Ivs) cons
 
 inline double ElastoPlastic::YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) const
 {
-    double f;
+    double f = 1e+8;
     switch (FC)
     {
         case VM_t:

@@ -105,12 +105,15 @@ inline void MatFile::Read (char const * FileName)
     if (!mat_file.is_open()) throw new Fatal("MatFile::Read: Could not open file <%s>",FileName);
 
     // parse
+    int  idxcte       = 0;
     int  idxprm       = 0;
     int  idxini       = 0;
+    int  nctes        = 0;
     int  nprms        = 0;
     int  ninis        = 0;
     int  line_num     = 1;
     bool reading_name = false;
+    bool reading_ctes = false;
     bool reading_prms = false;
     bool reading_inis = false;
     int  ID           = 0;
@@ -130,10 +133,8 @@ inline void MatFile::Read (char const * FileName)
             else if (key=="ID")
             {
                 ID = atoi(strval.CStr());
-                if (ID<0) throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: IDs must be greater than zero. %d is invalid",FileName,line_num,ID);
+                if (ID<0) throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: IDs must be greater than zero or equal to zero. %d is invalid",FileName,line_num,ID);
                 reading_name = true;
-                reading_prms = false;
-                reading_inis = false;
             }
             else if (reading_name)
             {
@@ -153,21 +154,56 @@ inline void MatFile::Read (char const * FileName)
                     ID2Prms->Set (ID, "name", MODEL(strval));
                     model_name   = strval;
                     reading_name = false;
-                    reading_prms = true;
-                    reading_inis = false;
-                    nprms        = 0;
-                    idxprm       = -1;
+                    reading_ctes = true;
+                    nctes        = 0;
+                    idxcte       = -1;
                     prm_names    = &ita->second;
                     ivs_names    = &itb->second;
                 }
-                else throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: 'name' must follow 'tags'. '%s' is invalid or in the wrong place",FileName,line_num,key.CStr());
+                else throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: 'name' must follow 'ID'. '%s' is invalid or in the wrong place",FileName,line_num,key.CStr());
+            }
+            else if (reading_ctes)
+            {
+                if (nctes==0)
+                {
+                    if (key=="nctes") nctes = atoi(strval.CStr());
+                    else throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: 'nctes' must follow 'name'. '%s' is invalid or in the wrong place",FileName,line_num,key.CStr());
+                    if (nctes==0)
+                    {
+                        reading_ctes = false;
+                        reading_prms = true;
+                        nprms        = 0;
+                        idxprm       = -1;
+                    }
+                }
+                else if (key=="nprms")
+                {
+                    if (idxcte==nctes-1)
+                    {
+                        reading_ctes = false;
+                        reading_prms = true;
+                        nprms        = atoi(strval.CStr());
+                        idxprm       = -1;
+                    }
+                    else throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: 'nprms' must appear after all 'nctes' constants are read. nctes=%d and %d were read so far",FileName,line_num,nctes,idxcte+1);
+                }
+                else if (idxcte<nctes)
+                {
+                    if (MODEL_CTE_NAMES.Has(key))
+                    {
+                        ID2Prms->Set (ID, key.CStr(), atof(strval.CStr()));
+                        idxcte++;
+                    }
+                    else throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: constant named '%s' is not available for model '%s'",FileName,line_num,key.CStr(),model_name.CStr());
+                }
+                else throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: there are more constants than what specified by nctes=%d. The reading of constants finishes when 'nprms' is found. '%s' is invalid or in the wrong place (idxcte=%d)",FileName,line_num,nctes,key.CStr(),idxcte);
             }
             else if (reading_prms)
             {
                 if (nprms==0)
                 {
                     if (key=="nprms") nprms = atoi(strval.CStr());
-                    else throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: 'nprms' must follow 'name'",FileName,line_num);
+                    else throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: 'nprms' must follow constants. '%s' is invalid or in the wrong place",FileName,line_num,key.CStr());
                 }
                 else if (key=="ninis")
                 {
@@ -175,7 +211,6 @@ inline void MatFile::Read (char const * FileName)
                     {
                         ninis        = atoi(strval.CStr());
                         idxini       = -1;
-                        reading_name = false;
                         reading_prms = false;
                         if (ninis>0) reading_inis = true;
                         else
@@ -184,7 +219,7 @@ inline void MatFile::Read (char const * FileName)
                             reading_inis = false;
                         }
                     }
-                    else throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: 'ninis' must appear after all parameters are read. nprms=%d and %d were read so far",FileName,line_num,nprms,idxprm+1);
+                    else throw new Fatal("MatFile::Read: Error in <%s> file at line # %d: 'ninis' must appear after all 'nprms' parameters are read. nprms=%d and %d were read so far",FileName,line_num,nprms,idxprm+1);
                 }
                 else if (idxprm<nprms)
                 {
@@ -199,10 +234,11 @@ inline void MatFile::Read (char const * FileName)
             }
             else if (reading_inis)
             {
-                if (key=="tags" || key=="name" || key=="nprms" || key=="ninis") throw new Fatal("MatFile: Error in <%s> file at line # %d: There are not enough initial values corresponding to ninis=%d. '%s' is the wrong place",FileName,line_num,ninis,key.CStr());
+                if (key=="ID" || key=="name" || key=="nctes" || key=="nprms" || key=="ninis") throw new Fatal("MatFile: Error in <%s> file at line # %d: There are not enough initial values corresponding to ninis=%d. '%s' is the wrong place",FileName,line_num,ninis,key.CStr());
                 else if (idxini==ninis-1)
                 {
                     reading_name = false;
+                    reading_ctes = false;
                     reading_prms = false;
                     reading_inis = false;
                 }

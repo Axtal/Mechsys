@@ -41,12 +41,13 @@ public:
     HydroMechElem (int                  NDim,   ///< Space dimension
                    Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
                    Model        const * Mdl,    ///< Model
+                   Model        const * XMdl,   ///< Extra Model
                    SDPair       const & Prp,    ///< Properties
                    SDPair       const & Ini,    ///< Initial values
                    Array<Node*> const & Nodes); ///< Connectivity
 
     // Destructor
-    ~HydroMechElem () { if (FMdl!=NULL) delete FMdl; for (size_t i=0; i<GE->NIP; ++i) delete FSta[i]; }
+    ~HydroMechElem () { for (size_t i=0; i<GE->NIP; ++i) delete FSta[i]; }
 
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF);
@@ -68,10 +69,10 @@ public:
     void   CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const;
 
     // Data
-    UnsatFlow              * FMdl;     ///< Flow model
     Array<UnsatFlowState*>   FSta;     ///< Flow state
     bool                     HasGrav;  ///< Has gravity ?
     BCFuncs                * GravMult; ///< gravity multiplier
+    UnsatFlow        const * FMdl;     ///< Flow model
 };
 
 size_t HydroMechElem::NDp = 0;
@@ -84,9 +85,13 @@ Vec_t  HydroMechElem::zv;
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : EquilibElem(NDim,Cell,Mdl,Prp,Ini,Nodes), HasGrav(false), GravMult(NULL)
+inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
+    : EquilibElem(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes), HasGrav(false), GravMult(NULL),
+      FMdl(static_cast<UnsatFlow const*>(XMdl))
 {
+    // check
+    if (XMdl==NULL) throw new Fatal("HydroMechElem::HydroMechElem: E(x)tra Model (flow model) must be defined by means of 'xname' key");
+
     // set constants of this class (just once)
     if (NDp==0)
     {
@@ -106,33 +111,12 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
     }
 
     // initial data
-    double pos_pw  = (Ini.HasKey("only_positive_pw") ? true : false);
-    double z_water = 0.0;
-    double z_surf  = 0.0;
-    double gamW    = Mdl->Prms("gamW");
-    bool   has_pw  = Ini.HasKey("pw");
-    bool   has_Sw  = Ini.HasKey("Sw");
-    bool   has_geo = Ini.HasKey("geostatic");
-
-    // check
-    if ((has_pw || has_Sw) && has_geo) throw new Fatal("HydroMechElem::HydroMechElem: 'geostatic' cannot be specified together with pw or Sw (in 'Inis')");
-    if (has_geo)
-    {
-        z_water = Ini("water");
-        z_surf  = Ini("surf");
-    }
-
-    // allocate flow model TODO: move this to the outside, like Mdl, otherwise we're going to allocate one Mdl per element
-    FMdl = new UnsatFlow (NDim, Mdl->Prms);
-
-    // initial porosity and density of mixture
-    double n    = Ini("n");
-    double rhoW = Mdl->Prms("rhoW");
-    double rhoS = Mdl->Prms("rhoS");
-    rho = n*rhoW + (1.0-n)*rhoS;
-    SDPair ini(Ini);
+    double pos_pw  = Prp.HasKey("pospw");
+    bool   has_geo = Prp.HasKey("geosta");
+    double gamW    = XMdl->Prms("gamW");
 
     // allocate and initialize flow state at each IP
+    SDPair ini(Ini);
     for (size_t i=0; i<GE->NIP; ++i)
     {
         // pw at IP
@@ -144,7 +128,7 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
             double z = (NDim==2 ? X(1) : X(2));
 
             // pore-water pressure
-            double hw = z_water-z; // column of water
+            double hw = Prp("water")-z; // column of water
             double pw = (hw>0.0 ? gamW*hw : (pos_pw ? 0.0 : gamW*hw));
             ini.Set ("pw", pw);
         }
@@ -278,7 +262,7 @@ inline void HydroMechElem::AddToF (double Time, Vec_t & F) const
         {
             Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
             FMdl->TgVars (FSta[i]); // set c, C, chi, and kwb
-            Mat_t kw     (FMdl->kwb * FMdl->gamW);
+            Mat_t kw     (FMdl->kwb * FMdl->GamW);
             Vec_t kwz    (kw * zv);
             fe += (-coef) * trans(Bp) * kwz;
         }
@@ -507,8 +491,8 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 #endif
 
         // update flow state at IP
-        double dev = deps(0)+deps(1)+deps(2);
-        FMdl->Update (dpw, dev, FSta[i]);
+        //double dev = deps(0)+deps(1)+deps(2);
+        //FMdl->Update (dpw, dev, FSta[i]);
 
 #ifdef DO_DEBUG
         if (Util::IsNan(FSta[i]->Sw))       throw new Fatal("HydroMechElem::UpdateState: Sw is NaN");
@@ -543,7 +527,7 @@ inline void HydroMechElem::StateKeys (Array<String> & Keys) const
     Keys.Push ("n");
     Keys.Push ("pc");
     Keys.Push ("Sw");
-    Keys.Push ("kw");
+    Keys.Push ("mkw");
     Keys.Push ("qwx");
     Keys.Push ("qwy"); if (NDim==3)
     Keys.Push ("qwz");
@@ -557,10 +541,10 @@ inline void HydroMechElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
 
     // output
     EquilibElem::StateAtIP (KeysVals, IdxIP);
-    KeysVals.Set ("n",  FSta[IdxIP]->n);
-    KeysVals.Set ("pc", FSta[IdxIP]->pc);
-    KeysVals.Set ("Sw", FSta[IdxIP]->Sw);
-    KeysVals.Set ("kw", FSta[IdxIP]->kwb(0,0)*FMdl->gamW);
+    KeysVals.Set ("n",   FSta[IdxIP]->n);
+    KeysVals.Set ("pc",  FSta[IdxIP]->pc);
+    KeysVals.Set ("Sw",  FSta[IdxIP]->Sw);
+    KeysVals.Set ("mkw", FMdl->mkw(FSta[IdxIP]->Sw));
 
     // elevation of point
     Vec_t X;
@@ -569,7 +553,7 @@ inline void HydroMechElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
 
     // total water head
     double pw = -FSta[IdxIP]->pc;
-    KeysVals.Set ("H", z + pw/FMdl->gamW);
+    KeysVals.Set ("H", z + pw/FMdl->GamW);
 
     // vector of current pw at nodes of element
     Vec_t pwe(NDp);
@@ -583,8 +567,9 @@ inline void HydroMechElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
     Vec_t grad_pw(Bp * pwe);
 
     // relative specific discharge
-    grad_pw += FMdl->gamW*zv;              // grad_pw = grad_pw + gamW*z
-    Vec_t mqw(FSta[IdxIP]->kwb * grad_pw); // -qw
+    FMdl->TgVars (FSta[IdxIP]);     // set c, C, chi, and kwb
+    grad_pw += FMdl->GamW*zv;       // grad_pw = grad_pw + gamW*z
+    Vec_t mqw(FMdl->kwb * grad_pw); // -qw
     KeysVals.Set ("qwx", -mqw(0));
     KeysVals.Set ("qwy", -mqw(1)); if (NDim==3)
     KeysVals.Set ("qwz", -mqw(2));
@@ -658,7 +643,7 @@ inline void HydroMechElem::CalcIVRate (double Time, Vec_t const & U, Vec_t const
 
 
 // Allocate a new element
-Element * HydroMechElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new HydroMechElem(NDim,Cell,Mdl,Prp,Ini,Nodes); }
+Element * HydroMechElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new HydroMechElem(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes); }
 
 // Register element
 int HydroMechElemRegister()

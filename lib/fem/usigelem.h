@@ -41,6 +41,7 @@ public:
     USigElem (int                  NDim,   ///< Space dimension
               Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
               Model        const * Mdl,    ///< Model
+              Model        const * XMdl,   ///< Extra Model
               SDPair       const & Prp,    ///< Properties
               SDPair       const & Ini,    ///< Initial values
               Array<Node*> const & Nodes); ///< Connectivity
@@ -75,8 +76,8 @@ size_t USigElem::NDu = 0;
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline USigElem::USigElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : Element(NDim,Cell,Mdl,Prp,Ini,Nodes), StrainResid(true)
+inline USigElem::USigElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
+    : Element(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes), StrainResid(true)
 {
     // check GE
     if (GE==NULL)   throw new Fatal("USigElem::USigElem: GE (geometry element) must be defined");
@@ -559,7 +560,7 @@ inline void USigElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
 
 
 // Allocate a new element
-Element * USigElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new USigElem(NDim,Cell,Mdl,Prp,Ini,Nodes); }
+Element * USigElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new USigElem(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes); }
 
 // Register element
 int USigElemRegister()

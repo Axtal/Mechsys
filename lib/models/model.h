@@ -73,6 +73,15 @@ public:
     size_t        NIvs;    ///< Number of internal values
     Array<String> IvNames; ///< Names of internal values
 
+    // General constants
+    double Grav;     ///< Gravity. Ex.: 9.81 m/s2
+    double GamW;     ///< Unit weight of water. Ex.: 9.81 kN/m3
+    double Rho;      ///< Density of the material. Ex.: 2.0 Mg/m3
+    double RhoS;     ///< Density of solids. Ex.: 2.0 Mg/m3
+    double Por;      ///< Porosity of material. Ex.: 0.2
+    double GamNat;   ///< Natural unit weight of geo-material: Ex.: 20.0 kN/m3
+    double GamSat;   ///< Saturated unit weight of geo-material: Ex.: 21.0 kN/m3
+
 #define STRESSUPDATE_DECLARE
     #include <mechsys/models/stressupdate.h>
     mutable StressUpdate SUp;
@@ -87,13 +96,41 @@ inline Model::Model (int TheNDim, SDPair const & ThePrms, size_t NIv, char const
     : NDim(TheNDim), Prms(ThePrms), GTy(SDPairToGType(ThePrms,(TheNDim==3?"d3d":"d2d"))), 
       Name(TheName), NCps(2*NDim),  NIvs(NIv)
 {
+    // constants
+    Grav   = (Prms.HasKey("grav")   ? Prms("grav")   : -1);
+    GamW   = (Prms.HasKey("gamW")   ? Prms("gamW")   : -1);
+    Rho    = (Prms.HasKey("rho")    ? Prms("rho")    : -1);
+    RhoS   = (Prms.HasKey("rhoS")   ? Prms("rhoS")   : -1);
+    Por    = (Prms.HasKey("por")    ? Prms("por")    : -1);
+    GamNat = (Prms.HasKey("gamNat") ? Prms("gamNat") : -1);
+    GamSat = (Prms.HasKey("gamSat") ? Prms("gamSat") : -1);
+    if (Prms.HasKey("gamNat") && !Prms.HasKey("gamSat")) GamSat = GamNat;
+    if (Prms.HasKey("gamSat") && !Prms.HasKey("gamNat")) GamNat = GamSat;
+    if (Prms.HasKey("rhoS"))
+    {
+        double rho_w = Prms("gamW") / Prms("grav");
+        double n     = Prms("por");
+        Rho = n*rho_w + (1.0-n)*Prms("rhoS");
+        if (!Prms.HasKey("gamNat")) GamNat = Rho * Grav;
+        if (!Prms.HasKey("gamSat")) GamSat = GamNat;
+    }
+
+    // stress update
     SUp.SetModel   (this);
     IvNames.Resize (NIv);
 }
 
 std::ostream & operator<< (std::ostream & os, Model const & D)
 {
-    os << D.Name << " " << D.NDim << "D " << GTypeToStr(D.GTy) << " " << D.Prms;
+    os << D.Name << " " << D.NDim << "D " << GTypeToStr(D.GTy) << std::endl;
+    os << "  Prms = {" << D.Prms << "}\n";
+    os << "  Gravity                               : grav   = " << D.Grav   << std::endl;
+    os << "  Unit weight of water                  : gamW   = " << D.GamW   << std::endl;
+    os << "  Density of the material               : rho    = " << D.Rho    << std::endl;
+    os << "  Density of solids                     : rhoS   = " << D.RhoS   << std::endl;
+    os << "  Porosity of material                  : por    = " << D.Por    << std::endl;
+    os << "  Natural unit weight of geo-material   : gamNat = " << D.GamNat << std::endl;
+    os << "  Saturated unit weight of geo-material : gamSat = " << D.GamSat << std::endl;
     return os;
 }
 
@@ -136,6 +173,17 @@ Model * AllocModel(double IDinMODEL, int NDim, SDPair const & Prms)
     return AllocModel (model_name, NDim, Prms);
 }
 
+Array<String> MODEL_CTE_NAMES; ///< Constants names
+
+int ModelRegister()
+{
+    MODEL_CTE_NAMES.Resize(7);
+    MODEL_CTE_NAMES = "grav", "gamW", "rho", "rhoS", "por", "gamNat", "gamSat";
+    return 0;
+}
+
+int __Model_dummy_int = ModelRegister();
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////// Functions /////
 
@@ -143,64 +191,5 @@ Model * AllocModel(double IDinMODEL, int NDim, SDPair const & Prms)
 #ifdef USE_BOOST_PYTHON
 double PyMODEL (BPy::str const & Key) { return MODEL(BPy::extract<char const *>(Key)()); }
 #endif
-
-inline void ReadMaterial (int Tag, int MatID, const char * FileName, String & ModelName, Dict & Prms, Dict & Inis, bool WithMODEL=true)
-{
-    // parse materials file
-    ModelName = "__empty__";
-    size_t idxprm   = 0;
-    size_t idxini   = 0;
-    size_t nprms    = 0;
-    size_t ninis    = 0;
-    size_t line_num = 1;
-    std::fstream mat_file(FileName, std::ios::in);
-    if (!mat_file.is_open()) throw new Fatal("ReadMaterial: Could not open file <%s>",FileName);
-    bool reading_model = false;
-    bool reading_inis  = false;
-    bool model_read    = false;
-    while (!mat_file.eof() && !model_read)
-    {
-        String line,key,equal,strval;
-        std::getline (mat_file,line);
-        std::istringstream iss(line);
-        if (iss >> key >> equal >> strval)
-        {
-            if (key[0]=='#') { line_num++; continue; }
-            if (reading_model)
-            {
-                if (ModelName=="__empty__")
-                {
-                    if (key=="name") ModelName = strval;
-                    else throw new Fatal("ReadMaterial: Error in file <%s> @ line # %d: 'name' must follow 'ID'. Key==%s is invalid",FileName,line_num,key.CStr());
-                    if (WithMODEL) Prms.Set (Tag, "name", MODEL(ModelName));
-                }
-                else if (nprms==0)
-                {
-                    if (key=="nprms") nprms = atoi(strval.CStr());
-                    else throw new Fatal("ReadMaterial: Error in file <%s> @ line # %d: 'nprms' must follow 'name'. Key==%s is invalid",FileName,line_num,key.CStr());
-                }
-                else if (key=="ninis") { reading_model=false; ninis=atoi(strval.CStr()); reading_inis=(ninis==0?false:true); model_read=(ninis==0?true:false); }
-                else if (idxprm<nprms)
-                {
-                    Prms.Set (Tag, key.CStr(), atof(strval.CStr()));
-                    idxprm++;
-                }
-                else throw new Fatal("ReadMaterial: Error in file <%s> @ line # %d: there are more parameters than specified by nprms==%d. The reading of parameters finishes when 'ninis' is found. Key==%s is invalid",FileName,line_num,nprms,key.CStr());
-            }
-            else if (reading_inis)
-            {
-                if (key=="ID" || key=="name" || key=="nprms" || key=="ninis") throw new Fatal("ReadMaterial: Error in file <%s> @ line # %d: Key==%s found when reading ninis==%d.",FileName,line_num,key.CStr(),ninis);
-                if (idxini<ninis)
-                {
-                    Inis.Set (Tag, key.CStr(), atof(strval.CStr()));
-                    idxini++;
-                    if (idxini==ninis) { reading_inis=false; model_read=true; }
-                }
-            }
-            else if (key=="ID") { if (atoi(strval.CStr())==MatID) reading_model = true; }
-        }
-        line_num++;
-    }
-}
 
 #endif // MECHSYS_MODEL_H

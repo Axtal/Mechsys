@@ -112,6 +112,7 @@ public:
     Element (int                  NDim,   ///< Space dimension
              Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
              Model        const * Mdl,    ///< Model
+             Model        const * XMdl,   ///< Extra model
              SDPair       const & Prp,    ///< Properties
              SDPair       const & Ini,    ///< Initial values
              Array<Node*> const & Nodes); ///< Connectivity
@@ -158,6 +159,7 @@ public:
     int                NDim;   ///< Space dimension
     Mesh::Cell const & Cell;   ///< Geometric information: ID, Tag, connectivity
     Model      const * Mdl;    ///< The model
+    Model      const * XMdl;   ///< Extra model
     GeomElem         * GE;     ///< Element for geometry definition
     bool               Active; ///< Active element ?
     GeomType           GTy;    ///< Geometry type
@@ -169,8 +171,8 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Element::Element (int TheNDim, Mesh::Cell const & TheCell, Model const * TheMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : NDim(TheNDim), Cell(TheCell), Mdl(TheMdl), GE(NULL), Active(Prp.HasKey("active") ? Prp("active") : true),
+inline Element::Element (int TheNDim, Mesh::Cell const & TheCell, Model const * TheMdl, Model const * TheXMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
+    : NDim(TheNDim), Cell(TheCell), Mdl(TheMdl), XMdl(TheXMdl), GE(NULL), Active(Prp.HasKey("active") ? Prp("active") : true),
       GTy(SDPairToGType(Prp,(NDim==3?"d3d":"d2d")))
 {
     // connectivity
@@ -467,18 +469,18 @@ std::ostream & operator<< (std::ostream & os, Element const & E)
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
 
 
-typedef Element * (*ElementMakerPtr)(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes);
+typedef Element * (*ElementMakerPtr)(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes);
 
 typedef std::map<String, ElementMakerPtr> ElementFactory_t;
 
 ElementFactory_t ElementFactory;
 
-Element * AllocElement(String const & Name, int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
+Element * AllocElement(String const & Name, int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
 {
     ElementFactory_t::iterator it = ElementFactory.find(Name);
     if (it==ElementFactory.end()) throw new Fatal("AllocElement: '%s' is not available", Name.CStr());
 
-    Element * ptr = (*it->second)(NDim,Cell,Mdl,Prp,Ini,Nodes);
+    Element * ptr = (*it->second)(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes);
 
     return ptr;
 }

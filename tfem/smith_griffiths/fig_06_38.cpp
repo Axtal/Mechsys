@@ -50,33 +50,30 @@ int main(int argc, char **argv) try
     
     /////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-    // elements properties
+    // data
     double gra = 9.81;    // m/s2
     double gam = 20.0;    // kN/m3
-    double rho = gam/gra; // Mg/m3
     double K0  = 1.0;
+
+    // elements properties
     Dict prps;
-    prps.Set(-1, "prob geom psa  rho", PROB("Equilib"),GEOM("Quad8"),1.0, rho);
-    prps.Set(-2, "prob geom psa  rho", PROB("Equilib"),GEOM("Quad8"),1.0, rho);
-    prps.Set(-3, "prob geom psa  rho", PROB("Equilib"),GEOM("Quad8"),1.0, rho);
+    prps.Set (-1, "prob geom psa  geosta K0 surf", PROB("Equilib"),GEOM("Quad8"),TRUE, TRUE,K0,0.0);
+    prps.Set (-2, "prob geom psa  geosta K0 surf", PROB("Equilib"),GEOM("Quad8"),TRUE, TRUE,K0,0.0);
+    prps.Set (-3, "prob geom psa  geosta K0 surf", PROB("Equilib"),GEOM("Quad8"),TRUE, TRUE,K0,0.0);
 
-    // models
-    Dict mdls;
-    //mdls.Set(-1, "name psa  E nu", MODEL("LinElastic"),1.0,  1.0e+5, 0.49);
-    //mdls.Set(-2, "name psa  E nu", MODEL("LinElastic"),1.0,  1.0e+5, 0.49);
-    //mdls.Set(-3, "name psa  E nu", MODEL("LinElastic"),1.0,  1.0e+5, 0.49);
-    mdls.Set(-1, "name psa  E nu  MC c phi", MODEL("LinElastic"),1.0,  1.0e+5, 0.49, TRUE, 9.0, 0.0);
-    mdls.Set(-2, "name psa  E nu  MC c phi", MODEL("LinElastic"),1.0,  1.0e+5, 0.49, TRUE, 9.0, 0.0);
-    mdls.Set(-3, "name psa  E nu  MC c phi", MODEL("LinElastic"),1.0,  1.0e+5, 0.49, TRUE, 9.0, 0.0);
+    // parameters
+    Dict prms;
+    prms.Set (-1, "name psa  E nu  MC c phi", MODEL("LinElastic"),TRUE,  1.0e+5, 0.49, TRUE, 9.0, 0.0);
+    prms.Set (-2, "name psa  E nu  MC c phi", MODEL("LinElastic"),TRUE,  1.0e+5, 0.49, TRUE, 9.0, 0.0);
+    prms.Set (-3, "name psa  E nu  MC c phi", MODEL("LinElastic"),TRUE,  1.0e+5, 0.49, TRUE, 9.0, 0.0);
 
-    // initial values
-    Dict inis;
-    inis.Set(-1, "geostatic K0 gam y_surf", 1.0, K0, gam, 0.0);
-    inis.Set(-2, "geostatic K0 gam y_surf", 1.0, K0, gam, 0.0);
-    inis.Set(-3, "geostatic K0 gam y_surf", 1.0, K0, gam, 0.0);
+    // constants
+    prms.Set (-1, "gamW grav gamNat", 9.81, 9.81, gam);
+    prms.Set (-2, "gamW grav gamNat", 9.81, 9.81, gam);
+    prms.Set (-3, "gamW grav gamNat", 9.81, 9.81, gam);
 
     // domain
-    FEM::Domain dom(mesh, prps, mdls, inis);
+    FEM::Domain dom(mesh, prps, prms, Dict());
     dom.WriteVTU   ("fig_06_38_stg_0");
 
     // solver

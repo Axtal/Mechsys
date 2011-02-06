@@ -38,6 +38,7 @@ public:
     FlowElem (int                  NDim,   ///< Space dimension
               Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
               Model        const * Mdl,    ///< Model
+              Model        const * XMdl,   ///< Extra Model
               SDPair       const & Prp,    ///< Properties
               SDPair       const & Ini,    ///< Initial values
               Array<Node*> const & Nodes); ///< Connectivity
@@ -68,8 +69,8 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : Element(NDim,Cell,Mdl,Prp,Ini,Nodes), HasConv(false), HasPer(false), rho(1.0), hPer(0.0), A(1.0)
+inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
+    : Element(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes), HasConv(false), HasPer(false), rho(1.0), hPer(0.0), A(1.0)
 {
     // check
     if (GE==NULL)  throw new Fatal("FlowElem::FlowElem: GE (geometry element) must be defined");
@@ -419,7 +420,7 @@ inline void FlowElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
 
 
 // Allocate a new element
-Element * FlowElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new FlowElem(NDim,Cell,Mdl,Prp,Ini,Nodes); }
+Element * FlowElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new FlowElem(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes); }
 
 // Register element
 int FlowElemRegister()

@@ -42,6 +42,7 @@ public:
     USigCondElem (int                  NDim,   ///< Space dimension
                   Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
                   Model        const * Mdl,    ///< Model
+                  Model        const * XMdl,   ///< Extra Model
                   SDPair       const & Prp,    ///< Properties
                   SDPair       const & Ini,    ///< Initial values
                   Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
@@ -75,8 +76,8 @@ size_t USigCondElem::NDu = 0;
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline USigCondElem::USigCondElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : Element(NDim,Cell,Mdl,Prp,Ini,Nodes)
+inline USigCondElem::USigCondElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
+    : Element(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes)
 {
     // check GE
     if (GE==NULL)   throw new Fatal("USigCondElem::USigCondElem: GE (geometry element) must be defined");
@@ -445,7 +446,7 @@ inline void USigCondElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
 
 
 // Allocate a new element
-Element * USigCondMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new USigCondElem(NDim,Cell,Mdl,Prp,Ini,Nodes); }
+Element * USigCondMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new USigCondElem(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes); }
 
 // Register element
 int USigCondRegister()

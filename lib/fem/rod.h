@@ -33,6 +33,7 @@ public:
     Rod (int                  NDim,   ///< Space dimension
          Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
          Model        const * Mdl,    ///< Model
+         Model        const * XMdl,   ///< Extra Model
          SDPair       const & Prp,    ///< Properties
          SDPair       const & Ini,    ///< Initial values
          Array<Node*> const & Nodes); ///< Connectivity
@@ -55,8 +56,8 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Rod::Rod (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : Element(NDim,Cell,Mdl,Prp,Ini,Nodes)
+inline Rod::Rod (int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
+    : Element(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes)
 {
     // check GTy
     if (GTy!=fra_t) throw new Fatal("Rod::Rod: Geometry type (GTy) must be equal to 'fra' (Frame). GTy=%s is invalid",GTypeToStr(GTy).CStr());
@@ -213,7 +214,7 @@ inline void Rod::Draw (std::ostream & os, MPyPrms const & Prms) const
 
 
 // Allocate a new element
-Element * RodMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new Rod(NDim,Cell,Mdl,Prp,Ini,Nodes); }
+Element * RodMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new Rod(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes); }
 
 // Register element
 int RodRegister()

@@ -37,6 +37,7 @@ public:
     Beam (int                  NDim,   ///< Space dimension
           Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
           Model        const * Mdl,    ///< Model
+          Model        const * XMdl,   ///< Extra Model
           SDPair       const & Prp,    ///< Properties
           SDPair       const & Ini,    ///< Initial values
           Array<Node*> const & Nodes); ///< Connectivity
@@ -68,8 +69,8 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Beam::Beam (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : Element(NDim,Cell,Mdl,Prp,Ini,Nodes), qnl(0.0), qnr(0.0), HasQn(false)
+inline Beam::Beam (int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
+    : Element(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes), qnl(0.0), qnr(0.0), HasQn(false)
 {
     // check GTy
     if (GTy!=fra_t) throw new Fatal("Beam::Beam: Geometry type (GTy) must be equal to 'fra' (Frame). GTy=%s is invalid",GTypeToStr(GTy).CStr());
@@ -580,7 +581,7 @@ inline void Beam::Draw (std::ostream & os, MPyPrms const & Prms) const
 
 
 // Allocate a new element
-Element * BeamMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new Beam(NDim,Cell,Mdl,Prp,Ini,Nodes); }
+Element * BeamMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new Beam(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes); }
 
 // Register element
 int BeamRegister()

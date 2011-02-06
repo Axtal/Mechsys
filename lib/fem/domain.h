@@ -104,6 +104,7 @@ public:
     Dict          const & Inis;        ///< Initial values
     int                   NDim;        ///< Space dimension
     Models_t              Mdls;        ///< Models
+    Models_t              XMdls;       ///< Extra Models
     pVTUfunc              VTUfunc;     ///< Pointer to function to be called in WriteVTU
     std::map<int,Node*>   VertID2Node; ///< Map vertex ID to Node
     Array<Node*>          Nods;        ///< (Allocated memory) Nodes
@@ -150,6 +151,11 @@ std::ostream & operator<< (std::ostream & os, Domain const & D)
     buf.Printf("\n%s--- Models -------------------------------------------------------------------%s\n",TERM_CLR3,TERM_RST);
     os << buf;
     for (Domain::Models_t::const_iterator p=D.Mdls.begin(); p!=D.Mdls.end(); ++p)
+        os << p->first << " " << (*p->second) << std::endl;
+
+    buf.Printf("\n%s--- E(x)tra Models -----------------------------------------------------------%s\n",TERM_CLR3,TERM_RST);
+    os << buf;
+    for (Domain::Models_t::const_iterator p=D.XMdls.begin(); p!=D.XMdls.end(); ++p)
         os << p->first << " " << (*p->second) << std::endl;
 
     buf.Printf("\n%s--- Elements properties ------------------------------------------------------%s\n",TERM_CLR3,TERM_RST);
@@ -246,6 +252,12 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
             Mdls[tag] = AllocModel (model_name, NDim, TheMdls(tag));
         }
         else throw new Fatal("Domain::Domain: Dictionary of models must have keyword 'name' defining the name of the model");
+        if (TheMdls(tag).HasKey("xname"))
+        {
+            String model_name;
+            MODEL.Val2Key (TheMdls(tag)("xname"), model_name);
+            XMdls[tag] = AllocModel (model_name, NDim, TheMdls(tag));
+        }
     }
 
     // set nodes from mesh
@@ -325,6 +337,11 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
             Models_t::const_iterator m = Mdls.find(tag);
             if (m!=Mdls.end()) mdl = m->second;
 
+            // extra model
+            Model const * xmdl = NULL;
+            Models_t::const_iterator xm = XMdls.find(tag);
+            if (xm!=XMdls.end()) xmdl = xm->second;
+
             // connectivity
             bool has_outnode = false; // does this new element have any node belonging to the output array ?
             Array<Node*> nodes(Msh.Cells[i]->V.Size());
@@ -339,8 +356,8 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
             }
 
             // allocate element
-            if (Inis.HasKey(tag)) Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), Inis(tag), nodes));
-            else                  Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), SDPair() , nodes));
+            if (Inis.HasKey(tag)) Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, xmdl, Prps(tag), Inis(tag), nodes));
+            else                  Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, xmdl, Prps(tag), SDPair() , nodes));
 
             // set subset of active elements
             if (Eles.Last()->Active) ActEles.Push (Eles.Last());
@@ -422,6 +439,7 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
 inline Domain::~Domain()
 {
     for (Domain::Models_t::iterator p=Mdls.begin(); p!=Mdls.end(); ++p) delete p->second;
+    for (Domain::Models_t::iterator p=XMdls.begin(); p!=XMdls.end(); ++p) delete p->second;
     for (size_t i=0; i<Nods   .Size(); ++i) if (Nods   [i]!=NULL) delete Nods   [i];
     for (size_t i=0; i<Eles   .Size(); ++i) if (Eles   [i]!=NULL) delete Eles   [i];
     for (size_t i=0; i<FilNods.Size(); ++i) if (FilNods[i]!=NULL) { FilNods[i]->close(); delete FilNods[i]; }
