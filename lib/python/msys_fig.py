@@ -139,6 +139,21 @@ def read_tables(filenames):
     return dat
 
 
+# Read temporal data
+# ==================
+def read_tdata (fnkey, ids, arc_lens):
+    r0  = read_table ('%s_%d.res'%(fnkey,ids[0]))
+    nt  = len(r0['Time']) if r0.has_key('Time') else len(r0['t'])
+    np  = len(ids)
+    dat = {'arc_len':zeros((np,nt))}
+    for k, v in r0.iteritems(): dat[k] = zeros((np,nt))
+    for i, n in enumerate(ids):
+        r = read_table ('%s_%d.res'%(fnkey,n))
+        for k, v in r.iteritems(): dat[k][i,:] = v
+        dat['arc_len'][i,:] = arc_lens[i]
+    return dat
+
+
 # Radians formatting
 # ==================
 def rad_formatting (x, pos=None):

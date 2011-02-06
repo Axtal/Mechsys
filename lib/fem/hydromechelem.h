@@ -111,16 +111,16 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
     }
 
     // initial data
-    double pos_pw  = Prp.HasKey("pospw");
-    bool   has_geo = Prp.HasKey("geosta");
-    double gamW    = XMdl->Prms("gamW");
+    bool   geosta = (Prp.HasKey("geosta") ? Prp("geosta")>0 : false);
+    bool   pos_pw = (Prp.HasKey("pospw")  ? Prp("pospw")>0  : false);
+    double gamW   = XMdl->Prms("gamW");
 
     // allocate and initialize flow state at each IP
     SDPair ini(Ini);
     for (size_t i=0; i<GE->NIP; ++i)
     {
         // pw at IP
-        if (has_geo)
+        if (geosta)
         {
             // elevation of point
             Vec_t X;
@@ -491,8 +491,8 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 #endif
 
         // update flow state at IP
-        //double dev = deps(0)+deps(1)+deps(2);
-        //FMdl->Update (dpw, dev, FSta[i]);
+        double dev = deps(0)+deps(1)+deps(2);
+        FMdl->Update (dpw, dev, FSta[i]);
 
 #ifdef DO_DEBUG
         if (Util::IsNan(FSta[i]->Sw))       throw new Fatal("HydroMechElem::UpdateState: Sw is NaN");

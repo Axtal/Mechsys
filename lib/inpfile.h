@@ -419,6 +419,8 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="fy")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else if (key=="fz")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else if (key=="qn")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="pw")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="bcf") { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else throw new Fatal("InpFile::Read: Reading boundary conditions (stages). Error in file <%s> at line # %d when reading data of Stage # %d. Key==%s is invalid or in the wrong place",FileName,line_num,idxstage,key.CStr());
                 if (idxdat==ndat)
                 {

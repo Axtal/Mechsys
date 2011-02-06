@@ -104,11 +104,12 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
     }
 
     // set initial values
-    if (Prp.HasKey("geosta"))
+    bool geosta = (Prp.HasKey("geosta") ? Prp("geosta")>0 : false);
+    if (geosta)
     {
         double z_surf    = Prp("surf");
         double K0        = Prp("K0");
-        bool   pos_pw    = Prp.HasKey("pospw");
+        bool   pos_pw    = (Prp.HasKey("pospw") ? Prp("pospw")>0 : false);
         bool   has_water = Prp.HasKey("water");
         double z_water   = 0;
         if (GTy==pse_t)          throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, geometry cannot be of 'plane-stress' (pse) type");
