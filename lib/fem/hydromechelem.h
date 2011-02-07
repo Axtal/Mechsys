@@ -467,7 +467,7 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     // update state at each IP
     double detJ, coef;
     Mat_t  C, B, Bp, N, Np;
-    Vec_t  dFe(NDu), dsig(NCo), deps(NCo), dfe(NDp);
+    Vec_t  dFe(NDu), dsig(NCo), deps(NCo), dfe(NDp), dqw(NDim);
     set_to_zero (dFe);
     set_to_zero (dfe);
     CoordMatrix (C);
@@ -476,41 +476,25 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         // interpolation functions
         Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
 
-        // calculate dpw at IP
+        // calculate dpw and deps at IP
         Vec_t Npdpwe(Np * dpwe);
         double dpw = Npdpwe(0);
-
-        // strain and effective stress increments
         deps = B * dUe;
-        // TODO: The model expects __effective__ stresses => Sta[i] has to be corrected here
-        Mdl->SUp.Update (deps, Sta[i], dsig);
+
+        // update: inputs total stresses, returns total stress increments
+        Mdl->HMSup.Update (deps, dpw, Sta[i], FSta[i], dsig, dqw);
 
 #ifdef DO_DEBUG
         double normdsig = Norm(dsig);
-        if (Util::IsNan(normdsig)) throw new Fatal("HydroMechElem::UpdateState: normdsig is NaN");
-#endif
-
-        // update flow state at IP
-        double dev = deps(0)+deps(1)+deps(2);
-        FMdl->Update (dpw, dev, FSta[i]);
-
-#ifdef DO_DEBUG
+        if (Util::IsNan(normdsig))          throw new Fatal("HydroMechElem::UpdateState: normdsig is NaN");
         if (Util::IsNan(FSta[i]->Sw))       throw new Fatal("HydroMechElem::UpdateState: Sw is NaN");
         if (Util::IsNan(FSta[i]->pc))       throw new Fatal("HydroMechElem::UpdateState: pc is NaN");
         if (Util::IsNan(FSta[i]->kwb(0,0))) throw new Fatal("HydroMechElem::UpdateState: kwb(0,0) is NaN");
 #endif
 
-        // updated tg variables
-        FMdl->TgVars (FSta[i]); // set c, C, chi, and kwb
-
-        // total stress increments
-        dsig -= (FMdl->chi)*dpw*Iv;
-
         // element nodal forces
-        kBp     = (FMdl->kwb) * Bp;
-        kBpdpwe = kBp * dpwe;
         dFe += (coef) * trans(B) *dsig;
-        dfe += (coef) * trans(Bp)*kBpdpwe;
+        dfe += (coef) * trans(Bp)*dqw;
     }
 
     // add results to Fint (internal forces)

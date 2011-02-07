@@ -84,7 +84,9 @@ public:
 
 #define STRESSUPDATE_DECLARE
     #include <mechsys/models/stressupdate.h>
+    #include <mechsys/models/hmstressupdate.h>
     mutable StressUpdate SUp;
+    mutable HMStressUpdate HMSUp;
 #undef STRESSUPDATE_DECLARE
 };
 
