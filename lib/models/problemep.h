@@ -710,7 +710,7 @@ inline void ProblemEP::ELStiff (Vec_t const & Sig, Vec_t const & Ivs) const
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-Model * ProblemEPMaker(int NDim, SDPair const & Prms) { return new ProblemEP(NDim,Prms); }
+Model * ProblemEPMaker(int NDim, SDPair const & Prms, Model const * O) { return new ProblemEP(NDim,Prms); }
 
 int ProblemEPRegister()
 {

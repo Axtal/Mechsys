@@ -89,7 +89,7 @@ inline void LinFlow::InitIvs (SDPair const & Ini, State * Sta) const
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-Model * LinFlowMaker(int NDim, SDPair const & Prms) { return new LinFlow(NDim,Prms); }
+Model * LinFlowMaker(int NDim, SDPair const & Prms, Model const * O) { return new LinFlow(NDim,Prms); }
 
 int LinFlowRegister()
 {

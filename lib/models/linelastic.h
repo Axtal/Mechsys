@@ -118,7 +118,7 @@ inline void LinElastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig, V
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-Model * LinElasticMaker(int NDim, SDPair const & Prms) { return new LinElastic(NDim,Prms); }
+Model * LinElasticMaker(int NDim, SDPair const & Prms, Model const * O) { return new LinElastic(NDim,Prms); }
 
 int LinElasticRegister()
 {

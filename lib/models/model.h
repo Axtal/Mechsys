@@ -84,9 +84,7 @@ public:
 
 #define STRESSUPDATE_DECLARE
     #include <mechsys/models/stressupdate.h>
-    #include <mechsys/models/hmstressupdate.h>
     mutable StressUpdate SUp;
-    mutable HMStressUpdate HMSUp;
 #undef STRESSUPDATE_DECLARE
 };
 
@@ -152,27 +150,27 @@ typedef std::map<String,Array<String> > Str2ArrayStr_t; ///< Map string to array
 Str2ArrayStr_t MODEL_PRM_NAMES; ///< Model name => Parameters names
 Str2ArrayStr_t MODEL_IVS_NAMES; ///< Model name => Initial values names
 
-typedef Model * (*ModelMakerPtr)(int NDim, SDPair const & Prms);
+typedef Model * (*ModelMakerPtr)(int NDim, SDPair const & Prms, Model const * AnotherMdl);
 
 typedef std::map<String, ModelMakerPtr> ModelFactory_t;
 
 ModelFactory_t ModelFactory;
 
-Model * AllocModel(String const & Name, int NDim, SDPair const & Prms)
+Model * AllocModel(String const & Name, int NDim, SDPair const & Prms, Model const * Mdl)
 {
     ModelFactory_t::iterator it = ModelFactory.find(Name);
     if (it==ModelFactory.end()) throw new Fatal("AllocModel: '%s' is not available", Name.CStr());
 
-    Model * ptr = (*it->second)(NDim,Prms);
+    Model * ptr = (*it->second)(NDim,Prms,Mdl);
 
     return ptr;
 }
 
-Model * AllocModel(double IDinMODEL, int NDim, SDPair const & Prms)
+Model * AllocModel(double IDinMODEL, int NDim, SDPair const & Prms, Model const * Mdl)
 {
     String model_name;
     MODEL.Val2Key (IDinMODEL, model_name);
-    return AllocModel (model_name, NDim, Prms);
+    return AllocModel (model_name, NDim, Prms, Mdl);
 }
 
 Array<String> MODEL_CTE_NAMES; ///< Constants names

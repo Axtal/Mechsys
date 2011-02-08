@@ -249,14 +249,14 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         {
             String model_name;
             MODEL.Val2Key (TheMdls(tag)("name"), model_name);
-            Mdls[tag] = AllocModel (model_name, NDim, TheMdls(tag));
+            Mdls[tag] = AllocModel (model_name, NDim, TheMdls(tag), NULL);
         }
         else throw new Fatal("Domain::Domain: Dictionary of models must have keyword 'name' defining the name of the model");
         if (TheMdls(tag).HasKey("xname"))
         {
             String model_name;
             MODEL.Val2Key (TheMdls(tag)("xname"), model_name);
-            XMdls[tag] = AllocModel (model_name, NDim, TheMdls(tag));
+            XMdls[tag] = AllocModel (model_name, NDim, TheMdls(tag), Mdls[tag]);
         }
     }
 

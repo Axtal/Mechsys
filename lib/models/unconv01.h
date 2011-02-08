@@ -285,7 +285,7 @@ inline bool Unconv01::LoadCond (State const * Sta, Vec_t const & DEps, double & 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-Model * Unconv01Maker(int NDim, SDPair const & Prms) { return new Unconv01(NDim,Prms); }
+Model * Unconv01Maker(int NDim, SDPair const & Prms, Model const * O) { return new Unconv01(NDim,Prms); }
 
 int Unconv01Register()
 {

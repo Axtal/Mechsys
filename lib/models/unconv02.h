@@ -332,7 +332,7 @@ inline void Unconv02::UpdatePath (State const * Sta, Vec_t const & DEps, Vec_t c
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-Model * Unconv02Maker(int NDim, SDPair const & Prms) { return new Unconv02(NDim,Prms); }
+Model * Unconv02Maker(int NDim, SDPair const & Prms, Model const * O) { return new Unconv02(NDim,Prms); }
 
 int Unconv02Register()
 {

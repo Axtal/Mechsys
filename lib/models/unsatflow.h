@@ -26,28 +26,9 @@
 // MechSys
 #include<mechsys/util/numstreams.h>
 #include<mechsys/models/model.h>
+#include<mechsys/models/unsatflowstate.h>
 #include<mechsys/linalg/matvec.h>
 #include<mechsys/numerical/odesolver.h>
-
-class UnsatFlowState : public State
-{
-public:
-    // Constructor
-    UnsatFlowState (int NDim) : State(NDim) {}
-
-    // Methods
-    void   Init    (SDPair const & Ini, size_t NIvs=0);
-    void   Backup  () { throw new Fatal("UnsatFlowState::Backup: this method is not available yet"); }
-    void   Restore () { throw new Fatal("UnsatFlowState::Restore: this method is not available yet"); }
-    size_t PckSize () const { return 3; }
-    void   Pack    (Array<double>       & V) const;
-    void   Unpack  (Array<double> const & V);
-
-    // Data
-    double n;  ///< Porosity
-    double Sw; ///< Saturation
-    double pc; ///< Capillary pressure (pc = pa-pw = -pw)
-};
 
 class UnsatFlow : public Model
 {
@@ -56,30 +37,34 @@ public:
     enum WRC_t { BC_t, ZI_t }; ///< WRC type
 
     // Constructor
-    UnsatFlow (int NDim, SDPair const & Prms);
+    UnsatFlow (int NDim, SDPair const & Prms, Model const * EquilibMdl);
 
     // Methods
     void   InitIvs  (SDPair const & Ini, State * Sta) const;                  ///< Initialize internal values
     void   Update   (double Dpw, double DEv, UnsatFlowState * Sta);           ///< Update state
     void   TgVars   (UnsatFlowState const * Sta) const;                       ///< Calculate c, C, chi, and kwb
+    void   TgIncs   (UnsatFlowState const * Sta, double Dpw, double DEv, double & DSw, double & Dchi) const;
     double FindSw   (double pc);                                              ///< Find Sw corresponding to pc by integrating from (pc,Sw)=(0,1) to pc (disregarding Dev)
     double Findpc   (double Sw);                                              ///< Find pc corresponding to Sw by integrating from (pc,Sw)=(0,1) to Sw (disregarding Dev)
-    double mkw      (double Sw) const;                                        ///< kw multiplier
+    double rw       (double Sw) const;                                        ///< kwsat multiplier
     void   GenCurve (Array<double> pcs, char const * Filekey, size_t Np=100); ///< Generate WRC
 
     // Data
-    Mat_t  kwb_sat; ///< Saturated kw bar
-    double kwsat;   ///< Saturated (isotropic) conductivity
-    double akw;     ///< Expoent of kw model
-    WRC_t  wrc;     ///< Water retention curve model
+    Mat_t  kwsatb; ///< Saturated kw bar
+    double akw;    ///< Expoent of kw model
+    WRC_t  wrc;    ///< Water retention curve model
 
     // SWRC parameters
     double bc_lam, bc_sb,  bc_wr;                      ///< Brooks & Corey model parameters
     double zi_del, zi_bet, zi_gam, zi_a, zi_b, zi_alp; ///< Zienkiewicz et al. 1990 (zi_bet and zi_a => [m])
 
     // Read-write variables (scratchpad)
-    mutable double c, C, chi;
-    mutable Mat_t  kwb;
+    mutable double c, C, chi, Cpc, Ceps;
+
+#define HMSTRESSUPDATE_DECLARE
+    #include <mechsys/models/hmstressupdate.h>
+    mutable HMStressUpdate HMSUp;
+#undef HMSTRESSUPDATE_DECLARE
 
 private:
     double _Cpc  (double pc, double Sw) const;
@@ -94,34 +79,15 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline void UnsatFlowState::Init (SDPair const & Ini, size_t NIvs)
-{
-    n  = Ini("n");
-    pc = Ini("pc");
-    Sw = Ini("Sw");
-}
+#define HMSTRESSUPDATE_IMPLEMENT
+  #include <mechsys/models/hmstressupdate.h>
+#undef HMSTRESSUPDATE_IMPLEMENT
 
-inline void UnsatFlowState::Pack (Array<double> & V) const
-{
-    V.Resize (PckSize());
-    V[0] = n;
-    V[1] = Sw;
-    V[2] = pc;
-}
 
-inline void UnsatFlowState::Unpack (Array<double> const & V)
-{
-    if (V.Size()!=PckSize()) throw new Fatal("UnsatFlowState::Unpack: Size of given vector (%zd) is different of correct size of Pack (%zd)",V.Size(),PckSize());
-    n  = V[0];
-    Sw = V[1];
-    pc = V[2];
-}
-
-inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms)
+inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms, Model const * EquilibMdl)
     : Model (NDim,Prms,/*niv*/0,"UnsatFlow")
 {
     // parameters
-    kwsat   = Prms("kwsat");
     akw     = Prms("akw");
     bc_lam  = (Prms.HasKey("bc_lam") ? Prms("bc_lam") : 0.8    );
     bc_sb   = (Prms.HasKey("bc_sb" ) ? Prms("bc_sb" ) : 1.8    );
@@ -137,11 +103,13 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms)
     if (Prms.HasKey("ZI"))     wrc   = ZI_t;
 
     // saturated conductivity matrix
-    kwb    .change_dim (NDim, NDim);
-    kwb_sat.change_dim (NDim, NDim);
-    double m = kwsat / Prms("gamW");
-    if (NDim==3) kwb_sat =  m, 0., 0.,   0., m, 0.,   0., 0., m;
-    else         kwb_sat =  m, 0.,   0., m;
+    kwsatb.change_dim (NDim, NDim);
+    double m = Prms("kwsat") / Prms("gamW");
+    if (NDim==3) kwsatb =  m, 0., 0.,   0., m, 0.,   0., 0., m;
+    else         kwsatb =  m, 0.,   0., m;
+
+    // stress update
+    HMSUp.SetModel (EquilibMdl, this);
 }
 
 inline void UnsatFlow::InitIvs (SDPair const & Ini, State * Sta) const
@@ -187,12 +155,18 @@ inline void UnsatFlow::Update (double Dpw, double DEv, UnsatFlowState * Sta)
 
 inline void UnsatFlow::TgVars (UnsatFlowState const * Sta) const
 {
-    double Cpc  = _Cpc  (Sta->pc, Sta->Sw);
-    double Ceps = _Ceps (Sta->pc, Sta->Sw);
+    Cpc  = _Cpc  (Sta->pc, Sta->Sw);
+    Ceps = _Ceps (Sta->pc, Sta->Sw);
     c   = Sta->Sw + Sta->n * Ceps;
     C   = -Sta->n * Cpc;
     chi = Sta->Sw;
-    kwb = mkw(Sta->Sw) * kwb_sat;
+}
+
+inline void UnsatFlow::TgIncs (UnsatFlowState const * Sta, double Dpw, double DEv, double & DSw, double & Dchi) const
+{
+    TgVars (Sta);
+    DSw  = Ceps*DEv + Cpc*(-Dpw);
+    Dchi = DSw;
 }
 
 inline double UnsatFlow::FindSw (double pc)
@@ -237,7 +211,7 @@ inline double UnsatFlow::Findpc (double Sw)
     else return 0.0; // water saturated
 }
 
-inline double UnsatFlow::mkw (double Sw) const
+inline double UnsatFlow::rw (double Sw) const
 {
     if (Sw<1.0)
     {
@@ -293,8 +267,8 @@ inline int UnsatFlow::_RK_func_Sw (double t, double const Y[], double dYdt[])
 {
     double pc   = _RK_pc + t*_RK_Dpc;
     double Sw   = Y[0];
-    double Cpc  = _Cpc  (pc, Sw);
-    double Ceps = _Ceps (pc, Sw);
+    Cpc  = _Cpc  (pc, Sw);
+    Ceps = _Ceps (pc, Sw);
     dYdt[0] = Ceps*_RK_Dev + Cpc*_RK_Dpc; // dSwdt
     //std::cout << Y[0] << "   " << dYdt[0] << std::endl;
     return GSL_SUCCESS;
@@ -304,8 +278,8 @@ inline int UnsatFlow::_RK_func_pc (double t, double const Y[], double dYdt[])
 {
     double Sw   = _RK_Sw + t*_RK_DSw;
     double pc   = Y[0];
-    double Cpc  = _Cpc  (pc, Sw);
-    double Ceps = _Ceps (pc, Sw);
+    Cpc  = _Cpc  (pc, Sw);
+    Ceps = _Ceps (pc, Sw);
     if (fabs(Cpc)>1.0e-7) dYdt[0] = (1.0/Cpc) * (_RK_DSw - Ceps*_RK_Dev); // dpcdt
     else                  dYdt[0] = 1.0e+8;
     //std::cout << "_RK_func_pc: pc = " << Y[0] << "    dpcdt = " << dYdt[0] << std::endl;
@@ -349,7 +323,7 @@ inline void UnsatFlow::GenCurve (Array<double> pcs, char const * Filekey, size_t
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-Model * UnsatFlowMaker(int NDim, SDPair const & Prms) { return new UnsatFlow(NDim,Prms); }
+Model * UnsatFlowMaker(int NDim, SDPair const & Prms, Model const * EquilibMdl) { return new UnsatFlow(NDim,Prms,EquilibMdl); }
 
 int UnsatFlowRegister()
 {

@@ -674,7 +674,7 @@ inline void ElastoPlastic::ELStiff (Vec_t const & Sig, Vec_t const & Ivs) const
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-Model * ElastoPlasticMaker(int NDim, SDPair const & Prms) { return new ElastoPlastic(NDim,Prms); }
+Model * ElastoPlasticMaker(int NDim, SDPair const & Prms, Model const * O) { return new ElastoPlastic(NDim,Prms); }
 
 int ElastoPlasticRegister()
 {

@@ -227,7 +227,7 @@ inline void Unconv04::Ref (double x, double a, double b, double c, double A, dou
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-Model * Unconv04Maker(int NDim, SDPair const & Prms) { return new Unconv04(NDim,Prms); }
+Model * Unconv04Maker(int NDim, SDPair const & Prms, Model const * O) { return new Unconv04(NDim,Prms); }
 
 int Unconv04Register()
 {

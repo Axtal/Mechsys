@@ -124,7 +124,7 @@ inline void NLElastic::Stiffness (State const * Sta, Mat_t & D) const
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-Model * NLElasticMaker(int NDim, SDPair const & Prms) { return new NLElastic(NDim,Prms); }
+Model * NLElasticMaker(int NDim, SDPair const & Prms, Model const * O) { return new NLElastic(NDim,Prms); }
 
 int NLElasticRegister()
 {

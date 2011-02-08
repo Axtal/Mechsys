@@ -51,8 +51,6 @@ public:
 
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF);
-    void ClrBCs      ();
-    void AddToF      (double Time, Vec_t & F)               const;
     void CalcKCM     (Mat_t & KK, Mat_t & CC, Mat_t & MM)   const;
     void GetLoc      (Array<size_t> & Loc)                  const;
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const;
@@ -69,10 +67,8 @@ public:
     void   CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const;
 
     // Data
-    Array<UnsatFlowState*>   FSta;     ///< Flow state
-    bool                     HasGrav;  ///< Has gravity ?
-    BCFuncs                * GravMult; ///< gravity multiplier
-    UnsatFlow        const * FMdl;     ///< Flow model
+    Array<UnsatFlowState*>   FSta; ///< Flow state
+    UnsatFlow        const * FMdl; ///< Flow model
 };
 
 size_t HydroMechElem::NDp = 0;
@@ -86,7 +82,7 @@ Vec_t  HydroMechElem::zv;
 
 
 inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : EquilibElem(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes), HasGrav(false), GravMult(NULL),
+    : EquilibElem(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes),
       FMdl(static_cast<UnsatFlow const*>(XMdl))
 {
     // check
@@ -158,8 +154,7 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
     for (size_t i=0; i<GE->NIP; ++i)
     {
         Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
-        FMdl->TgVars (FSta[i]); // set c, C, chi, and kwb
-        Mat_t kBp    (FMdl->kwb * Bp);
+        Mat_t kBp    (FMdl->kwsatb * Bp);
         Vec_t kBppwe (kBp * pwe);
         fe += (coef) * trans(Bp)*kBppwe;
     }
@@ -201,6 +196,8 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCF
         // source
         else if (has_srcw)
         {
+            throw new Fatal("HydroMechElem::SetBCs: 'srcw' is not available yet");
+
             double srcw = BCs("srcw");
             double detJ, coef;
             Mat_t  C, B, Bp, N, Np;
@@ -233,25 +230,6 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCF
     // gravity
     if (BCs.HasKey("fgravity"))
     {
-        HasGrav  = true;
-        GravMult = BCF;
-    }
-}
-
-inline void HydroMechElem::ClrBCs ()
-{
-    HasGrav  = false;
-    GravMult = NULL;
-}
-
-inline void HydroMechElem::AddToF (double Time, Vec_t & F) const
-{
-    if (HasGrav)
-    {
-        // get location array
-        Array<size_t> loc;
-        GetLoc (loc);
-
         // force vector
         Vec_t  fe(NDp);
         set_to_zero (fe);
@@ -261,18 +239,13 @@ inline void HydroMechElem::AddToF (double Time, Vec_t & F) const
         for (size_t i=0; i<GE->NIP; ++i)
         {
             Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
-            FMdl->TgVars (FSta[i]); // set c, C, chi, and kwb
-            Mat_t kw     (FMdl->kwb * FMdl->GamW);
-            Vec_t kwz    (kw * zv);
-            fe += (-coef) * trans(Bp) * kwz;
+            Mat_t kwsat  (FMdl->kwsatb * FMdl->GamW);
+            Vec_t kwsatz (kwsat * zv);
+            fe += (-coef) * trans(Bp) * kwsatz;
         }
 
         // add results to F (external forces)
-        for (size_t i=0; i<NDp; ++i)
-        {
-            double fm = (GravMult==NULL ? 1.0 : GravMult->fm(Time));
-            F(loc[NDu+i]) += fe(i) * fm;
-        }
+        for (size_t i=0; i<NDp; ++i) Con[i]->AddToPF("qw", fe(i), BCF);
     }
 }
 
@@ -398,20 +371,21 @@ inline void HydroMechElem::CalcKCM (Mat_t & KK, Mat_t & CC, Mat_t & MM) const
     CoordMatrix (C);
     for (size_t i=0; i<GE->NIP; ++i)
     {
-        FMdl -> TgVars    (FSta[i]); // set c, C, chi, and kwb
+        FMdl -> TgVars    (FSta[i]); // set c, C, chi
         Mdl  -> Stiffness (Sta[i], D);
         Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
         NtN    = trans(N)*N;
         BtDB   = trans(B)*D*B;
         BtmNp  = trans(B)*Im*Np;
         NptNp  = trans(Np)*Np;
-        BptkBp = trans(Bp)*(FMdl->kwb)*Bp;
-        M     += (coef*rho)       * NtN;
-        K     += (coef)           * BtDB;
-        Q     += (coef*FMdl->c)   * BtmNp;
-        Qb    += (coef*FMdl->chi) * BtmNp;
-        S     += (coef*FMdl->C)   * NptNp;
-        H     += (coef)           * BptkBp;
+        BptkBp = trans(Bp)*(FMdl->kwsatb)*Bp;
+        double rw = FMdl->rw(FSta[i]->Sw);
+        M     += (coef*rho)        * NtN;
+        K     += (coef)            * BtDB;
+        Qb    += (coef*FMdl->chi)  * BtmNp;
+        Q     += (coef*FMdl->c/rw) * BtmNp;
+        S     += (coef*FMdl->C/rw) * NptNp;
+        H     += (coef)            * BptkBp;
     }
 
     //std::cout << "S = \n" << PrintMatrix(S) << std::endl;
@@ -467,10 +441,12 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     // update state at each IP
     double detJ, coef;
     Mat_t  C, B, Bp, N, Np;
-    Vec_t  dFe(NDu), dsig(NCo), deps(NCo), dfe(NDp), dqw(NDim);
+    Vec_t  dFe(NDu), dsig(NCo), deps(NCo), dfe(NDp);
     set_to_zero (dFe);
     set_to_zero (dfe);
     CoordMatrix (C);
+    Mat_t BptkBp(NDp,NDp), H(NDp,NDp);
+    set_to_zero (H);
     for (size_t i=0; i<GE->NIP; ++i)
     {
         // interpolation functions
@@ -482,7 +458,7 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         deps = B * dUe;
 
         // update: inputs total stresses, returns total stress increments
-        Mdl->HMSup.Update (deps, dpw, Sta[i], FSta[i], dsig, dqw);
+        FMdl->HMSUp.Update (deps, dpw, Sta[i], FSta[i], dsig);
 
 #ifdef DO_DEBUG
         double normdsig = Norm(dsig);
@@ -493,9 +469,16 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 #endif
 
         // element nodal forces
-        dFe += (coef) * trans(B) *dsig;
-        dfe += (coef) * trans(Bp)*dqw;
+        dFe +=  (coef) * trans(B)  * dsig;
+        //dfe += (-coef) * trans(Bp) * dqw_nograv;
+ 
+        // assemble H
+        BptkBp = trans(Bp)*(FMdl->kwsatb)*Bp;
+        H     += (coef) * BptkBp;
     }
+
+    // calc dfe
+    dfe = H*dpwe;
 
     // add results to Fint (internal forces)
     if (F_int!=NULL)
@@ -511,7 +494,7 @@ inline void HydroMechElem::StateKeys (Array<String> & Keys) const
     Keys.Push ("n");
     Keys.Push ("pc");
     Keys.Push ("Sw");
-    Keys.Push ("mkw");
+    Keys.Push ("rw");
     Keys.Push ("qwx");
     Keys.Push ("qwy"); if (NDim==3)
     Keys.Push ("qwz");
@@ -524,11 +507,12 @@ inline void HydroMechElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
     if (FSta[IdxIP]->Sw<0.0) throw new Fatal("HydroMechElem::StateAtIP: Sw<0");
 
     // output
+    double rw = FMdl->rw(FSta[IdxIP]->Sw);
     EquilibElem::StateAtIP (KeysVals, IdxIP);
-    KeysVals.Set ("n",   FSta[IdxIP]->n);
-    KeysVals.Set ("pc",  FSta[IdxIP]->pc);
-    KeysVals.Set ("Sw",  FSta[IdxIP]->Sw);
-    KeysVals.Set ("mkw", FMdl->mkw(FSta[IdxIP]->Sw));
+    KeysVals.Set ("n",  FSta[IdxIP]->n);
+    KeysVals.Set ("pc", FSta[IdxIP]->pc);
+    KeysVals.Set ("Sw", FSta[IdxIP]->Sw);
+    KeysVals.Set ("rw", rw);
 
     // elevation of point
     Vec_t X;
@@ -551,12 +535,11 @@ inline void HydroMechElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
     Vec_t grad_pw(Bp * pwe);
 
     // relative specific discharge
-    FMdl->TgVars (FSta[IdxIP]);     // set c, C, chi, and kwb
-    grad_pw += FMdl->GamW*zv;       // grad_pw = grad_pw + gamW*z
-    Vec_t mqw(FMdl->kwb * grad_pw); // -qw
-    KeysVals.Set ("qwx", -mqw(0));
-    KeysVals.Set ("qwy", -mqw(1)); if (NDim==3)
-    KeysVals.Set ("qwz", -mqw(2));
+    grad_pw += FMdl->GamW*zv;          // grad_pw = grad_pw + gamW*z
+    Vec_t mqw(FMdl->kwsatb * grad_pw); // -qw
+    KeysVals.Set ("qwx", -rw*mqw(0));
+    KeysVals.Set ("qwy", -rw*mqw(1)); if (NDim==3)
+    KeysVals.Set ("qwz", -rw*mqw(2));
 }
 
 inline size_t HydroMechElem::NIVs () const 

@@ -154,7 +154,7 @@ inline double CamClay::YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) const
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-Model * CamClayMaker(int NDim, SDPair const & Prms) { return new CamClay(NDim,Prms); }
+Model * CamClayMaker(int NDim, SDPair const & Prms, Model const * O) { return new CamClay(NDim,Prms); }
 
 int CamClayRegister()
 {
