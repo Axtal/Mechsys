@@ -64,8 +64,8 @@ public:
 
     // Methods
     void Solve          (size_t NInc=1, char const * FileKey=NULL);                      ///< Solve quasi-static problem
-    void TransSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL, SDPair * Steps=NULL); ///< Solve transient problem
-    void DynSolve       (double tf, double dt, double dtOut, char const * FileKey=NULL, SDPair * Steps=NULL); ///< Solve dynamic problem
+    void TransSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve transient problem
+    void DynSolve       (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve dynamic problem
     void AssembleKA     ();                                                              ///< A = K11
     void AssembleKMA    (double Coef1, double Coef2);                                    ///< A = Coef1*M + Coef2*K
     void AssembleKCMA   (double Coef1, double Coef2, double Coef3);                      ///< A = Coef1*M + Coef2*C + Coef3*K
@@ -126,6 +126,7 @@ public:
     double        WrnTol;   ///< Warning tolerance
     String        RKScheme; ///< Runge-Kutta scheme
     double        RKSTOL;   ///< Runge-Kutta tolerance
+    SDPair        NLSteps;  ///< Nonlinear steps
 
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
@@ -267,7 +268,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey)
     }
 }
 
-inline void Solver::TransSolve (double tf, double dt, double DtOut, char const * FileKey, SDPair * Steps)
+inline void Solver::TransSolve (double tf, double dt, double DtOut, char const * FileKey)
 {
     // info
     Util::Stopwatch stopwatch(/*activated*/WithInfo);
@@ -301,13 +302,13 @@ inline void Solver::TransSolve (double tf, double dt, double DtOut, char const *
     int    nl_k    = 0;     // current accumulated timesteps
     int    nl_K    = 0;     // current total number of timesteps
     bool   nl_stp  = false; // use nonlinear timesteps ?
-    if (Steps!=NULL)
+    if (NLSteps.Keys.Size()>0)
     {
-        nl_nsml = static_cast<int>((*Steps)("nsml"));
-        nl_n    = static_cast<int>((*Steps)("n"));
-        if (Steps->HasKey("sch")) nl_sch = static_cast<int>((*Steps)("sch"));
-        if (Steps->HasKey("ll" )) nl_ll  = (*Steps)("ll");
-        if (Steps->HasKey("m"  )) nl_m   = (*Steps)("m");
+        nl_nsml = static_cast<int>(NLSteps("nsml"));
+        nl_n    = static_cast<int>(NLSteps("n"));
+        if (NLSteps.HasKey("sch")) nl_sch = static_cast<int>(NLSteps("sch"));
+        if (NLSteps.HasKey("ll" )) nl_ll  = NLSteps("ll");
+        if (NLSteps.HasKey("m"  )) nl_m   = NLSteps("m");
         nl_stp  = true;
         dt      = Timestep (nl_i, nl_nsml, nl_ll, nl_sch, nl_m);
         dtOut   = (dtOut<dt ? dt : dtOut);
@@ -349,7 +350,7 @@ inline void Solver::TransSolve (double tf, double dt, double DtOut, char const *
     }
 }
 
-inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * FileKey, SDPair * Steps)
+inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * FileKey)
 {
     // info
     Util::Stopwatch stopwatch(/*activated*/WithInfo);
@@ -388,13 +389,13 @@ inline void Solver::DynSolve (double tf, double dt, double DtOut, char const * F
     int    nl_k    = 0;     // current accumulated timesteps
     int    nl_K    = 0;     // current total number of timesteps
     bool   nl_stp  = false; // use nonlinear timesteps ?
-    if (Steps!=NULL)
+    if (NLSteps.Keys.Size()>0)
     {
-        nl_nsml = static_cast<int>((*Steps)("nsml"));
-        nl_n    = static_cast<int>((*Steps)("n"));
-        if (Steps->HasKey("sch")) nl_sch = static_cast<int>((*Steps)("sch"));
-        if (Steps->HasKey("ll" )) nl_ll  = (*Steps)("ll");
-        if (Steps->HasKey("m"  )) nl_m   = (*Steps)("m");
+        nl_nsml = static_cast<int>(NLSteps("nsml"));
+        nl_n    = static_cast<int>(NLSteps("n"));
+        if (NLSteps.HasKey("sch")) nl_sch = static_cast<int>(NLSteps("sch"));
+        if (NLSteps.HasKey("ll" )) nl_ll  = NLSteps("ll");
+        if (NLSteps.HasKey("m"  )) nl_m   = NLSteps("m");
         nl_stp  = true;
         dt      = Timestep (nl_i, nl_nsml, nl_ll, nl_sch, nl_m);
         dtOut   = (dtOut<dt ? dt : dtOut);

@@ -411,16 +411,17 @@ inline void InpFile::Read (char const * FileName)
             {
                 if      (key=="ndat") ndat = atoi(str_val.CStr());
                 else if (ndat<0) throw new Fatal("InpFile::Read: Reading boundary conditions (stages). Error in file <%s> at line # %d: key 'ndat' must come after 'nbcs' and before data. '%s' is in the wrong place",FileName,line_num,key.CStr());
-                else if (key=="tag") { bcstag = atoi(str_val.CStr());              idxdat++; }
-                else if (key=="ux")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="uy")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="uz")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="fx")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="fy")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="fz")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="qn")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="pw")  { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="bcf") { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="tag")   { bcstag = atoi(str_val.CStr());              idxdat++; }
+                else if (key=="ux")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="uy")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="uz")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="fx")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="fy")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="fz")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="qn")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="pw")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="bcf")   { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="fgrav") { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else throw new Fatal("InpFile::Read: Reading boundary conditions (stages). Error in file <%s> at line # %d when reading data of Stage # %d. Key==%s is invalid or in the wrong place",FileName,line_num,idxstage,key.CStr());
                 if (idxdat==ndat)
                 {
@@ -614,6 +615,14 @@ inline void InpFile::SetSolver (FEM::Solver & Sol) const
     if (maxit  >0 ) Sol.MaxIt = maxit;
     if (tolr   >=0) Sol.TolR  = tolr;
     if (scheme!="") Sol.SetScheme (scheme.CStr());
+
+    Sol.NLSteps.clear();
+    if (nldt_nsml>0) Sol.NLSteps.Set("nsml",(double)nldt_nsml);
+    if (nldt_nn  >0) Sol.NLSteps.Set("nn"  ,(double)nldt_nn  );
+    if (nldt_n   >0) Sol.NLSteps.Set("n"   ,(double)nldt_n   );
+    if (nldt_ll  >0) Sol.NLSteps.Set("ll"  ,(double)nldt_ll  );
+    if (nldt_sch >0) Sol.NLSteps.Set("sch" ,(double)nldt_sch );
+    if (nldt_m   >0) Sol.NLSteps.Set("m"   ,(double)nldt_m   );
 }
 
 inline void InpFile::SetSUp (Model const * Mdl, Model::StressUpdate::pDbgFun pFun, void * UserData) const

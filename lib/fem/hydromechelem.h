@@ -228,7 +228,7 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCF
     EquilibElem::SetBCs (IdxEdgeOrFace, BCs, BCF);
 
     // gravity
-    if (BCs.HasKey("fgravity"))
+    if (BCs.HasKey("fgrav"))
     {
         // force vector
         Vec_t  fe(NDp);

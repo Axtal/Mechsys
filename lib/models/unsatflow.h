@@ -297,8 +297,8 @@ inline void UnsatFlow::GenCurve (Array<double> pcs, char const * Filekey, size_t
 
     // header and initial output
     std::ostringstream oss;
-    oss << Util::_8s<<"pc"   << Util::_8s<<"Sw"   << Util::_8s<<"n"   << std::endl;
-    oss << Util::_8s<<sta.pc << Util::_8s<<sta.Sw << Util::_8s<<sta.n << std::endl;
+    oss << Util::_8s<<"pc"   << Util::_8s<<"Sw"   << Util::_8s<<"n"   << Util::_8s<<"rw"       << std::endl;
+    oss << Util::_8s<<sta.pc << Util::_8s<<sta.Sw << Util::_8s<<sta.n << Util::_8s<<rw(sta.Sw) << std::endl;
 
     // update
     for (size_t i=1; i<pcs.Size(); ++i)
@@ -307,7 +307,7 @@ inline void UnsatFlow::GenCurve (Array<double> pcs, char const * Filekey, size_t
         for (size_t j=0; j<Np; ++j)
         {
             Update (-dpc, 0.0, &sta);
-            oss << Util::_8s<<sta.pc << Util::_8s<<sta.Sw << Util::_8s<<sta.n << std::endl;
+            oss << Util::_8s<<sta.pc << Util::_8s<<sta.Sw << Util::_8s<<sta.n << Util::_8s<<rw(sta.Sw) << std::endl;
         }
     }
 
