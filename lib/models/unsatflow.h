@@ -34,7 +34,7 @@ class UnsatFlow : public Model
 {
 public:
     // enums
-    enum WRC_t { BC_t, ZI_t }; ///< WRC type
+    enum WRC_t { BC_t, ZI_t, HZ_t }; ///< WRC type
 
     // Constructor
     UnsatFlow (int NDim, SDPair const & Prms, Model const * EquilibMdl);
@@ -57,6 +57,7 @@ public:
     // SWRC parameters
     double bc_lam, bc_sb,  bc_wr;                      ///< Brooks & Corey model parameters
     double zi_del, zi_bet, zi_gam, zi_a, zi_b, zi_alp; ///< Zienkiewicz et al. 1990 (zi_bet and zi_a => [m])
+    double hz_a,   hz_b,   hz_A,   hz_B;               ///< Huang and Zienkiewicz (Gawin, Schrefler ...)
 
     // Read-write variables (scratchpad)
     mutable double c, C, chi, Cpc, Ceps;
@@ -98,9 +99,14 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms, Model const * Equili
     zi_a    = (Prms.HasKey("zi_a"  ) ? Prms("zi_a"  ) : 5.0    );
     zi_b    = (Prms.HasKey("zi_b"  ) ? Prms("zi_b"  ) : 4.0    );
     zi_alp  = (Prms.HasKey("zi_alp") ? Prms("zi_alp") : 0.9    );
+    hz_a    = (Prms.HasKey("hz_a"  ) ? Prms("hz_a"  ) : 0.10152);
+    hz_b    = (Prms.HasKey("hz_b"  ) ? Prms("hz_b"  ) : 2.4279 );
+    hz_A    = (Prms.HasKey("hz_A"  ) ? Prms("hz_A"  ) : 2.207  );
+    hz_B    = (Prms.HasKey("hz_B"  ) ? Prms("hz_B"  ) : 1.0121 );
     wrc     = BC_t;
     if (Prms.HasKey("bc_sbb")) bc_sb = exp(Prms("bc_sbb"))-1.0;
     if (Prms.HasKey("ZI"))     wrc   = ZI_t;
+    if (Prms.HasKey("HZ"))     wrc   = HZ_t;
 
     // saturated conductivity matrix
     kwsatb.change_dim (NDim, NDim);
@@ -229,6 +235,12 @@ inline double UnsatFlow::rw (double Sw) const
                     }
                     else return 0.0;
                 }
+                case HZ_t:
+                {
+                    double res = 1.0 - hz_A*pow(1.0-Sw, hz_B);
+                    return (res<0.0 ? 0.0 : res);
+                }
+                default: throw new Fatal("UnsatFlow::rw: WRC is invalid");
             }
         }
         else return 0.0;
@@ -253,6 +265,11 @@ inline double UnsatFlow::_Cpc (double pc, double Sw) const
                 double K  = pow(zi_bet*hc, zi_gam);
                 return -(1.0/GamW)*(zi_gam*K*(1.0-zi_del))/(hc*pow(K+1.0,2.0));
             }
+            case HZ_t:
+            {
+                return -(hz_a*hz_b*pow(pc/GamW,hz_b))/pc;
+            }
+            default: throw new Fatal("UnsatFlow::_Cpc: WRC is invalid");
         }
     }
     else return 0.0;
@@ -329,11 +346,12 @@ int UnsatFlowRegister()
 {
     ModelFactory   ["UnsatFlow"] = UnsatFlowMaker;
     MODEL.Set      ("UnsatFlow", (double)MODEL.Keys.Size());
-    MODEL_PRM_NAMES["UnsatFlow"].Resize(13);
+    MODEL_PRM_NAMES["UnsatFlow"].Resize(18);
     MODEL_PRM_NAMES["UnsatFlow"] = "kwsat",  "akw",
                                    "bc_lam", "bc_sb",  "bc_wr",
                                    "zi_del", "zi_bet", "zi_gam", "zi_a", "zi_b", "zi_alp",
-                                   "BC",     "ZI";
+                                   "hz_a",   "hz_b",   "hz_A",   "hz_B",
+                                   "BC",     "ZI",     "HZ";
     MODEL_IVS_NAMES["UnsatFlow"].Resize(2);
     MODEL_IVS_NAMES["UnsatFlow"] = "pw", "Sw";
     return 0;
