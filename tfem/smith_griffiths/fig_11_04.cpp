@@ -30,6 +30,7 @@
 #include <mechsys/fem/equilibelem.h>
 #include <mechsys/fem/domain.h>
 #include <mechsys/fem/solver.h>
+#include <mechsys/fem/rksolver.h>
 #include <mechsys/models/linelastic.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/util.h>
@@ -50,6 +51,15 @@ public:
 
 int main(int argc, char **argv) try
 {
+    // input
+    bool rksolver = true;
+    if (argc>1) rksolver = atoi(argv[1]);
+
+    // filekey
+    String fnkey;
+    if (rksolver) fnkey = "fig_11_04";
+    else          fnkey = "fig_11_04_GN22";
+
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
     
     double H = 1.0;  // height
@@ -81,7 +91,7 @@ int main(int argc, char **argv) try
     mesh.SetCell    ( 1,   -1, Array<int>( 7,12,10, 5,  9,11, 8, 6));
     mesh.SetCell    ( 2,   -1, Array<int>(12,17,15,10, 14,16,13,11));
     mesh.SetBryTag  ( 0, 3, -10);
-    mesh.WriteMPY   ("fig_11_04");
+    mesh.WriteMPY   (fnkey.CStr());
     
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -100,28 +110,35 @@ int main(int argc, char **argv) try
     // domain
     BCF bcf;
     Array<int> out_nods(17, /*justone*/true);
-    FEM::Domain dom(mesh, prps, mdls, inis, "fig_11_04", &out_nods);
+    FEM::Domain dom(mesh, prps, mdls, inis, fnkey.CStr(), &out_nods);
     dom.MFuncs[-100] = &bcf; // set database of callbacks
 
-    // solver
-    FEM::Solver sol(dom);
-    sol.DScheme = FEM::Solver::RK_t;
-    //sol.DScheme = FEM::Solver::GN22_t;
-    sol.DampAm  = 0.005;
-    sol.DampAk  = 0.272;
-    sol.DampTy  = FEM::Solver::Rayleigh_t;
-    //sol.CteTg   = true;
-
-    sol.RKScheme = "RK4I";
-    sol.RKSTOL   = 1.0e-3;
-
-    // stage # 1 -----------------------------------------------------------
+    // boundary conditions
     Dict bcs;
-    bcs.Set( -10, "ux uy",  0.0, 0.0);
-    bcs.Set(-100, "fy bcf", 1.0, TRUE);
+    bcs.Set ( -10, "ux uy",  0.0, 0.0);
+    bcs.Set (-100, "fy bcf", 1.0, TRUE);
     dom.SetBCs (bcs);
     //cout << dom << endl;
-    sol.DynSolve (/*tf*/100, /*dt*/1.0, /*dtOut*/1.0, "fig_11_04");
+
+    // solver
+    if (rksolver)
+    {
+        FEM::RKSolver sol(dom);
+        sol.DampTy  = FEM::RKSolver::Rayleigh_t;
+        sol.DampAm  = 0.005;
+        sol.DampAk  = 0.272;
+        sol.DynSolve (/*tf*/100, /*dt*/1.0, /*dtOut*/1.0, fnkey.CStr());
+    }
+    else
+    {
+        FEM::Solver sol(dom);
+        sol.DScheme = FEM::Solver::GN22_t;
+        sol.DampTy  = FEM::Solver::Rayleigh_t;
+        sol.DampAm  = 0.005;
+        sol.DampAk  = 0.272;
+        //sol.CteTg   = true;
+        sol.DynSolve (/*tf*/100, /*dt*/1.0, /*dtOut*/1.0, fnkey.CStr());
+    }
 
     return 0.0;
 }

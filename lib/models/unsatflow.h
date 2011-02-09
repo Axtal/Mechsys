@@ -33,6 +33,9 @@
 class UnsatFlow : public Model
 {
 public:
+    // static
+    static Vec_t Iv; ///< Identity vector (NCo)
+
     // enums
     enum WRC_t { BC_t, ZI_t, HZ_t }; ///< WRC type
 
@@ -40,14 +43,18 @@ public:
     UnsatFlow (int NDim, SDPair const & Prms, Model const * EquilibMdl);
 
     // Methods
-    void   InitIvs  (SDPair const & Ini, State * Sta) const;                  ///< Initialize internal values
-    void   Update   (double Dpw, double DEv, UnsatFlowState * Sta);           ///< Update state
-    void   TgVars   (UnsatFlowState const * Sta) const;                       ///< Calculate c, C, chi, and kwb
-    void   TgIncs   (UnsatFlowState const * Sta, double Dpw, double DEv, double & DSw, double & Dchi) const;
-    double FindSw   (double pc);                                              ///< Find Sw corresponding to pc by integrating from (pc,Sw)=(0,1) to pc (disregarding Dev)
-    double Findpc   (double Sw);                                              ///< Find pc corresponding to Sw by integrating from (pc,Sw)=(0,1) to Sw (disregarding Dev)
-    double rw       (double Sw) const;                                        ///< kwsat multiplier
-    void   GenCurve (Array<double> pcs, char const * Filekey, size_t Np=100); ///< Generate WRC
+    void   InitIvs   (SDPair const & Ini, State * Sta) const;                  ///< Initialize internal values
+    void   Update    (double Dpw, double DEv, UnsatFlowState * Sta);           ///< Update state
+    void   TgVars    (UnsatFlowState const * Sta) const;                       ///< Calculate c, C, chi, and kwb
+    void   TgIncs    (UnsatFlowState const * Sta, double Dpw, double DEv, double & DSw, double & Dchi) const;
+    double FindSw    (double pc);                                              ///< Find Sw corresponding to pc by integrating from (pc,Sw)=(0,1) to pc (disregarding Dev)
+    double Findpc    (double Sw);                                              ///< Find pc corresponding to Sw by integrating from (pc,Sw)=(0,1) to Sw (disregarding Dev)
+    double rw        (double Sw) const;                                        ///< kwsat multiplier
+    void   GenCurve  (Array<double> pcs, char const * Filekey, size_t Np=100); ///< Generate WRC
+    void   Stiffness (State const * Sta, UnsatFlowState const * FSta, Mat_t & D) const; ///< Coupled "effective" stiffness
+
+    // Pointer to equilib model
+    Model const * EMdl;
 
     // Data
     Mat_t  kwsatb; ///< Saturated kw bar
@@ -76,6 +83,8 @@ private:
     int _RK_func_pc (double t, double const pc[], double dpcdt[]);
 };
 
+Vec_t UnsatFlow::Iv;
+
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -86,27 +95,42 @@ private:
 
 
 inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms, Model const * EquilibMdl)
-    : Model (NDim,Prms,/*niv*/0,"UnsatFlow")
+    : Model (NDim,Prms,/*niv*/0,"UnsatFlow"), EMdl(EquilibMdl)
 {
     // parameters
-    akw     = Prms("akw");
-    bc_lam  = (Prms.HasKey("bc_lam") ? Prms("bc_lam") : 0.8    );
-    bc_sb   = (Prms.HasKey("bc_sb" ) ? Prms("bc_sb" ) : 1.8    );
-    bc_wr   = (Prms.HasKey("bc_wr" ) ? Prms("bc_wr" ) : 0.01   );
-    zi_del  = (Prms.HasKey("zi_del") ? Prms("zi_del") : 0.0842 );
-    zi_bet  = (Prms.HasKey("zi_bet") ? Prms("zi_bet") : 0.7    );
-    zi_gam  = (Prms.HasKey("zi_gam") ? Prms("zi_gam") : 2.0    );
-    zi_a    = (Prms.HasKey("zi_a"  ) ? Prms("zi_a"  ) : 5.0    );
-    zi_b    = (Prms.HasKey("zi_b"  ) ? Prms("zi_b"  ) : 4.0    );
-    zi_alp  = (Prms.HasKey("zi_alp") ? Prms("zi_alp") : 0.9    );
-    hz_a    = (Prms.HasKey("hz_a"  ) ? Prms("hz_a"  ) : 0.10152);
-    hz_b    = (Prms.HasKey("hz_b"  ) ? Prms("hz_b"  ) : 2.4279 );
-    hz_A    = (Prms.HasKey("hz_A"  ) ? Prms("hz_A"  ) : 2.207  );
-    hz_B    = (Prms.HasKey("hz_B"  ) ? Prms("hz_B"  ) : 1.0121 );
-    wrc     = BC_t;
-    if (Prms.HasKey("bc_sbb")) bc_sb = exp(Prms("bc_sbb"))-1.0;
-    if (Prms.HasKey("ZI"))     wrc   = ZI_t;
-    if (Prms.HasKey("HZ"))     wrc   = HZ_t;
+    wrc = BC_t;
+    if (Prms.HasKey("ZI")) wrc = ZI_t;
+    if (Prms.HasKey("HZ")) wrc = HZ_t;
+    switch (wrc)
+    {
+        case BC_t:
+        {
+            akw    = Prms("akw");
+            bc_lam = (Prms.HasKey("bc_lam") ? Prms("bc_lam") : 0.8 );
+            bc_sb  = (Prms.HasKey("bc_sb" ) ? Prms("bc_sb" ) : 1.8 );
+            bc_wr  = (Prms.HasKey("bc_wr" ) ? Prms("bc_wr" ) : 0.01);
+            if (Prms.HasKey("bc_sbb")) bc_sb = exp(Prms("bc_sbb"))-1.0;
+            break;
+        }
+        case ZI_t:
+        {
+            zi_del = (Prms.HasKey("zi_del") ? Prms("zi_del") : 0.0842);
+            zi_bet = (Prms.HasKey("zi_bet") ? Prms("zi_bet") : 0.7   );
+            zi_gam = (Prms.HasKey("zi_gam") ? Prms("zi_gam") : 2.0   );
+            zi_a   = (Prms.HasKey("zi_a"  ) ? Prms("zi_a"  ) : 5.0   );
+            zi_b   = (Prms.HasKey("zi_b"  ) ? Prms("zi_b"  ) : 4.0   );
+            zi_alp = (Prms.HasKey("zi_alp") ? Prms("zi_alp") : 0.9   );
+            break;
+        }
+        case HZ_t:
+        {
+            hz_a = (Prms.HasKey("hz_a"  ) ? Prms("hz_a"  ) : 0.10152);
+            hz_b = (Prms.HasKey("hz_b"  ) ? Prms("hz_b"  ) : 2.4279 );
+            hz_A = (Prms.HasKey("hz_A"  ) ? Prms("hz_A"  ) : 2.207  );
+            hz_B = (Prms.HasKey("hz_B"  ) ? Prms("hz_B"  ) : 1.0121 );
+            break;
+        }
+    }
 
     // saturated conductivity matrix
     kwsatb.change_dim (NDim, NDim);
@@ -116,6 +140,15 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms, Model const * Equili
 
     // stress update
     HMSUp.SetModel (EquilibMdl, this);
+
+    // Iv
+    if (size(Iv)==0)
+    {
+        Iv.change_dim(EMdl->NCps);
+        Iv(0) = 1.;
+        Iv(1) = 1.;
+        Iv(2) = 1.;
+    }
 }
 
 inline void UnsatFlow::InitIvs (SDPair const & Ini, State * Sta) const
@@ -336,6 +369,21 @@ inline void UnsatFlow::GenCurve (Array<double> pcs, char const * Filekey, size_t
     of.close();
     printf("\nFile <%s%s%s> written\n",TERM_CLR_BLUE_H,buf.CStr(),TERM_RST);
 }
+
+inline void UnsatFlow::Stiffness (State const * Sta, UnsatFlowState const * FSta, Mat_t & D) const
+{
+    // eq state
+    EquilibState sta(NDim);
+    sta = (*static_cast<EquilibState const *>(Sta));
+
+    // constitutive stresses
+    TgVars (FSta);
+    sta.Sig += (chi*(-FSta->pc))*Iv;
+
+    // stiffness
+    EMdl->Stiffness (&sta, D);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 

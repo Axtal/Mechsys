@@ -45,6 +45,15 @@ using FEM::GEOM;
 
 int main(int argc, char **argv) try
 {
+    // input
+    bool rksolver = true;
+    if (argc>1) rksolver = atoi(argv[1]);
+
+    // filekey
+    String fnkey;
+    if (rksolver) fnkey = "fig_11_19";
+    else          fnkey = "fig_11_19_GN22";
+
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
     
     size_t nc = 6;             // number of cells
@@ -73,7 +82,7 @@ int main(int argc, char **argv) try
         mesh.SetBryTag (i, 3, -10);
         x += l;
     }
-    mesh.WriteMPY ("fig_11_19");
+    mesh.WriteMPY (fnkey.CStr());
     
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -92,22 +101,28 @@ int main(int argc, char **argv) try
 
     // domain
     Array<int> out_nods(30, /*justone*/true);
-    FEM::Domain dom(mesh, prps, mdls, inis, "fig_11_19", &out_nods);
+    FEM::Domain dom(mesh, prps, mdls, inis, fnkey.CStr(), &out_nods);
 
-    // solver
-    //FEM::RKSolver sol(dom);
-    FEM::Solver sol(dom);
-    //sol.DScheme = FEM::Solver::RK_t;
-    //sol.DScheme = FEM::Solver::GN22_t;
-
-    // stage # 1 -----------------------------------------------------------
+    // boundary conditions
     Dict bcs;
     bcs.Set( -10, "qn",   -180.0);
     bcs.Set(-100, "ux uy", 0.0,0.0);
     bcs.Set(-200, "ux",    0.0);
     dom.SetBCs (bcs);
     //cout << dom << endl;
-    sol.DynSolve (/*tf*/0.01, /*dt*/1.0e-4, /*dtOut*/1.0e-4, "fig_11_19");
+
+    // solver
+    if (rksolver)
+    {
+        FEM::RKSolver sol(dom);
+        sol.DynSolve (/*tf*/0.01, /*dt*/1.0e-4, /*dtOut*/1.0e-4, fnkey.CStr());
+    }
+    else
+    {
+        FEM::Solver sol(dom);
+        sol.DScheme = FEM::Solver::GN22_t;
+        sol.DynSolve (/*tf*/0.01, /*dt*/1.0e-4, /*dtOut*/1.0e-4, fnkey.CStr());
+    }
 
     return 0.0;
 }

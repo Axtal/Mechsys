@@ -111,7 +111,7 @@ inline UnsatFlow::HMStressUpdate::HMStressUpdate ()
       mMax     (10.0),
       MaxSS    (2000),
       CDrift   (true),
-      RKScheme ("RKF45"),
+      RKScheme ("ME"),
       SS       (0),
       SSs      (0),
       DCit     (0),

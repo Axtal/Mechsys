@@ -29,6 +29,7 @@
 #include <mechsys/fem/beam.h>
 #include <mechsys/fem/domain.h>
 #include <mechsys/fem/solver.h>
+#include <mechsys/fem/rksolver.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/util.h>
 #include <mechsys/util/fatal.h>
@@ -47,6 +48,15 @@ public:
 
 int main(int argc, char **argv) try
 {
+    // input
+    bool rksolver = true;
+    if (argc>1) rksolver = atoi(argv[1]);
+
+    // filekey
+    String fnkey;
+    if (rksolver) fnkey = "fig_11_01";
+    else          fnkey = "fig_11_01_GN22";
+
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
     
     Mesh::Generic mesh(/*NDim*/2);
@@ -54,7 +64,7 @@ int main(int argc, char **argv) try
     mesh.SetVert    ( 0, -100,  0.0,  0.0, 0);
     mesh.SetVert    ( 1, -200,  1.0,  0.0, 0);
     mesh.SetCell    ( 0,   -1, Array<int>(0,1));
-    mesh.WriteMPY   ("fig_11_01");
+    mesh.WriteMPY   (fnkey.CStr());
     
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -65,20 +75,27 @@ int main(int argc, char **argv) try
     // domain
     BCF bcf;
     Array<int> out_nods(1, /*justone*/true);
-    FEM::Domain dom(mesh, prps, Dict(), Dict(), "fig_11_01", &out_nods);
+    FEM::Domain dom(mesh, prps, Dict(), Dict(), fnkey.CStr(), &out_nods);
     dom.MFuncs[-200] = &bcf; // set database of callbacks
 
-    // solver
-    FEM::Solver sol(dom);
-    //sol.DScheme = FEM::Solver::GN22_t;
-    sol.DScheme = FEM::Solver::RK_t;
-
-    // stage # 1 -----------------------------------------------------------
+    // boundary conditions
     Dict bcs;
     bcs.Set(-100, "ux uy wz", 0.0,0.0,0.0);
     bcs.Set(-200, "fy bcf",   1.0, TRUE);
     dom.SetBCs (bcs);
-    sol.DynSolve (/*tf*/1.8, /*dt*/0.05, /*dtOut*/0.05, "fig_11_01");
+
+    // solver
+    if (rksolver)
+    {
+        FEM::RKSolver sol(dom);
+        sol.DynSolve (/*tf*/5, /*dt*/0.05, /*dtOut*/0.05, fnkey.CStr());
+    }
+    else
+    {
+        FEM::Solver sol(dom);
+        sol.DScheme = FEM::Solver::GN22_t;
+        sol.DynSolve (/*tf*/5, /*dt*/0.05, /*dtOut*/0.05, fnkey.CStr());
+    }
 
     return 0.0;
 }

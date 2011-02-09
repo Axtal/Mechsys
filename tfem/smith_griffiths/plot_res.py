@@ -7,6 +7,8 @@ op.add_option('--tst', '-t', dest='tst', default='0', help='test number')
 opts, args = op.parse_args()
 
 if opts.tst=='0':
+    gn22 = None
+    if os.path.isfile ('fig_11_01_GN22_nod_1.res'): gn22 = read_table("fig_11_01_GN22_nod_1.res")
     dat = read_table("fig_11_01_nod_1.res")
 
     tsw = 1.0
@@ -14,12 +16,14 @@ if opts.tst=='0':
         if (t<tsw): return  0.441*sin(pi*t/tsw)-0.216*sin(2.0*pi*t/tsw);
         else:       return -0.432*sin(6.284*(t-tsw))
 
-    T = linspace(0.0,1.8,100)
+    maxT = max(dat['Time'])
+    T = linspace(0.0,maxT,200)
     U = zeros(len(T))
     for i in range(len(T)): U[i] = calc_U(T[i])
 
-    plot(T,U,'b-',label='Analytical')
+    plot(T,U,'g-',label='Analytical')
     plot(dat['Time'],dat['uy'],'ro',lw=2,label='FEM')
+    if not gn22==None: plot(gn22['Time'],gn22['uy'],'b+',lw=2,label='FEM(GN22)')
     xlabel('Time')
     ylabel('uy')
     legend(loc='best')
@@ -27,6 +31,8 @@ if opts.tst=='0':
     show()
 
 if opts.tst=='1':
+    gn22 = None
+    if os.path.isfile ('fig_11_04_GN22_nod_17.res'):gn22 = read_table("fig_11_04_GN22_nod_17.res")
     res   = read_table("fig_11_04_nod_17.res")
     p113d = read_table("sg_11_07_p113.dat")
     p113  = read_table("sg_11_07_p113.sim")
@@ -36,12 +42,14 @@ if opts.tst=='1':
     plot   (p113d['Time'],p113d['uy'],'bo',           label='SG:prog11.3(scan)')
     plot   (p113 ['Time'],p113 ['uy'],'b-',marker='+',label='SG:prog11.3(sim)')
     plot   (p114 ['Time'],p114 ['uy'],'g-',lw=1,      label='SG:prog11.4')
+    if not gn22==None: plot (gn22['Time'],gn22['uy'],'y-',lw=2, label='MechSys(GN22)')
     legend (loc='best')
     xlabel ('Time')
     ylabel ('uy')
     Grid   ()
     subplot(2,1,2)
     plot   (res['Time'],res['sy'],'r-',lw=2, label='MechSys')
+    if not gn22==None: plot (gn22['Time'],gn22['sy'],'y-',lw=2, label='MechSys(GN22)')
     xlabel ('Time')
     ylabel ('sy')
     Grid   ()
@@ -51,13 +59,11 @@ if opts.tst=='2':
     res  = read_table("fig_11_19_nod_30.res")
     p117 = read_table("sg_11_19.sim")
 
-    plot(res ['Time'],res ['uy'],'r-',lw=2)
-    plot(p117['Time'],p117['uy'],'b-')
-    plot(p117['Time'],p117['uy'],'b+')
+    plot(res ['Time'],res ['uy'],'r-',lw=2,label='MechSys')
+    plot(p117['Time'],p117['uy'],'b-',marker='+',label='SG:p117')
 
-    #legend(['MechSys','SG:p113d','SG:p113','SG:p114'],loc='upper left')
-    #legend(['MechSys','SG:p113d','SG:p113'],loc='upper left')
-    grid()
+    legend(loc='best')
+    Grid()
     show()
 
 if opts.tst=='3':

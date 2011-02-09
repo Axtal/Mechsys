@@ -156,8 +156,8 @@ public:
     GUI::WxArrayIntTable * OutNods;    ///< output nodes
     GUI::WxDict          * GPrps;      ///< grid: elements properties
     GUI::WxArrayInt      * GOutNods;   ///< grid: output nodes
-    GUI::WxSIPairTable   * MatId2Tag;  ///< material ID to element tag
-    GUI::WxSIPairTable   * XMaId2Tag;  ///< material ID to element tag
+    GUI::WxSIPairTable   * Tag2MatID;  ///< element tag to material ID
+    GUI::WxSIPairTable   * Tag2XMatID; ///< element tag to extra (flow) material ID
     GUI::WxSIPair        * GMatId2Tag; ///< material ID to element tag
 
     // Boundary conditions
@@ -174,10 +174,10 @@ public:
     Dict * Path; ///< Path increments
 
     // Additional data
-    Dict       * Prps;      ///< elements properties
-    Array<int> * OutNods;   ///< output nodes
-    SIPair     * MatId2Tag; ///< material ID to tag
-    SIPair     * XMaId2Tag; ///< X material ID to tag
+    Dict       * Prps;       ///< elements properties
+    Array<int> * OutNods;    ///< output nodes
+    SIPair     * Tag2MatID;  ///< element tag to material ID
+    SIPair     * Tag2XMatID; ///< element tag to extra (flow) material ID
 
     // Boundary conditions
     Array<Dict*> Stages; ///< boundary conditions
@@ -216,13 +216,13 @@ inline InpFile::~InpFile ()
 inline InpFile::InpFile ()
 {
     Defaults ();
-    Path      = new Dict;
-    Prps      = new Dict;
-    OutNods   = new Array<int>;
-    MatId2Tag = new SIPair;
-    XMaId2Tag = new SIPair;
-    Prms      = new Dict;
-    Inis      = new Dict;
+    Path       = new Dict;
+    Prps       = new Dict;
+    OutNods    = new Array<int>;
+    Tag2MatID  = new SIPair;
+    Tag2XMatID = new SIPair;
+    Prms       = new Dict;
+    Inis       = new Dict;
 }
 
 inline InpFile::~InpFile ()
@@ -230,8 +230,8 @@ inline InpFile::~InpFile ()
     delete Path;
     delete Prps;
     delete OutNods;
-    delete MatId2Tag;
-    delete XMaId2Tag;
+    delete Tag2MatID;
+    delete Tag2XMatID;
     delete Prms;
     delete Inis;
     for (size_t i=0; i<Stages.Size(); ++i) delete Stages[i];
@@ -321,8 +321,8 @@ inline void InpFile::Read (char const * FileName)
     Path      -> clear();
     Prps      -> clear();
     OutNods   -> Resize(0);
-    MatId2Tag -> clear();
-    XMaId2Tag -> clear();
+    Tag2MatID -> clear();
+    Tag2XMatID-> clear();
     Prms      -> clear();
     Inis      -> clear();
     for (size_t i=0; i<Stages.Size(); ++i) delete Stages[i];
@@ -505,8 +505,8 @@ inline void InpFile::Read (char const * FileName)
                         int id  = atoi(str_id.CStr());
                         int tag = atoi(str_tag.CStr());
                         if (id<0 || tag>=0) throw new Fatal("InpFile::Read: Error in file <%s> @ line # %d with Key==%s. Material ids must be zero or positive and element tags must be negative. Ex.: matids = 0 -1  1 -2  2 -3",FileName,line_num,key.CStr());
-                        if (key=="xmatids") XMaId2Tag->Set (str_id.CStr(), tag);
-                        else                MatId2Tag->Set (str_id.CStr(), tag);
+                        if (key=="xmatids") Tag2XMatID->Set (str_tag.CStr(), id);
+                        else                Tag2MatID ->Set (str_tag.CStr(), id);
                     }
                 }
                 else if (key=="outnods")
@@ -541,10 +541,10 @@ inline void InpFile::Read (char const * FileName)
 
 inline void InpFile::SetPrmsInis (MatFile const & Mat, bool ForceGTY)
 {
-    for (size_t i=0; i<MatId2Tag->Keys.Size(); ++i)
+    for (size_t i=0; i<Tag2MatID->Keys.Size(); ++i)
     {
-        int            id   = atoi(MatId2Tag->Keys[i].CStr());
-        int            tag  = (*MatId2Tag)(MatId2Tag->Keys[i]);
+        int            tag  = atoi(Tag2MatID->Keys[i].CStr());
+        int            id   = (*Tag2MatID)(Tag2MatID->Keys[i]);
         SDPair const & prms = (*Mat.ID2Prms)(id);
         SDPair const & inis = (*Mat.ID2Inis)(id);
         Prms->Set (tag, prms);
@@ -561,10 +561,10 @@ inline void InpFile::SetPrmsInis (MatFile const & Mat, bool ForceGTY)
         }
         if (haspcam0) (*Inis)(tag).Set ("sx sy sz", -pcam0, -pcam0, -pcam0);
     }
-    for (size_t i=0; i<XMaId2Tag->Keys.Size(); ++i)
+    for (size_t i=0; i<Tag2XMatID->Keys.Size(); ++i)
     {
-        int            id   = atoi(XMaId2Tag->Keys[i].CStr());
-        int            tag  = (*XMaId2Tag)(XMaId2Tag->Keys[i]);
+        int            tag  = atoi(Tag2XMatID->Keys[i].CStr());
+        int            id   = (*Tag2XMatID)(Tag2XMatID->Keys[i]);
         SDPair         prms = (*Mat.ID2Prms)(id);
         SDPair const & inis = (*Mat.ID2Inis)(id);
         double nam = prms("name");
@@ -689,8 +689,8 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     os << "\nPath:\n"                        << (*IF.Path)      << "\n";
     os << "\nElements properties:\n"         << (*IF.Prps)      << "\n";
     os << "\nOutput nodes:\n"                << (*IF.OutNods)   << "\n";
-    os << "\nMaterial IDs => Tags:\n"        << (*IF.MatId2Tag) << "\n";
-    os << "\nE(x)tra Material IDs => Tags:\n"<< (*IF.XMaId2Tag) << "\n";
+    os << "\nTags => Material IDs:\n"        << (*IF.Tag2MatID) << "\n";
+    os << "\nTags => E(x)tra Material IDs:\n"<< (*IF.Tag2XMatID)<< "\n";
     os << "\nParameters:\n"                  << (*IF.Prms)      << "\n";
     os << "\nInitial values:\n"              << (*IF.Inis)      << "\n";
     os << "\nBoundary conditions (stages):\n";
@@ -803,11 +803,10 @@ inline InpFile::InpFile (wxFrame * Parent)
     // additional data
     Prps       = new GUI::WxDictTable;
     OutNods    = new GUI::WxArrayIntTable;
-    MatId2Tag  = new GUI::WxSIPairTable;
-    //XMaId2Tag  = new GUI::WxSIPairTable;
+    Tag2MatID  = new GUI::WxSIPairTable;
     GPrps      = new GUI::WxDict     (this, Prps);
     GOutNods   = new GUI::WxArrayInt (this, OutNods);
-    GMatId2Tag = new GUI::WxSIPair   (this, MatId2Tag);
+    GMatId2Tag = new GUI::WxSIPair   (this, Tag2MatID);
     Prms       = new Dict;
     Inis       = new Dict;
 

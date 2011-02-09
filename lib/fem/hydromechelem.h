@@ -372,7 +372,8 @@ inline void HydroMechElem::CalcKCM (Mat_t & KK, Mat_t & CC, Mat_t & MM) const
     for (size_t i=0; i<GE->NIP; ++i)
     {
         FMdl -> TgVars    (FSta[i]); // set c, C, chi
-        Mdl  -> Stiffness (Sta[i], D);
+        //Mdl  -> Stiffness (Sta[i], D);
+        FMdl -> Stiffness (Sta[i], FSta[i], D); // TODO: correct this: "effective stiffness"
         Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
         NtN    = trans(N)*N;
         BtDB   = trans(B)*D*B;
@@ -462,10 +463,10 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
 #ifdef DO_DEBUG
         double normdsig = Norm(dsig);
-        if (Util::IsNan(normdsig))          throw new Fatal("HydroMechElem::UpdateState: normdsig is NaN");
-        if (Util::IsNan(FSta[i]->Sw))       throw new Fatal("HydroMechElem::UpdateState: Sw is NaN");
-        if (Util::IsNan(FSta[i]->pc))       throw new Fatal("HydroMechElem::UpdateState: pc is NaN");
-        if (Util::IsNan(FSta[i]->kwb(0,0))) throw new Fatal("HydroMechElem::UpdateState: kwb(0,0) is NaN");
+        if (Util::IsNan(normdsig))              throw new Fatal("HydroMechElem::UpdateState: normdsig is NaN");
+        if (Util::IsNan(FSta[i]->Sw))           throw new Fatal("HydroMechElem::UpdateState: Sw is NaN");
+        if (Util::IsNan(FSta[i]->pc))           throw new Fatal("HydroMechElem::UpdateState: pc is NaN");
+        if (Util::IsNan(FMdl->rw(FSta[i]->Sw))) throw new Fatal("HydroMechElem::UpdateState: rw(Sw) is NaN");
 #endif
 
         // element nodal forces
