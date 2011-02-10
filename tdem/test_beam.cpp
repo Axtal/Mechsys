@@ -34,79 +34,92 @@ using std::endl;
 
 struct UserData
 {
-    Particle * p; // the particle at which the force is to be applied
+    Array <Particle *> p; // the array of particles at which the force is to be applied
 };
 
 void Setup (DEM::Domain & Dom, void * UD)
 {
     // force at -3
-    //UserData & dat = (*static_cast<UserData *>(UD));
-    //dat.p->Ff=0.0,0.0,3.0*cos(0.3*Dom.Time);
+    UserData & dat = (*static_cast<UserData *>(UD));
+    for (size_t i=0;i<dat.p.Size();i++) dat.p[i]->Ff=0.0,0.0,10.0*sin(0.3*Dom.Time);
 }
 
-//void Report (DEM::Domain const & Dom, void * UD)
-//{
-    //UserData & dat = (*static_cast<UserData *>(UD));
-    //cout << "hello\n";
-//}
 
 int main(int argc, char **argv) try
 {
 
-    // input
-    double cam_x=20, cam_y=0, cam_z=0;
-    if (argc>1) cam_x = atof(argv[1]);
-    if (argc>2) cam_y = atof(argv[2]);
-    if (argc>3) cam_z = atof(argv[3]);
 
     // gen beam
-    size_t nx = 1;
-    size_t ny = 2;
-    size_t nz = 1;
-    double lx = 1.;
-    double ly = 2.;
-    double lz = 1.;
+    size_t nx = 2;
+    size_t ny = 20;
+    size_t nz = 2;
+    double lx = 2.;
+    double ly = 20.;
+    double lz = 2.;
+    
+    // input
+    double cam_x=2*ly, cam_y=ly/2.0, cam_z=0;
     Mesh::Structured mesh(3);
+
     mesh.GenBox (false, nx, ny, nz, lx, ly, lz);
 
-    // change tags
-    size_t nc = mesh.Cells.Size();
-    mesh.Cells[0]->Tag    = -2;
-    mesh.Cells[nc-1]->Tag = -3;
-
-    // write
-    mesh.WriteVTU("test_beam");
 
     // user data and domain
     UserData dat;
     DEM::Domain dom(&dat);
-    dom.Alpha = 0.001;
+    dom.Alpha = 0.05;
 
     // gen particles
     bool cohesion   = true;
     bool montecarlo = false;
+    double Kn       = 1.0e4;
+    double Kt       = 5.0e3;
     dom.GenFromMesh (mesh, 0.1, 1., cohesion, montecarlo);
+
+    // change tags and identify the particles at the beam's end
+    for (size_t i=0;i<dom.Particles.Size();i++)
+    {
+        if      (dom.Particles[i]->x(1)>ly*(1-1.0/ny)) 
+        {
+            mesh.Cells[i]->Tag    = -3;
+            dom.Particles[i]->Tag = -3;
+        }
+        else if (dom.Particles[i]->x(1)<ly/ny) 
+        {
+            mesh.Cells[i]->Tag    = -2;
+            dom.Particles[i]->Tag = -2;
+        }
+        else
+        {
+            mesh.Cells[i]->Tag    = -1;
+            dom.Particles[i]->Tag = -1;
+        }
+        
+    }
+
+    // write
+    mesh.WriteVTU("test_beam");
+
+    //set the element properties
     dom.Center();
-    dom.Save ("test_beam");
     Dict B;
-    B.Set(-2,"Gn Gt Mu eps",0.0,0.0,0.0,0.01);
-    B.Set(-3,"Gn Gt Mu eps",0.0,0.0,0.0,0.01);
+    B.Set(-1,"Kn Kt Gn Gt Mu Eps",Kn,Kt,8.0,4.0,0.0,-0.01);
+    B.Set(-2,"Kn Kt Gn Gt Mu Eps",Kn,Kt,8.0,4.0,0.0,-0.01);
+    B.Set(-3,"Kn Kt Gn Gt Mu Eps",Kn,Kt,8.0,4.0,0.0,-0.01);
     dom.SetProps(B);
     dom.CamPos = cam_x, cam_y, cam_z;
 
-    // connect
-    dat.p = dom.GetParticle (-3);
-    dat.p->w=0.0,0.0,0.0;
+     //connect
+    dom.GetParticles (-3,dat.p);
 
-    // fix -2
-    Particle * p = dom.GetParticle (-2);
-    p->FixVeloc();
+    // fix -2 particles at the left extreme of the beam
+    Array <Particle *> p;
+    dom.GetParticles (-2,p);
+    for (size_t i=0;i<p.Size();i++) p[i]->FixVeloc();
 
-    double tf        = 20.;
-    double dt        = 0.0001;
+    double tf        = 100.;
+    double dt        = 1.0e-4;
     double dtOut     = 0.5;
-    //char   filekey[] = "test_beam";
-    //bool   render    = false;
     dom.Solve (tf,dt,dtOut, &Setup, NULL, "test_beam",true);
 }
 MECHSYS_CATCH
