@@ -146,6 +146,7 @@ public:
     virtual double GetIV      (size_t i)                                                    const { return 0; } ///< Get internal variable
     virtual void   SetIV      (size_t i, double Val)                                              {}            ///< Set internal variable
     virtual void   CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const {}            ///< Calculate rate of internal variables
+    virtual void   CorrectIVs ()                                                                  {}            ///< Correct just set IVs
 
     // Methods that depend on GE
     void CoordMatrix   (Mat_t & C)                 const; ///< Matrix with coordinates of nodes

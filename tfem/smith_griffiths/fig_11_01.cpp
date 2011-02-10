@@ -70,7 +70,7 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob fra rho E A Izz", PROB("Beam"), 1.0, 1.0, 3.194, 1.0, 1.0);
+    prps.Set(-1, "prob fra rho E A Izz", PROB("Beam"), TRUE, 1.0, 3.194, 1.0, 1.0);
 
     // domain
     BCF bcf;

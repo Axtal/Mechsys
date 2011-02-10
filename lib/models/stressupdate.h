@@ -114,7 +114,7 @@ inline Model::StressUpdate::StressUpdate ()
       MaxSS    (2000),
       CDrift   (true),
       Error    (0.0),
-      RKScheme ("RKF45"),
+      RKScheme ("ME"),
       T        (0.0),
       dT       (dTini),
       SS       (0),

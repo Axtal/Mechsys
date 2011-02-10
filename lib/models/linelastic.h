@@ -32,6 +32,7 @@ public:
 
     // Methods
     void InitIvs   (SDPair const & Ini, State * Sta)                             const;
+    void Rate      (State const * Sta, Vec_t const & DEpsDt, Vec_t & DSigDt, Vec_t & DIvsDt) const;
     void TgIncs    (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const;
     void InvTgIncs (State const * Sta, Vec_t & DSig, Vec_t & DEps, Vec_t & DIvs) const;
     void Stiffness (State const * Sta, Mat_t & D)                                const { D = De; }
@@ -106,6 +107,12 @@ inline void LinElastic::InvTgIncs (State const * Sta, Vec_t & DSig, Vec_t & DEps
     Mat_t Ce(NCps,NCps);
     Inv (De, Ce);
     DEps = Ce*DSig;
+}
+
+inline void LinElastic::Rate (State const * Sta, Vec_t const & DEpsDt, Vec_t & DSigDt, Vec_t & DIvsDt) const
+{
+    DSigDt = De*DEpsDt;
+    if (GTy==pse_t) throw new Fatal("LinElastic::Rate: this method does not work with plane-stress (pse)");
 }
 
 inline void LinElastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const

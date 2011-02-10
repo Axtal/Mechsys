@@ -64,6 +64,7 @@ public:
     virtual double GetIV      (size_t i)                                                    const;
     virtual void   SetIV      (size_t i, double Val);
     virtual void   CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const;
+    virtual void   CorrectIVs ();
 
     // Constants
     double h;   ///< Thickness of the element
@@ -93,8 +94,9 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
 
     // parameters/properties
     h   = (Prp.HasKey("h") ? Prp("h") : 1.0);
-    rho = (Mdl->Rho>0.0    ? Mdl->Rho : 1.0);
-    if (h<1.0e-8) throw new Fatal("EquilibElem::EquilibElem: The thickness of the element must be greater than 1.0e-8. h=%g is invalid",h);
+    rho = Mdl->Rho;
+    if (h<1.0e-8)   throw new Fatal("EquilibElem::EquilibElem: The thickness of the element must be greater than 1.0e-8. h=%g is invalid",h);
+    if (rho<1.0e-8) throw new Fatal("EquilibElem::EquilibElem: 'rho' must be defined in model's parameters (rho=%g is invalid)",rho);
 
     // allocate and initialize state at each IP
     for (size_t i=0; i<GE->NIP; ++i)
@@ -638,27 +640,33 @@ inline void EquilibElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
 
 inline size_t EquilibElem::NIVs () const 
 {
-    return NCo*GE->NIP;
+    size_t niv = size(static_cast<EquilibState const*>(Sta[0])->Ivs);
+    return (NCo+niv)*GE->NIP;
 }
 
 inline double EquilibElem::GetIV (size_t i) const 
 {
-    int iip = static_cast<int>(i) / static_cast<int>(NCo); // index of IP
-    int ico = static_cast<int>(i) % static_cast<int>(NCo); // index of component
-    return static_cast<EquilibState const*>(Sta[iip])->Sig(ico);
+    size_t niv = size(static_cast<EquilibState const*>(Sta[0])->Ivs);
+    size_t iip = static_cast<int>(i) / static_cast<int>(NCo+niv); // index of IP
+    size_t ico = static_cast<int>(i) % static_cast<int>(NCo+niv); // index of component/iv
+    if (ico<NCo) return static_cast<EquilibState const*>(Sta[iip])->Sig(ico);
+    else         return static_cast<EquilibState const*>(Sta[iip])->Ivs(ico-NCo);
 }
 
 inline void EquilibElem::SetIV (size_t i, double Val) 
 {
-    int iip = static_cast<int>(i) / static_cast<int>(NCo); // index of IP
-    int ico = static_cast<int>(i) % static_cast<int>(NCo); // index of component
-    static_cast<EquilibState*>(Sta[iip])->Sig(ico) = Val;
+    size_t niv = size(static_cast<EquilibState const*>(Sta[0])->Ivs);
+    size_t iip = static_cast<int>(i) / static_cast<int>(NCo+niv); // index of IP
+    size_t ico = static_cast<int>(i) % static_cast<int>(NCo+niv); // index of component
+    if (ico<NCo) static_cast<EquilibState*>(Sta[iip])->Sig(ico)     = Val;
+    else         static_cast<EquilibState*>(Sta[iip])->Ivs(ico-NCo) = Val;
 }
 
 inline void EquilibElem::CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const
 {
     // resize rate
-    Rate.change_dim (NCo*GE->NIP);
+    size_t niv = size(static_cast<EquilibState const*>(Sta[0])->Ivs);
+    Rate.change_dim ((NCo+niv)*GE->NIP);
 
     // get location array
     Array<size_t> loc;
@@ -671,16 +679,21 @@ inline void EquilibElem::CalcIVRate (double Time, Vec_t const & U, Vec_t const &
     // calc dsigdt
     double detJ, coef;
     Mat_t  C, B, D;
-    Vec_t  depsdt(NCo), dsigdt(NCo);
+    Vec_t  depsdt(NCo), dsigdt(NCo), divsdt(niv);
     CoordMatrix (C);
     for (size_t i=0; i<GE->NIP; ++i)
     {
         CalcB (C, GE->IPs[i], B, detJ, coef);
-        Mdl->Stiffness (Sta[i], D);
         depsdt = B * Ve;
-        dsigdt = D * depsdt;
-        for (size_t j=0; j<NCo; ++j) Rate(j+i*NCo) = dsigdt(j);
+        Mdl->Rate (Sta[i], depsdt,  dsigdt, divsdt);
+        for (size_t j=0; j<NCo; ++j) Rate(    j+i*(NCo+niv)) = dsigdt(j);
+        for (size_t j=0; j<niv; ++j) Rate(NCo+j+i*(NCo+niv)) = divsdt(j);
     }
+}
+
+inline void EquilibElem::CorrectIVs ()
+{
+    for (size_t i=0; i<GE->NIP; ++i) Mdl->CorrectDrift (Sta[i]);
 }
 
 

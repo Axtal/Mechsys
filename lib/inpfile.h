@@ -38,6 +38,7 @@
 #include <mechsys/fem/element.h>   // for PROB
 #include <mechsys/fem/geomelem.h>  // for GEOM
 #include <mechsys/fem/solver.h>
+#include <mechsys/fem/rksolver.h>
 #include <mechsys/matfile.h>
 #include <mechsys/models/model.h>
 
@@ -81,6 +82,7 @@ public:
     void SetPrmsInis (MatFile const & Mat, bool ForceGTY=false);
     void GetIncs     (int PathKey, double Div, Vec_t & dsig, Vec_t & deps, Array<bool> & PrescDeps, double & dpw, double & dSw, bool & PrescDpw, bool & PrescDSw) const;
     void SetSolver   (FEM::Solver & Sol) const;
+    void SetSolver   (FEM::RKSolver & Sol) const;
     void SetSUp      (Model const * Mdl, Model::StressUpdate::pDbgFun pFun=NULL, void * UserData=NULL) const;
 
     // Data
@@ -623,6 +625,17 @@ inline void InpFile::SetSolver (FEM::Solver & Sol) const
     if (nldt_ll  >0) Sol.NLSteps.Set("ll"  ,(double)nldt_ll  );
     if (nldt_sch >0) Sol.NLSteps.Set("sch" ,(double)nldt_sch );
     if (nldt_m   >0) Sol.NLSteps.Set("m"   ,(double)nldt_m   );
+}
+
+inline void InpFile::SetSolver (FEM::RKSolver & Sol) const
+{
+    if (ctetg       ) Sol.LinProb = ctetg;
+    if (hm          ) Sol.DampTy  = FEM::RKSolver::HMCoup_t;
+    if (ray         ) Sol.DampTy  = FEM::RKSolver::Rayleigh_t;
+    if (am    >=0   ) Sol.DampAm  = am;
+    if (ak    >=0   ) Sol.DampAk  = ak;
+    if (rkscheme!="") Sol.Scheme  = rkscheme;
+    if (rkstol   >=0) Sol.STOL    = rkstol;
 }
 
 inline void InpFile::SetSUp (Model const * Mdl, Model::StressUpdate::pDbgFun pFun, void * UserData) const

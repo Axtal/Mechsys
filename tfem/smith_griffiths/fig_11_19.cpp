@@ -19,43 +19,23 @@
 /*  Smith & Griffiths (2004): Figure 11.19 p500 
  *  ===========================================  */
 
-// STL
-#include <iostream>
-#include <cmath>    // for cos
-
 // MechSys
-#include <mechsys/mesh/mesh.h>
-#include <mechsys/mesh/structured.h>
-#include <mechsys/fem/elems/quad8.h>
-#include <mechsys/fem/equilibelem.h>
-#include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
-#include <mechsys/fem/rksolver.h>
-#include <mechsys/models/linelastic.h>
-#include <mechsys/models/elastoplastic.h>
-#include <mechsys/util/maps.h>
-#include <mechsys/util/util.h>
-#include <mechsys/util/fatal.h>
-#include <mechsys/draw.h>
-
-using std::cout;
-using std::endl;
-using FEM::PROB;
-using FEM::GEOM;
+#include <mechsys/fem/fem.h>
+#include <mechsys/inpfile.h>
 
 int main(int argc, char **argv) try
 {
-    // input
-    bool rksolver = true;
-    if (argc>1) rksolver = atoi(argv[1]);
+    // init
+    String inpfn("fig_11_19.inp");
+    String matfn("materials.mat");
+    bool   verbose  = true;
+    bool   forcegty = true;
+    INIT_MAT_INP (argc, argv, inpfn, matfn, verbose, forcegty,   mat, inp);
 
-    // filekey
-    String fnkey;
-    if (rksolver) fnkey = "fig_11_19";
-    else          fnkey = "fig_11_19_GN22";
+    // fnkey
+    if (inp.rk) inp.fnkey += "_rk";
 
-    ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
-    
+    // mesh
     size_t nc = 6;             // number of cells
     size_t nv = 3*(nc+1)+2*nc; // number of vertices
     double H  = 1.0;           // height
@@ -82,48 +62,21 @@ int main(int argc, char **argv) try
         mesh.SetBryTag (i, 3, -10);
         x += l;
     }
-    mesh.WriteMPY (fnkey.CStr());
+    mesh.WriteMPY (inp.fnkey.CStr());
     
-    ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
-
-    // elements properties
-    Dict prps;
-    prps.Set(-1, "prob geom psa rho", PROB("Equilib"), GEOM("Quad8"), 1.0, 7.33e-4);
-
-    // models
-    Dict mdls;
-    //mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 3.0e7, 0.3, 1.0);
-    mdls.Set(-1, "name E nu sY psa", MODEL("ElastoPlastic"), 3.0e7, 0.3, 5.0e4, 1.0);
-
-    // initial values
-    Dict inis;
-    inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
-
-    // domain
-    Array<int> out_nods(30, /*justone*/true);
-    FEM::Domain dom(mesh, prps, mdls, inis, fnkey.CStr(), &out_nods);
-
-    // boundary conditions
-    Dict bcs;
-    bcs.Set( -10, "qn",   -180.0);
-    bcs.Set(-100, "ux uy", 0.0,0.0);
-    bcs.Set(-200, "ux",    0.0);
-    dom.SetBCs (bcs);
-    //cout << dom << endl;
-
-    // solver
-    if (rksolver)
+    // allocate and solve
+    if (inp.rk)
     {
-        FEM::RKSolver sol(dom);
-        sol.DynSolve (/*tf*/0.01, /*dt*/1.0e-4, /*dtOut*/1.0e-4, fnkey.CStr());
+        FEMALLOC_RK (mesh, mat, inp,   dom, sol);
+        FEMSOLVE_RK (verbose, inp, dom, sol);
     }
     else
     {
-        FEM::Solver sol(dom);
-        sol.DScheme = FEM::Solver::GN22_t;
-        sol.DynSolve (/*tf*/0.01, /*dt*/1.0e-4, /*dtOut*/1.0e-4, fnkey.CStr());
+        FEMALLOC (mesh, mat, inp,   dom, sol);
+        FEMSOLVE (verbose, inp, dom, sol);
     }
 
+    // end
     return 0.0;
 }
 MECHSYS_CATCH

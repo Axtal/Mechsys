@@ -32,7 +32,7 @@ if opts.tst=='0':
 
 if opts.tst=='1':
     gn22 = None
-    if os.path.isfile ('fig_11_04_GN22_nod_17.res'):gn22 = read_table("fig_11_04_GN22_nod_17.res")
+    if os.path.isfile ('fig_11_04_GN22_nod_17.res'): gn22 = read_table("fig_11_04_GN22_nod_17.res")
     res   = read_table("fig_11_04_nod_17.res")
     p113d = read_table("sg_11_07_p113.dat")
     p113  = read_table("sg_11_07_p113.sim")
@@ -56,11 +56,14 @@ if opts.tst=='1':
     show   ()
 
 if opts.tst=='2':
+    rk = None
+    if os.path.isfile ('fig_11_19_rk_nod_30.res'): rk = read_table("fig_11_19_rk_nod_30.res")
     res  = read_table("fig_11_19_nod_30.res")
     p117 = read_table("sg_11_19.sim")
 
-    plot(res ['Time'],res ['uy'],'r-',lw=2,label='MechSys')
+    plot(res ['Time'],res ['uy'],'r-',lw=2,label='MechSys(GN22)')
     plot(p117['Time'],p117['uy'],'b-',marker='+',label='SG:p117')
+    if not rk==None: plot(rk['Time'],rk['uy'],'g-',lw=2,label='MechSys(RK)')
 
     legend(loc='best')
     Grid()

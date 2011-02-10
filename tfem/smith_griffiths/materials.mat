@@ -1,0 +1,12 @@
+# materials.mat
+
+ID    = 0
+name  = ElastoPlastic
+nctes = 1
+rho   = 7.33e-4
+nprms = 4
+E     = 3.0e7
+nu    = 0.3
+sY    = 5.0e4
+VM    = 1.0
+ninis = 0

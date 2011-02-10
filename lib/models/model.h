@@ -55,6 +55,7 @@ public:
 
     // Methods
     virtual void   InitIvs      (SDPair const & Ini, State * Sta)                              const =0;
+    virtual void   Rate         (State const * Sta, Vec_t const & DEpsDt, Vec_t & DSigDt, Vec_t & DIvsDt) const { throw new Fatal("Model::Rate: This method is not available in this model (%s)",Name.CStr()); }
     virtual void   TgIncs       (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs)  const { throw new Fatal("Model::TgIncs: This method is not available in this model (%s)",Name.CStr()); }
     virtual void   InvTgIncs    (State const * Sta, Vec_t & DSig, Vec_t & DEps, Vec_t & DIvs)  const { throw new Fatal("Model::InvTgIncs: This method is not available in this model (%s)",Name.CStr()); }
     virtual void   Stiffness    (State const * Sta, Mat_t & D)                                 const { throw new Fatal("Model::Stiffness: This method is not available in this model (%s)",Name.CStr()); }

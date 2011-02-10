@@ -1,0 +1,34 @@
+###################### General Data
+matids   = 0 -1
+outnods  = 30
+dyn      = 1
+tf       = 0.01
+dt       = 1e-4
+dtout    = 1e-4
+vtufile  = 0
+rk       = 0
+rkscheme = ME
+rkstol   = 1.0e-3
+
+############### Elements Properties
+nelemprps = 1
+
+ndat = 4
+ elemtag = -1
+ prob    = Equilib
+ geom    = Quad8
+ psa     = 1
+
+############### Boundary conditions
+nstages = 1
+nbcs = 3
+ndat = 2
+  tag = -10
+  qn  = -180
+ndat = 3
+  tag = -100
+  ux  = 0
+  uy  = 0
+ndat = 2
+  tag = -200
+  ux  = 0

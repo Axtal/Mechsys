@@ -37,6 +37,7 @@ public:
     virtual ~ElastoPlastic () {}
 
     // Derived methods
+    virtual void   Rate         (State const * Sta, Vec_t const & DEpsDt, Vec_t & DSigDt, Vec_t & DIvsDt) const;
     virtual void   TgIncs       (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const;
     virtual void   Stiffness    (State const * Sta, Mat_t & D)                                const;
     virtual size_t CorrectDrift (State       * Sta)                                           const;
@@ -230,6 +231,57 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, size_t NIv, 
     }
 }
 
+inline void ElastoPlastic::Rate (State const * Sta, Vec_t const & DEpsDt, Vec_t & DSigDt, Vec_t & DIvsDt) const
+{
+    // state
+    EquilibState const * sta = static_cast<EquilibState const *>(Sta);
+
+    // zero internal values (if any)
+    DIvsDt.change_dim (NIvs);
+    set_to_zero       (DIvsDt);
+
+    // De: elastic stiffness
+    ELStiff (sta->Sig, sta->Ivs);
+
+    // increments
+    double aint;
+    if (LoadCond(sta, DEpsDt, aint))
+    {
+        // gradients, flow rule, hardening, and hp
+        Gradients (sta->Sig, sta->Ivs);
+        Gradients (sta->Sig, sta->Ivs, true);
+        Hardening (sta->Sig, sta->Ivs);
+        double hp = (NIvs>0 ? Y(0)*H(0) : 0.0);
+
+        // plastic multiplier
+        Mult (V, De, VDe);
+        double phi = dot(VDe,W) - hp;
+        double Lam = dot(VDe,DEpsDt)/phi;
+
+        // increments
+        DEpsPl = Lam*W;
+        DEpsEl = DEpsDt - DEpsPl;
+        DSigDt = De*DEpsEl;
+
+        // increment of internal values
+        DIvsDt = Lam*H;
+
+        // plastic strains => extra DIvs
+        ExtraDIvs (DIvsDt);
+    }
+    else
+    {
+        // stress increment
+        DSigDt = De*DEpsDt;
+
+        // new stress update
+        if (NewSU) DIvsDt(0) = -dot(V, DSigDt) / Y(0);
+    }
+
+    // correct strain increment for plane stress
+    if (GTy==pse_t) throw new Fatal("ElastoPlastic::Rate: this method does not work with plane-stress (pse)");
+}
+
 inline void ElastoPlastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const
 {
     // state
@@ -410,7 +462,14 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
             Ivs0        = sta->Ivs;
             crossing    = true;
             double fnew = YieldFunc (Sig0, Ivs0);
-            if (fnew>0.0) throw new Fatal("ElastoPlastic::LoadCond: __internal_error__: correction for numL<0 failed (dalp=%g, fnew=%g)",dalp,fnew);
+            if (fnew>0.0)
+            {
+                std::ostringstream oss;
+                oss << "f=" << f << ", f_tr=" << f_tr << ", numL=" << numL << std::endl;
+                oss << "Sig = " << PrintVector(sta->Sig);
+                oss << "Ivs = " << PrintVector(sta->Ivs);
+                throw new Fatal("ElastoPlastic::LoadCond: __internal_error__: correction for numL<0 failed (dalp=%g, fnew=%g)\n%s",dalp,fnew,oss.str().c_str());
+            }
             //throw new Fatal("ElastoPlastic::LoadCond: Strain increment is too large (f=%g, f_tr=%g, numL=%g). Crossing and going all the way through the yield surface to the other side.",f,f_tr,numL);
         }
         if (crossing)
@@ -418,6 +477,7 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
             Numerical::Root<ElastoPlastic> root(const_cast<ElastoPlastic*>(this), &ElastoPlastic::Fa, &ElastoPlastic::dFada);
             //root.Scheme = "Newton";
             //root.Verbose = true;
+            root.MaxIt = 100;
             alpInt = root.Solve (0.0, 1.0);
             if (alpInt<0) throw new Fatal("ElastoPlastic::LoadCond: alpInt=%g must be positive",alpInt);
         }
