@@ -49,6 +49,11 @@ public:
 class Model
 {
 public:
+    // static
+    static Vec_t I;     ///< Identity tensor
+    static Mat_t Psd;   ///< Sym-dev 4th order tensor
+    static Mat_t IdyI;  ///< I dy I 4th order tensor
+
     // Constructor & Destructor
     Model (int NDim, SDPair const & Prms, size_t NIvs=0, char const * Name="__unnamed_model__"); ///< NDim:space dimension, Prms:parameters
     virtual ~Model () {}
@@ -65,6 +70,11 @@ public:
     virtual size_t CorrectDrift (State * Sta)                                                  const { return 0; }
     virtual void   UpdatePath   (State const * Sta, Vec_t const & DEps, Vec_t const & DSig)    const {}
 
+    // Methods: HydroMech
+    virtual void   TgIncs       (State const * Sta, double pw, Vec_t & DEps, double Dpw, Vec_t & DSig, Vec_t & DIvs)  const { throw new Fatal("Model::TgIncs(HydroMech): This method is not available in this model (%s)",Name.CStr()); }
+    virtual void   Stiffness    (State const * Sta, double pw, Mat_t & D, Vec_t & d)                                  const { throw new Fatal("Model::Stiffness(HydroMech): This method is not available in this model (%s)",Name.CStr()); }
+    virtual bool   LoadCond     (State const * Sta, double pw, Vec_t const & DEps, double Dpw, double & alpInt)       const { throw new Fatal("Model::LoadCond(HydroMech): This method is not available in this model (%s)",Name.CStr()); }
+
     // Data
     int           NDim;    ///< Space dimension: 2 or 3
     SDPair        Prms;    ///< Parameters
@@ -73,6 +83,7 @@ public:
     size_t        NCps;    ///< Number of stress/strain components
     size_t        NIvs;    ///< Number of internal values
     Array<String> IvNames; ///< Names of internal values
+    bool          HMCoup;  ///< HydroMech coupled?
 
     // General constants
     double Grav;     ///< Gravity. Ex.: 9.81 m/s2
@@ -89,13 +100,17 @@ public:
 #undef STRESSUPDATE_DECLARE
 };
 
+Vec_t Model::I;
+Mat_t Model::Psd;
+Mat_t Model::IdyI;
+
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
 inline Model::Model (int TheNDim, SDPair const & ThePrms, size_t NIv, char const * TheName)
     : NDim(TheNDim), Prms(ThePrms), GTy(SDPairToGType(ThePrms,(TheNDim==3?"d3d":"d2d"))), 
-      Name(TheName), NCps(2*NDim),  NIvs(NIv)
+      Name(TheName), NCps(2*NDim),  NIvs(NIv), HMCoup(false)
 {
     // constants
     Grav   = (Prms.HasKey("grav")   ? Prms("grav")   : -1);
@@ -119,6 +134,17 @@ inline Model::Model (int TheNDim, SDPair const & ThePrms, size_t NIv, char const
     // stress update
     SUp.SetModel   (this);
     IvNames.Resize (NIv);
+
+    // static variables
+    if (size(I)==0)
+    {
+        I.change_dim(NCps);
+        I(0) = 1.;
+        I(1) = 1.;
+        I(2) = 1.;
+        Calc_Psd  (NCps, Psd);
+        Calc_IdyI (NCps, IdyI);
+    }
 }
 
 std::ostream & operator<< (std::ostream & os, Model const & D)

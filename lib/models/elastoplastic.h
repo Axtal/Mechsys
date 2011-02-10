@@ -71,8 +71,6 @@ public:
     bool    NewSU;      ///< New stress update ?
     double  BetSU;      ///< Beta coefficient for new stress update
     double  AlpSU;      ///< Alpha coefficient for new stress update
-    Vec_t   I;          ///< Idendity tensor
-    Mat_t   Psd, IdyI;  ///< Sym-dev and I dy I 4th order tensors
 
     // State data (mutable/scratch-pad)
     mutable double  pc, pm, r2;                ///< Variables for smoothing with arc
@@ -160,13 +158,6 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, size_t NIv, 
     dI1dsig.change_dim (NCps);
     dI2dsig.change_dim (NCps);
     dI3dsig.change_dim (NCps);
-    I      .change_dim (NCps);
-    set_to_zero(I);
-    I(0) = 1.0;
-    I(1) = 1.0;
-    I(2) = 1.0;
-    Calc_Psd  (NCps, Psd);
-    Calc_IdyI (NCps, IdyI);
 
     // reference pressure
     if (Prms.HasKey("ptol")) pTol = Prms("ptol");

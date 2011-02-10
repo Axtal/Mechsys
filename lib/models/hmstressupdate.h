@@ -22,9 +22,6 @@
 class HMStressUpdate
 {
 public:
-    // static
-    static Vec_t Iv; ///< Identity vector (NCo)
-
     // callbacks
     typedef void (*pDbgFun) (HMStressUpdate const & SU, void * UserData); ///< Pointer to debug function
 
@@ -95,8 +92,6 @@ private:
 
 #ifdef HMSTRESSUPDATE_IMPLEMENT
 
-Vec_t UnsatFlow::HMStressUpdate::Iv;
-
 #include <mechsys/numerical/odesolver.h>
 
 inline UnsatFlow::HMStressUpdate::HMStressUpdate ()
@@ -141,13 +136,6 @@ inline void UnsatFlow::HMStressUpdate::SetModel (Model const * TheMdl, UnsatFlow
         deps.change_dim (ncp);
         divs.change_dim (niv);
 
-        if (size(Iv)==0)
-        {
-            Iv.change_dim(ncp);
-            Iv(0) = 1.;
-            Iv(1) = 1.;
-            Iv(2) = 1.;
-        }
     }
     else neq = 1; // Sw
 
@@ -234,17 +222,20 @@ inline int UnsatFlow::HMStressUpdate::_RK_fun (double t, double const Y[], doubl
     fsta->Sw = Y[ncp+niv];
 
     // dSw and dchi
+    double dpw = -dpc;
     double dSw, dchi;
-    FMdl->TgIncs (fsta, -dpc, dev, dSw, dchi);
+    FMdl->TgIncs (fsta, dpw, dev, dSw, dchi);
 
     // constitutive stresses
-    sta->Sig += (FMdl->chi*(-fsta->pc))*Iv;
+    double pw = -fsta->pc;
+    sta->Sig += (FMdl->chi*pw)*Model::I;
 
     // tangent increments
-    Mdl->TgIncs (sta, deps, dsig, divs); // the model expects effective stresses and returns effective stress increments
+    if (Mdl->HMCoup) Mdl->TgIncs (sta, pw, deps, dpw, dsig, divs); // the model expects effective stresses and returns effective stress increments
+    else             Mdl->TgIncs (sta,     deps,      dsig, divs); // the model expects effective stresses and returns effective stress increments
 
     // total stress increments
-    dsig -= (FMdl->chi*(-dpc) + (-fsta->pc)*dchi)*Iv;
+    dsig -= (FMdl->chi*dpw + pw*dchi)*Model::I;
 
     for (size_t i=0; i<ncp; ++i) dYdt[    i] = dsig(i);
     for (size_t i=0; i<niv; ++i) dYdt[ncp+i] = divs(i);
