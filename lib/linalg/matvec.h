@@ -1739,8 +1739,14 @@ inline double Calc_K (double E, double nu) { return E/(3.0*(1.0-2.0*nu)); }
 /** Calculate G given E and nu. */
 inline double Calc_G (double E, double nu) { return E/(2.0*(1.0+nu)); }
 
+/** Calculate G given K and nu. */
+inline double Calc_G_ (double K, double nu) { return 3.0*(1.0-2.0*nu)*K/(2.0*(1.0+nu)); }
+
 /** Calculate E given K and G. */
 inline double Calc_E (double K, double G) { return 9.0*K*G/(3.0*K+G); }
+
+/** Calculate E given K and nu. */
+inline double Calc_E_ (double K, double nu) { return 3.0*K*(1.0-2.0*nu); }
 
 /** Calculate nu given K and G. */
 inline double Calc_nu (double K, double G) { return (3.0*K-2.0*G)/(6.0*K+2.0*G); }

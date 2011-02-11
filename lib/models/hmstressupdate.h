@@ -168,7 +168,8 @@ inline void UnsatFlow::HMStressUpdate::Update (Vec_t const & DEps, double Dpw, S
 
     // loading condition
     double aint;
-    sta->Ldg = Mdl->LoadCond (sta, deps, aint);
+    if (Mdl->HMCoup) sta->Ldg = Mdl->LoadCond (sta, -pc0, deps, Dpw);
+    else             sta->Ldg = Mdl->LoadCond (sta,       deps, aint);
 
     // initial state
     ODE->t = 0.0;
@@ -226,17 +227,22 @@ inline int UnsatFlow::HMStressUpdate::_RK_fun (double t, double const Y[], doubl
     double dSw, dchi;
     FMdl->TgIncs (fsta, dpw, dev, dSw, dchi);
 
-    // constitutive stresses
-    double pw = -fsta->pc;
-    sta->Sig += (FMdl->chi*pw)*Model::I;
-
     // tangent increments
-    if (Mdl->HMCoup) Mdl->TgIncs (sta, pw, deps, dpw, dsig, divs); // the model expects effective stresses and returns effective stress increments
-    else             Mdl->TgIncs (sta,     deps,      dsig, divs); // the model expects effective stresses and returns effective stress increments
+    double pw = -fsta->pc;
+    if (Mdl->HMCoup)
+    {
+        // the model expects TOTAL stresses and returns TOTAL stress increments
+        Mdl->TgIncs (sta, pw, deps, dpw, dsig, divs);
+    }
+    else
+    {
+        // the model expects EFFECTIVE stresses and returns EFFECTIVE stress increments
+        sta->Sig += (FMdl->chi*pw)*Model::I;
+        Mdl->TgIncs (sta, deps, dsig, divs);
+        dsig -= (FMdl->chi*dpw + pw*dchi)*Model::I; // total stress increments
+    }
 
-    // total stress increments
-    dsig -= (FMdl->chi*dpw + pw*dchi)*Model::I;
-
+    // rate
     for (size_t i=0; i<ncp; ++i) dYdt[    i] = dsig(i);
     for (size_t i=0; i<niv; ++i) dYdt[ncp+i] = divs(i);
     dYdt[ncp+niv] = dSw;
@@ -258,9 +264,12 @@ inline void UnsatFlow::HMStressUpdate::_RK_up_fun (double t, double Y[])
     // correct drift
     if (CDrift)
     {
-        DCit = GetMax (DCit, Mdl->CorrectDrift (sta));
+        double pw = -fsta->pc;
+        if (Mdl->HMCoup) DCit = GetMax (DCit, Mdl->CorrectDrift (sta, pw));
+        else             DCit = GetMax (DCit, Mdl->CorrectDrift (sta));
         for (size_t i=0; i<ncp; ++i) Y[    i] = sta->Sig(i);
         for (size_t i=0; i<niv; ++i) Y[ncp+i] = sta->Ivs(i);
+        // TODO: should set corrected pw here
     }
 
     // debug function

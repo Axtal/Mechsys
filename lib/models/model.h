@@ -68,12 +68,13 @@ public:
     virtual void   Hydraulic    (State const * Sta, Mat_t & Kw, double & ChiW, double & InvQs) const { throw new Fatal("Model::Hydraulic: This method is not available in this model (%s)",Name.CStr()); }
     virtual bool   LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt)       const { alpInt=-1; return false; }
     virtual size_t CorrectDrift (State * Sta)                                                  const { return 0; }
+    virtual size_t CorrectDrift (State * Sta, double & pw)                                     const { return 0; }
     virtual void   UpdatePath   (State const * Sta, Vec_t const & DEps, Vec_t const & DSig)    const {}
 
     // Methods: HydroMech
     virtual void   TgIncs       (State const * Sta, double pw, Vec_t & DEps, double Dpw, Vec_t & DSig, Vec_t & DIvs)  const { throw new Fatal("Model::TgIncs(HydroMech): This method is not available in this model (%s)",Name.CStr()); }
     virtual void   Stiffness    (State const * Sta, double pw, Mat_t & D, Vec_t & d)                                  const { throw new Fatal("Model::Stiffness(HydroMech): This method is not available in this model (%s)",Name.CStr()); }
-    virtual bool   LoadCond     (State const * Sta, double pw, Vec_t const & DEps, double Dpw, double & alpInt)       const { throw new Fatal("Model::LoadCond(HydroMech): This method is not available in this model (%s)",Name.CStr()); }
+    virtual bool   LoadCond     (State const * Sta, double pw, Vec_t const & DEps, double Dpw)                        const { throw new Fatal("Model::LoadCond(HydroMech): This method is not available in this model (%s)",Name.CStr()); }
 
     // Data
     int           NDim;    ///< Space dimension: 2 or 3

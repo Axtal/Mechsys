@@ -36,6 +36,13 @@ public:
     double YieldFunc (Vec_t const & Sig, Vec_t const & Ivs)                       const;
     double CalcE     (Vec_t const & Sig, Vec_t const & Ivs)                       const
     { return fabs(Sig(0)+Sig(1)+Sig(2))*(1.0-2.0*nu)*v0/kap; }
+    /*
+    {
+        double pcam = fabs(Sig(0)+Sig(1)+Sig(2))/3.0;
+        double K    = pcam*v0/kap;
+        return Calc_E_ (K, nu);
+    }
+    */
 
     // Data
     double         lam;
@@ -45,17 +52,9 @@ public:
     mutable double chi;
     mutable double Mcs;
     mutable double wcs;
-    mutable double M;
-    mutable Vec_t  dMdsig;
 
     // Internal methods
-    void Calc_dMdsig (Vec_t const & Sig) const
-    {
-        OctInvs (Sig, p,q,t,th,s, qTol, &dthdsig);
-        double dMdth = ((3.0/4.0)*M*(1.0-wcs)*cos(3.0*th)) / (1.0+wcs-(1.0-wcs)*t);
-        dMdsig = dMdth * dthdsig;
-    }
-    void Calc_M () const { M = Mcs*pow( 2.0*wcs/(1.0+wcs-(1.0-wcs)*t) , 1.0/4.0); }
+    double Calc_M (double sin3th) const { return Mcs*pow(2.0*wcs/(1.0+wcs-(1.0-wcs)*sin3th),1.0/4.0); }
 };
 
 
@@ -65,9 +64,6 @@ public:
 inline CamClay::CamClay (int NDim, SDPair const & Prms)
     : ElastoPlastic (NDim, Prms, /*niv*/4, "CamClay", /*derived*/true)
 {
-    // auxiliary vector
-    dMdsig.change_dim (NCps);
-
     // parameters
     lam = Prms("lam");
     kap = Prms("kap");
@@ -93,7 +89,7 @@ inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const
 
     // internal variables
     Calc_pqt (sta->Sig);
-    Calc_M   ();
+    double M   = Calc_M (t);
     double p0  = p+(q*q)/(p*M*M);
     double OCR = (Ini.HasKey("OCR") ? Ini("OCR") : 1.0);
     if (NewSU)
@@ -111,8 +107,8 @@ inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const
 
 inline void CamClay::Gradients (Vec_t const & Sig, Vec_t const & Ivs, bool Potential) const
 {
-    Calc_dMdsig (Sig);
-    Calc_M      ();
+    OctInvs (Sig, p,q,t,th,s, qTol, &dthdsig);
+    double M = Calc_M (t);
     Vec_t * VorW = &V;
     if (Potential) VorW = &W;
     else
@@ -122,10 +118,17 @@ inline void CamClay::Gradients (Vec_t const & Sig, Vec_t const & Ivs, bool Poten
         Y(2) = 0.0;
         Y(3) = 0.0;
     }
-    double dfdp = M*M*(Ivs(0)-2.0*p);
-    double dfdM = 2.0*M*p*(Ivs(0)-p);
-    if (q>qTol) (*VorW) = (dfdp/Util::SQ3)*I + 2.0*s + dfdM*dMdsig;
-    else        (*VorW) = (dfdp/Util::SQ3)*I;
+    double dfdp = M*M*(2.0*p-Ivs(0));
+    double m    = -dfdp/Util::SQ3;
+    if (q>qTol)
+    {
+        double dMdt  = 0.25*M*(1.0-wcs)/(1.0+wcs-(1.0-wcs)*t);
+        double dtdth = 3.0*cos(3.0*th);
+        double dMdth = dMdt*dtdth;
+        double dfdth = -2.0*M*dMdth*(Ivs(0)-p);
+        (*VorW) = 2.0*s + m*I + dfdth*dthdsig;
+    }
+    else (*VorW) = m*I;
 }
 
 inline void CamClay::Hardening (Vec_t const & Sig, Vec_t const & Ivs) const
@@ -146,7 +149,7 @@ inline void CamClay::Hardening (Vec_t const & Sig, Vec_t const & Ivs) const
 inline double CamClay::YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) const
 {
     Calc_pqt (Sig);
-    Calc_M   ();
+    double M = Calc_M (t);
     return q*q + (p-Ivs(0))*p*M*M;
 }
 

@@ -55,6 +55,7 @@
 #include <mechsys/models/camclay.h>
 #include <mechsys/models/unsatflow.h>
 #include <mechsys/models/unconv04.h>
+#include <mechsys/models/bbmx.h>
 
 #ifndef INCLUDE_MODELS_ONLY
 

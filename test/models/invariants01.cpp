@@ -228,15 +228,19 @@ int main(int argc, char **argv) try
     double nu  = 0.25;
     double K   = Calc_K (E, nu);
     double G   = Calc_G (E, nu);
+    double G1  = Calc_G_(K, nu);
     double E1  = Calc_E (K, G);
+    double E2  = Calc_E_(K, nu);
     double nu1 = Calc_nu (K, G);
-    printf("E  = %g,   E1  = %g\n", E,  E1);
+    printf("E  = %g,   E1  = %g,   E2 = %g\n", E,  E1, E2);
     printf("nu = %g,   nu1 = %g\n", nu, nu1);
     printf("K  = %g\n", K);
-    printf("G  = %g\n", G);
-    bool err_E = (fabs(E-E1)>0.0);
+    printf("G  = %g,   G1  = %g\n", G, G1);
+    bool err_E = (fabs(E-E1)>0.0) || (fabs(E-E2)>0.0);
     bool err_nu = (fabs(nu-nu1)>0.0);
+    bool err_G  = (fabs(G-G1)>0.0);
 
+    if (err_G)               return 1;
     if (err_E)               return 1;
     if (err_nu)              return 1;
     if (err_deriv)           return 1;
