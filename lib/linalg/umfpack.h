@@ -108,6 +108,32 @@ inline double Det (Sparse::Matrix<double,int> const & A)
     return Mx * pow (10.0, Ex);
 }
 
+class Sys
+{
+public:
+    Sys (Sparse::Triplet<double,int> const & Atri)
+    {
+        if (Atri.Rows()!=Atri.Cols()) throw new Fatal("UMFPACK::Sys: A (%d x %d) matrix (triplet) must be square",Atri.Rows(),Atri.Cols());
+        _A = new Sparse::Matrix<double,int> (Atri);
+        double * null = (double*)NULL;
+        int info = 0;
+        info = umfpack_di_symbolic (_A->Rows(), _A->Rows(), _A->GetApPtr(), _A->GetAiPtr(), _A->GetAxPtr(), &_symbolic, null, null);  if (info<0) throw new Fatal("UMFPACK::Sys: umfpack_di_symbolic failed. %s",ErrorMsg(info).CStr());
+        info = umfpack_di_numeric  (_A->GetApPtr(), _A->GetAiPtr(), _A->GetAxPtr(), _symbolic, &_numeric, null, null);                if (info<0) throw new Fatal("UMFPACK::Sys: umfpack_di_numeric failed. %s",ErrorMsg(info).CStr());
+    }
+    ~Sys () { delete _A; umfpack_di_free_symbolic(&_symbolic);  umfpack_di_free_numeric(&_numeric); }
+    void Solve (Vec_t const & B, Vec_t & X)
+    {
+        if (size(B)!=(size_t)_A->Cols()) throw new Fatal("UMFPACK::Sys::Solve: B (%d x 1) vector must have a size equal to the number of columns of matrix A (%d)",size(B),_A->Cols());
+        if (size(X)!=size(B))            throw new Fatal("UMFPACK::Sys::Solve: X (%d x 1) vector must have the same size as B (%d)",size(X),size(B));
+        double * null = (double*)NULL;
+        int info = umfpack_di_solve (UMFPACK_A, _A->GetApPtr(), _A->GetAiPtr(), _A->GetAxPtr(), X.data, B.data, _numeric, null, null); if (info<0) throw new Fatal("UMFPACK::Sys::Solve: umfpack_di_solve failed. %s",ErrorMsg(info).CStr());
+    }
+private:
+    Sparse::Matrix<double,int> * _A;
+    void                       * _symbolic;
+    void                       * _numeric;
+};
+
 }; // namespace UMFPACK
 
 #endif // MECHSYS_UMFPACK_H

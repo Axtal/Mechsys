@@ -186,6 +186,8 @@ BPy::class_<InpFile>("InpFile")
     .def_readwrite("surkscheme" , &InpFile::surkscheme) //  47
     .def_readwrite("dcmaxit"    , &InpFile::dcmaxit   ) //  48
     .def_readwrite("dcftol"     , &InpFile::dcftol    ) //  49
+    .def_readwrite("pw0"        , &InpFile::pw0       ) //  50
+    .def_readwrite("rkdyncte"   , &InpFile::rkdyncte  ) //  51
     ;
 
 //////////////////////////////////////////////////////////////////////////////////// mesh /////

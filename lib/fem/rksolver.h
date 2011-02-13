@@ -52,8 +52,9 @@ public:
     // enum
     enum Damping_t { None_t, Rayleigh_t, HMCoup_t }; ///< Damping type: none, Rayleigh type (C=alp*M+bet*K), HydroMechCoupling
 
-    // Constructor
-    RKSolver (Domain & dom);
+    // Constructor & Destructor
+     RKSolver (Domain & dom);
+    ~RKSolver () { if (USys!=NULL) delete USys; }
 
     // Methods
     void SteadySolve (int NInc=1,                         char const * FKey=NULL);
@@ -68,6 +69,7 @@ public:
     double        DampAk;   ///< Rayleigh damping Ak coefficient (C = Am*M + Ak*K)
     String        Scheme;   ///< Runge-Kutta scheme
     double        STOL;     ///< Error tolerance for RK scheme
+    bool          DynCteM;  ///< M and C matrices are constants in dynsolver?
 
     // Data (read-only)
     Domain      & Dom;      ///< Domain
@@ -82,13 +84,14 @@ public:
     // Auxiliary data
     Array<int>    Eq1_to_V1;
     Array<int>    Eq1_to_U1;
-    Vec_t         A,V,U,F;
+    Vec_t         A,V,U,F,Fi;
 
     // Triplets
     size_t K11_size, K12_size, K21_size, K22_size; ///< Size of triplets
     Sparse::Triplet<double,int> K11,K12,K21,K22;   ///< Stiffness matrices
     Sparse::Triplet<double,int> C11,C12,C21,C22;   ///< Damping matrices
     Sparse::Triplet<double,int> M11,M12,M21,M22;   ///< Mass matrices
+    UMFPACK::Sys              * USys;              ///< System to be solved: X = A^(-1) * B
 
     // Internal methods
     int  SteadyFunc     (double t, double const Y[], double dYdt[]); ///< Steady problems: callback for RK solver
@@ -98,7 +101,7 @@ public:
     void Initialize     ();                                          ///< Allocate memory
     void AssembleK      ();                                          ///< Assemble K
     void AssembleKM     ();                                          ///< Assemble K and M
-    void AssembleKCM    ();                                          ///< Assemble K, C, and M
+    void AssembleMC     ();                                          ///< Assemble M and maybe C
     void AugMatrix      (Sparse::Triplet<double,int> & A11);         ///< Augment A matrix with BCs and Lag multipliers
 };
 
@@ -114,7 +117,9 @@ inline RKSolver::RKSolver (Domain & dom)
       DampAk   (0.01),
       Scheme   ("ME"),
       STOL     (1.0e-3),
-      Dom      (dom)
+      DynCteM  (true),
+      Dom      (dom),
+      USys     (NULL)
 {
 }
 
@@ -392,10 +397,7 @@ inline void RKSolver::DynSolve (double tf, double dt, double dtOut, char const *
     V  .change_dim (NEq);
     U  .change_dim (NEq);
     F  .change_dim (NEq);
-    K11.AllocSpace (NEq,NEq,K11_size);
-    K12.AllocSpace (NEq,NEq,K12_size);
-    K21.AllocSpace (NEq,NEq,K21_size);
-    K22.AllocSpace (NEq,NEq,K22_size);
+    Fi .change_dim (NEq);
     M11.AllocSpace (NEq,NEq,K11_size+pEQ.Size()+NnzLag); // augmented
     M12.AllocSpace (NEq,NEq,K12_size);
     M21.AllocSpace (NEq,NEq,K21_size);
@@ -411,8 +413,8 @@ inline void RKSolver::DynSolve (double tf, double dt, double dtOut, char const *
     // allocate ode solver
     NNu = 2*(NEq-pEQ.Size()); // number of nodal unknowns
     Numerical::ODESolver<RKSolver> ode(this, &RKSolver::DynFunc, NNu+NIv, Scheme.CStr(), STOL, dt);
-    ode.UpFun = &RKSolver::DynUpFunc;
-    if (Scheme!="ME") throw new Fatal("RKSolver::DynSolve: This method works only with 'ME' at this time. Scheme==%s is not available yet",Scheme.CStr());
+    //ode.UpFun = &RKSolver::DynUpFunc;
+    //if (Scheme!="ME") throw new Fatal("RKSolver::DynSolve: This method works only with 'ME' at this time. Scheme==%s is not available yet",Scheme.CStr());
 
     // set initial values
     ode.t    = Dom.Time;
@@ -426,13 +428,10 @@ inline void RKSolver::DynSolve (double tf, double dt, double dtOut, char const *
             ode.Y[rkeq++] = Dom.ActNods[i]->U(j); // U1
         }
     }
-    if (NIv>0)
+    for (size_t i=0; i<Dom.ActEles.Size();     ++i)
+    for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j)
     {
-        for (size_t i=0; i<Dom.ActEles.Size();     ++i)
-        for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j)
-        {
-            ode.Y[rkeq++] = Dom.ActEles[i]->GetIV(j);
-        }
+        ode.Y[rkeq++] = Dom.ActEles[i]->GetIV(j);
     }
 
     // first output
@@ -447,6 +446,29 @@ inline void RKSolver::DynSolve (double tf, double dt, double dtOut, char const *
         // evolve
         ode.Evolve (tout);
         Dom.Time = ode.t;
+
+        // update
+        size_t rkeq = 0;
+        for (size_t i=0; i<Dom.ActNods.Size();     ++i)
+        for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
+        {
+            if (!Dom.ActNods[i]->pU(j))
+            {
+                Dom.ActNods[i]->V(j) = ode.Y[rkeq++];                     // V1
+                Dom.ActNods[i]->U(j) = ode.Y[rkeq++];                     // U1
+                Dom.ActNods[i]->F(j) = Dom.ActNods[i]->PFOrZero(j,ode.t); // F1
+            }
+            else
+            {
+                Dom.ActNods[i]->V(j) = Dom.ActNods[i]->PVIdxDOF(j,ode.t); // V2
+                Dom.ActNods[i]->U(j) = Dom.ActNods[i]->PUIdxDOF(j,ode.t); // U2
+            }
+        }
+        for (size_t i=0; i<Dom.ActEles.Size(); ++i)
+        {
+            size_t niv = Dom.ActEles[i]->NIVs();
+            for (size_t j=0; j<niv; ++j) Dom.ActEles[i]->SetIV (j, ode.Y[rkeq++]);
+        }
 
         // output
         if (WithInfo) printf("%10.6f\n",Dom.Time);
@@ -476,22 +498,30 @@ inline int RKSolver::DynFunc (double t, double const Y[], double dYdt[])
             U(eq) = Dom.ActNods[i]->PUIdxDOF(j,t); // U2
         }
     }
-    if (NIv>0)
+    set_to_zero (Fi);
+    for (size_t i=0; i<Dom.ActEles.Size(); ++i)
     {
-        for (size_t i=0; i<Dom.ActEles.Size(); ++i)
-        {
-            for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j) Dom.ActEles[i]->SetIV (j, Y[rkeq++]);
-            Dom.ActEles[i]->CorrectIVs ();
-        }
+        for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j) Dom.ActEles[i]->SetIV (j, Y[rkeq++]);
+        Dom.ActEles[i]->CorrectIVs ();
+        Dom.ActEles[i]->SetFint (&Fi);
     }
 
-    AssembleKCM     ();
+    F -= Fi; // F = F - Fi
+    //for (size_t i=0; i<pEQ.Size(); ++i) F(pEQ[i]) = A(pEQ[i]); // F2 = A2
+    if (DynCteM)
+    {
+        if (USys==NULL)
+        {
+            AssembleMC ();
+            USys = new UMFPACK::Sys (M11);
+        }
+    }
+    else AssembleMC ();
     Sparse::SubMult (M12, A, F); if (DampTy!=None_t) { // F1 -= M12*A2
     Sparse::SubMult (C11, V, F);                       // F1 -= C11*V1
     Sparse::SubMult (C12, V, F); }                     // F1 -= C12*V2
-    Sparse::SubMult (K11, U, F);                       // F1 -= K11*U1
-    Sparse::SubMult (K12, U, F);                       // F1 -= K12*U2
-    UMFPACK::Solve  (M11, F, A);                       // A1  = inv(M11)*F1
+    if (DynCteM) USys->Solve         (F, A);           // A1  = inv(M11)*F1
+    else         UMFPACK::Solve (M11, F, A);           // A1  = inv(M11)*F1
 
     rkeq = 0;
     for (size_t i=0; i<Dom.ActNods.Size();     ++i)
@@ -535,16 +565,13 @@ inline void RKSolver::DynUpFunc (double t, double Y[])
             Dom.ActNods[i]->U(j) = Dom.ActNods[i]->PUIdxDOF(j,t); // U2
         }
     }
-    if (NIv>0)
+    for (size_t i=0; i<Dom.ActEles.Size(); ++i)
     {
-        for (size_t i=0; i<Dom.ActEles.Size(); ++i)
-        {
-            size_t niv = Dom.ActEles[i]->NIVs();
-            for (size_t j=0; j<niv; ++j) Dom.ActEles[i]->SetIV (j, Y[rkeq++]);
-            Dom.ActEles[i]->CorrectIVs ();
-            rkeq -= niv;
-            for (size_t j=0; j<niv; ++j) Y[rkeq++] = Dom.ActEles[i]->GetIV (j);
-        }
+        size_t niv = Dom.ActEles[i]->NIVs();
+        for (size_t j=0; j<niv; ++j) Dom.ActEles[i]->SetIV (j, Y[rkeq++]);
+        Dom.ActEles[i]->CorrectIVs ();
+        rkeq -= niv;
+        for (size_t j=0; j<niv; ++j) Y[rkeq++] = Dom.ActEles[i]->GetIV (j);
     }
 }
 
@@ -671,13 +698,13 @@ inline void RKSolver::AssembleKM ()
     AugMatrix (M11);
 }
 
-inline void RKSolver::AssembleKCM ()
+inline void RKSolver::AssembleMC ()
 {
     if (LinProb && M11.Top()>0) return;
-    K11.ResetTop();   M11.ResetTop();
-    K12.ResetTop();   M12.ResetTop();
-    K21.ResetTop();   M21.ResetTop();
-    K22.ResetTop();   M22.ResetTop();
+    M11.ResetTop();
+    M12.ResetTop();
+    M21.ResetTop();
+    M22.ResetTop();
     if (DampTy!=None_t)
     {
         C11.ResetTop();
@@ -687,19 +714,23 @@ inline void RKSolver::AssembleKCM ()
     }
     for (size_t k=0; k<Dom.ActEles.Size(); ++k)
     {
-        Mat_t         K, C, M;
+        Mat_t         C, M;
         Array<size_t> loc;
-        Dom.ActEles[k]->CalcK  (K);
         Dom.ActEles[k]->CalcM  (M);
         Dom.ActEles[k]->GetLoc (loc);
-        if (DampTy==Rayleigh_t) C = DampAm*M + DampAk*K;
+        if (DampTy==Rayleigh_t)
+        {
+            Mat_t K;
+            Dom.ActEles[k]->CalcK (K);
+            C = DampAm*M + DampAk*K;
+        }
         for (size_t i=0; i<loc.Size(); ++i)
         for (size_t j=0; j<loc.Size(); ++j)
         {
-            if      (!pU[loc[i]] && !pU[loc[j]]) { K11.PushEntry(loc[i], loc[j], K(i,j));  M11.PushEntry(loc[i], loc[j], M(i,j));  if (DampTy!=None_t) { C11.PushEntry(loc[i], loc[j], C(i,j)); } }
-            else if (!pU[loc[i]] &&  pU[loc[j]]) { K12.PushEntry(loc[i], loc[j], K(i,j));  M12.PushEntry(loc[i], loc[j], M(i,j));  if (DampTy!=None_t) { C12.PushEntry(loc[i], loc[j], C(i,j)); } }
-            else if ( pU[loc[i]] && !pU[loc[j]]) { K21.PushEntry(loc[i], loc[j], K(i,j));  M21.PushEntry(loc[i], loc[j], M(i,j));  if (DampTy!=None_t) { C21.PushEntry(loc[i], loc[j], C(i,j)); } }
-            else if ( pU[loc[i]] &&  pU[loc[j]]) { K22.PushEntry(loc[i], loc[j], K(i,j));  M22.PushEntry(loc[i], loc[j], M(i,j));  if (DampTy!=None_t) { C22.PushEntry(loc[i], loc[j], C(i,j)); } }
+            if      (!pU[loc[i]] && !pU[loc[j]]) { M11.PushEntry(loc[i], loc[j], M(i,j));  if (DampTy!=None_t) { C11.PushEntry(loc[i], loc[j], C(i,j)); } }
+            else if (!pU[loc[i]] &&  pU[loc[j]]) { M12.PushEntry(loc[i], loc[j], M(i,j));  if (DampTy!=None_t) { C12.PushEntry(loc[i], loc[j], C(i,j)); } }
+            else if ( pU[loc[i]] && !pU[loc[j]]) { M21.PushEntry(loc[i], loc[j], M(i,j));  if (DampTy!=None_t) { C21.PushEntry(loc[i], loc[j], C(i,j)); } }
+            else if ( pU[loc[i]] &&  pU[loc[j]]) { M22.PushEntry(loc[i], loc[j], M(i,j));  if (DampTy!=None_t) { C22.PushEntry(loc[i], loc[j], C(i,j)); } }
         }
     }
     AugMatrix (M11);

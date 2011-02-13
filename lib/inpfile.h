@@ -139,6 +139,7 @@ public:
     double dcftol;      ///< 49 drift correction f tolerance
     double pw0;         ///< 50 pw0
     bool   haspw0;      ///< has pw0 ?
+    bool   rkdyncte;    ///< 51 rk scheme dyn cte M and C
 
     // Additional data
     Dict * Prms; ///< parameters (set by SetMat)
@@ -298,6 +299,7 @@ inline void InpFile::Defaults ()
     dcftol     = -1;     // 49
     pw0        = 0;      // 50
     haspw0     = false;
+    rkdyncte   = true;   // 51
 }
 
 inline void InpFile::Read (char const * FileName)
@@ -499,6 +501,7 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="dcmaxit")    dcmaxit   = (int)val;                   // 48
                 else if (key=="dcftol")     dcftol    = val;                        // 49
                 else if (key=="pw0")      { pw0       = val;     haspw0 = true; }   // 50
+                else if (key=="rkdyncte")   rkdyncte  = (bool)atoi(str_val.CStr()); // 51
                 else if (key=="npath")    { npath     = (int)val;  reading_path   = true; }
                 else if (key=="nelemprps"){ nelemprps = (int)val;  reading_eprps  = true; }
                 else if (key=="nstages")  { nstages   = (int)val;  reading_stages = true; }
@@ -642,6 +645,7 @@ inline void InpFile::SetSolver (FEM::RKSolver & Sol) const
     if (ak    >=0   ) Sol.DampAk  = ak;
     if (rkscheme!="") Sol.Scheme  = rkscheme;
     if (rkstol   >=0) Sol.STOL    = rkstol;
+    Sol.DynCteM = rkdyncte;
 }
 
 inline void InpFile::SetSUp (Model const * Mdl, Model::StressUpdate::pDbgFun pFun, void * UserData) const
@@ -706,6 +710,7 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     if (IF.dcmaxit      >0) os << "dcmaxit   = " << IF.dcmaxit   << "\n"; //  48
     if (IF.dcftol       >0) os << "dcftol    = " << IF.dcftol    << "\n"; //  49
     if (IF.haspw0         ) os << "pw0       = " << IF.pw0       << "\n"; //  50
+    if (IF.rkdyncte       ) os << "rkdyncte  = " << IF.rkdyncte  << "\n"; //  51
     os << "\nPath:\n"                        << (*IF.Path)      << "\n";
     os << "\nElements properties:\n"         << (*IF.Prps)      << "\n";
     os << "\nOutput nodes:\n"                << (*IF.OutNods)   << "\n";
