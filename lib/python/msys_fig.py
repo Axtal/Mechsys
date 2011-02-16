@@ -58,6 +58,8 @@ def Save (filename, extra_artists=[]):
 # t1 = ax.text(-0.2,0.5,'text',transform=ax.transAxes)
 # fig.savefig('test.png', bbox_inches='tight', bbox_extra_artists=[t1])
 
+def Leg (fsz=8): legend (loc='best',prop={'size':fsz})
+
 def Grid (color='grey', zorder=-100): grid (color=color, zorder=zorder)
 
 def Text (x, y, txt, x_offset=0, y_offset=0, units='points', va='bottom', ha='left', color='black', fontsize=10):

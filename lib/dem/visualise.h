@@ -72,7 +72,7 @@ inline Visualise::Visualise (DEM::Domain const & D, int TP, bool SV, bool SE, in
       ShowEdge    (SE),
       PartColor   ("brown"),
       WallColor   ("peacock"),
-      PartOpacity (0.8),
+      PartOpacity (1.0),
       WallOpacity (0.1)
 {
     PartFaces.SetColor (PartColor.CStr(), PartOpacity);

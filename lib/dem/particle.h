@@ -300,7 +300,7 @@ void BuildParticleDataType (MPI::Datatype & MPIType)
 
 // Constructor and destructor
 
-inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & F, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
+inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & Fa, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
     : Tag(TheTag), PropsReady(false), IsBroken(false), v(v0), w(w0)
 {
     Props.Kn = 1.0e4;   
@@ -326,21 +326,22 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
     wyf = false;
     wzf = false;
 
+    F  = 0.0,0.0,0.0;
     Ff = 0.0,0.0,0.0;
     Tf = 0.0,0.0,0.0;
 
     EdgeCon = E;
-    FaceCon = F;
+    FaceCon = Fa;
 
     for (size_t i=0; i<V.Size(); i++)
     {
         Verts.Push (new Vec3_t(V[i]));
         Vertso.Push (new Vec3_t(V[i]));
     }
-    for (size_t i=0; i<F.Size(); i++)
+    for (size_t i=0; i<Fa.Size(); i++)
     {
-        Array<Vec3_t*> verts(F[i].Size());
-        for (size_t j=0; j<F[i].Size(); ++j) verts[j] = Verts[F[i][j]];
+        Array<Vec3_t*> verts(Fa[i].Size());
+        for (size_t j=0; j<Fa[i].Size(); ++j) verts[j] = Verts[Fa[i][j]];
         Faces.Push (new Face(verts));
     }
     for (size_t i=0; i<E.Size(); i++) Edges.Push (new Edge((*Verts[E[i][0]]), (*Verts[E[i][1]])));
