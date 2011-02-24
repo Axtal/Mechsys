@@ -34,92 +34,114 @@ using std::endl;
 
 struct UserData
 {
-    Array <Particle *> p; // the array of particles at which the force is to be applied
+    Particle * p; // the array of particles at which the force is to be applied
 };
 
 void Setup (DEM::Domain & Dom, void * UD)
 {
     // force at -3
     UserData & dat = (*static_cast<UserData *>(UD));
-    for (size_t i=0;i<dat.p.Size();i++) dat.p[i]->Ff=0.0,0.0,10.0*sin(0.3*Dom.Time);
+    dat.p->Ff=0.0,0.0,10.0*sin(0.3*Dom.Time);
 }
 
 
 int main(int argc, char **argv) try
 {
 
+    if (argc!=2) throw new Fatal("This program must be called with one argument: the name of the data input file without the '.inp' suffix.\nExample:\t %s filekey\n",argv[0]);
+    String filekey  (argv[1]);
+    String filename (filekey+".inp");
+    if (!Util::FileExists(filename)) throw new Fatal("File <%s> not found",filename.CStr());
+    ifstream infile(filename.CStr());
 
-    // gen beam
-    size_t nx = 2;
-    size_t ny = 20;
-    size_t nz = 2;
-    double lx = 2.;
-    double ly = 20.;
-    double lz = 2.;
-    
-    // input
-    double cam_x=2*ly, cam_y=ly/2.0, cam_z=0;
-    Mesh::Structured mesh(3);
+    double verlet;      // Verlet distance for optimization
+    String ptype;       // Particle type 
+    bool   RenderVideo; // Decide is video should be render
+    double Kn;          // Normal stiffness
+    double Kt;          // Tangential stiffness
+    double Gn;          // Normal dissipative coefficient
+    double Gt;          // Tangential dissipative coefficient
+    double Mu;          // Microscopic friction coefficient
+    double Bn;          // Cohesion normal stiffness
+    double Bt;          // Cohesion tangential stiffness
+    double Bm;          // Cohesion torque stiffness
+    double Eps;         // Threshold for breking bonds
+    double R;           // Spheroradius
+    size_t seed;        // Seed of the ramdon generator
+    double dt;          // Time step
+    double dtOut;       // Time step for output
+    double Tf;          // Final time for the test
+    double Lx;          // Lx
+    double Ly;          // Ly
+    double Lz;          // Lz
+    size_t nx;          // nx
+    size_t ny;          // ny
+    size_t nz;          // nz
+    double rho;         // rho
+    {
+        infile >> verlet;       infile.ignore(200,'\n');
+        infile >> ptype;        infile.ignore(200,'\n');
+        infile >> RenderVideo;  infile.ignore(200,'\n');
+        infile >> Kn;           infile.ignore(200,'\n');
+        infile >> Kt;           infile.ignore(200,'\n');
+        infile >> Gn;           infile.ignore(200,'\n');
+        infile >> Gt;           infile.ignore(200,'\n');
+        infile >> Mu;           infile.ignore(200,'\n');
+        infile >> Bn;           infile.ignore(200,'\n');
+        infile >> Bt;           infile.ignore(200,'\n');
+        infile >> Bm;           infile.ignore(200,'\n');
+        infile >> Eps;          infile.ignore(200,'\n');
+        infile >> R;            infile.ignore(200,'\n');
+        infile >> seed;         infile.ignore(200,'\n');
+        infile >> dt;           infile.ignore(200,'\n');
+        infile >> dtOut;        infile.ignore(200,'\n');
+        infile >> Tf;           infile.ignore(200,'\n');
+        infile >> Lx;           infile.ignore(200,'\n');
+        infile >> Ly;           infile.ignore(200,'\n');
+        infile >> Lz;           infile.ignore(200,'\n');
+        infile >> nx;           infile.ignore(200,'\n');
+        infile >> ny;           infile.ignore(200,'\n');
+        infile >> nz;           infile.ignore(200,'\n');
+        infile >> rho;          infile.ignore(200,'\n');
+    }
 
-    mesh.GenBox (false, nx, ny, nz, lx, ly, lz);
 
 
     // user data and domain
     UserData dat;
     DEM::Domain dom(&dat);
-    dom.Alpha = 0.05;
+    dom.Alpha = verlet;
 
-    // gen particles
-    bool cohesion   = true;
-    bool montecarlo = false;
-    double Kn       = 1.0e4;
-    double Kt       = 5.0e3;
-    dom.GenFromMesh (mesh, 0.1, 1., cohesion, montecarlo);
-
-    // change tags and identify the particles at the beam's end
-    for (size_t i=0;i<dom.Particles.Size();i++)
+    if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, false, seed, 1.0);
+    else if (ptype=="cube")
     {
-        if      (dom.Particles[i]->x(1)>ly*(1-1.0/ny)) 
-        {
-            mesh.Cells[i]->Tag    = -3;
-            dom.Particles[i]->Tag = -3;
-        }
-        else if (dom.Particles[i]->x(1)<ly/ny) 
-        {
-            mesh.Cells[i]->Tag    = -2;
-            dom.Particles[i]->Tag = -2;
-        }
-        else
-        {
-            mesh.Cells[i]->Tag    = -1;
-            dom.Particles[i]->Tag = -1;
-        }
-        
+        Mesh::Structured mesh(3);
+        mesh.GenBox (false, nx, ny, nz, Lx, Ly, Lz);
+        dom.GenFromMesh (mesh, R, rho, true, false);
     }
-
-    // write
-    mesh.WriteVTU("test_beam");
+    else throw new Fatal("Packing for particle type not implemented yet");
 
     //set the element properties
     dom.Center();
+    dom.GenBoundingPlane(-2,R,1.0,true);
     Dict B;
-    B.Set(-1,"Kn Kt Gn Gt Mu Eps",Kn,Kt,8.0,4.0,0.0,-0.01);
-    B.Set(-2,"Kn Kt Gn Gt Mu Eps",Kn,Kt,8.0,4.0,0.0,-0.01);
-    B.Set(-3,"Kn Kt Gn Gt Mu Eps",Kn,Kt,8.0,4.0,0.0,-0.01);
+    B.Set(-1,"Kn Kt Bn Bt Bm Gn Gt Mu Eps",Kn,Kt,Bn,Bt,Bm,Gn,Gt,Mu,Eps);
+    B.Set(-2,"Kn Kt Bn Bt Bm Gn Gt Mu Eps",Kn,Kt,Bn,Bt,Bm,Gn,Gt,Mu,Eps);
+    B.Set(-3,"Kn Kt Bn Bt Bm Gn Gt Mu Eps",Kn,Kt,Bn,Bt,Bm,Gn,Gt,Mu,Eps);
     dom.SetProps(B);
+    // input
+    double cam_x=2*Ly, cam_y=Ly/2.0, cam_z=0;
     dom.CamPos = cam_x, cam_y, cam_z;
 
      //connect
-    dom.GetParticles (-3,dat.p);
+    dat.p = dom.GetParticle (-2);
 
+    cout << dom.Particles[dom.Particles.Size()-1] << endl;
     // fix -2 particles at the left extreme of the beam
-    Array <Particle *> p;
-    dom.GetParticles (-2,p);
-    for (size_t i=0;i<p.Size();i++) p[i]->FixVeloc();
+    Particle * p;
+    p = dom.GetParticle (-3);
+    p->FixVeloc();
 
-    double tf        = 100.;
-    double dt        = 1.0e-4;
-    double dtOut     = 0.5;
-    dom.Solve (tf,dt,dtOut, &Setup, NULL, "test_beam",true);
+    dom.Solve (Tf,dt,dtOut, &Setup, NULL, filekey.CStr(), RenderVideo);
 }
 MECHSYS_CATCH

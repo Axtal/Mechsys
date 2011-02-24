@@ -62,14 +62,15 @@ public:
     ~Domain();
 
     // Particle generation
-    void GenSpheres      (int Tag, double L, size_t N, double rho, char const * Type, 
-                          size_t Randomseed, double fraction, double RminFraction = 1.0);                                                   ///< General spheres
-    void GenRice         (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction);                           ///< General rices
-    void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, bool Cohesion=false);                       ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
-    void GenBoundingBox  (int InitialTag, double R, double Cf,bool Cohesion=false);                                                         ///< Generate o bounding box enclosing the previous included particles.
-    void GenFromMesh     (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);              ///< Generate particles from a FEM mesh generator
-    void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, 
-                          double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, double q=0.0);                       ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
+    void GenSpheres      (int Tag, double L, size_t N, double rho, char const * Type,
+    size_t Randomseed, double fraction, double RminFraction = 1.0);                                                              ///< General spheres
+    void GenRice         (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction);                ///< General rices
+    void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, bool Cohesion=false);            ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
+    void GenBoundingBox  (int InitialTag, double R, double Cf,bool Cohesion=false);                                              ///< Generate o bounding box enclosing the previous included particles.
+    void GenBoundingPlane(int InitialTag, double R, double Cf,bool Cohesion=false);                                              ///< Same as GenBounding but only generates one pair of planes.
+    void GenFromMesh     (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);   ///< Generate particles from a FEM mesh generator
+    void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
+    double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, double q=0.0);                                  ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
     // Single particle addition
     void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
     void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a cube at position X with spheroradius R, side of length L and density rho
@@ -343,6 +344,57 @@ inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf,bool Coh
     Vec3_t minX,maxX;
     BoundingBox(minX,maxX);
     GenBox(InitialTag, maxX(0)-minX(0)+2*R, maxX(1)-minX(1)+2*R, maxX(2)-minX(2)+2*R, R, Cf,Cohesion);
+}
+
+inline void Domain::GenBoundingPlane (int InitialTag, double R, double Cf,bool Cohesion)
+{
+    Center();
+    Vec3_t minX,maxX;
+    BoundingBox(minX,maxX);
+    Vec3_t axis0(OrthoSys::e0); // rotation of face
+    Vec3_t axis1(OrthoSys::e1); // rotation of face
+    size_t IIndex = Particles.Size();  // First face index
+    double Lx = maxX(0)-minX(0)+2*R;
+    double Ly = maxX(1)-minX(1)+2*R;
+    double Lz = maxX(2)-minX(2)+2*R;
+    AddPlane (InitialTag  , Vec3_t(0.0,Ly/2.0,0.0),  R, Cf*Lx, Cf*Lz, 1.0, 3.0*M_PI/2.0, &axis0);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-1, Vec3_t(0.0,-Ly/2.0,0.0), R, Cf*Lx, Cf*Lz, 1.0, M_PI/2.0, &axis0);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+
+    // define some tolerance for comparissions
+    if (Cohesion)
+    {
+        double tol1 = 1.0e-8;
+        double tol2 = 1.0e-3;
+        for (size_t i=0;i<IIndex;i++)
+        {
+            Particle * P1 = Particles[i];
+            for (size_t j=IIndex;j<Particles.Size();j++)
+            {
+                Particle * P2 = Particles[j];
+                for (size_t k=0;k<P1->Faces.Size();k++)
+                {
+                    Face * F1 = P1->Faces[k];
+                    Vec3_t n1,c1;
+                    F1->Normal  (n1);
+                    F1->Centroid(c1);
+                    Face * F2 = P2->Faces[0];
+                    Vec3_t n2,c2;
+                    F2->Normal  (n2);
+                    F2->Centroid(c2);
+                    Vec3_t n = 0.5*(n1-n2);
+                    n/=norm(n);
+                    if ((fabs(dot(n1,n2)+1.0)<tol1)
+                       &&(fabs(dot(c2-c1,n)-2*R)<tol2))
+                    {
+                        BInteractons.Push(new BInteracton(P1,P2,k,1));
+                        break;
+                    }
+                }
+            }        
+        }
+    }
 }
 
 inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool Cohesion, bool MC, double thickness)
