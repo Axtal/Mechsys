@@ -693,7 +693,10 @@ inline void EquilibElem::CalcIVRate (double Time, Vec_t const & U, Vec_t const &
 
 inline void EquilibElem::CorrectIVs ()
 {
-    for (size_t i=0; i<GE->NIP; ++i) Mdl->CorrectDrift (Sta[i]);
+    if (Mdl->SUp.CDrift)
+    {
+        for (size_t i=0; i<GE->NIP; ++i) Mdl->CorrectDrift (Sta[i]);
+    }
 }
 
 
