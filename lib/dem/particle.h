@@ -524,7 +524,6 @@ inline void Particle::Translate (double dt)
     xb   = x;
     x    = xa;
     Ekin = 0.5*Props.m*dot(v,v);
-    //std::cout << Index << " " << v << " " << F << std::endl;
 
     size_t nv = Verts.Size();
     for (size_t i = 0; i < nv; i++)

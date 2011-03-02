@@ -41,7 +41,7 @@ struct UserData
     Vec3_t             DSig;         ///< Total stress increment to be applied by Solve => after
     bVec3_t            pSig;         ///< Prescribed stress ?
     Vec3_t             L0;           ///< Initial length of the packing
-    std::ofstream      oss_ss;         ///< file for stress strain data
+    std::ofstream      oss_ss;       ///< file for stress strain data
 
     //Constructor
     UserData() {Sig = 0.0,0.0,0.0;}     
