@@ -66,6 +66,7 @@ public:
     size_t Randomseed, double fraction, double RminFraction = 1.0);                                                              ///< General spheres
     void GenRice         (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction);                ///< General rices
     void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, bool Cohesion=false);            ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
+    void GenOpenBox      (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                                 ///< Generate five walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenBoundingBox  (int InitialTag, double R, double Cf,bool Cohesion=false);                                              ///< Generate o bounding box enclosing the previous included particles.
     void GenBoundingPlane(int InitialTag, double R, double Cf,bool Cohesion=false);                                              ///< Same as GenBounding but only generates one pair of planes.
     void GenFromMesh     (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);   ///< Generate particles from a FEM mesh generator
@@ -75,6 +76,7 @@ public:
     void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
     void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void AddTetra    (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
+    void AddDrill    (int Tag, Vec3_t const & X, double R, double Lt, double Ll, double rho);                                    ///< A drill made as a combination of a cube and a pyramid.
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode);
@@ -336,6 +338,42 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
             }        
         }
     }
+}
+
+inline void Domain::GenOpenBox (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf)
+{
+    /*                         +----------------+
+     *                       ,'|              ,'|
+     *                     ,'  |  ___       ,'  |
+     *     z             ,'    |,'N,'  [1],'    |
+     *     |           ,'      |~~~     ,'      |
+     *    ,+--y      +'===============+'  ,'|   |
+     *  x'           |   ,'|   |      |   |2|   |
+     *               |   |3|   |      |   |,'   |
+     *               |   |,'   +- - - | +- - - -+
+     *               |       ,'       |       ,'
+     *               |     ,' [0]  ___|     ,'
+     *               |   ,'      ,'4,'|   ,'
+     *               | ,'        ~~~  | ,'
+     *               +----------------+'
+     */
+
+
+    // Creates an open box without the top lid, acts as a container
+    
+    // add faces of box
+    Vec3_t axis0(OrthoSys::e0); // rotation of face
+    Vec3_t axis1(OrthoSys::e1); // rotation of face
+    AddPlane (InitialTag,   Vec3_t(Lx/2.0,0.0,0.0),  R, Cf*Lz, Cf*Ly, 1.0, M_PI/2.0, &axis1);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-1, Vec3_t(-Lx/2.0,0.0,0.0), R, Cf*Lz, Cf*Ly, 1.0, 3.0*M_PI/2.0, &axis1);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-2, Vec3_t(0.0,Ly/2.0,0.0),  R, Cf*Lx, Cf*Lz, 1.0, 3.0*M_PI/2.0, &axis0);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-3, Vec3_t(0.0,-Ly/2.0,0.0), R, Cf*Lx, Cf*Lz, 1.0, M_PI/2.0, &axis0);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-4, Vec3_t(0.0,0.0,-Lz/2.0), R, Cf*Lx, Cf*Ly, 1.0, M_PI, &axis0);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
 }
 
 inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf,bool Cohesion)
@@ -792,6 +830,87 @@ inline void Domain::AddTetra (int Tag, Vec3_t const & X, double R, double L, dou
 
     // clean up
     if (!ThereisanAxis) delete Axis;
+}
+
+inline void Domain::AddDrill (int Tag, const Vec3_t & X, double R, double Lt, double Ll, double rho)
+{
+    Array<Vec3_t> V(9);
+    V[0] =  Lt/2.0,  Lt/2.0, Ll/2.0;
+    V[1] = -Lt/2.0,  Lt/2.0, Ll/2.0;
+    V[2] = -Lt/2.0, -Lt/2.0, Ll/2.0;
+    V[3] =  Lt/2.0, -Lt/2.0, Ll/2.0;
+    V[4] =  Lt/2.0,  Lt/2.0,    0.0;
+    V[5] = -Lt/2.0,  Lt/2.0,    0.0;
+    V[6] = -Lt/2.0, -Lt/2.0,    0.0;
+    V[7] =  Lt/2.0, -Lt/2.0,    0.0;
+    V[8] =     0.0,     0.0,-Ll/2.0;
+    
+    Array<Array <int> > E(12);
+    for (size_t i=0; i<12; ++i) E[i].Resize(2);
+    for (size_t i=0;i<4;i++)
+    {
+        E[i]   = i  , (i+1)%4    ;
+        E[i+4] = i+4, (i+5)%4 + 4;
+        E[i+8] = i+4, 8;
+    }
+
+    Array<Array <int> > F;
+    F.Resize(9);
+    F[0].Resize(4);
+    F[0] = 0, 1, 2, 3;
+    F[1].Resize(4);
+    F[1] = 0, 4, 5, 1;
+    F[2].Resize(4);
+    F[2] = 1, 5, 6, 2;
+    F[3].Resize(4);
+    F[3] = 2, 6, 7, 3;
+    F[4].Resize(4);
+    F[4] = 3, 7, 4, 0;
+    F[5].Resize(3);
+    F[5] = 4, 8, 5;
+    F[6].Resize(3);
+    F[6] = 5, 8, 6;
+    F[7].Resize(3);
+    F[7] = 6, 8, 7;
+    F[8].Resize(3);
+    F[8] = 7, 8, 4;
+
+
+    double vol; // volume of the polyhedron
+    Vec3_t CM;  // Center of mass of the polyhedron
+    Mat3_t It;  // Inertia tensor of the polyhedron
+    PolyhedraMP(V,F,vol,CM,It);
+    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    Particles[Particles.Size()-1]->x       = CM;
+    Particles[Particles.Size()-1]->Props.V = vol;
+    Particles[Particles.Size()-1]->Props.m = vol*rho;
+    Vec3_t I;
+    Quaternion_t Q;
+    Vec3_t xp,yp,zp;
+    Eig(It,I,xp,yp,zp);
+    CheckDestroGiro(xp,yp,zp);
+    I *= rho;
+    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+    Q(1) = (yp(2)-zp(1))/(4*Q(0));
+    Q(2) = (zp(0)-xp(2))/(4*Q(0));
+    Q(3) = (xp(1)-yp(0))/(4*Q(0));
+    Q = Q/norm(Q);
+    Particles[Particles.Size()-1]->I     = I;
+    Particles[Particles.Size()-1]->Q     = Q;
+    double Dmax = Distance(CM,V[0])+R;
+    for (size_t i=1; i<V.Size(); ++i)
+    {
+        if (Distance(CM,V[i])+R > Dmax) Dmax = Distance(CM,V[i])+R;
+    }
+    Particles[Particles.Size()-1]->Ekin = 0.0;
+    Particles[Particles.Size()-1]->Erot = 0.0;
+    Particles[Particles.Size()-1]->Dmax  = Dmax;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index = Particles.Size()-1;
+
+    Vec3_t Y = X;
+    Particles[Particles.Size()-1]->Translate(Y);
+
 }
 
 inline void Domain::AddRice (int Tag, const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
