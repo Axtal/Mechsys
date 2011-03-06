@@ -21,12 +21,13 @@ from os.path import basename
 from numpy.linalg import norm, eig
 from numpy import pi, sin, cos, tan, arcsin, arccos, arctan2, log, log10, exp, sqrt
 from numpy import array, linspace, insert, repeat, zeros, matrix, ones, arange, diag, dot
+from numpy import logical_or, logical_and
 from pylab import rcParams, gca, gcf, clf, savefig
 from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline, title, xticks
 from pylab import contour, contourf, colorbar, clabel
 from pylab import cm as MPLcm
 from matplotlib.transforms   import offset_copy
-from matplotlib.patches      import FancyArrowPatch, PathPatch
+from matplotlib.patches      import FancyArrowPatch, PathPatch, Polygon
 from matplotlib.patches      import Arc  as MPLArc
 from matplotlib.path         import Path as MPLPath
 from matplotlib.font_manager import FontProperties
@@ -83,6 +84,9 @@ def Arc (xc,yc,R, alp_min=0.0, alp_max=pi, ec='red', fc='None', lw=2, ls='solid'
 def Arrow (xi,yi, xf,yf, scale=20, fc='#a2e3a2', ec='black', zorder=0):
     gca().add_patch(FancyArrowPatch((xi,yi), (xf,yf), arrowstyle='simple', mutation_scale=scale, ec=ec, fc=fc, zorder=zorder))
 
+def Tetragon (x0,y0, x1,y1, x2,y2, x3,y3, fc='#a2e3a2', ec='black', zorder=0):
+    gca().add_patch(Polygon(array([[x0,y0],[x1,y1],[x2,y2],[x3,y3]]), ec=ec, fc=fc, zorder=zorder))
+
 def Contour (X,Y,Z, label, nlevels=16, cmap=None, fmt='%g'):
     c1 = contourf (X,Y,Z, cmap=cmap)
     c2 = contour  (X,Y,Z, nlevels=nlevels, colors=('k'))
@@ -90,13 +94,16 @@ def Contour (X,Y,Z, label, nlevels=16, cmap=None, fmt='%g'):
     cb.ax.set_ylabel (label)
     clabel (c2, inline=0)
 
-def GetClr (idx=0): # color
-    #C = ['blue', 'green', 'red', 'cyan', 'magenta', 'orange', 'black', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8', 'yellow']
-    C = ['blue', 'green', 'cyan', 'black', 'magenta', 'orange', 'red', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8', 'yellow']
+def GetClr (idx=0, scheme=1): # color
+    if scheme==1:
+        C = ['blue', 'green', 'cyan', 'black', 'magenta', 'orange', 'red', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8', 'yellow']
+    else:
+        C = ['blue', 'green', 'red', 'cyan', 'magenta', 'orange', 'black', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8', 'yellow']
     return C[idx % len(C)]
 
 def GetLst (idx=0): # linestyle
-    L = ['solid', 'dashed', 'dash_dot', 'dotted']
+    L = ['solid', 'dashed', 'dotted']
+    #L = ['solid', 'dashed', 'dash_dot', 'dotted']
     return L[idx % len(L)]
 
 # Read file with table
