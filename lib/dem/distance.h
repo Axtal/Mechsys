@@ -23,6 +23,7 @@
 // MechSys
 #include <mechsys/dem/edge.h>
 #include <mechsys/dem/face.h>
+#include <mechsys/dem/torus.h>
 
 inline void Distance (Vec3_t const & V, Edge const & E, Vec3_t & Xi, Vec3_t & Xf)
 {
@@ -146,10 +147,29 @@ inline void Distance (Face const & F, Vec3_t const & V, Vec3_t & Xi, Vec3_t & Xf
     Distance (V,F,Xf,Xi);
 }
 
-inline void Distance (Vec3_t const & V0, Vec3_t const & V1,Vec3_t & Xi, Vec3_t & Xf)
+inline void Distance (Vec3_t const & V0, Vec3_t const & V1, Vec3_t & Xi, Vec3_t & Xf)
 {
     Xi = V0;
     Xf = V1;
+}
+
+inline void Distance (Vec3_t const & V0, Torus const & T1, Vec3_t & Xi, Vec3_t & Xf)
+{
+    Xi = V0;
+    double theta1 = atan(dot(Xi-*T1.X0,*T1.X2-*T1.X0)/dot(Xi-*T1.X0,*T1.X1-*T1.X0));
+    double theta2 = theta1 + M_PI;
+    Vec3_t P1,P2;
+    P1 = *T1.X0 + cos(theta1)*(*T1.X1-*T1.X0) + sin(theta1)*(*T1.X2-*T1.X0);
+    P2 = *T1.X0 + cos(theta2)*(*T1.X1-*T1.X0) + sin(theta2)*(*T1.X2-*T1.X0);
+    double dist1 = norm(Xi-P1);
+    double dist2 = norm(Xi-P2);
+    if (dist1<dist2) Xf = P1;
+    else             Xf = P2;
+}
+
+inline void Distance (Torus const & T1, Vec3_t const & V0, Vec3_t & Xi, Vec3_t & Xf)
+{
+    Distance (V0,T1,Xf,Xi);
 }
 
 inline double Distance (Edge const & E, Vec3_t const & V)
@@ -188,5 +208,17 @@ inline double Distance (Vec3_t const & V0, Vec3_t const & V1)
     return norm(V1-V0);
 }
 
+inline double Distance (Vec3_t const & V0, Torus const & T1)
+{
+    Vec3_t Xi,Xf;
+    Distance (V0,T1,Xi,Xf);
+    return norm(Xf-Xi);
+}
 
+inline double Distance (Torus const & T1, Vec3_t const & V0)
+{
+    Vec3_t Xi,Xf;
+    Distance (T1,V0,Xi,Xf);
+    return norm(Xf-Xi);
+}
 #endif // MECHSYS_DEM_DISTANCE_H

@@ -23,6 +23,7 @@
 // MechSys
 #include <mechsys/dem/edge.h>
 #include <mechsys/dem/graph.h>
+#include <mechsys/dem/basic_functions.h>
 #include <mechsys/util/array.h>
 
 class Face

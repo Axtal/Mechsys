@@ -26,36 +26,6 @@
 // Stl
 #include <algorithm>
 
-// Some functions for the mass properties integration
-inline double f1(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
-{
-    return V0(i)+V1(i)+V2(i);
-}
-
-inline double f2(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
-{
-    return V0(i)*V0(i)+V0(i)*V1(i)+V1(i)*V1(i)+V2(i)*f1(i,V0,V1,V2);
-}
-
-inline double f3(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
-{
-    return V0(i)*V0(i)*V0(i)+V0(i)*V0(i)*V1(i)+V0(i)*V1(i)*V1(i)+V1(i)*V1(i)*V1(i)+V2(i)*f2(i,V0,V1,V2);
-}
-
-inline double g0(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
-{
-    return f2(i,V0,V1,V2)+V0(i)*(f1(i,V0,V1,V2)+V0(i));
-}
-
-inline double g1(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
-{
-    return f2(i,V0,V1,V2)+V1(i)*(f1(i,V0,V1,V2)+V1(i));
-}
-
-inline double g2(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
-{
-    return f2(i,V0,V1,V2)+V2(i)*(f1(i,V0,V1,V2)+V2(i));
-}
 
 inline void PolyhedraMP(Array<Vec3_t> & V, Array<Array <int> > & F, double & vol, Vec3_t & CM, Mat3_t & It) // Calculate mass properties of general polyhedra
 {
@@ -107,29 +77,6 @@ inline void PolyhedraMP(Array<Vec3_t> & V, Array<Array <int> > & F, double & vol
     It(2,0)  = It(0,2);
     It(1,2)  = It(2,1);
 
-}
-
-inline void CheckDestroGiro(Vec3_t & xp, Vec3_t & yp, Vec3_t & zp) // Check if the coordinate system is destrogiro and modify the system accordingly for the quaternion calculation
-{
-    bool destrogiro = dot(cross(xp,yp),zp)>0;
-    if (!destrogiro)
-    {
-        xp = -xp;
-        if (1+xp(0)+yp(1)+zp(2)>0) return;
-        else 
-        {
-            xp = -xp;
-            yp = -yp;
-            if (1+xp(0)+yp(1)+zp(2)>0) return;
-            else
-            {
-                yp = -yp;
-                zp = -zp;
-                if (1+xp(0)+yp(1)+zp(2)>0) return;
-                else throw new Fatal("specialfunctions.h::CheckDestroGiro: The system cannot be transformed by a quaternion operation");
-            }
-        }
-    }
 }
 
 inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int> > & F, double R) // Mathematical morphology erosion
@@ -344,13 +291,6 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
         }
     }
     F = Ftemp;
-}
-
-inline double ReducedValue(double A, double B) //Reduced Value for two quantities
-{
-    double result = A*B;
-    if (result>0.0) result/=(A+B);
-    return result;
 }
 
 #endif //MECHSYS_DEM_SPECIAL_H

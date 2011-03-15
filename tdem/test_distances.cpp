@@ -126,6 +126,25 @@ int main(int argc, char **argv) try
         error += fabs(Distance(V,F)-1.0);
     }
 
+    // test torus-vertex distance
+    {
+        // vertex
+        Vec3_t V(10.0,  10.0, 0.0);
+
+        // torus
+        Vec3_t P0( 0.0, 0.0, 0.0);
+        Vec3_t P1( 1.0, 0.0, 0.0);
+        Vec3_t P2( 0.0, 0.0, 1.0);
+
+        Torus T( P0, P1, P2);
+
+        // distance
+        Vec3_t Xi,Xf;
+        Distance (V,T,Xi,Xf);
+
+        error += fabs(Distance(V,T)-sqrt(100+81));
+    }
+
     cout << "error = " << (error>tol ? "[1;31m" : "[1;32m") << error << "[0m" << endl;
     return (error>tol ? 1 : 0);
 }

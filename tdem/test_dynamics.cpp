@@ -42,7 +42,7 @@ int main(int argc, char **argv) try
 
     // add cube
 	Vec3_t x(-10,0,0);     // position
-    Vec3_t w(0,M_PI/5,0); // rot veloc
+    Vec3_t w(0,M_PI/5,0); //  rot veloc
     Vec3_t v(1.,0,0);      // veloc
 	d.AddCube (-1, x,0.3,3.,1.);
     d.Particles[0]->v = v;

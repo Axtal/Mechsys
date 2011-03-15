@@ -79,7 +79,8 @@ public:
     void AddDrill    (int Tag, Vec3_t const & X, double R, double Lt, double Ll, double rho);                                    ///< A drill made as a combination of a cube and a pyramid.
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
-    void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode);
+    void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode);                                     ///< Add a single voronoi cell, it should be built before tough
+    void AddTorus    (int Tag, Vec3_t const & X, Vec3_t & N, double Rmax, double R, double rho);                                 ///< Add a single torus at position X with a normal N, circunference Rmax and spheroradius R
 
     // Methods
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
@@ -994,15 +995,16 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
     // add particle
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
     Particles[Particles.Size()-1]->Q          = q;
-    Particles[Particles.Size()-1]->I          = 1.0,1.0,1.0;
     Particles[Particles.Size()-1]->Props.V    = Lx*Ly*2*R;
     Particles[Particles.Size()-1]->Props.m    = rho*Lx*Ly*2*R;
+    Particles[Particles.Size()-1]->I          = (1.0/12.0)*(Ly*Ly+4*R*R),(1.0/12.0)*(Lx*Lx+4*R*R),(1.0/12.0)*(Lx*Lx+Ly*Ly);
+    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m;
     Particles[Particles.Size()-1]->x          = X;
     Particles[Particles.Size()-1]->Ekin       = 0.0;
     Particles[Particles.Size()-1]->Erot       = 0.0;
     Particles[Particles.Size()-1]->Dmax       = sqrt(Lx*Lx+Ly*Ly)+R;
     Particles[Particles.Size()-1]->PropsReady = true;
-    Particles[Particles.Size()-1]->Index = Particles.Size()-1;
+    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
     // clean up
     if (!ThereisanAxis) delete Axis;
 }
@@ -1092,6 +1094,56 @@ inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, d
     Particles[Particles.Size()-1]->Dmax  = Dmax;
     Particles[Particles.Size()-1]->PropsReady = true;
     Particles[Particles.Size()-1]->Index = Particles.Size()-1;
+}
+
+inline void Domain::AddTorus (int Tag, Vec3_t const & X, Vec3_t & N, double Rmax, double R, double rho)
+{
+    // Normalize normal vector
+    N /= norm(N);
+
+    // Create the 2 vertices that define the torus
+    Vec3_t P1 = OrthoSys::e0 - dot(OrthoSys::e0,N)*N;
+    P1       /= norm(P1);
+    Vec3_t P2 = cross(N,P1);
+    P2       /= norm(P2);
+    Array<Vec3_t > V(2);
+    V[0] = X + Rmax*P1;
+    V[1] = X + Rmax*P2;
+
+    // the torus has no edges or faces
+    Array<Array <int> > E(0);
+    Array<Array <int> > F(0);
+
+    //Add the particle just with two vertices
+    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    //Input all the mass properties
+    Vec3_t xp,yp,zp;
+    xp = P1;
+    zp = P2;
+    yp = cross(zp,xp);
+    CheckDestroGiro(xp,yp,zp);
+    Quaternion_t q;
+    q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+    q(1) = (yp(2)-zp(1))/(4*q(0));
+    q(2) = (zp(0)-xp(2))/(4*q(0));
+    q(3) = (xp(1)-yp(0))/(4*q(0));
+    q = q/norm(q);
+
+    Particles[Particles.Size()-1]->Q          = q;
+    Particles[Particles.Size()-1]->Props.V    = 2*M_PI*M_PI*R*R*Rmax;
+    Particles[Particles.Size()-1]->Props.m    = rho*2*M_PI*M_PI*R*R*Rmax;
+    Particles[Particles.Size()-1]->I          = 0.125*(4*Rmax*Rmax + 5*R*R), (Rmax*Rmax+0.75*R*R), 0.125*(4*Rmax*Rmax + 5*R*R);
+    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m;
+    Particles[Particles.Size()-1]->x          = X;
+    Particles[Particles.Size()-1]->Ekin       = 0.0;
+    Particles[Particles.Size()-1]->Erot       = 0.0;
+    Particles[Particles.Size()-1]->Dmax       = Rmax + R;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
+    
+    Particles[Particles.Size()-1]->Tori.Push(new Torus(&Particles[Particles.Size()-1]->x,Particles[Particles.Size()-1]->Verts[0],Particles[Particles.Size()-1]->Verts[1]));
+
 }
 
 // Methods

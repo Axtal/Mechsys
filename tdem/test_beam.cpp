@@ -50,6 +50,7 @@ void Setup (DEM::Domain & Dom, void * UD)
     // force at -3
     UserData & dat = (*static_cast<UserData *>(UD));
     if (dat.test=="vibration")    dat.p->Ff=0.0,0.0,dat.Am*sin(dat.ome*Dom.Time);
+    if (dat.test=="bending")      dat.p->Ff=0.0,0.0,dat.Am;
     dat.sy = dat.p->F(1)/(dat.L0(0)*dat.L0(2));
 }
 
@@ -187,7 +188,7 @@ int main(int argc, char **argv) try
     dom.CamPos = cam_x, cam_y, cam_z;
 
     //identify the moving lid
-    dat.p = dom.GetParticle (-2);
+    dat.p = dom.GetParticle (-3);
     if (test=="tensile")
     {
         dat.p->FixVeloc();
@@ -203,7 +204,7 @@ int main(int argc, char **argv) try
 
     // fix -2 particles at the left extreme of the beam
     Particle * p;
-    p = dom.GetParticle (-3);
+    p = dom.GetParticle (-2);
     p->FixVeloc();
 
     dom.Solve (Tf,dt,dtOut, &Setup, &Report, filekey.CStr(), RenderVideo);

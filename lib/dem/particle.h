@@ -166,17 +166,18 @@ public:
     Array<Array <int> > FaceCon;     ///< Conectivity of Faces 
     Array<Edge*>        Edges;       ///< Edges
     Array<Face*>        Faces;       ///< Faces
+    Array<Torus*>       Tori;        ///< Toroidal features
 
     // Auxiliar methods
     void   CalcProps (size_t NCalls=5000); ///< Calculate properties: mass, center of mass, and moment of inertia
-    bool   IsInside  (Vec3_t & V);                        ///< Find whether the point V is inside the particle or not
-    double IsInside  (double * V);                        ///< Find whether the point V is inside the particle or not
-    double MaxX      ();                                  ///< Find Maximun X coordinate
-    double MaxY      ();                                  ///< Find Maximun Y coordinate
-    double MaxZ      ();                                  ///< Find Maximun Y coordinate
-    double MinX      ();                                  ///< Find Minimun X coordinate
-    double MinY      ();                                  ///< Find Minimun Y coordinate
-    double MinZ      ();                                  ///< Find Minimun Y coordinate
+    bool   IsInside  (Vec3_t & V);         ///< Find whether the point V is inside the particle or not
+    double IsInside  (double * V);         ///< Find whether the point V is inside the particle or not
+    double MaxX      ();                   ///< Find Maximun X coordinate
+    double MaxY      ();                   ///< Find Maximun Y coordinate
+    double MaxZ      ();                   ///< Find Maximun Y coordinate
+    double MinX      ();                   ///< Find Minimun X coordinate
+    double MinY      ();                   ///< Find Minimun Y coordinate
+    double MinZ      ();                   ///< Find Minimun Y coordinate
 
     // Integrants for the calc of properties
     double Vol (double * X); ///< Calculate the volume of the sample at X
@@ -577,6 +578,10 @@ inline void Particle::Draw (std::ostream & os, char const * Color, bool BPY)
     {
         Faces[i]->Draw(os,Props.R,Color,BPY);
     }
+    for (size_t i=0; i<Tori.Size(); ++i)
+    {
+        Tori[i]->Draw(os,Props.R,Color,BPY);
+    }
 }
 
 inline void Particle::FixVeloc (double vx, double vy, double vz)
@@ -749,7 +754,7 @@ inline void Particle::CalcProps (size_t NCalls)
         double Xi[3] = { MinX() , MinY() , MinZ() };
         double Xs[3] = { MaxX() , MaxY() , MaxZ() };
         Numerical::MonteCarlo<Particle> MC(this, Numerical::VEGAS, NCalls);
-        Props.V       = MC.Integrate(&Particle::Vol, Xi,Xs);
+        Props.V = MC.Integrate(&Particle::Vol, Xi,Xs);
         x(0)    = MC.Integrate(&Particle::Xc,  Xi,Xs)/Props.V;
         x(1)    = MC.Integrate(&Particle::Yc,  Xi,Xs)/Props.V;
         x(2)    = MC.Integrate(&Particle::Zc,  Xi,Xs)/Props.V;
@@ -765,7 +770,7 @@ inline void Particle::CalcProps (size_t NCalls)
 
         Vec3_t xp,yp,zp;
         Eig(It,I,xp,yp,zp);
-        CheckDestroGiro(xp,yp,zp);
+        std::cout << x(0) << std::endl;
         I *= Props.rho;
         Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
         Q(1) = (yp(2)-zp(1))/(4*Q(0));

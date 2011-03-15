@@ -85,6 +85,8 @@ public:
     ListContacts_t Lee;       ///< List of edge-edge contacts 
     ListContacts_t Lvf;       ///< List of vertex-face contacts 
     ListContacts_t Lfv;       ///< List of face-vertex contacts
+    ListContacts_t Lvt;       ///< List of vertex-torus contacts
+    ListContacts_t Ltv;       ///< List of torus-vertex contacts
     FrictionMap_t  Fdee;      ///< Static friction displacement for pair of edges
     FrictionMap_t  Fdvf;      ///< Static friction displacement for pair of vertex-face
     FrictionMap_t  Fdfv;      ///< Static friction displacement for pair of face-vertex
@@ -167,12 +169,16 @@ inline bool CInteracton::UpdateContacts (double alpha)
     Lee.Resize(0);
     Lvf.Resize(0);
     Lfv.Resize(0);
+    Lvt.Resize(0);
+    Ltv.Resize(0);
     if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*alpha)
     {
         _update_contacts (P1->Edges,P2->Edges,Lee,alpha);
         _update_contacts (P1->Verts,P2->Faces,Lvf,alpha);
         _update_contacts (P1->Faces,P2->Verts,Lfv,alpha);
-        if (Lee.Size()>0||Lvf.Size()>0||Lfv.Size()>0) return true;
+        _update_contacts (P1->Verts,P2->Tori ,Lvt,alpha);
+        _update_contacts (P1->Tori ,P2->Verts,Ltv,alpha);
+        if (Lee.Size()>0||Lvf.Size()>0||Lfv.Size()>0||Ltv.Size()>0||Lvt.Size()>0) return true;
         else return false;
     }
     else return false;
@@ -192,6 +198,8 @@ inline void CInteracton::CalcForce (double dt)
     _update_disp_calc_force (P1->Edges,P2->Edges,Fdee,Lee,dt);
     _update_disp_calc_force (P1->Verts,P2->Faces,Fdvf,Lvf,dt);
     _update_disp_calc_force (P1->Faces,P2->Verts,Fdfv,Lfv,dt);
+    _update_disp_calc_force (P1->Verts,P2->Tori ,Fdvf,Lvt,dt);
+    _update_disp_calc_force (P1->Tori ,P2->Verts,Fdfv,Ltv,dt);
 
     //If there is at least a contact, increase the coordination number of the particles
     if (Nc>0) 
