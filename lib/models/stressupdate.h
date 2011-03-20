@@ -33,10 +33,11 @@ public:
     ~StressUpdate () { if (ODE!=NULL) delete ODE;  if (sta_1!=NULL) delete sta_1;  if (sta_ME!=NULL) delete sta_ME; }
 
     // Methods
-    void SetModel  (Model const * TheMdl);
-    void SetScheme (String const & Name);
-    void Update    (Vec_t const & DEps, State * Sta, Vec_t & DSig);
-    void GetInfo   (std::ostream & os, bool Header=false) const;
+    void   SetModel  (Model const * TheMdl);
+    void   SetScheme (String const & Name);
+    void   Update    (Vec_t const & DEps, State * Sta, Vec_t & DSig);
+    double Update    (double Dt, ATensor2 const & L, ATensor2 & F, State * Sta); ///< In: Dt, L:velocity_gradient, In/Out:updated_deformation_gradient, update state. Returns increment of strain energy / volume
+    void   GetInfo   (std::ostream & os, bool Header=false) const;
 
     // Data
     Model const * Mdl;
@@ -77,6 +78,13 @@ public:
     Vec_t deps_1, dsig_1, divs_1; // intermediate increments
     Vec_t dsig_2, divs_2;         // ME increments
     Vec_t sig_dif;                // ME - FE stress difference
+
+    // auxiliary variables for large deformation update
+    Vec_t    sig_1;      ///< Initial sig, before update
+    ATensor2 mF;         ///< Multiplier to update deformation gradient
+    ATensor2 Ia;         ///< Identity tensor (9x1)
+    ATensor2 DtL;        ///< Current Dt*L (velocity gradient)
+    bool     CorrectObj; ///< Correct objective stress increment 
 
     // auxiliary methods
     size_t GetMax (size_t PrevMax, size_t NewMax)
@@ -121,8 +129,10 @@ inline Model::StressUpdate::StressUpdate ()
       SSs      (0),
       DCit     (0),
       DCitEl   (0),
-      sta      (NULL)
+      sta      (NULL),
+      CorrectObj (false)
 {
+    Ia = 1.0,1.0,1.0, 0.0,0.0,0.0, 0.0,0.0,0.0;
 }
 
 inline void Model::StressUpdate::SetModel (Model const * TheMdl)
@@ -173,6 +183,11 @@ inline void Model::StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t 
     {
         deps = DEps;
         Mdl->TgIncs (sta, deps, dsig, divs);
+        if (CorrectObj)
+        {
+            AddSkewTimesOp1 (DtL, sta->Sig, dsig);
+            //printf("Model::StressUpdate::Update: Correcting objective stress increment\n");
+        }
         sta->Eps += deps;
         sta->Sig += dsig;
         sta->Ivs += divs;
@@ -310,6 +325,26 @@ inline void Model::StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t 
 
     // debug
     if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
+}
+
+inline double Model::StressUpdate::Update (double Dt, ATensor2 const & L, ATensor2 & F, State * Sta)
+{
+    // compute strain increment == rate of deformation D*Dt, in which D = Sym(L)
+    Sym (Dt, L, ncp, deps_1); // deps = Dt*sym(L)
+
+    // stress update
+    sta        = static_cast<EquilibState*>(Sta); // cannot use sta_1 or else, because the other Update will re-assign these
+    sig_1      = sta->Sig;
+    DtL        = Dt*L;
+    CorrectObj = true;
+    Update (deps_1, Sta, dsig_1);
+
+    // update deformation gradient
+    mF = Ia + L*Dt;
+    Dot (mF, F,  F); // F = mF*F
+
+    // Strain energy
+    return 0.5*Dot(sig_1+sta->Sig, deps_1); // strain energy / volume
 }
 
 inline void Model::StressUpdate::GetInfo (std::ostream & os, bool Header) const
