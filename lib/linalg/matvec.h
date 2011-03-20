@@ -1059,6 +1059,76 @@ inline void UnitVecDeriv (Vec3_t const & n, Vec3_t & nu, Ten2_t & dnudn, double 
 ///////////////////////////////////////////////////////////////////////////////////////////// Tensors ////////////
 
 
+// Assymmetric 3D tensor
+typedef blitz::TinyVector<double,9> ATensor2; ///< Assymmetric 2nd order tensor: for deformation gradient (F), velocity gradient (l), ...
+
+/** Symmetric part of a tensor multiplied by a. S = a*sym(T) = a * 0.5*(T + trn(T)). */
+inline void Sym (double a, ATensor2 const & T,  size_t NCp, Vec_t & S)
+{
+    S.change_dim (NCp);
+    if (NCp==4)
+    {
+        S(0) = a*T(0);
+        S(1) = a*T(1);
+        S(2) = a*T(2);
+        S(3) = a*0.5*(T(3)+T(6))*Util::SQ2;
+    }
+    else if (NCp==6)
+    {
+        S(0) = a*T(0);
+        S(1) = a*T(1);
+        S(2) = a*T(2);
+        S(3) = a*0.5*(T(3)+T(6))*Util::SQ2;
+        S(4) = a*0.5*(T(4)+T(7))*Util::SQ2;
+        S(5) = a*0.5*(T(5)+T(8))*Util::SQ2;
+    }
+    else throw new Fatal("matvec.h::Sym: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation. NCp=%zd is invalid",NCp);
+}
+
+/** Dot product: C=A*B  =>  C(i,j)=A(i,k)*B(k,j) */
+inline void Dot (ATensor2 const & A, ATensor2 const & B,  ATensor2 & C)
+{
+    C(0) = A(0)*B(0)+A(3)*B(6)+A(5)*B(8);
+    C(3) = A(0)*B(3)+A(3)*B(1)+A(5)*B(7);
+    C(5) = A(0)*B(5)+A(3)*B(4)+A(5)*B(2);
+    C(6) = A(6)*B(0)+A(1)*B(6)+A(4)*B(8);
+    C(1) = A(6)*B(3)+A(1)*B(1)+A(4)*B(7);
+    C(4) = A(6)*B(5)+A(1)*B(4)+A(4)*B(2);
+    C(8) = A(8)*B(0)+A(7)*B(6)+A(2)*B(8);
+    C(7) = A(8)*B(3)+A(7)*B(1)+A(2)*B(7);
+    C(2) = A(8)*B(5)+A(7)*B(4)+A(2)*B(2);
+}
+
+
+/** Add R to operation involving skew and symm tensors: R += w*S - S*w, in which w = skew(L) = 0.5*(L*L^T). */
+inline void AddSkewTimesOp1 (ATensor2 const & L, Vec_t const & S,  Vec_t & R, double Tol=1.0e-14)
+{
+    size_t ncp = size(R);
+    if (ncp==4)
+    {
+        R(0) += -(Util::SQ2*S(3)*L(6)-Util::SQ2*L(3)*S(3))/2.0;
+        R(1) +=  (Util::SQ2*S(3)*L(6)-Util::SQ2*L(3)*S(3))/2.0;
+        R(2) +=  0.0;
+        R(3) += -((S(1)-S(0))*L(6)+(S(0)-S(1))*L(3))/Util::SQ2;
+        double R4 = (Util::SQ2*S(3)*L(8)+(2*S(1)-2*S(2))*L(7)-Util::SQ2*S(3)*L(5)+(2*S(2)-2*S(1))*L(4))/(2.0*Util::SQ2);
+        double R5 = -((2*S(2)-2*S(0))*L(8)-Util::SQ2*S(3)*L(7)+(2*S(0)-2*S(2))*L(5)+Util::SQ2*S(3)*L(4))/(2.0*Util::SQ2);
+        if (fabs(R4)>Tol) throw new Fatal("matvec.h::SkewTimesOp1: R4=%g is not zero => Tensor cannot be represented by 4 components only",R4);
+        if (fabs(R5)>Tol) throw new Fatal("matvec.h::SkewTimesOp1: R5=%g is not zero => Tensor cannot be represented by 5 components only",R5);
+    }
+    else if (ncp==6)
+    {
+        R(0) += -(Util::SQ2*S(5)*L(8)+Util::SQ2*S(3)*L(6)-Util::SQ2*L(5)*S(5)-Util::SQ2*L(3)*S(3))/2.0;
+        R(1) += -(Util::SQ2*S(4)*L(7)-Util::SQ2*S(3)*L(6)-Util::SQ2*L(4)*S(4)+Util::SQ2*L(3)*S(3))/2.0;
+        R(2) +=  (Util::SQ2*S(5)*L(8)+Util::SQ2*S(4)*L(7)-Util::SQ2*L(5)*S(5)-Util::SQ2*L(4)*S(4))/2.0;
+        R(3) += -(Util::SQ2*S(4)*L(8)+Util::SQ2*S(5)*L(7)+(2*S(1)-2*S(0))*L(6)-Util::SQ2*L(4)*S(5)-Util::SQ2*S(4)*L(5)+(2*S(0)-2*S(1))*L(3))/(2.0*Util::SQ2);
+        R(4) +=  (Util::SQ2*S(3)*L(8)+(2*S(1)-2*S(2))*L(7)+Util::SQ2*S(5)*L(6)-Util::SQ2*L(3)*S(5)-Util::SQ2*S(3)*L(5)+(2*S(2)-2*S(1))*L(4))/(2.0*Util::SQ2);
+        R(5) += -((2*S(2)-2*S(0))*L(8)-Util::SQ2*S(3)*L(7)+Util::SQ2*S(4)*L(6)+(2*S(0)-2*S(2))*L(5)-Util::SQ2*L(3)*S(4)+Util::SQ2*S(3)*L(4))/(2.0*Util::SQ2);
+    }
+    else throw new Fatal("matvec.h::SkewTimesOp1: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation. NCp=%zd is invalid",ncp);
+}
+
+
+
 /** Multiplication of tensor's matrix by a vector (similar to Cauchy's rule). {t} = [Sig]*{n}. */
 inline void Mult (Vec_t const & Sig, Vec3_t const & n, Vec3_t & t)
 {
