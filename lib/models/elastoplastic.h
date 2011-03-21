@@ -195,12 +195,14 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, size_t NIv, 
             {
                 // yield surface
                 double A = (1.0+sphi)/(1.0-sphi);
-                SigA = -A, -1., -1., 0., 0., 0.;
+                if (NCps==4) SigA = -A, -1., -1., 0.;
+                else         SigA = -A, -1., -1., 0., 0., 0.;
                 SMP.Calc (SigA, false);
                 kGE = SMP.sq/SMP.sp;
                 // potential
                 A      = (1.0+spsi)/(1.0-spsi);
-                SigA   = -A, -1., -1., 0., 0., 0.;
+                if (NCps==4) SigA = -A, -1., -1., 0.;
+                else         SigA = -A, -1., -1., 0., 0., 0.;
                 SMP.Calc (SigA, false);
                 kGEpot = SMP.sq/SMP.sp;
             }
@@ -444,7 +446,7 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
             Ivs0     = sta->Ivs;
             crossing = true;
         }
-        else if (numL<-qTol) // (numL<0.0) does not work, since it may be equal to -0.0 => neutral loading
+        else if (numL<-1.e-5)//qTol) // (numL<0.0) does not work, since it may be equal to -0.0 => neutral loading
         {
             // moving stress state slighlty to the inside of the yield surface in order to have f=-FTol
             double df   = -FTol - f;

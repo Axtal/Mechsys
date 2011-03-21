@@ -80,11 +80,16 @@ public:
     Vec_t sig_dif;                // ME - FE stress difference
 
     // auxiliary variables for large deformation update
-    Vec_t    sig_1;      ///< Initial sig, before update
     ATensor2 mF;         ///< Multiplier to update deformation gradient
     ATensor2 Ia;         ///< Identity tensor (9x1)
     ATensor2 DtL;        ///< Current Dt*L (velocity gradient)
+    ATensor2 dtL;        ///< Step dt*L (velocity gradient)
+    ATensor2 dtL_1;      ///< Multi-Step dt*L (velocity gradient)
+    Vec_t    sig_tmp;    ///< Initial sig, before update
+    Vec_t    DEps_in;    ///< DEps from update (large) to update (small)
+    Vec_t    dsig_out;   ///< dsig out from update (small)
     bool     CorrectObj; ///< Correct objective stress increment 
+    EquilibState * sta_in;
 
     // auxiliary methods
     size_t GetMax (size_t PrevMax, size_t NewMax)
@@ -181,6 +186,7 @@ inline void Model::StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t 
 
     if (Scheme==SingleFE_t) // without intersection detection (should be used for linear elasticity only)
     {
+        throw new Fatal("Model::StressUpdate::Update: SingleFE_t is deactivated");
         deps = DEps;
         Mdl->TgIncs (sta, deps, dsig, divs);
         if (CorrectObj)
@@ -210,10 +216,12 @@ inline void Model::StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t 
             // update to intersection
             deps = aint*DEps;
             Mdl->TgIncs (sta, deps, dsig, divs);
+            if (CorrectObj) { dtL=aint*DtL;  AddSkewTimesOp1 (dtL, sta->Sig, dsig); }
             sta->Eps += deps;
             sta->Sig += dsig;
             sta->Ivs += divs;
             deps = fabs(1.0-aint)*DEps; // remaining of DEps to be applied
+            if (CorrectObj) dtL = fabs(1.0-aint)*DtL;
 
             // change loading flag
             ldg           = true;
@@ -228,7 +236,11 @@ inline void Model::StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t 
             // debug
             if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
         }
-        else deps = DEps; // update with full DEps
+        else
+        {
+            deps = DEps; // update with full DEps
+            if (CorrectObj) dtL = DtL;
+        }
 
         // for each pseudo time T
         T      = 0.0;
@@ -245,10 +257,12 @@ inline void Model::StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t 
             // FE and ME increments
             deps_1 = dT*deps;
             Mdl->TgIncs (sta, deps_1, dsig_1, divs_1);
+            if (CorrectObj) { dtL_1=dT*dtL;  AddSkewTimesOp1 (dtL_1, sta->Sig, dsig_1); }
             sta_1->Eps  = sta->Eps + deps_1;
             sta_1->Sig  = sta->Sig + dsig_1;
             sta_1->Ivs  = sta->Ivs + divs_1;
             Mdl->TgIncs (sta_1, deps_1, dsig_2, divs_2);
+            if (CorrectObj) AddSkewTimesOp1 (dtL_1, sta_1->Sig, dsig_2);
             sta_ME->Sig = sta->Sig + 0.5*(dsig_1+dsig_2);
             sta_ME->Ivs = sta->Ivs + 0.5*(divs_1+divs_2);
 
@@ -329,22 +343,30 @@ inline void Model::StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t 
 
 inline double Model::StressUpdate::Update (double Dt, ATensor2 const & L, ATensor2 & F, State * Sta)
 {
-    // compute strain increment == rate of deformation D*Dt, in which D = Sym(L)
-    Sym (Dt, L, ncp, deps_1); // deps = Dt*sym(L)
-
-    // stress update
-    sta        = static_cast<EquilibState*>(Sta); // cannot use sta_1 or else, because the other Update will re-assign these
-    sig_1      = sta->Sig;
-    DtL        = Dt*L;
-    CorrectObj = true;
-    Update (deps_1, Sta, dsig_1);
-
     // update deformation gradient
     mF = Ia + L*Dt;
     Dot (mF, F,  F); // F = mF*F
 
+    // compute strain increment == rate of deformation D*Dt, in which D = Sym(L)
+    Sym (Dt, L, ncp, DEps_in); // DEps_in = Dt*sym(L)
+
+    // stress update
+    sta_in  = static_cast<EquilibState*>(Sta); // cannot use sta_1 or else, because the other Update will re-assign these
+    sig_tmp = sta_in->Sig;
+    if (Mdl->UseUpdateSta)
+    {
+        Mdl->UpdateSta (F, sta_in);
+    }
+    else
+    {
+        DtL        = Dt*L;
+        CorrectObj = true;
+        Update (DEps_in, sta_in, dsig_out);
+        CorrectObj = false;
+    }
+
     // Strain energy
-    return 0.5*Dot(sig_1+sta->Sig, deps_1); // strain energy / volume
+    return 0.5*Dot(sig_tmp+sta_in->Sig, DEps_in); // strain energy / volume
 }
 
 inline void Model::StressUpdate::GetInfo (std::ostream & os, bool Header) const

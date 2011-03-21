@@ -1099,7 +1099,6 @@ inline void Dot (ATensor2 const & A, ATensor2 const & B,  ATensor2 & C)
     C(2) = A(8)*B(5)+A(7)*B(4)+A(2)*B(2);
 }
 
-
 /** Add R to operation involving skew and symm tensors: R += w*S - S*w, in which w = skew(L) = 0.5*(L*L^T). */
 inline void AddSkewTimesOp1 (ATensor2 const & L, Vec_t const & S,  Vec_t & R, double Tol=1.0e-14)
 {
@@ -1127,6 +1126,38 @@ inline void AddSkewTimesOp1 (ATensor2 const & L, Vec_t const & S,  Vec_t & R, do
     else throw new Fatal("matvec.h::SkewTimesOp1: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation. NCp=%zd is invalid",ncp);
 }
 
+/** Determinant of F. */
+inline double Det (ATensor2 const & F)
+{
+    return -F(3)*(F(2)*F(6)-F(4)*F(8)) + F(5)*(F(6)*F(7)-F(1)*F(8)) + F(0)*(F(1)*F(2)-F(4)*F(7));
+}
+
+/** Calculate left Cauchy-Green tensor: b = F*F^T. */
+inline void CalcLCauchyGreen (ATensor2 const & F,  size_t NCp, Vec_t & b, double Tol=1.0e-14)
+{
+    b.change_dim (NCp);
+    if (NCp==4)
+    {
+        b(0) = pow(F(5),2.0)+pow(F(3),2.0)+pow(F(0),2.0);
+        b(1) = pow(F(6),2.0)+pow(F(4),2.0)+pow(F(1),2.0);
+        b(2) = pow(F(8),2.0)+pow(F(7),2.0)+pow(F(2),2.0);
+        b(3) = Util::SQ2*F(0)*F(6)+Util::SQ2*F(4)*F(5)+Util::SQ2*F(1)*F(3);
+        double b4 = Util::SQ2*F(6)*F(8)+Util::SQ2*F(1)*F(7)+Util::SQ2*F(2)*F(4);
+        double b5 = Util::SQ2*F(0)*F(8)+Util::SQ2*F(3)*F(7)+Util::SQ2*F(2)*F(5);
+        if (fabs(b4)>Tol) throw new Fatal("matvec.h::CalcLCauchyGreen: b4=%g is not zero => Tensor cannot be represented by 4 components only",b4);
+        if (fabs(b5)>Tol) throw new Fatal("matvec.h::CalcLCauchyGreen: b5=%g is not zero => Tensor cannot be represented by 5 components only",b5);
+    }
+    else if (NCp==6)
+    {
+        b(0) = pow(F(5),2.0)+pow(F(3),2.0)+pow(F(0),2.0);
+        b(1) = pow(F(6),2.0)+pow(F(4),2.0)+pow(F(1),2.0);
+        b(2) = pow(F(8),2.0)+pow(F(7),2.0)+pow(F(2),2.0);
+        b(3) = Util::SQ2*F(0)*F(6)+Util::SQ2*F(4)*F(5)+Util::SQ2*F(1)*F(3);
+        b(4) = Util::SQ2*F(6)*F(8)+Util::SQ2*F(1)*F(7)+Util::SQ2*F(2)*F(4);
+        b(5) = Util::SQ2*F(0)*F(8)+Util::SQ2*F(3)*F(7)+Util::SQ2*F(2)*F(5);
+    }
+    else throw new Fatal("matvec.h::CalcLCauchyGreen: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation. NCp=%zd is invalid",NCp);
+}
 
 
 /** Multiplication of tensor's matrix by a vector (similar to Cauchy's rule). {t} = [Sig]*{n}. */
@@ -1808,6 +1839,9 @@ inline double Calc_K (double E, double nu) { return E/(3.0*(1.0-2.0*nu)); }
 
 /** Calculate G given E and nu. */
 inline double Calc_G (double E, double nu) { return E/(2.0*(1.0+nu)); }
+
+/** Calculate lam given E and nu. */
+inline double Calc_lam (double E, double nu) { return E*nu/((1.0+nu)*(1.0-2.0*nu)); }
 
 /** Calculate G given K and nu. */
 inline double Calc_G_ (double K, double nu) { return 3.0*(1.0-2.0*nu)*K/(2.0*(1.0+nu)); }
