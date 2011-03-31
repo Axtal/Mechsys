@@ -310,18 +310,19 @@ class FCrits:
     # th   : show theta angles
     # ref  : reference lines
     # pos  : positive values
+    # full : 360 degrees
     # fsz  : font size
-    def rst (self, th=False, ref=False, pos=False, fsz=10):
+    def rst (self, th=False, ref=False, full=True, pos=False, fsz=10):
 
         # radius
         r = self.sc*phi_calc_M(self.phi,'oct') if self.r==None else self.r
 
         # constants
-        cf = 0.2
         cr = 1.1
+        cf = 0.2 if not full else cr
         l1 = (             0.0  , cr*r            ) # line: 1 end points
-        l2 = (-cr*r*cos(pi/6.0) ,-cr*r*sin(pi/6.0)) # line: 2 end points
-        l3 = ( cr*r*cos(pi/6.0) ,-cr*r*sin(pi/6.0)) # line: 3 end points
+        l2 = (-cf*r*cos(pi/6.0) ,-cf*r*sin(pi/6.0)) # line: 2 end points
+        l3 = ( cf*r*cos(pi/6.0) ,-cf*r*sin(pi/6.0)) # line: 3 end points
         l4 = (-cr*r*cos(pi/6.0) , cr*r*sin(pi/6.0)) # line: 4 = neg 1 end points
         lo = (-cr*r*cos(pi/3.0) , cr*r*sin(pi/3.0)) # line: origin of cylindrical system
 
@@ -332,12 +333,14 @@ class FCrits:
 
         # reference
         plot ([0.0, l4[0]],[0.0, l4[1]],'--', color='grey', zorder=-1)
-        plot ([0.0,-l4[0]],[0.0, l4[1]],'--', color='grey', zorder=-1)
-        plot ([0.0,   0.0],[0.0,-l1[1]],'--', color='grey', zorder=-1)
+        if full:
+            plot ([0.0,-l4[0]],[0.0, l4[1]],'--', color='grey', zorder=-1)
+            plot ([0.0,   0.0],[0.0,-l1[1]],'--', color='grey', zorder=-1)
         if ref:
             plot ([0.0, lo[0]],[0.0, lo[1]],'--', color='grey', zorder=-1)
-            plot ([0.0,-lo[0]],[0.0, lo[1]],'--', color='grey', zorder=-1)
-            plot ([-cr*r,cr*r],[0.0,0.0],   '--', color='grey', zorder=-1)
+            if full:
+                plot ([0.0,-lo[0]],[0.0, lo[1]],'--', color='grey', zorder=-1)
+                plot ([-cr*r,cr*r],[0.0,0.0],   '--', color='grey', zorder=-1)
 
         # text
         if self.sxyz: k1,k2,k3 = 'z','y','x'
@@ -473,8 +476,10 @@ class FCrits:
     # Legend
     # ======
     def leg (self, fsz=8, ncol=2):
-        legend (self.leg_plt, self.leg_txt, bbox_to_anchor=(0,0,1,1), loc=3, ncol=ncol, mode='expand',
-                borderaxespad=0., handlelength=3, prop={'size':fsz})
+        #return legend (self.leg_plt, self.leg_txt, bbox_to_anchor=(0,0,1,-1), loc=3, ncol=ncol, mode='expand',
+                   #borderaxespad=0., handlelength=3, prop={'size':fsz})
+        return legend (self.leg_plt, self.leg_txt, bbox_to_anchor=(0.,1.02,1.,.102), loc=3, ncol=ncol, mode='expand',
+                   borderaxespad=0., handlelength=3, prop={'size':fsz})
 
 
     # Plot 3D failure criteria

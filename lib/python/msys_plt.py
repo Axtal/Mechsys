@@ -195,8 +195,9 @@ class Plotter:
             plot (Sa/pcoef, Sb/pcoef, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=ms, zorder=zorder)
             if self.mark_max: plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
             if self.mark_lst: plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, '^', color=clr)
-            Grid ()
+            #Grid ()
             axis ('equal')
+            axis ('off')
 
         # 6) Ek, Q/P ---------------------------------------------------------------------------
         if self.one==6 or self.one<0 and not self.six and not self.four:
