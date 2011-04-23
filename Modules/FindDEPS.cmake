@@ -28,6 +28,7 @@ OPTION(A_MAKE_TERM_NOCOLORS "Don't use colors when printing to terminal ?"      
 OPTION(A_MAKE_STDVECTOR     "Use std::vector instead of own implemenatation ?"     OFF)
                                                                                    
 # Options                                                                          
+OPTION(A_USE_THREAD         "Use c++0x multithreading ? "                          OFF)
 OPTION(A_USE_MPI            "Use OpenMPI ? "                                       OFF)
 OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
 OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
@@ -349,3 +350,8 @@ if(IGRAPH_FOUND)
 else(IGRAPH_FOUND)
     SET (MISSING "${MISSING} IGraph")
 endif(IGRAPH_FOUND)
+
+#25
+IF(A_USE_THREAD)
+    ADD_DEFINITIONS (-DUSE_THREAD -std=c++0x -pthread)
+ENDIF(A_USE_THREAD)

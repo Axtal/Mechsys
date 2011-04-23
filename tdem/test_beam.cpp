@@ -36,11 +36,14 @@ using std::endl;
 struct UserData
 {
     Particle *         p;            // the array of particles at which the force is to be applied
+    Array<Vec3_t  >    vm0;          // value of the vectors close to the middle section
+    Array<Vec3_t *>    vm;           // pointers to the vectors close to the middle section
     String             test;         // Type of test vibraiton or tension
     double             A;            // Area of the plate for stress calculation
     double             Am;           // vibration amplitude
     double             ome;          // vibration frequency
     double             sy;           // Stress State
+    double             Tf;           // Final time
     Vec3_t             L0;           // Initial dimensions
     std::ofstream      oss_ss;       // file for stress strain data
 };
@@ -50,8 +53,12 @@ void Setup (DEM::Domain & Dom, void * UD)
     // force at -3
     UserData & dat = (*static_cast<UserData *>(UD));
     if (dat.test=="vibration")    dat.p->Ff=0.0,0.0,dat.Am*sin(dat.ome*Dom.Time);
-    if (dat.test=="bending")      dat.p->Ff=0.0,0.0,dat.Am;
-    dat.sy = dat.p->F(1)/(dat.L0(0)*dat.L0(2));
+    if (dat.test=="bending")
+    {
+        if (Dom.Time < 0.5*dat.Tf) dat.p->Ff=0.0,0.0,dat.Am*2*Dom.Time/dat.Tf;
+        else                       dat.p->Ff=0.0,0.0,dat.Am;
+    }
+    dat.sy = dat.p->F(1)/dat.A;
 }
 
 void Report (DEM::Domain & Dom, void * UD)
@@ -64,6 +71,7 @@ void Report (DEM::Domain & Dom, void * UD)
             String fs;
             fs.Printf("%s_walls.res",Dom.FileKey.CStr());
             dat.oss_ss.open(fs.CStr());
+            dat.sy = dat.p->F(1)/dat.A;
             // Output of the current time, the stress state sx, and the strains ex,ey and ez
             dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "sy" << Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez" << std::endl;
         }
@@ -78,6 +86,35 @@ void Report (DEM::Domain & Dom, void * UD)
             dat.oss_ss << Util::_10_6 << Dom.Time << Util::_8s << dat.sy << Util::_8s << ex << Util::_8s << ey << Util::_8s << ez << std::endl;
         }
         else dat.oss_ss.close();
+    }
+    if (dat.test=="bending")
+    {
+        if (Dom.idx_out==0)
+        {
+            double tol = dat.L0(2)/20.0;
+            for (size_t i=0;i<Dom.Particles.Size();i++)
+            {
+                for (size_t j=0;j<Dom.Particles[i]->Verts.Size();j++)
+                {
+                    if (fabs((*Dom.Particles[i]->Verts[j])(2))<tol)
+                    {
+                        dat.vm.Push (Dom.Particles[i]->Verts[j]);
+                        dat.vm0.Push(Vec3_t(*Dom.Particles[i]->Verts[j]));
+                    }
+                }
+            }
+        }
+        String fs;
+        fs.Printf("%s_%08d.res",Dom.FileKey.CStr(),Dom.idx_out);
+        dat.oss_ss.open(fs.CStr());
+        dat.oss_ss << Util::_10_6 << "x" << Util::_8s << "y" << Util::_8s << "z" << Util::_8s <<"ux" << Util::_8s << "uy" << Util::_8s << "uz" << std::endl;
+        for (size_t i=0;i<dat.vm.Size();i++)
+        {
+            dat.oss_ss << Util::_8s <<            dat.vm0[i](0) << Util::_8s <<            dat.vm0[i](1) << Util::_8s <<            dat.vm0[i](2);
+            dat.oss_ss << Util::_8s << (*dat.vm[i])(0)-dat.vm0[i](0) << Util::_8s << (*dat.vm[i])(1)-dat.vm0[i](1) << Util::_8s << (*dat.vm[i])(2)-dat.vm0[i](2) << std::endl;
+        }
+        dat.oss_ss.close();
+
     }
 }
 
@@ -176,15 +213,15 @@ int main(int argc, char **argv) try
     dat.A    = Lx*Ly;
     dat.Am   = Am;
     dat.ome  = ome;
+    dat.Tf   = Tf;
     Vec3_t Xmin,Xmax;
     dom.BoundingBox(Xmin,Xmax);
     dat.L0   = Xmax - Xmin;
 
-    dom.Center();
     dom.GenBoundingPlane(-2,R,1.0,true);
 
     // input
-    double cam_x=2*Ly, cam_y=Ly/2.0, cam_z=0;
+    double cam_x=Ly, cam_y=0.0, cam_z=0.0;
     dom.CamPos = cam_x, cam_y, cam_z;
 
     //identify the moving lid

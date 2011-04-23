@@ -29,7 +29,7 @@ using std::endl;
 int main(int argc, char **argv) try
 {
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/"porous", /*Is3D*/false,1, /*Nx*/200, /*Ny*/200,1,1,1);
+	LBM::Lattice l(/*FileKey*/"porous", /*Is3D*/false,1, /*Nx*/400, /*Ny*/400,1,1,1);
 	
 	// Set constants
 	l.SetGSolid(0.0);
@@ -43,9 +43,9 @@ int main(int argc, char **argv) try
 	grains.Read("circles.out");
 	for (size_t i=0; i<grains["Xc"].Size(); ++i)
 	{
-		double xc = grains["Xc"][i]*200.0;
-		double yc = grains["Yc"][i]*200.0;
-		double r  = grains["R" ][i]*190.0;
+		double xc = grains["Xc"][i]*400.0;
+		double yc = grains["Yc"][i]*400.0;
+		double r  = grains["R" ][i]*390.0;
 		for (size_t i=0; i<l.Nx(); ++i)
 		for (size_t j=0; j<l.Ny(); ++j)
 		{

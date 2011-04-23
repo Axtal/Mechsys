@@ -32,15 +32,15 @@ int main(int argc, char **argv) try
 	LBM::Lattice l(/*FileKey*/"drop", /*Is3D*/false,1.0/6.0, /*Nx*/100, /*Ny*/100,1,1,1);
 
 	// Set constants
-	l.SetG(-200.0)->SetGSolid(-400.0);
+	l.SetG(-200.0)->SetGSolid(-0.0);
     l.SetTau(1.0);
 
 	// Set Gravity
-	l.SetGravity (0.0, -0.0005);
+	l.SetGravity (0.0, -0.000);
 
 	// Set walls (top and bottom)
-	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid(true, -1000);
-	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid(true, -1000);
+	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid(true, 0.0);
+	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid(true, 0.0);
 
 	// Set drop
 	int obsX   = l.Nx()/2; // x position

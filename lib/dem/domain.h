@@ -49,6 +49,45 @@
 namespace DEM
 {
 
+#ifdef USE_THREAD
+void GlobalForce(Array<Interacton *> * I, double dt, size_t n, size_t Np)
+{
+	size_t Ni = I->Size()/Np;
+	for (size_t i=n*Ni;i<(n+1)*Ni;i++)
+	{
+		(*I)[i]->CalcForce(dt);
+	}
+	if (n==Np-1)
+	{
+		for (size_t i=I->Size()-1;i>I->Size()-1-I->Size()%Np;i--)
+		{
+			(*I)[i]->CalcForce(dt);
+		}
+	}
+}
+
+void GlobalMove(Array<Particle *> * P, double dt, size_t n, size_t Np)
+{
+	size_t Ni = P->Size()/Np;
+	for (size_t i=n*Ni;i<(n+1)*Ni;i++)
+	{
+		(*P)[i]->Rotate(dt);
+		(*P)[i]->Translate(dt);
+	}
+	if (n==Np-1)
+	{
+		for (size_t i=P->Size()-1;i>P->Size()-1-P->Size()%Np;i--)
+		{
+		    (*P)[i]->Rotate(dt);
+		    (*P)[i]->Translate(dt);
+		}
+	}
+}
+
+#endif
+
+
+    
 class Domain
 {
 public:
@@ -86,7 +125,7 @@ public:
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
     void Initialize        (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
     void Solve             (double tf, double dt, double dtOut, ptFun_t ptSetup=NULL, ptFun_t ptReport=NULL,
-                            char const * FileKey=NULL, bool RenderVideo=true);                                  ///< Run simulation
+                            char const * FileKey=NULL, bool RenderVideo=true, size_t Nproc=1);                  ///< Run simulation
     void WritePOV          (char const * FileKey);                                                              ///< Write POV file
     void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
 #ifdef USE_HDF5    
@@ -1257,7 +1296,7 @@ inline void Domain::Initialize (double dt)
 
 }
 
-inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * TheFileKey, bool RenderVideo)
+inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * TheFileKey, bool RenderVideo, size_t Nproc)
 {
     // Assigning some domain particles especifically to the output
     FileKey.Printf("%s",TheFileKey);
@@ -1339,10 +1378,23 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 #endif
 
         // calc contact forces: collision and bonding (cohesion)
+#ifdef USE_THREAD
+        // declare a thread array for the interactons
+		vector<std::thread> IT;
+		for (size_t n=0;n<Nproc;n++)
+		{
+			IT.push_back(std::thread(std::bind(GlobalForce,&Interactons,dt,n,Nproc)));
+		}
+		for (size_t n=0;n<Nproc;n++)
+		{
+			IT[n].join();
+		}
+#else
         for (size_t i=0; i<Interactons.Size(); i++)
         {
             Interactons[i]->CalcForce (dt);
         }
+#endif
 
         // calculate the collision energy
         for (size_t i=0; i<CInteractons.Size(); i++)
@@ -1358,12 +1410,28 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         CommunicateForce();
 #endif
 
+
         // move particles
+#ifdef USE_THREAD
+        // declare a thread array for the particles
+		vector<std::thread> MT;
+		for (size_t n=0;n<Nproc;n++)
+		{
+             //call the function move for each thread
+			MT.push_back(std::thread(std::bind(GlobalMove,&Particles,dt,n,Nproc)));
+		}
+		for (size_t n=0;n<Nproc;n++)
+		{
+            // wait for all the threads to finish
+			MT[n].join();
+		}
+#else 
         for (size_t i=0; i<Particles.Size(); i++)
         {
             Particles[i]->Rotate    (dt);
             Particles[i]->Translate (dt);
         }
+#endif
 
         // output
         if (Time>=tout)

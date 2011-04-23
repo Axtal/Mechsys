@@ -156,8 +156,10 @@ inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
     P2              = Pt2;
     I1              = P1->Index;
     I2              = P2->Index;
-    Kn              = 2*ReducedValue(Pt1->Props.Kn,Pt2->Props.Kn);
-    Kt              = 2*ReducedValue(Pt1->Props.Kt,Pt2->Props.Kt);
+    double r1       = pow(P1->Props.V,1.0/3.0);
+    double r2       = pow(P2->Props.V,1.0/3.0);
+    Kn              = (r1+r2)*ReducedValue(Pt1->Props.Kn,Pt2->Props.Kn);
+    Kt              = (r1+r2)*ReducedValue(Pt1->Props.Kt,Pt2->Props.Kt);
     Gn              = 2*ReducedValue(Pt1->Props.Gn,Pt2->Props.Gn)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
     Gt              = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
     Mu              = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
@@ -267,6 +269,10 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             Ftnet += Kt*FMap[p];
             Vec3_t F = Fn + Kt*FMap[p] + Gn*dot(n,vrel)*n + Gt*vt;
             if (dot(F,n)<0) F-=dot(F,n)*n;
+#ifdef USE_THREAD
+            std::lock_guard<std::mutex> lk1(P1->mtex);
+            std::lock_guard<std::mutex> lk2(P2->mtex);
+#endif
             P1->F += -F;
             P2->F +=  F;
             dEvis += (Gn*dot(vrel-vt,vrel-vt)+Gt*dot(vt,vt))*dt;
@@ -363,6 +369,10 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
 
     Vec3_t Tt = P1->Props.R*cross(Normal,Ft);
     Vec3_t T;
+#ifdef USE_THREAD
+    std::lock_guard<std::mutex> lk1(P1->mtex);
+    std::lock_guard<std::mutex> lk2(P2->mtex);
+#endif
     Quaternion_t q;
     Conjugate (P1->Q,q);
     Rotation  (Tt,q,T);
@@ -517,6 +527,10 @@ inline void BInteracton::CalcForce(double dt)
         Vec3_t td   = pro2-pro1-dot(pro2-pro1,n)*n;
         Vec3_t Ft   = -Bt*td/L0;
 
+#ifdef USE_THREAD
+        std::lock_guard<std::mutex> lk1(P1->mtex);
+        std::lock_guard<std::mutex> lk2(P2->mtex);
+#endif
         //Adding forces and torques
         Fnet   = Fn+Ft;
         P1->F -= Fnet;

@@ -160,7 +160,7 @@ struct Cell; ///< Forward declaration due to the following definitions
 struct Share
 {
     Cell * C; ///< The cell
-    int    N; ///< Local node index. Example: 2D=>0,1,2,3, 3D=>0,1,2,3,4,5,6,7
+    size_t N; ///< Local node index. Example: 2D=>0,1,2,3, 3D=>0,1,2,3,4,5,6,7
 };
 
 struct Vertex

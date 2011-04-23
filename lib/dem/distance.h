@@ -99,10 +99,10 @@ inline void Distance (Vec3_t const & V, Face const & F, Vec3_t & Xi, Vec3_t & Xf
 
     // find the projection
     double a   = dot(*F.Edges[0]->X0-V, F.Edges[0]->dL);
-    double b   = dot(F.Edges[0]->dL,   F.Edges[0]->dL);
-    double c   = dot(F.Edges[0]->dL,   F.Edges[1]->dL);
+    double b   = dot(F.Edges[0]->dL   , F.Edges[0]->dL);
+    double c   = dot(F.Edges[0]->dL   , F.Edges[1]->dL);
     double d   = dot(*F.Edges[0]->X0-V, F.Edges[1]->dL);
-    double f   = dot(F.Edges[1]->dL,   F.Edges[1]->dL);
+    double f   = dot(F.Edges[1]->dL   , F.Edges[1]->dL);
     double s   = (c*d-a*f)/(b*f-c*c);
     double t   = (a*c-b*d)/(b*f-c*c);
     Vec3_t pro = *F.Edges[0]->X0 + s*F.Edges[0]->dL + t*F.Edges[1]->dL;
@@ -221,4 +221,5 @@ inline double Distance (Torus const & T1, Vec3_t const & V0)
     Distance (T1,V0,Xi,Xf);
     return norm(Xf-Xi);
 }
+
 #endif // MECHSYS_DEM_DISTANCE_H

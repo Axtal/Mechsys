@@ -22,6 +22,9 @@
 
 // Std lib
 #include <iostream>
+#ifdef USE_THREAD
+    #include <thread>
+#endif
 
 // MechSys
 #include <mechsys/dem/face.h>
@@ -129,6 +132,9 @@ public:
     void ReceiveForce               (int MsgID);        ///< Receive force
 #endif
 
+#ifdef USE_THREAD
+    std::mutex mtex;                 ///< to protect variables in multithreading
+#endif
 
     // Data -- in MPI data type
     int             Tag;             ///< Tag of the particle

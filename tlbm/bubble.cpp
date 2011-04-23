@@ -56,6 +56,7 @@ int main(int argc, char **argv) try
 	{
 		
 		double rho0 = (200.0 +(1.0*rand())/RAND_MAX)*h*h;
+		//double rho0 = (380.0 +(2.0*rand())/RAND_MAX)*h*h;
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
 		l.GetCell(i,j)->Initialize (rho0, v0,l.Cs());
 

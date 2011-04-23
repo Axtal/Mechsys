@@ -450,7 +450,10 @@ int main(int argc, char **argv) try
 {
     // set the simulation domain ////////////////////////////////////////////////////////////////////////////
 
-    if (argc!=2) throw new Fatal("This program must be called with one argument: the name of the data input file without the '.inp' suffix.\nExample:\t %s filekey\n",argv[0]);
+    if (argc<2) throw new Fatal("This program must be called with one argument: the name of the data input file without the '.inp' suffix.\nExample:\t %s filekey\n",argv[0]);
+    //number of threads
+    size_t Nproc = 1; 
+    if (argc==3) Nproc=atoi(argv[2]);
     String filekey  (argv[1]);
     String filename (filekey+".inp");
     if (!Util::FileExists(filename)) throw new Fatal("File <%s> not found",filename.CStr());
@@ -585,10 +588,10 @@ int main(int argc, char **argv) try
     ResetEps  (dom,dat);
     SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
     dat.tspan = T0/2.0 - dom.Time;
-    dom.Solve  (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_a.CStr(),RenderVideo);
+    dom.Solve  (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_a.CStr(),RenderVideo,Nproc);
     SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
     dat.tspan = T0 - dom.Time;
-    dom.Solve (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_b.CStr(),RenderVideo);
+    dom.Solve (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_b.CStr(),RenderVideo,Nproc);
 
     // stage 2: The proper triaxial test /////////////////////////////////////////////////////////////////////////
     String fkey_c(filekey+"_c");
@@ -602,7 +605,7 @@ int main(int argc, char **argv) try
     ResetEps  (dom,dat);
     SetTxTest (sigf, peps, depsdt, thf*M_PI/180, alpf*M_PI/180, isfailure, dat, dom);
     dat.tspan = Tf - dom.Time;
-    dom.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_c.CStr(),RenderVideo);
+    dom.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_c.CStr(),RenderVideo,Nproc);
 
     return 0;
 }
