@@ -318,7 +318,7 @@ class FCrits:
         r = self.sc*phi_calc_M(self.phi,'oct') if self.r==None else self.r
 
         # constants
-        cr = 1.1
+        cr = 1.0
         cf = 0.2 if not full else cr
         l1 = (             0.0  , cr*r            ) # line: 1 end points
         l2 = (-cf*r*cos(pi/6.0) ,-cf*r*sin(pi/6.0)) # line: 2 end points
@@ -391,6 +391,7 @@ class FCrits:
             samax =  1.1*r if self.samax==None else self.samax
             sbmin = -1.1*r if self.sbmin==None else self.sbmin
             sbmax =  1.1*r if self.sbmax==None else self.sbmax
+            samax += 0.3*(samax-samin)
             dsa = (samax-samin)/np
             dsb = (sbmax-sbmin)/np
             for i in range(np):
@@ -401,6 +402,11 @@ class FCrits:
                     else:         s = oct_calc_s123 (x[i,j], y[i,j], self.sc)
                     sig    = matrix([[s[0]],[s[1]],[s[2]],[0.0]])
                     f[i,j] = self.func (sig, typ)
+            if show_phi:
+                fmt = '%g'
+                s   = '$\phi_{comp}=' + fmt + '^\circ$'
+                self.rst_txt.append (text(0.0, 3.0*sbmin, s%self.phi, fontsize=fsz, ha='center', va='top'))
+                #self.rst_txt.append (text(0.5, 0.0, s%self.phi, fontsize=fsz, ha='center', va='top', transform=gca().transAxes))
 
         # data for p-q plane
         elif plane=='pq':
@@ -464,22 +470,16 @@ class FCrits:
             self.leg_plt.append (plot ([0],[0], color=clr, linestyle=lst, linewidth=lwd))
             self.leg_txt.append (self.names (typ))
 
-        # show phi
-        if show_phi:
-            fmt  = '%g'
-            sphi = sin(self.phi*pi/180.0)
-            q    = self.sc * 2.0*sqrt(2.0)*sphi/(3.0+sphi)
-            s    = '$\phi=' + fmt + '^\circ$'
-            text (0.0, -1.05*q, s%self.phi, fontsize=fsz, va='top')
-
 
     # Legend
     # ======
     def leg (self, fsz=8, ncol=2):
         #return legend (self.leg_plt, self.leg_txt, bbox_to_anchor=(0,0,1,-1), loc=3, ncol=ncol, mode='expand',
                    #borderaxespad=0., handlelength=3, prop={'size':fsz})
-        return legend (self.leg_plt, self.leg_txt, bbox_to_anchor=(0.,1.02,1.,.102), loc=3, ncol=ncol, mode='expand',
-                   borderaxespad=0., handlelength=3, prop={'size':fsz})
+        l = legend (self.leg_plt, self.leg_txt, bbox_to_anchor=(0.,1.02,1.,.102), loc=3, ncol=ncol, mode='expand',
+                    borderaxespad=0., handlelength=3, prop={'size':fsz})
+        if len(self.rst_txt)>0: return [l.legendPatch] + self.rst_txt
+        else:                   return [l.legendPatch]
 
 
     # Plot 3D failure criteria

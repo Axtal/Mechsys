@@ -6,7 +6,7 @@ fi
 
 echo Considering that MechSys is in $MECHSYS_ROOT
 
-PYVER=2.6
+PYVER=2.7
 
 MODULES="ana drawmesh fcrits fig invs linfit matvec plt"
 for m in $MODULES; do
