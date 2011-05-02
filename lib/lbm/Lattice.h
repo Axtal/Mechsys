@@ -115,14 +115,14 @@ inline void Lattice::Collide()
     {
         Cell * c = Cells[i];
         if (c->IsSolid) continue;
-        if (fabs(c->Gamma-1.0)<1.0e-12) continue;
+        //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
         Vec3_t V;
         double rho = c->VelDen(V);
         double Bn  = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
         for (size_t j=0;j<c->Nneigh;j++)
         {
             double Feqn = c->Feq(j,       V,rho);
-            double Fvp  = c->Feq(j,c->VelP,rho);
+            //double Fvp  = c->Feq(j,c->VelP,rho);
             c->F[j] = c->F[j] - (1 - Bn)*ome*(c->F[j] - Feqn) + Bn*c->Omeis[j];
         }
     }

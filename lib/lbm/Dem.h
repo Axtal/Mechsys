@@ -21,8 +21,12 @@
 #ifndef MECHSYS_LBM_DEM_H
 #define MECHSYS_LBM_DEM_H
 
+// STD
+#include <algorithm>
+
 // Mechsys
 #include <mechsys/lbm/Lattice.h>
+
 
 class Disk
 {
@@ -33,19 +37,30 @@ public:
     //Methods
     void ImprintDisk(Lattice & Lat);
     void Translate  (double dt);
+    void FixVelocity() {vf=true,true,true; wf=true,true,true;};
+    bool IsFree () {return !vf(0)&&!vf(1)&&!vf(2)&&!wf(0)&&!wf(1)&&!wf(2);}; ///< Ask if the particle has any constrain in its movement
+
+    
 
 
     // Data
     int  Tag;              ///< Id of the particle
+    Vec3_t X0;             ///< initial position of the particle
     Vec3_t X;              ///< position of the particle
     Vec3_t Xb;             ///< position of the particle before
     Vec3_t V;              ///< velocity of the CM
     Vec3_t W;              ///< angular velocity
+    Vec3_t Wb;             ///< angular velocity
     Vec3_t F;              ///< Force
+    Vec3_t Ff;             ///< fixed Force
     Vec3_t T;              ///< Torque
+    Vec3_t Tf;             ///< fixed Torque
     double R;              ///< Disk radius
     double M;              ///< mass of the disk
     double I;              ///< inertia moment of the particle
+    double GT;             ///< dissipation constant for the torque
+    bVec3_t vf;            ///< prescribed velocities
+    bVec3_t wf;            ///< prescribed angular velocities
 };
 
 inline Disk::Disk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
@@ -58,15 +73,22 @@ inline Disk::Disk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t c
     M   = M_PI*R*R*Therho;
     I   = 0.5*M*R*R;
     Xb  = X - dt*V;
-    F   = 0.0,0.0,0.0;
-    T   = 0.0,0.0,0.0;
+    Wb  = W;
+    Ff  = 0.0,0.0,0.0;
+    Tf  = 0.0,0.0,0.0;
+    vf  = false,false,false;
+    wf  = false,false,false;
+    GT  = 1.0;
 }
 
 inline void Disk::ImprintDisk(Lattice & Lat)
 {
-    for (size_t i=0;i<Lat.Cells.Size();i++)
+    for (size_t n=std::max(0.0,double(X(0)-R-Lat.dx)/Lat.dx);n<=std::min(double(Lat.Ndim(0)-1),double(X(0)+R+Lat.dx)/Lat.dx);n++)
+    for (size_t m=std::max(0.0,double(X(1)-R-Lat.dx)/Lat.dx);m<=std::min(double(Lat.Ndim(1)-1),double(X(1)+R+Lat.dx)/Lat.dx);m++)
+    //for (size_t i=0;i<Lat.Cells.Size();i++)
     {
-        Cell  * cell = Lat.Cells[i];
+        Cell  * cell = Lat.GetCell(iVec3_t(n,m,0));
+        //Cell  * cell = Lat.Cells[i];
         double x     = Lat.dx*cell->Index(0);
         double y     = Lat.dx*cell->Index(1);
         double z     = Lat.dx*cell->Index(2);
@@ -80,7 +102,6 @@ inline void Disk::ImprintDisk(Lattice & Lat)
         P[3] = C - 0.5*Lat.dx*OrthoSys::e0 + 0.5*Lat.dx*OrthoSys::e1;
 
         double len = 0.0;
-
         for (size_t j=0;j<4;j++)
         {
             Vec3_t D = P[(j+1)%4] - P[j];
@@ -109,26 +130,39 @@ inline void Disk::ImprintDisk(Lattice & Lat)
             double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
             for (size_t j=0;j<cell->Nneigh;j++)
             {
-                double Feqn    = cell->Feq(j,                   V,rho);
+                //double Feqn    = cell->Feq(j,                   V,rho);
                 double Fvpp    = cell->Feq(cell->Op[j],cell->VelP,rho);
                 double Fvp     = cell->Feq(j          ,cell->VelP,rho);
                 //cell->Omeis[j] = Fvp - cell->F[j] + (1.0 - 1.0/cell->Tau)*(cell->F[j] - Feqn);
                 cell->Omeis[j] = cell->F[cell->Op[j]] - Fvpp - (cell->F[j] - Fvp);
-                F -= Bn*cell->Omeis[j]*cell->C[j];
+                Vec3_t Flbm    = -Bn*cell->Omeis[j]*cell->C[j];
+                F             += Flbm;
+                T             += cross(B,Flbm);
             }
         }
-
     }
 }
 
 inline void Disk::Translate(double dt)
 {
     //std::cout << F(0) << " " << M << " " << V(0) << std::endl;
+    if (vf(0)) F(0) = 0.0;
+    if (vf(1)) F(1) = 0.0;
+    if (vf(2)) F(2) = 0.0;
     Vec3_t Xa = 2*X - Xb + F*(dt*dt/M);
     Vec3_t tp = Xa - X;
     V         = 0.5*(Xa - Xb)/dt;
     Xb        = X;
     X         = Xa;
+
+    //if (wf(0)) T(0) = 0.0;
+    //if (wf(1)) T(1) = 0.0;
+    //if (wf(2)) T(2) = 0.0;
+    //Vec3_t Wa = Wb + 2*dt*T/I - dt*GT*W;
+    //Wb        = W;
+    //W         = Wa;
+//
+    //std::cout << T(2) << " " << W(2) << " " << Wb(2) << std::endl;
 }
 
 #endif

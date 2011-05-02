@@ -32,7 +32,8 @@ SET(PROGS
     swell
     test01
     test02
-    test03)
+    test03
+    test04)
 
 FOREACH(var ${PROGS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

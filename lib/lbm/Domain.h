@@ -21,8 +21,18 @@
 #ifndef MECHSYS_LBM_DOMAIN_H
 #define MECHSYS_LBM_DOMAIN_H
 
+// STD
+#include <map>
+#include <vector>
+#include <utility>
+#include <set>
+
 // MechSys
-#include <mechsys/lbm/Dem.h>
+#include <mechsys/lbm/Interacton.h>
+
+using std::set;
+using std::pair;
+using std::make_pair;
 
 class Domain
 {
@@ -35,18 +45,25 @@ public:
 
     //Methods
     void Solve(double Tf, double dtOut, ptDFun_t ptSetup=NULL, ptDFun_t ptReport=NULL,
-               char const * FileKey=NULL, bool RenderVideo=true, size_t Nproc=1);                                                     ///< Solve the Domain dynamics
+               char const * FileKey=NULL, bool RenderVideo=true, size_t Nproc=1);                                                          ///< Solve the Domain dynamics
     void AddDisk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt);        ///< Add a disk element
+    void ResetContacts();
+    void ResetDisplacements();
+    double  MaxDisplacement();
 
 
 
     //Data
-    Lattice              Lat;               // Fluid Lattice
-    Array <Disk *> Particles;               // Array of Disks
-    double              Time;               // Time of the simulation
-    double                dt;               // Timestep
-    void *          UserData;               // User Data
-    size_t           idx_out;               // The discrete time step
+    Lattice                            Lat;         // Fluid Lattice
+    Array <Disk *>               Particles;         // Array of Disks
+    Array <Interacton *>       Interactons;         // Array of insteractons
+    Array <Interacton *>      CInteractons;         // Array of valid interactons
+    set<pair<Disk *, Disk *> > Listofpairs;         // List of pair of particles associated per interacton for memory optimization
+    double                            Time;         // Time of the simulation
+    double                              dt;         // Timestep
+    double                           Alpha;         // Verlet distance
+    void *                        UserData;         // User Data
+    size_t                         idx_out;         // The discrete time step
 };
 
 inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, double Thedt)
@@ -54,6 +71,56 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     Lat  = Lattice(Method,nu,Ndim,dx,Thedt);
     Time = 0.0;
     dt   = Thedt;
+    Alpha= 10.0;
+}
+
+inline void Domain::ResetDisplacements()
+{
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        Particles[i]->X0 = Particles[i]->X;
+    }
+}
+
+inline double Domain::MaxDisplacement()
+{
+    double md = 0.0;
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        double mdp = norm(Particles[i]->X - Particles[i]->X0);
+        if (mdp>md) md = mdp;
+    }
+    return md;
+}
+
+inline void Domain::ResetContacts()
+{
+    for (size_t i=0; i<Particles.Size()-1; i++)
+    {
+        bool pi_has_vf = !Particles[i]->IsFree();
+        for (size_t j=i+1; j<Particles.Size(); j++)
+        {
+            bool pj_has_vf = !Particles[j]->IsFree();
+
+            bool close = (norm(Particles[i]->X-Particles[j]->X)<=Particles[i]->R+Particles[j]->R+2*Alpha);
+            if ((pi_has_vf && pj_has_vf) || !close) continue;
+            
+            // checking if the interacton exist for that pair of particles
+            set<pair<Disk *, Disk *> >::iterator it = Listofpairs.find(make_pair(Particles[i],Particles[j]));
+            if (it != Listofpairs.end())
+            {
+                continue;
+            }
+            Listofpairs.insert(make_pair(Particles[i],Particles[j]));
+            CInteractons.Push (new Interacton(Particles[i],Particles[j]));
+        }
+    }
+
+    Interactons.Resize(0);
+    for (size_t i=0; i<CInteractons.Size(); i++)
+    {
+        if(CInteractons[i]->UpdateContacts(Alpha)) Interactons.Push(CInteractons[i]);
+    }
 }
 
 inline void Domain::AddDisk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
@@ -70,7 +137,13 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
     idx_out     = 0;
     //Connect particles and lattice
-    for(size_t i=0;i<Particles.Size();i++) Particles[i]->ImprintDisk(Lat);
+    for(size_t i=0;i<Particles.Size();i++)
+    {
+    	Particles[i]->ImprintDisk(Lat);
+    }
+    ResetContacts();
+    ResetDisplacements();
+
     if (ptReport!=NULL) (*ptReport) ((*this), UserData);
 
     double tout = Time;
@@ -92,12 +165,14 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         for(size_t i=0;i<Particles.Size();i++) Particles[i]->ImprintDisk(Lat);
 
         //Move Particles
-        for(size_t i=0;i<Particles.Size();i++) Particles[i]->Translate(dt);
+        for(size_t i=0;i<Interactons.Size();i++) Interactons[i]->CalcForce(dt);
+        for(size_t i=0;i<Particles.Size()  ;i++) Particles[i]->Translate(dt);
 
         //Move fluid
         Lat.Collide();
         Lat.BounceBack();
         Lat.Stream();
+        //std::cout << "mu2" <<std::endl;
         
         if (Time >= tout)
         {
@@ -110,6 +185,12 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             }
             tout += dtOut;
             idx_out++;
+        }
+
+        if (MaxDisplacement()>Alpha)
+        {
+            ResetContacts();
+            ResetDisplacements();
         }
 
         Time += dt;

@@ -22,6 +22,7 @@
 
 // MechSys
 #include <mechsys/lbm/Domain.h>
+#include <mechsys/util/maps.h>
 
 struct UserData
 {
@@ -47,8 +48,8 @@ void Setup (Domain & dom, void * UD)
 		if (c->IsSolid) continue;
 		double rho = (c->F[0]+c->F[2]+c->F[4] + 2.0*(c->F[3]+c->F[6]+c->F[7]))/(1.0-c->VelBC(0));
 		c->F[1] = c->F[3] + (2.0/3.0)*rho*c->VelBC(0);
-		c->F[5] = c->F[7] + (1.0/6.0)*rho*c->VelBC(0) + 0.5*rho*c->VelBC[1] - 0.5*(c->F[2]-c->F[4]);
-		c->F[8] = c->F[6] + (1.0/6.0)*rho*c->VelBC(0) - 0.5*rho*c->VelBC[1] + 0.5*(c->F[2]-c->F[4]);
+		c->F[5] = c->F[7] + (1.0/6.0)*rho*c->VelBC(0) + 0.5*rho*c->VelBC(1) - 0.5*(c->F[2]-c->F[4]);
+		c->F[8] = c->F[6] + (1.0/6.0)*rho*c->VelBC(0) - 0.5*rho*c->VelBC(1) + 0.5*(c->F[2]-c->F[4]);
 	}
 
 	// Cells with prescribed density
@@ -68,7 +69,7 @@ int main(int argc, char **argv) try
     double u_max  = 0.1;                 // Poiseuille's maximum velocity
     double Re     = 100;                 // Reynold's number
     size_t nx = 400;
-    size_t ny = 100;
+    size_t ny = 400;
     int radius = ny/10 + 1;           // radius of inner circle (obstacle)
     double nu     = u_max*(2*radius)/Re; // viscocity
     Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
@@ -81,11 +82,7 @@ int main(int argc, char **argv) try
     {
         dat.Left .Push(Dom.Lat.GetCell(iVec3_t(0   ,i,0)));
         dat.Right.Push(Dom.Lat.GetCell(iVec3_t(nx-1,i,0)));
-        
-        // set parabolic profile
-        double L  = ny - 2;                       // channel width in cell units
-        double yp = i - 1.5;                      // ordinate of cell
-        double vx = dat.vmax*4/(L*L)*(L*yp - yp*yp); // horizontal velocity
+        double vx = 0.01; // horizontal velocity
         double vy = 0.0;                          // vertical velocity
 		Vec3_t v(vx, vy, 0.0);                    // velocity vector
         dat.Left [i]->VelBC = v;
@@ -97,23 +94,27 @@ int main(int argc, char **argv) try
     }
     dat.rho  = 1.0;
 
-	// set inner obstacle
-	int obsX   = ny/2;   // x position
-	int obsY   = ny/2+3; // y position
-    Dom.AddDisk(0,Vec3_t(obsX,obsY,0),Vec3_t(0.0,0.0,0.0),Vec3_t(0.0,0.0,0.0),   3.0,radius,1.0);
-    Dom.AddDisk(0,Vec3_t(nx/2.0,obsY,0),Vec3_t(0.0,0.0,0.0),Vec3_t(0.0,0.0,0.0),30.0,2*radius,1.0);
+	// Set grains
+	Table grains;
+	grains.Read("circles.out");
+	for (size_t i=0; i<grains["Xc"].Size(); ++i)
+	{
+		double xc = grains["Xc"][i]*nx+20;
+		double yc = grains["Yc"][i]*ny;
+		double r  = grains["R" ][i]*nx*0.75;
+        Dom.AddDisk(0,Vec3_t(xc,yc,0.0),OrthoSys::O,OrthoSys::O,3.0,r,1.0);
+        Dom.Particles[Dom.Particles.Size()-1]->FixVelocity();
+	}
 
-
-
-    //Assigning solid boundaries at top and bottom
-    for (size_t i=0;i<nx;i++)
+    for (double y=20.0;y<380.0;y+=20.0)
     {
-        Dom.Lat.GetCell(iVec3_t(i,0   ,0))->IsSolid = true;
-        Dom.Lat.GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
+        Dom.AddDisk(0,Vec3_t(10.0,y,0.0),OrthoSys::O,OrthoSys::O,3.0,8.0,1.0);
     }
 
+    
+
     double rho0 = 1.0;
-    Vec3_t v0(0.08,0.0,0.0);
+    Vec3_t v0(0.0,0.0,0.0);
 
     //Initializing values
     for (size_t i=0;i<Dom.Lat.Cells.Size();i++)
@@ -123,7 +124,7 @@ int main(int argc, char **argv) try
 
     //Solving
     Dom.Time = 0.0;
-    Dom.Solve(10000.0,20.0,Setup,NULL,"test01");
+    Dom.Solve(10000.0,20.0,Setup,NULL,"test04");
  
 }
 MECHSYS_CATCH

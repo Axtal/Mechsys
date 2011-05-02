@@ -23,13 +23,28 @@
 // MechSys
 #include <mechsys/lbm/Domain.h>
 
+struct UserData
+{
+};
+
+void Report (Domain & Dom, void * UD)
+{
+    UserData & dat = (*static_cast<UserData *>(UD));
+    //std::cout << Dom.Particles[0]->X(0) << " " << Dom.Particles[0]->X(1) << " "
+              //<< Dom.Particles[1]->X(0) << " " << Dom.Particles[1]->X(1) << std::endl;
+}
+
+
 int main(int argc, char **argv) try
 {
     size_t nx = 100;
     size_t ny = 100;
     double nu = 0.01;
     Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), /*dx*/1.0, /*dt*/1.0);
-    Dom.AddDisk(0,Vec3_t(15.0,50.0,0.0),Vec3_t(0.01,0.0,0.0),Vec3_t(0.0,0.0,0.01),3.0,10.0,1.0);
+    Dom.AddDisk(0,Vec3_t(15.0,20.0,0.0),Vec3_t( 0.01,0.01,0.0),Vec3_t(0.0,0.0, 0.0),3.0,10.0,1.0);
+    Dom.AddDisk(0,Vec3_t(85.0,20.0,0.0),Vec3_t(-0.01,0.01,0.0),Vec3_t(0.0,0.0,-0.0),3.0,10.0,1.0);
+    UserData dat;
+    Dom.UserData = &dat;
     double rho0 = 0.001;
     Vec3_t v0(0.0,0.0,0.0);
 
@@ -39,7 +54,7 @@ int main(int argc, char **argv) try
         Dom.Lat.Cells[i]->Initialize(rho0, v0);
     }
 
-    // Set solid boundaries
+     //Set solid boundaries
     for (size_t i=0;i<nx;i++)
     {
         Dom.Lat.GetCell(iVec3_t(i,0   ,0))->IsSolid = true;
@@ -52,7 +67,7 @@ int main(int argc, char **argv) try
     }
 
     //Solving
-    Dom.Solve(10000.0,20.0,NULL,NULL,"test03");
+    Dom.Solve(10000.0,20.0,NULL,Report,"test03");
 }
 MECHSYS_CATCH
 
