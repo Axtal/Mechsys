@@ -33,7 +33,8 @@ SET(PROGS
     test01
     test02
     test03
-    test04)
+    test04
+    test05)
 
 FOREACH(var ${PROGS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

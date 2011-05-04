@@ -99,16 +99,17 @@ int main(int argc, char **argv) try
 	grains.Read("circles.out");
 	for (size_t i=0; i<grains["Xc"].Size(); ++i)
 	{
-		double xc = grains["Xc"][i]*nx+20;
+		double xc = grains["Xc"][i]*nx+40;
 		double yc = grains["Yc"][i]*ny;
 		double r  = grains["R" ][i]*nx*0.75;
         Dom.AddDisk(0,Vec3_t(xc,yc,0.0),OrthoSys::O,OrthoSys::O,3.0,r,1.0);
         Dom.Particles[Dom.Particles.Size()-1]->FixVelocity();
 	}
 
-    for (double y=20.0;y<380.0;y+=20.0)
+    for (double y=20.0;y<390.0;y+=20.0)
     {
         Dom.AddDisk(0,Vec3_t(10.0,y,0.0),OrthoSys::O,OrthoSys::O,3.0,8.0,1.0);
+        Dom.AddDisk(0,Vec3_t(30.0,y,0.0),OrthoSys::O,OrthoSys::O,3.0,8.0,1.0);
     }
 
     
@@ -124,7 +125,7 @@ int main(int argc, char **argv) try
 
     //Solving
     Dom.Time = 0.0;
-    Dom.Solve(10000.0,20.0,Setup,NULL,"test04");
+    Dom.Solve(20000.0,200.0,Setup,NULL,"test04");
  
 }
 MECHSYS_CATCH

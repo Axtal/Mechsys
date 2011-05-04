@@ -67,6 +67,8 @@ public:
     iVec3_t      Index;    ///< Vector of indexes
     Vec3_t       VelP;     ///< Velocity of the contact particle
     Vec3_t       VelBC;    ///< Velocity at boundary
+    Vec3_t       BForce;   ///< Applied body force
+    Vec3_t       BForcef;  ///< Fixed Applied body force
     double       RhoBC;    ///< Density at boundary
 
     size_t const  * Op;    ///< Pointer to opposite velocities
@@ -104,6 +106,7 @@ inline Cell::Cell(int TheTag, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t Th
     Ftemp. Resize(Nneigh);
     Neighs.Resize(Nneigh);
     Omeis .Resize(Nneigh);
+    BForcef = 0.0,0.0,0.0;
 
     //Set neighbors
     for (size_t k=0;k<Nneigh;k++)

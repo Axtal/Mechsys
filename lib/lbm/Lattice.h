@@ -43,7 +43,10 @@ public:
     void Homogenize();                                                              ///< Homogenize the initial state
     void SetZeroGamma();                                                            ///< Set an initial value for the fluid/solid ratio of each cell
     void ApplyBC();                                                                 ///< apply the boundary conditions
+    double Psi(double);                                                             ///< Interaction potential
+    void ApplyForce();                                                              ///< Apply molecular forces
     void Collide();                                                                 ///< apply the collision operator
+    void CollideAlt();                                                              ///< apply the collision operator
     void BounceBack();                                                              ///< apply interaction with solids
     void WriteVTK(char const * FileKey);                                            ///< Write the state in a VTK file
     Cell * GetCell(iVec3_t const & v);                                              ///< Get pointer to cell at v
@@ -55,11 +58,14 @@ public:
     size_t           idx_out;          // The discrete time step
     double           Time;             // The current time
     double           G;                // Interaction strength
+    double           Gs;               // Interaction strength
     double           Nu;               // Real viscosity
     iVec3_t          Ndim;             // Integer dimension of the domain
     double           dx;               // grid space
     double           dt;               // time step
     double           Tau;              // Relaxation time
+    double           Rhoref;           //Values for th intermolecular force
+    double           Psiref;           // 
     Array<Cell *>    Cells;            // Array of pointer cells
     void *           UserData;         // User Data
 };
@@ -71,6 +77,9 @@ inline Lattice::Lattice(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, doubl
     dx   = Thedx;
     dt   = Thedt;
     Tau  = 3.0*Nu*dt/(dx*dx) + 0.5;
+    Rhoref = 200.0;
+    Psiref = 4.0;
+    G      = 0.0;
 
     Cells.Resize(Ndim[0]*Ndim[1]*Ndim[2]);
     size_t n = 0;
@@ -104,7 +113,35 @@ inline void Lattice::SetZeroGamma()
 {
     for (size_t i=0;i<Cells.Size();i++)
     {
-        Cells[i]->Gamma = 0.0;
+        Cells[i]->Gamma  = 0.0;
+        Cells[i]->BForce = Cells[i]->BForcef;
+    }
+}
+
+inline double Lattice::Psi(double rho)
+{
+    return Psiref*exp(-Rhoref/rho);
+}
+
+inline void Lattice::ApplyForce()
+{
+    for (size_t i=0;i<Cells.Size();i++)
+    {
+        Cell * c = Cells[i];
+        double psi = Psi(c->Density());
+        if (fabs(c->Gamma-1.0)<1.0e-12) continue;
+        for (size_t j=1;j<c->Nneigh;j++)
+        {
+            Cell * nb     = Cells[c->Neighs[j]];
+            double nb_psi = Psi(nb->Density());
+            double C      = G;
+            if (nb->Gamma>0.0||nb->IsSolid)
+            {
+                nb_psi = 1.0;
+                C      = Gs;
+            }
+            c->BForce    += -C*psi*c->W[j]*nb_psi*c->C[j];
+        }
     }
 }
 
@@ -124,6 +161,63 @@ inline void Lattice::Collide()
             double Feqn = c->Feq(j,       V,rho);
             //double Fvp  = c->Feq(j,c->VelP,rho);
             c->F[j] = c->F[j] - (1 - Bn)*ome*(c->F[j] - Feqn) + Bn*c->Omeis[j];
+        }
+    }
+}
+
+inline void Lattice::CollideAlt()
+{
+    double ome = 1.0/Tau;
+    for (size_t i=0;i<Cells.Size()    ;i++)
+    {
+        Cell * c = Cells[i];
+        if (c->IsSolid) continue;
+        if (fabs(c->Gamma-1.0)<1.0e-12) continue;
+        Vec3_t V;
+        double rho = c->VelDen(V);
+        Vec3_t DV  = V + c->BForce*Tau/rho;
+        double Bn  = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
+        bool valid  = true;
+        double omel = ome;
+        double omet = ome;
+        size_t num  = 0;
+        while (valid)
+        {
+            valid = false;
+            omel  = omet;
+            for (size_t j=0;j<c->Nneigh;j++)
+            {
+                //double Feqn  = c->Feq(j,       V,rho);
+                double FDeqn = c->Feq(j,      DV,rho);
+                //double Fvp  = c->Feq(j, c->VelP,rho);
+
+                //First method owen
+                //c->F[j] = c->F[j] - (1 - Bn)*ome*(c->F[j] - Feqn) + Bn*c->Omeis[j] + dt*dt*(1 - Bn)*c->W[j]*dot(c->BForce,c->C[j])/(K*dx);
+
+                //Second method LBM EOS
+                //c->F[j] = c->F[j] - (1 - Bn)*(ome*(c->F[j] - Feqn) + FDeqn - Feqn) + Bn*c->Omeis[j];
+                
+                //Third method sukop
+                c->Ftemp[j] = c->F[j] - (1 - Bn)*omel*(c->F[j] - FDeqn) + Bn*c->Omeis[j];
+
+                //if (c->Ftemp[j]<-1.0e-6&&Bn<1.0e-6&&false)
+                if (c->Ftemp[j]<-1.0e-6)
+                {
+                    double temp = (c->F[j] + Bn*c->Omeis[j])/((1 - Bn)*(c->F[j] - FDeqn));
+                    if (temp<omet) omet = temp;
+                    valid = true;
+                    //std::cout << temp << " " << c->F[j] << " " << c->Ftemp[j] << " " << FDeqn << " " << Bn << " " << c->Omeis[j] <<  std::endl;
+                }
+            }
+            num++;
+            if (num>2) 
+            {
+                throw new Fatal("Lattice::Collide: Redefine your time step, the current value ensures unstability");
+            }
+        }
+        for (size_t j=0;j<c->Nneigh;j++)
+        {
+            c->F[j] = c->Ftemp[j];
         }
     }
 }

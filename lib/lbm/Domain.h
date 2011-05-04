@@ -95,6 +95,7 @@ inline double Domain::MaxDisplacement()
 
 inline void Domain::ResetContacts()
 {
+	if (Particles.Size()==0) return;
     for (size_t i=0; i<Particles.Size()-1; i++)
     {
         bool pi_has_vf = !Particles[i]->IsFree();
@@ -154,8 +155,8 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         //Assigning a vlaue of zero to the particles forces and torques
         for(size_t i=0;i<Particles.Size();i++)
         {
-            Particles[i]->F = 0.0,0.0,0.0;
-            Particles[i]->T = 0.0,0.0,0.0;
+            Particles[i]->F = Particles[i]->Ff;
+            Particles[i]->T = Particles[i]->Ff;
         }
 
         //Set Gamma values of the lattice cell to zero
@@ -169,10 +170,14 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         for(size_t i=0;i<Particles.Size()  ;i++) Particles[i]->Translate(dt);
 
         //Move fluid
-        Lat.Collide();
+        if (fabs(Lat.G)>1.0e-12)
+        {
+            Lat.ApplyForce();
+            Lat.CollideAlt();
+        }
+        else Lat.Collide();
         Lat.BounceBack();
         Lat.Stream();
-        //std::cout << "mu2" <<std::endl;
         
         if (Time >= tout)
         {
