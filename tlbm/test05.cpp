@@ -45,9 +45,9 @@ void Setup(Domain & dom, void * UD)
 
 int main(int argc, char **argv) try
 {
-    size_t nx = 100;
-    size_t ny = 100;
-    double nu = 1.0/6.0;
+    size_t nx = 200;
+    size_t ny = 200;
+    double nu = 0.1;
     Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), /*dx*/1.0, /*dt*/1.0);
     UserData dat;
     Dom.UserData = &dat;
@@ -92,11 +92,12 @@ int main(int argc, char **argv) try
         //}
     }
 
-    Dom.AddDisk(0,Vec3_t(50.0,70.0,0.0),Vec3_t(0.0,-0.01,0.0),OrthoSys::O,4000.0,10.0,1.0);
+    Dom.AddDisk(0,Vec3_t(nx/2.0,0.8*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,10000.0,0.1*ny,1.0);
     //Dom.Particles[Dom.Particles.Size()-1]->FixVelocity();
 
     //Solving
-    Dom.Solve(10000.0,20.0,Setup,NULL,"test05");
+    Dom.Solve(10000.0,50.0,Setup,NULL,"test05");
+    //Dom.Solve(10000.0,20.0,NULL,NULL,"test05");
 }
 MECHSYS_CATCH
 

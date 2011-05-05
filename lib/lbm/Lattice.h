@@ -178,13 +178,15 @@ inline void Lattice::CollideAlt()
         Vec3_t DV  = V + c->BForce*Tau/rho;
         double Bn  = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
         bool valid  = true;
-        double omel = ome;
-        double omet = ome;
+        //double omel = ome;
+        //double omet = ome;
+        double alphal = 1.0;
+        double alphat = 1.0;
         size_t num  = 0;
         while (valid)
         {
             valid = false;
-            omel  = omet;
+            alphal  = alphat;
             for (size_t j=0;j<c->Nneigh;j++)
             {
                 //double Feqn  = c->Feq(j,       V,rho);
@@ -198,15 +200,14 @@ inline void Lattice::CollideAlt()
                 //c->F[j] = c->F[j] - (1 - Bn)*(ome*(c->F[j] - Feqn) + FDeqn - Feqn) + Bn*c->Omeis[j];
                 
                 //Third method sukop
-                c->Ftemp[j] = c->F[j] - (1 - Bn)*omel*(c->F[j] - FDeqn) + Bn*c->Omeis[j];
+                //c->Ftemp[j] = c->F[j] - (1 - Bn)*omel*(c->F[j] - FDeqn) + Bn*c->Omeis[j];
+                c->Ftemp[j] = c->F[j] - alphal*((1 - Bn)*ome*(c->F[j] - FDeqn) - Bn*c->Omeis[j]);
 
-                //if (c->Ftemp[j]<-1.0e-6&&Bn<1.0e-6&&false)
                 if (c->Ftemp[j]<-1.0e-6)
                 {
-                    double temp = (c->F[j] + Bn*c->Omeis[j])/((1 - Bn)*(c->F[j] - FDeqn));
-                    if (temp<omet) omet = temp;
+                    double temp = c->F[j]/((1 - Bn)*ome*(c->F[j] - FDeqn) - Bn*c->Omeis[j]);
+                    if (temp<alphat) alphat = temp;
                     valid = true;
-                    //std::cout << temp << " " << c->F[j] << " " << c->Ftemp[j] << " " << FDeqn << " " << Bn << " " << c->Omeis[j] <<  std::endl;
                 }
             }
             num++;
