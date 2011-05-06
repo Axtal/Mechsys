@@ -59,6 +59,7 @@ public:
     double M;              ///< mass of the disk
     double I;              ///< inertia moment of the particle
     double GT;             ///< dissipation constant for the torque
+    double Kn;             ///< Stiffness constant
     bVec3_t vf;            ///< prescribed velocities
     bVec3_t wf;            ///< prescribed angular velocities
 };
@@ -78,7 +79,8 @@ inline Disk::Disk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t c
     Tf  = 0.0,0.0,0.0;
     vf  = false,false,false;
     wf  = false,false,false;
-    GT  = 1.0;
+    GT  = 1.0e5;
+    Kn  = 1.0e3;
 }
 
 inline void Disk::ImprintDisk(Lattice & Lat)
@@ -124,15 +126,16 @@ inline void Disk::ImprintDisk(Lattice & Lat)
         {
             cell->Gamma   = len/(4*Lat.dx);
             Vec3_t B      = C - X;
-            cell->VelP    = V + cross(W,B);
+            Vec3_t VelP   = V + cross(W,B);
+            if (fabs(cell->Gamma-1.0)<1.0e-12) continue;
             Vec3_t V;
             double rho = cell->VelDen(V);
             double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
             for (size_t j=0;j<cell->Nneigh;j++)
             {
                 //double Feqn    = cell->Feq(j,                   V,rho);
-                double Fvpp    = cell->Feq(cell->Op[j],cell->VelP,rho);
-                double Fvp     = cell->Feq(j          ,cell->VelP,rho);
+                double Fvpp    = cell->Feq(cell->Op[j],VelP,rho);
+                double Fvp     = cell->Feq(j          ,VelP,rho);
                 //cell->Omeis[j] = Fvp - cell->F[j] + (1.0 - 1.0/cell->Tau)*(cell->F[j] - Feqn);
                 cell->Omeis[j] = cell->F[cell->Op[j]] - Fvpp - (cell->F[j] - Fvp);
                 Vec3_t Flbm    = -Bn*cell->Omeis[j]*cell->C[j];
@@ -158,10 +161,10 @@ inline void Disk::Translate(double dt)
     //if (wf(0)) T(0) = 0.0;
     //if (wf(1)) T(1) = 0.0;
     //if (wf(2)) T(2) = 0.0;
-    //Vec3_t Wa = Wb + 2*dt*T/I - dt*GT*W;
+    //Vec3_t Wa = Wb + 2*dt*(T-GT*W)/I;
     //Wb        = W;
     //W         = Wa;
-//
+
     //std::cout << T(2) << " " << W(2) << " " << Wb(2) << std::endl;
 }
 

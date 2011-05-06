@@ -65,7 +65,6 @@ public:
     int          Tag;      ///< Tag for the particle
     double       Cs;       ///< Velocity of the grid
     iVec3_t      Index;    ///< Vector of indexes
-    Vec3_t       VelP;     ///< Velocity of the contact particle
     Vec3_t       VelBC;    ///< Velocity at boundary
     Vec3_t       BForce;   ///< Applied body force
     Vec3_t       BForcef;  ///< Fixed Applied body force

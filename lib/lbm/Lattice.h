@@ -203,11 +203,12 @@ inline void Lattice::CollideAlt()
                 //c->Ftemp[j] = c->F[j] - (1 - Bn)*omel*(c->F[j] - FDeqn) + Bn*c->Omeis[j];
                 c->Ftemp[j] = c->F[j] - alphal*((1 - Bn)*ome*(c->F[j] - FDeqn) - Bn*c->Omeis[j]);
 
-                if (c->Ftemp[j]<-1.0e-6)
+                if (c->Ftemp[j]<0.0&&num<1)
                 {
-                    double temp = c->F[j]/((1 - Bn)*ome*(c->F[j] - FDeqn) - Bn*c->Omeis[j]);
+                    double temp = fabs(c->F[j]/((1 - Bn)*ome*(c->F[j] - FDeqn) - Bn*c->Omeis[j]));
                     if (temp<alphat) alphat = temp;
                     valid = true;
+                    //std::cout << i << " " << c->F[j] << " " << FDeqn << " " << c->Omeis[j] << " " << Bn << " " << alphat << " " << temp << std::endl;
                 }
             }
             num++;
@@ -218,7 +219,7 @@ inline void Lattice::CollideAlt()
         }
         for (size_t j=0;j<c->Nneigh;j++)
         {
-            c->F[j] = c->Ftemp[j];
+            c->F[j] = fabs(c->Ftemp[j]);
         }
     }
 }
