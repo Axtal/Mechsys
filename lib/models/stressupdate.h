@@ -366,7 +366,7 @@ inline double Model::StressUpdate::Update (double Dt, ATensor2 const & L, ATenso
     }
 
     // Strain energy
-    return 0.5*Dot(sig_tmp+sta_in->Sig, DEps_in); // strain energy / volume
+    return 0.0;//0.5*Dot(sig_tmp+sta_in->Sig, DEps_in); // strain energy / volume
 }
 
 inline void Model::StressUpdate::GetInfo (std::ostream & os, bool Header) const

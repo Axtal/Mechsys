@@ -27,10 +27,10 @@
 #include <mechsys/models/linelastic.h>
 #include <mechsys/models/elastoplastic.h>
 #include <mechsys/models/camclay.h>
-#include <mechsys/models/unconv01.h>
-#include <mechsys/models/unconv02.h>
-#include <mechsys/models/unconv03.h>
-#include <mechsys/models/unconv04.h>
+//#include <mechsys/models/unconv01.h>
+//#include <mechsys/models/unconv02.h>
+//#include <mechsys/models/unconv03.h>
+//#include <mechsys/models/unconv04.h>
 #include <mechsys/models/driver.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
@@ -295,7 +295,7 @@ int main(int argc, char **argv) try
     // parse materials file (with initial values)
     Dict prms, inis;
     String model_name;
-    ReadMaterial (-1, inp.matid, mat_fname.CStr(), model_name, prms, inis);
+    //ReadMaterial (-1, inp.matid, mat_fname.CStr(), model_name, prms, inis);
     inis.Set (-1, "sx sy sz", -pcam0, -pcam0, -pcam0);
 
     // flow material data
@@ -303,7 +303,7 @@ int main(int argc, char **argv) try
     if (inp.flwid>=0)
     {
         Dict flw_prms, flw_inis;
-        ReadMaterial (-1, inp.flwid, mat_fname.CStr(), flw_name, flw_prms, flw_inis, /*withModel*/false);
+        //ReadMaterial (-1, inp.flwid, mat_fname.CStr(), flw_name, flw_prms, flw_inis, /*withModel*/false);
         if (flw_name!="UnsatFlow") throw new Fatal("Flow model name must be UnsatFlow at the moment");
         inis += flw_inis;
         prms += flw_prms;
@@ -459,7 +459,7 @@ int main(int argc, char **argv) try
         Driver drv(model_name, prms(-1), inis(-1));
 
         // allocate model and set initial values
-        Model * mdl = AllocModel (model_name, 3, prms(-1));
+        Model * mdl = AllocModel (model_name, 3, prms(-1), /*AnotherMdl*/NULL);
         EquilibState sta(3);
         mdl->InitIvs (inis(-1), &sta);
 

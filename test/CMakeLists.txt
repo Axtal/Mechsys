@@ -43,6 +43,7 @@ SET(PROGS_D # other tests
  test_readfiles
  test_array
  test_colors
+ test_min1
  serialize
  test_paragrid)
 

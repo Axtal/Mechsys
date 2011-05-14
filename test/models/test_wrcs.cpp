@@ -58,21 +58,21 @@ int main(int argc, char **argv) try
     if (argc>2) pcf = atof(argv[2]);
 
     SDPair prms, inis;
-    prms.Set ("gamW kwsat Mkw WRC", 10.0, 1.0, 2.2, (double)wrc);
+    prms.Set ("gamW kwsat akw WRC", 10.0, 1.0, 2.2, (double)wrc);
     inis.Set ("pw Sw n", -pc, Sw, 0.3);
-    UnsatFlow      mdl(/*ndim*/3, prms);
+    UnsatFlow      mdl(/*ndim*/3, prms, /*anothermdl*/NULL);
     UnsatFlowState sta(/*ndim*/3);
     mdl.InitIvs (inis, &sta);
 
     std::ofstream of("test_wrcs.res",std::ios::out);
-    of << _8s<<"pc"    << _8s<<"Sw"    << _8s<<"kw"               << endl;
-    of << _8s<< sta.pc << _8s<< sta.Sw << _8s<< sta.kwb(0,0)*10.0 << endl;
+    of << _8s<<"pc"    << _8s<<"Sw"    << _8s<<"kw"                            << endl;
+    of << _8s<< sta.pc << _8s<< sta.Sw << _8s<< mdl.rw(sta.Sw)*mdl.kwsatb*10.0 << endl;
 
     double dpc = (pcf-pc)/ndiv;
     while (sta.pc<pcf)
     {
         mdl.Update (-dpc, /*dev*/0.0, &sta);
-        of << _8s<< sta.pc << _8s<< sta.Sw << _8s<< sta.kwb(0,0)*10.0 << endl;
+        of << _8s<< sta.pc << _8s<< sta.Sw << _8s<< mdl.rw(sta.Sw)*mdl.kwsatb*10.0 << endl;
     }
 
     of.close();

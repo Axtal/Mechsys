@@ -73,7 +73,7 @@ inline Driver::Driver (String const & ModelName, SDPair const & Prms, SDPair con
     : Tol(DBL_EPSILON), CheckModelTgIncs(true), RKScheme("RKF45"), RKStol(1.0e-5), GivenIncsCase(-1),
       Linear(false)
 {
-    Mdl = AllocModel (ModelName, 3, Prms);
+    Mdl = AllocModel (ModelName, 3, Prms, /*AnotherMdl*/NULL);
     Sta = new EquilibState (3);
     Mdl->InitIvs (Inis, Sta);
 

@@ -120,7 +120,7 @@ private:
 
 
 inline Unconv03::Unconv03 (int NDim, SDPair const & Prms)
-    : Model (NDim,Prms,"Unconv03"), alpha(0.0)
+    : Model (NDim,Prms,5,"Unconv03"), alpha(0.0)
 {
     // parameters
     l0    = Prms("l0");
@@ -140,7 +140,6 @@ inline Unconv03::Unconv03 (int NDim, SDPair const & Prms)
     else         I = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0;
 
     // internal values
-    NIvs = 5;
     IvNames.Push ("z0"); // 0
     IvNames.Push ("z1"); // 1
     IvNames.Push ("pb"); // 2
