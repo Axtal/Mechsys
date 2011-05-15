@@ -40,6 +40,7 @@ public:
     Vec3_t const * X0; ///< Center of the Torus
     Vec3_t const * X1; ///< Right vector of the torus
     Vec3_t const * X2; ///< Left vector of the torus
+    double          R;  ///< Internal radius of the torus
 };
 
 
@@ -49,11 +50,13 @@ public:
 inline Torus::Torus (Vec3_t const * TheX0, Vec3_t const * TheX1, Vec3_t const * TheX2)
     : X0(TheX0), X1(TheX1), X2(TheX2)
 {
+    R = norm(*X0-*X1);
 }
 
 inline Torus::Torus (Vec3_t const & TheX0, Vec3_t const & TheX1, Vec3_t const & TheX2)
     : X0(&TheX0), X1(&TheX1), X2(&TheX2)
 {
+    R = norm(*X0-*X1);
 }
 
 inline void Torus::Draw (std::ostream & os, double Radius, char const * Color, bool BPY)

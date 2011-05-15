@@ -55,19 +55,20 @@ public:
      
 
     //Data
-    size_t           idx_out;          // The discrete time step
-    double           Time;             // The current time
-    double           G;                // Interaction strength
-    double           Gs;               // Interaction strength
-    double           Nu;               // Real viscosity
-    iVec3_t          Ndim;             // Integer dimension of the domain
-    double           dx;               // grid space
-    double           dt;               // time step
-    double           Tau;              // Relaxation time
-    double           Rhoref;           //Values for th intermolecular force
-    double           Psiref;           // 
-    Array<Cell *>    Cells;            // Array of pointer cells
-    void *           UserData;         // User Data
+    size_t                                    idx_out;          // The discrete time step
+    double                                    Time;             // The current time
+    double                                    G;                // Interaction strength
+    double                                    Gs;               // Interaction strength
+    double                                    Nu;               // Real viscosity
+    iVec3_t                                   Ndim;             // Integer dimension of the domain
+    double                                    dx;               // grid space
+    double                                    dt;               // time step
+    double                                    Tau;              // Relaxation time
+    double                                    Rhoref;           //Values for th intermolecular force
+    double                                    Psiref;           // 
+    Array<Cell *>                             Cells;            // Array of pointer cells
+    Array<std::pair<Cell *, Cell*> >          CellPairs;        // Array of pairs of cells for interaction
+    void *                                    UserData;         // User Data
 };
 
 inline Lattice::Lattice(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, double Thedx, double Thedt)
@@ -89,7 +90,21 @@ inline Lattice::Lattice(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, doubl
     {
         Cells[n] =  new Cell(n,TheMethod,iVec3_t(i,j,k),Ndim,dx/dt,Tau);
         n++;
-    }  
+    } 
+    for (size_t i=0;i<Cells.Size();i++)
+    {
+        Cell * c = Cells[i];
+        for (size_t j=1;j<c->Nneigh;j++)
+        {
+            Cell * nb     = Cells[c->Neighs[j]];
+            if (nb->ID>c->ID)
+            {
+                std::pair<Cell *, Cell*> p;
+                p = std::make_pair(c,nb);
+                CellPairs.Push(p);
+            }
+        }
+    }
 }
 
 inline void Lattice::Stream()
@@ -125,6 +140,25 @@ inline double Lattice::Psi(double rho)
 
 inline void Lattice::ApplyForce()
 {
+    //for (size_t i=0;i<CellPairs.Size();i++)
+    //{
+        //Cell * c  = CellPairs[i].first;
+        //Cell * nb = CellPairs[i].second;
+        //if (fabs(c->Gamma-1.0)+fabs(nb->Gamma-1.0)<1.0e-12) continue;
+        //double psi    = Psi(c->Density()/);
+        //double nb_psi = Psi(nb->Density()/);
+        //double C      = G;
+        //if (nb->IsSolid)
+        //{
+            //C       = Gs;
+            //nb_psi  = 1.0;
+        //}
+        //if (c->IsSolid)
+        //{
+//
+        //}
+    //}
+
     for (size_t i=0;i<Cells.Size();i++)
     {
         Cell * c = Cells[i];
@@ -176,6 +210,7 @@ inline void Lattice::CollideAlt()
         Vec3_t V;
         double rho = c->VelDen(V);
         Vec3_t DV  = V + c->BForce*Tau/rho;
+        //Vec3_t DV  = V + c->BForce*dt/rho;
         double Bn  = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
         bool valid  = true;
         //double omel = ome;
@@ -197,7 +232,7 @@ inline void Lattice::CollideAlt()
                 //c->F[j] = c->F[j] - (1 - Bn)*ome*(c->F[j] - Feqn) + Bn*c->Omeis[j] + dt*dt*(1 - Bn)*c->W[j]*dot(c->BForce,c->C[j])/(K*dx);
 
                 //Second method LBM EOS
-                //c->F[j] = c->F[j] - (1 - Bn)*(ome*(c->F[j] - Feqn) + FDeqn - Feqn) + Bn*c->Omeis[j];
+                //c->Ftemp[j] = c->F[j] - alphal*((1 - Bn)*(ome*(c->F[j] - Feqn) - FDeqn + Feqn) - Bn*c->Omeis[j]);
                 
                 //Third method sukop
                 //c->Ftemp[j] = c->F[j] - (1 - Bn)*omel*(c->F[j] - FDeqn) + Bn*c->Omeis[j];

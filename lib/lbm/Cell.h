@@ -46,7 +46,7 @@ public:
 	//static const size_t   OPPOSITED3Q27 [27]; ///< Opposite directions (D3Q27)
    
     //Constructor
-    Cell (int Tag, LBMethod Method, iVec3_t Indexes, iVec3_t Ndim, double Cs, double Tau); ///< Constructor, it receives the grid type, ht einteger position and the total integer dimension of the domain and the spatial and time steps
+    Cell (size_t ID, LBMethod Method, iVec3_t Indexes, iVec3_t Ndim, double Cs, double Tau); ///< Constructor, it receives the grid type, ht einteger position and the total integer dimension of the domain and the spatial and time steps
     
     // Methods
     double       Density();                                        ///< Calculate density
@@ -62,7 +62,7 @@ public:
     double       Gamma;    ///< Solid/Fluid ratio
     double       Gs;       ///< Interaction constant between solid and fluid
     size_t       Nneigh;   ///< Number of neighbors
-    int          Tag;      ///< Tag for the particle
+    size_t       ID;      ///< Tag for the particle
     double       Cs;       ///< Velocity of the grid
     iVec3_t      Index;    ///< Vector of indexes
     Vec3_t       VelBC;    ///< Velocity at boundary
@@ -79,9 +79,9 @@ public:
     Array<size_t>   Neighs;///< Array of neighbors indexes
 };
 
-inline Cell::Cell(int TheTag, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t TheNdim, double TheCs, double TheTau)
+inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t TheNdim, double TheCs, double TheTau)
 {
-    Tag    = TheTag;
+    ID     = TheID;
     Method = TheMethod;
     Index  = TheIndexes;
     Cs     = TheCs;
@@ -147,7 +147,7 @@ inline double Cell::VelDen(Vec3_t & V)
     if (IsSolid) return 0.0;
     double rho = Density();
     if (rho<1.0e-12) return 0.0;
-    for (size_t k=0;k<Nneigh;k++) V += F[k]*C[k];
+    for (size_t k=1;k<Nneigh;k++) V += F[k]*C[k];
     V *= Cs/rho;
     return rho;
 }

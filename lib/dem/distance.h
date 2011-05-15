@@ -23,7 +23,7 @@
 // MechSys
 #include <mechsys/dem/edge.h>
 #include <mechsys/dem/face.h>
-#include <mechsys/dem/torus.h>
+#include <mechsys/dem/cylinder.h>
 
 inline void Distance (Vec3_t const & V, Edge const & E, Vec3_t & Xi, Vec3_t & Xf)
 {
@@ -172,6 +172,42 @@ inline void Distance (Torus const & T1, Vec3_t const & V0, Vec3_t & Xi, Vec3_t &
     Distance (V0,T1,Xf,Xi);
 }
 
+inline void Distance (Vec3_t const & V0, Cylinder const & C1, Vec3_t & Xi, Vec3_t & Xf)
+{
+    Xi = V0;
+    Vec3_t xn,yn;
+    xn = *C1.T1->X1-*C1.T1->X0;
+    yn = *C1.T1->X2-*C1.T1->X0;
+    xn/= norm(xn);
+    yn/= norm(yn);
+    double theta1 = atan(dot(Xi-*C1.T1->X0,yn)/dot(Xi-*C1.T1->X0,xn));
+    double theta2 = theta1 + M_PI;
+    double DR  = C1.T1->R - C1.T0->R;
+    Vec3_t DX  = *C1.T1->X0-*C1.T0->X0;
+    double DX2 = dot(DX,DX);
+    Vec3_t DV  = V0-*C1.T0->X0;
+    double DVDX = dot(DX,DV);
+    double s1,s2;
+    s1 = (DVDX + DR*dot(DV,cos(theta1)*xn+sin(theta1)*yn) - C1.T0->R*DR)/(DX2+DR*DR);
+    s2 = (DVDX + DR*dot(DV,cos(theta2)*xn+sin(theta2)*yn) - C1.T0->R*DR)/(DX2+DR*DR);
+    if (s1>1.0) s1 = 1.0;
+    if (s1<0.0) s1 = 0.0;
+    if (s2>1.0) s2 = 1.0;
+    if (s2<0.0) s2 = 0.0;
+    Vec3_t P1,P2;
+    P1 = C1.X0 + s1*DX + (C1.T0->R + s1*DR)*(cos(theta1)*xn+sin(theta1)*yn);
+    P2 = C1.X0 + s1*DX + (C1.T0->R + s2*DR)*(cos(theta2)*xn+sin(theta2)*yn);
+    double dist1 = norm(Xi-P1);
+    double dist2 = norm(Xi-P2);
+    if (dist1<dist2) Xf = P1;
+    else             Xf = P2;
+}
+
+inline void Distance (Cylinder const & C1, Vec3_t const & V0, Vec3_t & Xi, Vec3_t & Xf)
+{
+    Distance (V0,C1,Xf,Xi);
+}
+
 inline double Distance (Edge const & E, Vec3_t const & V)
 {
     Vec3_t Xi,Xf;
@@ -222,4 +258,17 @@ inline double Distance (Torus const & T1, Vec3_t const & V0)
     return norm(Xf-Xi);
 }
 
+inline double Distance (Vec3_t const & V0, Cylinder const & C1)
+{
+    Vec3_t Xi,Xf;
+    Distance (C1,V0,Xi,Xf);
+    return norm(Xf-Xi);
+}
+
+inline double Distance (Cylinder const & C1, Vec3_t const & V0)
+{
+    Vec3_t Xi,Xf;
+    Distance (C1,V0,Xi,Xf);
+    return norm(Xf-Xi);
+}
 #endif // MECHSYS_DEM_DISTANCE_H

@@ -145,6 +145,39 @@ int main(int argc, char **argv) try
         error += fabs(Distance(V,T)-sqrt(100+81));
     }
 
+    // test cylinder-vertex distance
+    {
+        // vertex
+        Vec3_t V(-10.0, 0.5, -10.0);
+
+        // torus
+        Vec3_t P00( 0.0, 0.0, 0.0);
+        Vec3_t P01( 1.0, 0.0, 0.0);
+        Vec3_t P02( 0.0, 0.0, 1.0);
+        Vec3_t P03( 0.0, 0.0,-1.0);
+
+        Torus T0( P00, P01, P02);
+
+        //Vec3_t P10( 0.0, 1.0, 0.0);
+        //Vec3_t P11( 0.5, 1.0, 0.0);
+        //Vec3_t P12( 0.0, 1.0, 0.5);
+        //Vec3_t P13( 0.0, 1.0,-0.5);
+        Vec3_t P10( 0.0, 1.0, 0.0);
+        Vec3_t P11( 1.0, 1.0, 0.0);
+        Vec3_t P12( 0.0, 1.0, 1.0);
+        Vec3_t P13( 0.0, 1.0,-1.0);
+
+        Torus T1( P10, P11, P12);
+
+        Cylinder C(T0,T1,P03,P13);
+
+        // distance
+        Vec3_t Xi,Xf;
+        Distance(V,C,Xi,Xf);
+
+        error += fabs(Distance(V,C)-sqrt(200)+1);
+    }
+
     cout << "error = " << (error>tol ? "[1;31m" : "[1;32m") << error << "[0m" << endl;
     return (error>tol ? 1 : 0);
 }

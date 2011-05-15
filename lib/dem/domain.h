@@ -119,7 +119,7 @@ public:
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode);                                     ///< Add a single voronoi cell, it should be built before tough
-    void AddTorus    (int Tag, Vec3_t const & X, Vec3_t & N, double Rmax, double R, double rho);                                 ///< Add a single torus at position X with a normal N, circunference Rmax and spheroradius R
+    void AddTorus    (int Tag, Vec3_t const & X, Vec3_t const & N, double Rmax, double R, double rho);                                 ///< Add a single torus at position X with a normal N, circunference Rmax and spheroradius R
 
     // Methods
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
@@ -1135,15 +1135,16 @@ inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, d
     Particles[Particles.Size()-1]->Index = Particles.Size()-1;
 }
 
-inline void Domain::AddTorus (int Tag, Vec3_t const & X, Vec3_t & N, double Rmax, double R, double rho)
+inline void Domain::AddTorus (int Tag, Vec3_t const & X, Vec3_t const & N, double Rmax, double R, double rho)
 {
     // Normalize normal vector
-    N /= norm(N);
+    Vec3_t n = N/norm(N);
 
     // Create the 2 vertices that define the torus
-    Vec3_t P1 = OrthoSys::e0 - dot(OrthoSys::e0,N)*N;
+    Vec3_t P1 = OrthoSys::e0 - dot(OrthoSys::e0,n)*n;
+    if (norm(P1)<1.0e-12) P1 = OrthoSys::e1 - dot(OrthoSys::e1,n)*n;
     P1       /= norm(P1);
-    Vec3_t P2 = cross(N,P1);
+    Vec3_t P2 = cross(n,P1);
     P2       /= norm(P2);
     Array<Vec3_t > V(2);
     V[0] = X + Rmax*P1;

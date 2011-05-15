@@ -21,48 +21,32 @@
 #include <stdlib.h>
 
 // MechSys
-#include <mechsys/lbm/lattice.h>
+#include <mechsys/lbm/Domain.h>
 
 using std::cout;
 using std::endl;
 
 int main(int argc, char **argv) try
 {
-	// Input 
-	double seed = 100.0;
-	double h=1.,dt=1.;
-	if (argc>=2) seed = atof(argv[1]);
-	srand(seed);
-
-	// Allocate lattice
-	LBM::Lattice l("bubble", // FileKey
-	               false,    // Is3D
-	               1./6., 	 //viscosity
-	               int(200/h),// Nx
-	               int(200/h),// Ny
-		           1, 	 // Nz
-		           h,	 // h
-		           dt   	 // dt
-		           );     
-
-	// Set constants
-	l.SetG(-200.0);
-	l.SetTau(1.0);
-
-	// Initialize cells
-	
-	for (size_t i=0; i<l.Nx(); ++i)
-	for (size_t j=0; j<l.Ny(); ++j)
+    size_t nx = 200;
+    size_t ny = 200;
+    double nu = 0.1;
+    double dx = 1.0;
+    double dt = 1.0;
+    double Tf = 10000.0;
+    Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
+    Dom.Lat.G    = -200.0;
+    Dom.Lat.Gs   = -200.0;
+	for (size_t i=0; i<nx; ++i)
+	for (size_t j=0; j<ny; ++j)
 	{
 		
-		double rho0 = (200.0 +(1.0*rand())/RAND_MAX)*h*h;
-		//double rho0 = (380.0 +(2.0*rand())/RAND_MAX)*h*h;
+		double rho0 = (200.0 +(1.0*rand())/RAND_MAX)*dx*dx;
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
-		l.GetCell(i,j)->Initialize (rho0, v0,l.Cs());
-
+		Dom.Lat.GetCell(iVec3_t(i,j,0))->Initialize (rho0, v0);
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/12000.0, /*dtOut*/100.);
+    Dom.Solve(Tf,50.0,NULL,NULL,"bubble");
 }
 MECHSYS_CATCH
