@@ -87,9 +87,15 @@ public:
     ListContacts_t Lfv;       ///< List of face-vertex contacts
     ListContacts_t Lvt;       ///< List of vertex-torus contacts
     ListContacts_t Ltv;       ///< List of torus-vertex contacts
+    ListContacts_t Lvc;       ///< List of vertex-cylinder contacts
+    ListContacts_t Lcv;       ///< List of cylinder-vertex contacts
     FrictionMap_t  Fdee;      ///< Static friction displacement for pair of edges
     FrictionMap_t  Fdvf;      ///< Static friction displacement for pair of vertex-face
     FrictionMap_t  Fdfv;      ///< Static friction displacement for pair of face-vertex
+    FrictionMap_t  Fdvt;      ///< Static friction displacement for pair of vertex-torus
+    FrictionMap_t  Fdtv;      ///< Static friction displacement for pair of torus-vertex
+    FrictionMap_t  Fdvc;      ///< Static friction displacement for pair of vertex-cylinder
+    FrictionMap_t  Fdcv;      ///< Static friction displacement for pair of cylinder-vertex
 protected:
     template<typename FeatureA_T, typename FeatureB_T>
     void _update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, ListContacts_t & L, double dt);
@@ -173,14 +179,18 @@ inline bool CInteracton::UpdateContacts (double alpha)
     Lfv.Resize(0);
     Lvt.Resize(0);
     Ltv.Resize(0);
+    Lvc.Resize(0);
+    Lcv.Resize(0);
     if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*alpha)
     {
-        _update_contacts (P1->Edges,P2->Edges,Lee,alpha);
-        _update_contacts (P1->Verts,P2->Faces,Lvf,alpha);
-        _update_contacts (P1->Faces,P2->Verts,Lfv,alpha);
-        _update_contacts (P1->Verts,P2->Tori ,Lvt,alpha);
-        _update_contacts (P1->Tori ,P2->Verts,Ltv,alpha);
-        if (Lee.Size()>0||Lvf.Size()>0||Lfv.Size()>0||Ltv.Size()>0||Lvt.Size()>0) return true;
+        _update_contacts (P1->Edges     ,P2->Edges     ,Lee,alpha);
+        _update_contacts (P1->Verts     ,P2->Faces     ,Lvf,alpha);
+        _update_contacts (P1->Faces     ,P2->Verts     ,Lfv,alpha);
+        _update_contacts (P1->Verts     ,P2->Tori      ,Lvt,alpha);
+        _update_contacts (P1->Tori      ,P2->Verts     ,Ltv,alpha);
+        _update_contacts (P1->Verts     ,P2->Cylinders ,Lvc,alpha);
+        _update_contacts (P1->Cylinders ,P2->Verts     ,Lcv,alpha);
+        if (Lee.Size()>0||Lvf.Size()>0||Lfv.Size()>0||Ltv.Size()>0||Lvt.Size()>0||Lcv.Size()>0||Lvc.Size()>0) return true;
         else return false;
     }
     else return false;
@@ -197,11 +207,13 @@ inline void CInteracton::CalcForce (double dt)
     Fnet   = 0.0;
     Ftnet  = 0.0;
     Xc     = 0.0;
-    _update_disp_calc_force (P1->Edges,P2->Edges,Fdee,Lee,dt);
-    _update_disp_calc_force (P1->Verts,P2->Faces,Fdvf,Lvf,dt);
-    _update_disp_calc_force (P1->Faces,P2->Verts,Fdfv,Lfv,dt);
-    _update_disp_calc_force (P1->Verts,P2->Tori ,Fdvf,Lvt,dt);
-    _update_disp_calc_force (P1->Tori ,P2->Verts,Fdfv,Ltv,dt);
+    _update_disp_calc_force (P1->Edges     ,P2->Edges     ,Fdee,Lee,dt);
+    _update_disp_calc_force (P1->Verts     ,P2->Faces     ,Fdvf,Lvf,dt);
+    _update_disp_calc_force (P1->Faces     ,P2->Verts     ,Fdfv,Lfv,dt);
+    _update_disp_calc_force (P1->Verts     ,P2->Tori      ,Fdvt,Lvt,dt);
+    _update_disp_calc_force (P1->Tori      ,P2->Verts     ,Fdtv,Ltv,dt);
+    _update_disp_calc_force (P1->Verts     ,P2->Cylinders ,Fdvc,Lvc,dt);
+    _update_disp_calc_force (P1->Cylinders ,P2->Verts     ,Fdcv,Lcv,dt);
 
     //If there is at least a contact, increase the coordination number of the particles
     if (Nc>0) 

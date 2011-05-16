@@ -75,6 +75,8 @@ inline Cylinder::Cylinder (Torus & TheT0, Torus & TheT1, Vec3_t const & TheY0, V
 
 inline void Cylinder::UpdatedL ()
 {
+    X0 = 0.5*(*T0->X1 + *Y0);
+    X1 = 0.5*(*T1->X1 + *Y1);
 }
 
 inline void Cylinder::Draw (std::ostream & os, double Radius, char const * Color, bool BPY)
@@ -88,10 +90,10 @@ inline void Cylinder::Draw (std::ostream & os, double Radius, char const * Color
         double R0 = norm((*T0->X0)-(*T0->X1));
         double R1 = norm((*T1->X0)-(*T1->X1));
         os << "cone { \n <" << (*T0->X0)(0) << "," << (*T0->X0)(1) << "," << (*T0->X0)(2) << "> , " << R0 + Radius << "\n"
-                            << (*T1->X0)(0) << "," << (*T1->X0)(1) << "," << (*T1->X0)(2) << "> , " << R1 + Radius << "\n"
+                     << "<" << (*T1->X0)(0) << "," << (*T1->X0)(1) << "," << (*T1->X0)(2) << "> , " << R1 + Radius << "\n"
                             << " pigment { color " << Color        <<" } }\n"
-                            << (*T0->X0)(0) << "," << (*T0->X0)(1) << "," << (*T0->X0)(2) << "> , " << R0 - Radius << "\n"
-                            << (*T1->X0)(0) << "," << (*T1->X0)(1) << "," << (*T1->X0)(2) << "> , " << R1 - Radius << "\n"
+           << "cone { \n <" << (*T0->X0)(0) << "," << (*T0->X0)(1) << "," << (*T0->X0)(2) << "> , " << R0 - Radius << "\n"
+                     << "<" << (*T1->X0)(0) << "," << (*T1->X0)(1) << "," << (*T1->X0)(2) << "> , " << R1 - Radius << "\n"
                             << " pigment { color " << Color        <<" } }\n";
     }
 }

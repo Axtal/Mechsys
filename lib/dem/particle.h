@@ -173,6 +173,7 @@ public:
     Array<Edge*>        Edges;       ///< Edges
     Array<Face*>        Faces;       ///< Faces
     Array<Torus*>       Tori;        ///< Toroidal features
+    Array<Cylinder*>    Cylinders;   ///< Cylindrical features
 
     // Auxiliar methods
     void   CalcProps (size_t NCalls=5000); ///< Calculate properties: mass, center of mass, and moment of inertia
@@ -496,7 +497,7 @@ inline void Particle::Rotate (double dt)
 
 inline void Particle::Rotate (Quaternion_t & Q,Vec3_t & V)
 {
-    size_t nv = Verts.Size(),ne = Edges.Size(),nf = Faces.Size();
+    size_t nv = Verts.Size(),ne = Edges.Size(),nf = Faces.Size(),nc = Cylinders.Size();
     for (size_t i = 0; i < nv; i++)
     {
         Vec3_t xt = *Verts[i]-V;
@@ -512,6 +513,11 @@ inline void Particle::Rotate (Quaternion_t & Q,Vec3_t & V)
     for (size_t i = 0; i < nf; i++)
     {
         Faces[i]->UpdatedL();
+    }
+
+    for (size_t i = 0; i < nc; i++)
+    {
+        Cylinders[i]->UpdatedL();
     }
 }
 
@@ -587,6 +593,10 @@ inline void Particle::Draw (std::ostream & os, char const * Color, bool BPY)
     for (size_t i=0; i<Tori.Size(); ++i)
     {
         Tori[i]->Draw(os,Props.R,Color,BPY);
+    }
+    for (size_t i=0; i<Cylinders.Size(); ++i)
+    {
+        Cylinders[i]->Draw(os,Props.R,Color,BPY);
     }
 }
 

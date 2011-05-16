@@ -71,15 +71,15 @@ void GlobalMove(Array<Particle *> * P, double dt, size_t n, size_t Np)
 	size_t Ni = P->Size()/Np;
 	for (size_t i=n*Ni;i<(n+1)*Ni;i++)
 	{
-		(*P)[i]->Rotate(dt);
 		(*P)[i]->Translate(dt);
+		(*P)[i]->Rotate(dt);
 	}
 	if (n==Np-1)
 	{
 		for (size_t i=P->Size()-1;i>P->Size()-1-P->Size()%Np;i--)
 		{
-		    (*P)[i]->Rotate(dt);
 		    (*P)[i]->Translate(dt);
+		    (*P)[i]->Rotate(dt);
 		}
 	}
 }
@@ -120,6 +120,7 @@ public:
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode);                                     ///< Add a single voronoi cell, it should be built before tough
     void AddTorus    (int Tag, Vec3_t const & X, Vec3_t const & N, double Rmax, double R, double rho);                                 ///< Add a single torus at position X with a normal N, circunference Rmax and spheroradius R
+    void AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t const & X1, double R1, double R, double rho);
 
     // Methods
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
@@ -1186,6 +1187,61 @@ inline void Domain::AddTorus (int Tag, Vec3_t const & X, Vec3_t const & N, doubl
 
 }
 
+inline void Domain::AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t const & X1, double R1, double R, double rho)
+{
+    // Define all key variables of the cylinder
+    Vec3_t n = X1 - X0;
+    n /= norm(n);
+    Vec3_t P1 = OrthoSys::e0 - dot(OrthoSys::e0,n)*n;
+    if (norm(P1)<1.0e-12) P1 = OrthoSys::e1 - dot(OrthoSys::e1,n)*n;
+    P1       /= norm(P1);
+    Vec3_t P2 = cross(n,P1);
+    P2       /= norm(P2);
+
+    //The cylinder is defined by 6 vertices
+    Array<Vec3_t > V(6);
+    V[0] = X0 + R0*P1;
+    V[1] = X0 + R0*P2;
+    V[2] = X0 - R0*P1;
+    V[3] = X1 + R1*P1;
+    V[4] = X1 + R1*P2;
+    V[5] = X1 - R1*P1;
+
+    // It has no edges or faces
+    Array<Array <int> > E(0);
+    Array<Array <int> > F(0);
+
+    //Add the particle just with the vertices
+    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    //Input all the mass properties
+    Vec3_t xp,yp,zp;
+    xp = P1;
+    zp = P2;
+    yp = cross(zp,xp);
+    CheckDestroGiro(xp,yp,zp);
+    Quaternion_t q;
+    q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+    q(1) = (yp(2)-zp(1))/(4*q(0));
+    q(2) = (zp(0)-xp(2))/(4*q(0));
+    q(3) = (xp(1)-yp(0))/(4*q(0));
+    q = q/norm(q);
+
+    Particles[Particles.Size()-1]->Q          = q;
+    Particles[Particles.Size()-1]->Props.V    = M_PI*R0*R0*norm(X1-X0);
+    Particles[Particles.Size()-1]->Props.m    = rho*M_PI*R0*R0*norm(X1-X0);
+    Particles[Particles.Size()-1]->I          = 1.0, 1.0, 1.0;
+    Particles[Particles.Size()-1]->x          = 0.5*(X0 + X1);
+    Particles[Particles.Size()-1]->Ekin       = 0.0;
+    Particles[Particles.Size()-1]->Erot       = 0.0;
+    Particles[Particles.Size()-1]->Dmax       = sqrt(0.25*dot(X1-X0,X1-X0)+max(R0,R1)*max(R0,R1)) + R;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
+    Particles[Particles.Size()-1]->Tori.Push     (new Torus(&X0,Particles[Particles.Size()-1]->Verts[0],Particles[Particles.Size()-1]->Verts[1]));
+    Particles[Particles.Size()-1]->Tori.Push     (new Torus(&X1,Particles[Particles.Size()-1]->Verts[3],Particles[Particles.Size()-1]->Verts[4]));
+    Particles[Particles.Size()-1]->Cylinders.Push(new Cylinder(Particles[Particles.Size()-1]->Tori[0],Particles[Particles.Size()-1]->Tori[1],Particles[Particles.Size()-1]->Verts[2],Particles[Particles.Size()-1]->Verts[5]));
+}
+
 // Methods
 
 inline void Domain::SetProps (Dict & D)
@@ -1429,8 +1485,8 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 #else 
         for (size_t i=0; i<Particles.Size(); i++)
         {
-            Particles[i]->Rotate    (dt);
             Particles[i]->Translate (dt);
+            Particles[i]->Rotate    (dt);
         }
 #endif
 
