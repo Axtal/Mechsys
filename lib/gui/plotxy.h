@@ -89,6 +89,9 @@ public:
     PlotXY & SetXlbl      (char const * Xlbl)        { strcpy (_blbl,  Xlbl); return (*this); } ///< Set x (bottom) label
     PlotXY & SetYlbl      (char const * Ylbl)        { strcpy (_llbl,  Ylbl); return (*this); } ///< Set x (left) label
 
+    // Auxiliary methods
+    void SetMaxLegIconsPerRow (int n);
+
     // Draw methods (internal)
     void CalcSF     ();                   ///< Calculate scale factors
     void DrawRulers (DeviceContext & DC); ///< Draw rulers
@@ -160,6 +163,9 @@ private:
     int    _bvpad;      ///< Border vertical padding
     int    _pahpad;     ///< Plot area horizontal padding
     int    _pavpad;     ///< Plot area vertical padding
+    int    _hlegicon;   ///< legend icon row heigh
+    int    _nlegicon;   ///< number of legend icons per row (-1 => all curves)
+    int    _nlegrows;   ///< number of legend rows
 
 #if defined(USE_WXWIDGETS)
     DECLARE_EVENT_TABLE()
@@ -205,7 +211,7 @@ inline PlotXY::PlotXY (wxWindow * Parent, char const * Title, char const * Xlbl,
       LblFsz    (12),
       TitFsz    (14),
       LegAtBot  (true),
-      LegHei    (16),
+      LegHei    (30),
       LegWid    (0),
       CompactBR (true),
       DefPsz    (8),
@@ -225,7 +231,10 @@ inline PlotXY::PlotXY (wxWindow * Parent, char const * Title, char const * Xlbl,
       _Xmin     (0.0),
       _Ymin     (0.0),
       _Xmax     (1.0),
-      _Ymax     (1.0)
+      _Ymax     (1.0),
+      _hlegicon (LegHei/2),
+      _nlegicon (-1),
+      _nlegrows (1)
 {
 #ifdef USE_FLTK
     end();
@@ -334,6 +343,17 @@ inline void PlotXY::Redraw ()
     Refresh();
     Update();
 #endif
+}
+
+inline void PlotXY::SetMaxLegIconsPerRow (int n)
+{
+    if (_X.Size()<1) return;
+    int ncurves = static_cast<int>(_X.Size());
+    _nlegicon = n;
+    _nlegrows = ncurves/n + (ncurves%n>0 ? 1 : 0);
+    LegHei    = _nlegrows*_hlegicon + _hlegicon;
+    _bvpad    = BRth+TRth+(LegAtBot ? LegHei : 0);
+    _pavpad   = _bvpad+2+2*DelVB;
 }
 
 inline void PlotXY::CalcSF ()
@@ -497,7 +517,7 @@ inline void PlotXY::DrawLegend (DeviceContext & DC)
     // Variables
     char buf[256];
     int  xi   = x()+5;
-    int  yi   = y()+h()-LegHei/2;
+    int  yi   = y()+h()-_hlegicon*_nlegrows;
     int  ilen = 5+LinLen+2; // icon length
     int  xf   = xi+30;
 
@@ -511,6 +531,7 @@ inline void PlotXY::DrawLegend (DeviceContext & DC)
         // Draw legend
         if (_X.Size()>=1 && _Y.Size()>=1)
         {
+            int legcol = 0;
             for (size_t k=0; k<_X.Size(); ++k)
             {
                 // Check
@@ -555,12 +576,20 @@ inline void PlotXY::DrawLegend (DeviceContext & DC)
                 GUI_DRAW_ADD_WIDTH (DC,buf,xi)
                 xi = xi+ilen+LinDx;
                 xf = xi+LinLen;
+
+                // legend row position
+                if (_nlegicon>0)
+                {
+                    if (legcol==_nlegicon-1) { legcol=-1;  xi=x()+5;  xf=xi+LinLen;  yi+=_hlegicon; }
+                    legcol++;
+                }
             }
         }
         if (CompactBR)
         {
             LblFnt.Activate (DC);
-            GUI_DRAW_TEXT (DC, _blbl, x()+w()-3, y()+h()-TicFsz/2-3, /*right*/1); // draw label
+            GUI_DRAW_TEXT (DC, _blbl, x()+w()-3, y()+h()-_hlegicon*_nlegrows, /*right*/1); // draw label
+            //GUI_DRAW_TEXT (DC, _blbl, x()+w()-3, y()+h()-TicFsz/2-3, /*right*/1); // draw label
         }
     }
     else
