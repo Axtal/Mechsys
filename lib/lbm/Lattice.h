@@ -206,7 +206,7 @@ inline void Lattice::CollideAlt()
     {
         Cell * c = Cells[i];
         if (c->IsSolid) continue;
-        if (fabs(c->Gamma-1.0)<1.0e-12) continue;
+        if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(G)>1.0e-12) continue;
         Vec3_t V;
         double rho = c->VelDen(V);
         Vec3_t DV  = V + c->BForce*Tau/rho;

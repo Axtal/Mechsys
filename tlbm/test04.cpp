@@ -24,13 +24,23 @@
 // MechSys
 #include <mechsys/lbm/Domain.h>
 #include <mechsys/util/maps.h>
+#include <mechsys/util/util.h>
 
 struct UserData
 {
-    Array<Cell *> Left;
+    Array<Cell *> Left; 
     Array<Cell *> Right;
-    double        vmax;
-    double        rho;
+    size_t         alt;
+    size_t          Np;
+    double        vmax; 
+    double          Kn; 
+    double        xlim;
+    double          rc;
+    double          vp;
+    Vec3_t        Xmin; 
+    Vec3_t        Xmax; 
+    Vec3_t           g;
+    std::ofstream      oss_ss;       ///< file for stress strain data
 };
 
 void Setup (Domain & dom, void * UD)
@@ -63,54 +73,118 @@ void Setup (Domain & dom, void * UD)
 		c->F[7] = c->F[5] - (1.0/6.0)*c->RhoBC*vx + 0.5*(c->F[2]-c->F[4]);
 		c->F[6] = c->F[8] - (1.0/6.0)*c->RhoBC*vx - 0.5*(c->F[2]-c->F[4]);
 	}
+
+    dat.Np = 0;
+    for (size_t i=0;i<dom.Particles.Size();i++)
+    {
+        if (dom.Particles[i]->X(0) > dat.Xmax(0)) dat.Np++;
+        //dom.Particles[i]->Ff = dom.Particles[i]->M*dat.g;
+        dom.Particles[i]->Ff = 0.0,0.0,0.0;
+        double delta;
+        delta =   dat.Xmin(0) - dom.Particles[i]->X(0) + dom.Particles[i]->R;
+        if (delta > 0.0)  dom.Particles[i]->Ff(0) += dat.Kn*delta;
+        //delta = - dat.Xmax(0) + dom.Particles[i]->X(0) + dom.Particles[i]->R;
+        //if (delta > 0.0)  dom.Particles[i]->Ff(0) -= dat.Kn*delta;
+        delta =   dat.Xmin(1) - dom.Particles[i]->X(1) + dom.Particles[i]->R;
+        if (delta > 0.0)  dom.Particles[i]->Ff(1) += dat.Kn*delta;
+        delta = - dat.Xmax(1) + dom.Particles[i]->X(1) + dom.Particles[i]->R;
+        if (delta > 0.0)  dom.Particles[i]->Ff(1) -= dat.Kn*delta;
+    }
+
+    Vec3_t Xmin,Xmax;
+    dom.BoundingBox(Xmin,Xmax);
+    if (Xmin(0) > dat.xlim + 2.0*dat.rc)
+    {
+        for (double y=0.05*dat.Xmax(1) + dat.alt*2.0*dat.rc;y<0.95*dat.Xmax(1);y+=4.0*dat.rc)
+        {
+            dom.AddDisk(0,Vec3_t(dat.xlim, y,0.0),Vec3_t(dat.vp,0.0,0.0),OrthoSys::O,3.0,dat.rc,1.0);
+            dom.Particles[dom.Particles.Size()-1]->Kn = dat.Kn;
+        }
+        dom.ResetContacts();
+        dom.ResetDisplacements();
+        dat.alt ++;
+        dat.alt = (dat.alt%2);
+    }
+}
+
+void Report(Domain & dom, void * UD)
+{
+    UserData & dat = (*static_cast<UserData *>(UD));
+    if (dom.idx_out==0)
+    {
+        String fs;
+        fs.Printf("%s_n_particles.res","test04");
+        dat.oss_ss.open(fs.CStr(),std::ios::out);
+        dat.oss_ss << "Time" << Util::_8s << "Np" <<"\n";
+    }
+
+    dat.oss_ss << dom.Time << Util::_8s << dat.Np << "\n";
 }
 
 int main(int argc, char **argv) try
 {
-    double u_max  = 0.1;                 // Poiseuille's maximum velocity
-    double Re     = 100;                 // Reynold's number
-    size_t nx = 400;
-    size_t ny = 400;
-    int radius = ny/10 + 1;           // radius of inner circle (obstacle)
-    double nu     = u_max*(2*radius)/Re; // viscocity
-    Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
+    size_t nx     = 1000;
+    size_t ny     = 1000;
+    double nu     = 0.04;
+    double dx     = 1.0;
+    double dt     = 1.0;    
+    double vb     = 0.01;
+    double rc     = 5.0;
+    double xlim   = 1.1*rc;
+    double Kn     = 1.0e2;
+    Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
     UserData dat;
     Dom.UserData = &dat;
+    Dom.Alpha    = 2.0*rc;
+    dat.xlim     = xlim;
+    dat.Xmin     = 0.0,0.0,0.0;
+    dat.Xmax     = nx*dx,ny*dx,0.0;
+    dat.rc       = rc;
+    dat.vp       = 0.0*vb;
+    dat.g        = 0.001,0.0,0.0;
+    dat.alt      = 1;
+    dat.Np       = 0;
+    dat.Kn       = Kn;
 
-    dat.vmax = u_max;
     //Assigning the left and right cells
     for (size_t i=0;i<ny;i++)
     {
         dat.Left .Push(Dom.Lat.GetCell(iVec3_t(0   ,i,0)));
         dat.Right.Push(Dom.Lat.GetCell(iVec3_t(nx-1,i,0)));
-        double vx = 0.01; // horizontal velocity
+        double vx = vb; // horizontal velocity
         double vy = 0.0;                          // vertical velocity
 		Vec3_t v(vx, vy, 0.0);                    // velocity vector
         dat.Left [i]->VelBC = v;
         dat.Left [i]->RhoBC = 1.0;
-        //dat.Right[i]->VelBC = 0.08,0.0,0.0;
         dat.Right[i]->VelBC = v;
         dat.Right[i]->RhoBC = 1.0;
 
     }
-    dat.rho  = 1.0;
+
+    //Assigning solid boundaries at top and bottom
+    for (size_t i=0;i<nx;i++)
+    {
+        Dom.Lat.GetCell(iVec3_t(i,0   ,0))->IsSolid = true;
+        Dom.Lat.GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
+    }
 
 	// Set grains
 	Table grains;
 	grains.Read("circles.out");
 	for (size_t i=0; i<grains["Xc"].Size(); ++i)
 	{
-		double xc = grains["Xc"][i]*nx+40;
+		double xc = grains["Xc"][i]*nx+0.05*nx;
 		double yc = grains["Yc"][i]*ny;
-		double r  = grains["R" ][i]*nx*0.75;
+		double r  = grains["R" ][i]*nx*0.9;
         Dom.AddDisk(0,Vec3_t(xc,yc,0.0),OrthoSys::O,OrthoSys::O,3.0,r,1.0);
         Dom.Particles[Dom.Particles.Size()-1]->FixVelocity();
+        Dom.Particles[Dom.Particles.Size()-1]->Kn = Kn;
 	}
 
-    for (double y=20.0;y<390.0;y+=20.0)
+    for (double y=0.05*dat.Xmax(1);y<0.95*dat.Xmax(1);y+=4.0*rc)
     {
-        Dom.AddDisk(0,Vec3_t(10.0,y,0.0),OrthoSys::O,OrthoSys::O,3.0,8.0,1.0);
-        Dom.AddDisk(0,Vec3_t(30.0,y,0.0),OrthoSys::O,OrthoSys::O,3.0,8.0,1.0);
+        Dom.AddDisk(0,Vec3_t(xlim, y,0.0),Vec3_t(0.1*vb,0.0,0.0),OrthoSys::O,3.0,rc,1.0);
+        Dom.Particles[Dom.Particles.Size()-1]->Kn = Kn;
     }
 
     
@@ -126,7 +200,8 @@ int main(int argc, char **argv) try
 
     //Solving
     Dom.Time = 0.0;
-    Dom.Solve(20000.0,200.0,Setup,NULL,"test04");
+    Dom.Solve(100000.0,1000.0,Setup,Report,"test04");
+    dat.oss_ss.close();
  
 }
 MECHSYS_CATCH

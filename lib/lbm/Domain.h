@@ -50,6 +50,7 @@ public:
     void ResetContacts();
     void ResetDisplacements();
     double  MaxDisplacement();
+    void BoundingBox(Vec3_t & Xmin, Vec3_t & Xmax);
 
 
 
@@ -124,6 +125,21 @@ inline void Domain::ResetContacts()
     }
 }
 
+inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
+{
+    minX = Vec3_t(Particles[0]->X(0) - Particles[0]->R, Particles[0]->X(1) - Particles[0]->R, Particles[0]->X(2) - Particles[0]->R);
+    maxX = Vec3_t(Particles[0]->X(0) + Particles[0]->R, Particles[0]->X(1) + Particles[0]->R, Particles[0]->X(2) + Particles[0]->R);
+    for (size_t i=1; i<Particles.Size(); i++)
+    {
+        if (minX(0)>(Particles[i]->X(0) - Particles[i]->R)&&Particles[i]->IsFree()) minX(0) = Particles[i]->X(0) - Particles[i]->R;
+        if (minX(1)>(Particles[i]->X(1) - Particles[i]->R)&&Particles[i]->IsFree()) minX(1) = Particles[i]->X(1) - Particles[i]->R;
+        if (minX(2)>(Particles[i]->X(2) - Particles[i]->R)&&Particles[i]->IsFree()) minX(2) = Particles[i]->X(2) - Particles[i]->R;
+        if (maxX(0)<(Particles[i]->X(0) + Particles[i]->R)&&Particles[i]->IsFree()) maxX(0) = Particles[i]->X(0) + Particles[i]->R;
+        if (maxX(1)<(Particles[i]->X(1) + Particles[i]->R)&&Particles[i]->IsFree()) maxX(1) = Particles[i]->X(1) + Particles[i]->R;
+        if (maxX(2)<(Particles[i]->X(2) + Particles[i]->R)&&Particles[i]->IsFree()) maxX(2) = Particles[i]->X(2) + Particles[i]->R;
+    }
+}
+
 inline void Domain::AddDisk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
 {
     Particles.Push(new Disk(TheTag,TheX,TheV,TheW,Therho,TheR,dt));
@@ -175,7 +191,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             Lat.ApplyForce();
             Lat.CollideAlt();
         }
-        else Lat.Collide();
+        else Lat.CollideAlt();
         Lat.BounceBack();
         Lat.Stream();
         
