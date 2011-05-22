@@ -518,7 +518,7 @@ int main(int argc, char **argv) try
         }
     }
     double tol_dnu0dt = 1.0e-6;
-    double tol_dnu1dt = 1.0e-7;
+    double tol_dnu1dt = 1.0e-6;
     double tol_dnu2dt = 1.0e-7;
     printf("  max_err_dnu0dt = %s%16.8e%s\n",(max_err_dnu0dt >tol_dnu0dt?TERM_RED:TERM_GREEN),max_err_dnu0dt, TERM_RST);
     printf("  max_err_dnu1dt = %s%16.8e%s\n",(max_err_dnu1dt >tol_dnu1dt?TERM_RED:TERM_GREEN),max_err_dnu1dt, TERM_RST);

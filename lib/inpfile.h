@@ -86,60 +86,58 @@ public:
     void SetSUp      (Model const * Mdl, Model::StressUpdate::pDbgFun pFun=NULL, void * UserData=NULL) const;
 
     // Data
-    int    matid;       ///<  1 material ID
-    int    flwid;       ///<  2 flow material ID
-    int    ninc;        ///<  3 general number of increments (for all load-unload paths)
-    bool   cdrift;      ///<  4 correct YS drift
-    double stol;        ///<  5 local error tolerance
-    bool   ssout;       ///<  6 output substeps ?
-    bool   ctetg;       ///<  7 Constant stiffness (linear) ?
-    bool   fem;         ///<  8 use one Hex8 FEM element instead of point integration
-    bool   dyn;         ///<  9 dynamic analysis ?
-    bool   hm;          ///< 10 HydroMech ?
-    double tf;          ///< 11 final time
-    double dt;          ///< 12 time step
-    double dtout;       ///< 13 output time step
-    double tsw;         ///< 14 switch time (for dynamic simulation)
-    int    ndiv;        ///< 15 mesh number of divisions
-    int    nip;         ///< 16 Number of integration points in element
-    bool   o2;          ///< 17 quadratic elements ?
-    bool   ray;         ///< 18 Rayleigh damping ?
-    double am;          ///< 19 Damping Am
-    double ak;          ///< 20 Damping Ak
-    bool   rk;          ///< 21 Runge-Kutta instead of GN22 ?
-    String rkscheme;    ///< 22 Runge-Kutta scheme 
-    double rkstol;      ///< 23 Runge-Kutta tolerance
-    String refdat;      ///< 24 reference data file
-    String refsim;      ///< 25 reference simulation file
-    String refana;      ///< 26 reference analytical solution file
-    int    idxvert1;    ///< 27 index of vertex # 1 for output
-    int    idxvert2;    ///< 28 index of vertex # 1 for output
-    int    idxvert3;    ///< 29 index of vertex # 1 for output
-    double optdbl1;     ///< 30 optional double 1
-    double optdbl2;     ///< 31 optional double 2
-    double optdbl3;     ///< 32 optional double 3
+    int    ninc;        ///<  1 general number of increments (for all load-unload paths)
+    bool   cdrift;      ///<  2 correct YS drift
+    double stol;        ///<  3 local error tolerance
+    bool   ssout;       ///<  4 output substeps ?
+    bool   ctetg;       ///<  5 Constant stiffness (linear) ?
+    bool   fem;         ///<  6 use one Hex8 FEM element instead of point integration
+    bool   dyn;         ///<  7 dynamic analysis ?
+    bool   hm;          ///<  8 HydroMech ?
+    double tf;          ///<  9 final time
+    double dt;          ///< 10 time step
+    double dtout;       ///< 11 output time step
+    double tsw;         ///< 12 switch time (for dynamic simulation)
+    int    ndiv;        ///< 13 mesh number of divisions
+    int    nip;         ///< 14 Number of integration points in element
+    bool   o2;          ///< 15 quadratic elements ?
+    bool   ray;         ///< 16 Rayleigh damping ?
+    double am;          ///< 17 Damping Am
+    double ak;          ///< 18 Damping Ak
+    bool   rk;          ///< 19 Runge-Kutta instead of GN22 ?
+    String rkscheme;    ///< 20 Runge-Kutta scheme 
+    double rkstol;      ///< 21 Runge-Kutta tolerance
+    String refdat;      ///< 22 reference data file
+    String refsim;      ///< 23 reference simulation file
+    String refana;      ///< 24 reference analytical solution file
+    int    idxvert1;    ///< 25 index of vertex # 1 for output
+    int    idxvert2;    ///< 26 index of vertex # 1 for output
+    int    idxvert3;    ///< 27 index of vertex # 1 for output
+    double optdbl1;     ///< 28 optional double 1
+    double optdbl2;     ///< 29 optional double 2
+    double optdbl3;     ///< 30 optional double 3
     bool   hasoptdbl1, hasoptdbl2, hasoptdbl3;
-    int    nldt_nsml;   ///< 33 nonlinear timesteps Nsml
-    int    nldt_nn;     ///< 34 nonlinear timesteps N
-    int    nldt_n;      ///< 35 nonlinear timesteps n
-    double nldt_ll;     ///< 36 nonlinear timesteps denominator
-    int    nldt_sch;    ///< 37 nonlinear timesteps scheme (0 or 1)
-    double nldt_m;      ///< 38 nonlinear timesteps multiplier for larger timesteps in sch==1
-    int    maxit;       ///< 39 max num of iterations
-    double tolr;        ///< 40 tolerance for residual
-    String fnkey;       ///< 41 filename key
-    double pcam0;       ///< 42 pcam0
+    int    nldt_nsml;   ///< 31 nonlinear timesteps Nsml
+    int    nldt_nn;     ///< 32 nonlinear timesteps N
+    int    nldt_n;      ///< 33 nonlinear timesteps n
+    double nldt_ll;     ///< 34 nonlinear timesteps denominator
+    int    nldt_sch;    ///< 35 nonlinear timesteps scheme (0 or 1)
+    double nldt_m;      ///< 36 nonlinear timesteps multiplier for larger timesteps in sch==1
+    int    maxit;       ///< 37 max num of iterations
+    double tolr;        ///< 38 tolerance for residual
+    String fnkey;       ///< 39 filename key
+    double pcam0;       ///< 40 pcam0
     bool   haspcam0;    ///< has pcam0 ?
-    String scheme;      ///< 43 solver scheme
-    bool   vtufile;     ///< 44 write vtu file ?
-    String suscheme;    ///< 45 stress-update scheme
-    double sustol;      ///< 46 stress-update STOL
-    String surkscheme;  ///< 47 stress-update RK scheme
-    size_t dcmaxit;     ///< 48 drift correction max iterations
-    double dcftol;      ///< 49 drift correction f tolerance
-    double pw0;         ///< 50 pw0
+    String scheme;      ///< 41 solver scheme
+    bool   vtufile;     ///< 42 write vtu file ?
+    String suscheme;    ///< 43 stress-update scheme
+    double sustol;      ///< 44 stress-update STOL
+    String surkscheme;  ///< 45 stress-update RK scheme
+    size_t dcmaxit;     ///< 46 drift correction max iterations
+    double dcftol;      ///< 47 drift correction f tolerance
+    double pw0;         ///< 48 pw0
     bool   haspw0;      ///< has pw0 ?
-    bool   rkdyncte;    ///< 51 rk scheme dyn cte M and C
+    bool   rkdyncte;    ///< 49 rk scheme dyn cte M and C
 
     // Additional data
     Dict * Prms; ///< parameters (set by SetMat)
@@ -246,60 +244,58 @@ inline InpFile::~InpFile ()
 
 inline void InpFile::Defaults ()
 {
-    matid      = -1;     //  1
-    flwid      = -1;     //  2
-    ninc       = -1;     //  3
-    cdrift     = false;  //  4
-    stol       = -1;     //  5
-    ssout      = false;  //  6
-    ctetg      = false;  //  7
-    fem        = false;  //  8
-    dyn        = false;  //  9
-    hm         = false;  // 10
-    tf         = -1;     // 11
-    dt         = -1;     // 12
-    dtout      = -1;     // 13
-    tsw        = -1;     // 14
-    ndiv       = -1;     // 15
-    nip        = -1;     // 16
-    o2         = false;  // 17
-    ray        = false;  // 18
-    am         = -1;     // 19
-    ak         = -1;     // 20
-    rk         = false;  // 21
-    rkscheme   = "";     // 22
-    rkstol     = -1;     // 23
-    refdat     = "";     // 24
-    refsim     = "";     // 25
-    refana     = "";     // 26
-    idxvert1   = -1;     // 27
-    idxvert2   = -1;     // 28
-    idxvert3   = -1;     // 29
-    optdbl1    = 0;      // 30
-    optdbl2    = 0;      // 31
-    optdbl3    = 0;      // 32
+    ninc       = -1;     //  1
+    cdrift     = false;  //  2
+    stol       = -1;     //  3
+    ssout      = false;  //  4
+    ctetg      = false;  //  5
+    fem        = false;  //  6
+    dyn        = false;  //  7
+    hm         = false;  //  8
+    tf         = -1;     //  9
+    dt         = -1;     // 10
+    dtout      = -1;     // 11
+    tsw        = -1;     // 12
+    ndiv       = -1;     // 13
+    nip        = -1;     // 14
+    o2         = false;  // 15
+    ray        = false;  // 16
+    am         = -1;     // 17
+    ak         = -1;     // 18
+    rk         = false;  // 19
+    rkscheme   = "";     // 20
+    rkstol     = -1;     // 21
+    refdat     = "";     // 22
+    refsim     = "";     // 23
+    refana     = "";     // 24
+    idxvert1   = -1;     // 25
+    idxvert2   = -1;     // 26
+    idxvert3   = -1;     // 27
+    optdbl1    = 0;      // 28
+    optdbl2    = 0;      // 29
+    optdbl3    = 0;      // 30
     hasoptdbl1 = false; hasoptdbl2=false; hasoptdbl3=false;
-    nldt_nsml  = -1;     // 33
-    nldt_nn    = -1;     // 34
-    nldt_n     = -1;     // 35
-    nldt_ll    = -1;     // 36
-    nldt_sch   = -1;     // 37
-    nldt_m     = -1;     // 38
-    maxit      = -1;     // 39
-    tolr       = -1;     // 40
-    fnkey      = "";     // 41
-    pcam0      = 0;      // 42
+    nldt_nsml  = -1;     // 31
+    nldt_nn    = -1;     // 32
+    nldt_n     = -1;     // 33
+    nldt_ll    = -1;     // 34
+    nldt_sch   = -1;     // 35
+    nldt_m     = -1;     // 36
+    maxit      = -1;     // 37
+    tolr       = -1;     // 38
+    fnkey      = "";     // 39
+    pcam0      = 0;      // 40
     haspcam0   = false;
-    scheme     = "";     // 43
-    vtufile    = false;  // 44
-    suscheme   = "";     // 45
-    sustol     = -1;     // 46
-    surkscheme = "";     // 47
-    dcmaxit    = 0;      // 48
-    dcftol     = -1;     // 49
-    pw0        = 0;      // 50
+    scheme     = "";     // 41
+    vtufile    = false;  // 42
+    suscheme   = "";     // 43
+    sustol     = -1;     // 44
+    surkscheme = "";     // 45
+    dcmaxit    = 0;      // 46
+    dcftol     = -1;     // 47
+    pw0        = 0;      // 48
     haspw0     = false;
-    rkdyncte   = true;   // 51
+    rkdyncte   = true;   // 49
 }
 
 inline void InpFile::Read (char const * FileName)
@@ -451,57 +447,55 @@ inline void InpFile::Read (char const * FileName)
             }
             else
             {
-                if      (key=="matid")      matid     = atoi(str_val.CStr());       //  1
-                else if (key=="flwid")      flwid     = atoi(str_val.CStr());       //  2
-                else if (key=="ninc")       ninc      = atoi(str_val.CStr());       //  3
-                else if (key=="cdrift")     cdrift    = (bool)atoi(str_val.CStr()); //  4
-                else if (key=="stol")       stol      = val;                        //  5
-                else if (key=="ssout")      ssout     = (bool)atoi(str_val.CStr()); //  6
-                else if (key=="ctetg")      ctetg     = (bool)atoi(str_val.CStr()); //  7
-                else if (key=="fem")        fem       = val;                        //  8
-                else if (key=="dyn")        dyn       = (bool)atoi(str_val.CStr()); //  9
-                else if (key=="hm")         hm        = (bool)atoi(str_val.CStr()); // 10
-                else if (key=="tf")         tf        = val;                        // 11
-                else if (key=="dt")         dt        = val;                        // 12
-                else if (key=="dtout")      dtout     = val;                        // 13
-                else if (key=="tsw")        tsw       = val;                        // 14
-                else if (key=="ndiv")       ndiv      = atoi(str_val.CStr());       // 15
-                else if (key=="nip")        nip       = atoi(str_val.CStr());       // 16
-                else if (key=="o2")         o2        = (bool)atoi(str_val.CStr()); // 17
-                else if (key=="ray")        ray       = (bool)atoi(str_val.CStr()); // 18
-                else if (key=="am")         am        = val;                        // 19
-                else if (key=="ak")         ak        = val;                        // 20
-                else if (key=="rk")         rk        = (bool)atoi(str_val.CStr()); // 21
-                else if (key=="rkscheme")   rkscheme  = str_val;                    // 22
-                else if (key=="rkstol")     rkstol    = val;                        // 23
-                else if (key=="refdat")     refdat    = str_val;                    // 24
-                else if (key=="refsim")     refsim    = str_val;                    // 25
-                else if (key=="refana")     refana    = str_val;                    // 26
-                else if (key=="idxvert1")   idxvert1  = atoi(str_val.CStr());       // 27
-                else if (key=="idxvert2")   idxvert2  = atoi(str_val.CStr());       // 28
-                else if (key=="idxvert3")   idxvert3  = atoi(str_val.CStr());       // 29
-                else if (key=="optdbl1")  { optdbl1   = val;   hasoptdbl1=true; }   // 30
-                else if (key=="optdbl2")  { optdbl2   = val;   hasoptdbl2=true; }   // 31
-                else if (key=="optdbl3")  { optdbl3   = val;   hasoptdbl3=true; }   // 32
-                else if (key=="nldt_nsml")  nldt_nsml = atoi(str_val.CStr());       // 33
-                else if (key=="nldt_nn")    nldt_nn   = atoi(str_val.CStr());       // 34
-                else if (key=="nldt_n")     nldt_n    = atoi(str_val.CStr());       // 35
-                else if (key=="nldt_ll")    nldt_ll   = val;                        // 36
-                else if (key=="nldt_sch")   nldt_sch  = atoi(str_val.CStr());       // 37
-                else if (key=="nldt_m")     nldt_m    = val;                        // 38
-                else if (key=="maxit")      maxit     = atoi(str_val.CStr());       // 39
-                else if (key=="tolr")       tolr      = val;                        // 40
-                else if (key=="fnkey")      fnkey     = str_val;                    // 41
-                else if (key=="pcam0")    { pcam0     = val;     haspcam0 = true; } // 42
-                else if (key=="scheme")     scheme    = str_val;                    // 43
-                else if (key=="vtufile")    vtufile   = (int)val;                   // 44
-                else if (key=="suscheme")   suscheme  = str_val;                    // 45
-                else if (key=="sustol")     sustol    = val;                        // 46
-                else if (key=="surkscheme") surkscheme= str_val;                    // 47
-                else if (key=="dcmaxit")    dcmaxit   = (int)val;                   // 48
-                else if (key=="dcftol")     dcftol    = val;                        // 49
-                else if (key=="pw0")      { pw0       = val;     haspw0 = true; }   // 50
-                else if (key=="rkdyncte")   rkdyncte  = (bool)atoi(str_val.CStr()); // 51
+                if      (key=="ninc")       ninc      = atoi(str_val.CStr());       //  1
+                else if (key=="cdrift")     cdrift    = (bool)atoi(str_val.CStr()); //  2
+                else if (key=="stol")       stol      = val;                        //  3
+                else if (key=="ssout")      ssout     = (bool)atoi(str_val.CStr()); //  4
+                else if (key=="ctetg")      ctetg     = (bool)atoi(str_val.CStr()); //  5
+                else if (key=="fem")        fem       = val;                        //  6
+                else if (key=="dyn")        dyn       = (bool)atoi(str_val.CStr()); //  7
+                else if (key=="hm")         hm        = (bool)atoi(str_val.CStr()); //  8
+                else if (key=="tf")         tf        = val;                        //  9
+                else if (key=="dt")         dt        = val;                        // 10
+                else if (key=="dtout")      dtout     = val;                        // 11
+                else if (key=="tsw")        tsw       = val;                        // 12
+                else if (key=="ndiv")       ndiv      = atoi(str_val.CStr());       // 13
+                else if (key=="nip")        nip       = atoi(str_val.CStr());       // 14
+                else if (key=="o2")         o2        = (bool)atoi(str_val.CStr()); // 15
+                else if (key=="ray")        ray       = (bool)atoi(str_val.CStr()); // 16
+                else if (key=="am")         am        = val;                        // 17
+                else if (key=="ak")         ak        = val;                        // 18
+                else if (key=="rk")         rk        = (bool)atoi(str_val.CStr()); // 19
+                else if (key=="rkscheme")   rkscheme  = str_val;                    // 20
+                else if (key=="rkstol")     rkstol    = val;                        // 21
+                else if (key=="refdat")     refdat    = str_val;                    // 22
+                else if (key=="refsim")     refsim    = str_val;                    // 23
+                else if (key=="refana")     refana    = str_val;                    // 24
+                else if (key=="idxvert1")   idxvert1  = atoi(str_val.CStr());       // 25
+                else if (key=="idxvert2")   idxvert2  = atoi(str_val.CStr());       // 26
+                else if (key=="idxvert3")   idxvert3  = atoi(str_val.CStr());       // 27
+                else if (key=="optdbl1")  { optdbl1   = val;   hasoptdbl1=true; }   // 28
+                else if (key=="optdbl2")  { optdbl2   = val;   hasoptdbl2=true; }   // 29
+                else if (key=="optdbl3")  { optdbl3   = val;   hasoptdbl3=true; }   // 30
+                else if (key=="nldt_nsml")  nldt_nsml = atoi(str_val.CStr());       // 31
+                else if (key=="nldt_nn")    nldt_nn   = atoi(str_val.CStr());       // 32
+                else if (key=="nldt_n")     nldt_n    = atoi(str_val.CStr());       // 33
+                else if (key=="nldt_ll")    nldt_ll   = val;                        // 34
+                else if (key=="nldt_sch")   nldt_sch  = atoi(str_val.CStr());       // 35
+                else if (key=="nldt_m")     nldt_m    = val;                        // 36
+                else if (key=="maxit")      maxit     = atoi(str_val.CStr());       // 37
+                else if (key=="tolr")       tolr      = val;                        // 38
+                else if (key=="fnkey")      fnkey     = str_val;                    // 39
+                else if (key=="pcam0")    { pcam0     = val;     haspcam0 = true; } // 40
+                else if (key=="scheme")     scheme    = str_val;                    // 41
+                else if (key=="vtufile")    vtufile   = (int)val;                   // 42
+                else if (key=="suscheme")   suscheme  = str_val;                    // 43
+                else if (key=="sustol")     sustol    = val;                        // 44
+                else if (key=="surkscheme") surkscheme= str_val;                    // 45
+                else if (key=="dcmaxit")    dcmaxit   = (int)val;                   // 46
+                else if (key=="dcftol")     dcftol    = val;                        // 47
+                else if (key=="pw0")      { pw0       = val;     haspw0 = true; }   // 48
+                else if (key=="rkdyncte")   rkdyncte  = (bool)atoi(str_val.CStr()); // 49
                 else if (key=="npath")    { npath     = (int)val;  reading_path   = true; }
                 else if (key=="nelemprps"){ nelemprps = (int)val;  reading_eprps  = true; }
                 else if (key=="nstages")  { nstages   = (int)val;  reading_stages = true; }
@@ -510,14 +504,17 @@ inline void InpFile::Read (char const * FileName)
                     String left, right, str_id, str_tag;
                     line.Split (left, right, "=");
                     std::istringstream subiss(right);
+                    bool pair_found = false;
                     while (subiss >> str_id >> str_tag)
                     {
+                        pair_found = true;
                         int id  = atoi(str_id.CStr());
                         int tag = atoi(str_tag.CStr());
                         if (id<0 || tag>=0) throw new Fatal("InpFile::Read: Error in file <%s> @ line # %d with Key==%s. Material ids must be zero or positive and element tags must be negative. Ex.: matids = 0 -1  1 -2  2 -3",FileName,line_num,key.CStr());
                         if (key=="xmatids") Tag2XMatID->Set (str_tag.CStr(), id);
                         else                Tag2MatID ->Set (str_tag.CStr(), id);
                     }
+                    if (!pair_found) throw new Fatal("InpFile::Read: Error in file <%s> @ line # %d with Key==%s. Material ids must be zero or positive and element tags must be negative. Ex.: matids = 0 -1  1 -2  2 -3",FileName,line_num,key.CStr());
                 }
                 else if (key=="outnods")
                 {
@@ -561,7 +558,7 @@ inline void InpFile::SetPrmsInis (MatFile const & Mat, bool ForceGTY)
         Inis->Set (tag, inis);
         if (ForceGTY)
         {
-            if (Prps->Keys.Size()==0) throw new Fatal("InpFile::SetPrmsInis: Dictionary of properties (Prps) is empty => ForceGTY (geometry type) cannot be applied");
+            if (Prps->Keys.Size()==0) throw new Fatal("InpFile::SetPrmsInis: Dictionary of properties (Prps) is empty => ForceGTY (geometry type) cannot be applied. You may have to specify 'nelemprps = 1' in your Input file.");
             SDPair const & prps = (*Prps)(tag);
             Array<String> gtypes("d3d", "d2d", "psa", "pse", "fra");
             for (size_t i=0; i<gtypes.Size(); ++i)
@@ -660,57 +657,55 @@ inline void InpFile::SetSUp (Model const * Mdl, Model::StressUpdate::pDbgFun pFu
 
 std::ostream & operator<< (std::ostream & os, InpFile const & IF)
 {
-    if (IF.matid       >=0) os << "matid     = " << IF.matid     << "\n"; //   1
-    if (IF.flwid       >=0) os << "flwid     = " << IF.flwid     << "\n"; //   2
-    if (IF.ninc        >=0) os << "ninc      = " << IF.ninc      << "\n"; //   3
-    if (IF.cdrift         ) os << "cdrift    = " << IF.cdrift    << "\n"; //   4
-    if (IF.stol        >=0) os << "stol      = " << IF.stol      << "\n"; //   5
-    if (IF.ssout          ) os << "ssout     = " << IF.ssout     << "\n"; //   6
-    if (IF.ctetg          ) os << "ctetg     = " << IF.ctetg     << "\n"; //   7
-    if (IF.fem            ) os << "fem       = " << IF.fem       << "\n"; //   8
-    if (IF.dyn            ) os << "dyn       = " << IF.dyn       << "\n"; //   9
-    if (IF.hm             ) os << "hm        = " << IF.hm        << "\n"; //  10
-    if (IF.tf          >=0) os << "tf        = " << IF.tf        << "\n"; //  11
-    if (IF.dt          >=0) os << "dt        = " << IF.dt        << "\n"; //  12
-    if (IF.dtout       >=0) os << "dtout     = " << IF.dtout     << "\n"; //  13
-    if (IF.tsw         >=0) os << "tsw       = " << IF.tsw       << "\n"; //  14
-    if (IF.ndiv        >=0) os << "ndiv      = " << IF.ndiv      << "\n"; //  15
-    if (IF.nip         >=0) os << "nip       = " << IF.nip       << "\n"; //  16
-    if (IF.o2             ) os << "o2        = " << IF.o2        << "\n"; //  17
-    if (IF.ray            ) os << "ray       = " << IF.ray       << "\n"; //  18
-    if (IF.am          >=0) os << "am        = " << IF.am        << "\n"; //  19
-    if (IF.ak          >=0) os << "ak        = " << IF.ak        << "\n"; //  20
-    if (IF.rk             ) os << "rk        = " << IF.rk        << "\n"; //  21
-    if (IF.rkscheme   !="") os << "rkscheme  = " << IF.rkscheme  << "\n"; //  22
-    if (IF.rkstol      >=0) os << "rkstol    = " << IF.rkstol    << "\n"; //  23
-    if (IF.refdat     !="") os << "refdat    = " << IF.refdat    << "\n"; //  24
-    if (IF.refsim     !="") os << "refsim    = " << IF.refsim    << "\n"; //  25
-    if (IF.refana     !="") os << "refana    = " << IF.refana    << "\n"; //  26
-    if (IF.idxvert1    >=0) os << "idxvert1  = " << IF.idxvert1  << "\n"; //  27
-    if (IF.idxvert2    >=0) os << "idxvert2  = " << IF.idxvert2  << "\n"; //  28
-    if (IF.idxvert3    >=0) os << "idxvert3  = " << IF.idxvert3  << "\n"; //  29
-    if (IF.hasoptdbl1     ) os << "optdbl1   = " << IF.optdbl1   << "\n"; //  30
-    if (IF.hasoptdbl2     ) os << "optdbl2   = " << IF.optdbl2   << "\n"; //  31
-    if (IF.hasoptdbl3     ) os << "optdbl3   = " << IF.optdbl3   << "\n"; //  32
-    if (IF.nldt_nsml   >0 ) os << "nldt_nsml = " << IF.nldt_nsml << "\n"; //  33
-    if (IF.nldt_nn     >0 ) os << "nldt_nn   = " << IF.nldt_nn   << "\n"; //  34
-    if (IF.nldt_n      >0 ) os << "nldt_n    = " << IF.nldt_n    << "\n"; //  35
-    if (IF.nldt_ll     >0 ) os << "nldt_ll   = " << IF.nldt_ll   << "\n"; //  36
-    if (IF.nldt_sch    >0 ) os << "nldt_sch  = " << IF.nldt_sch  << "\n"; //  37
-    if (IF.nldt_m      >0 ) os << "nldt_m    = " << IF.nldt_m    << "\n"; //  38
-    if (IF.maxit       >0 ) os << "maxit     = " << IF.maxit     << "\n"; //  39
-    if (IF.tolr        >=0) os << "tolr      = " << IF.tolr      << "\n"; //  40
-    if (IF.fnkey.size()>0 ) os << "fnkey     = " << IF.fnkey     << "\n"; //  41
-    if (IF.haspcam0       ) os << "pcam0     = " << IF.pcam0     << "\n"; //  42
-    if (IF.scheme     !="") os << "scheme    = " << IF.scheme    << "\n"; //  43
-    if (IF.vtufile        ) os << "vtufile   = " << IF.vtufile   << "\n"; //  44
-    if (IF.suscheme   !="") os << "suscheme  = " << IF.suscheme  << "\n"; //  45
-    if (IF.sustol      >=0) os << "sustol    = " << IF.sustol    << "\n"; //  46
-    if (IF.surkscheme !="") os << "surkscheme= " << IF.surkscheme<< "\n"; //  47
-    if (IF.dcmaxit      >0) os << "dcmaxit   = " << IF.dcmaxit   << "\n"; //  48
-    if (IF.dcftol       >0) os << "dcftol    = " << IF.dcftol    << "\n"; //  49
-    if (IF.haspw0         ) os << "pw0       = " << IF.pw0       << "\n"; //  50
-    if (IF.rkdyncte       ) os << "rkdyncte  = " << IF.rkdyncte  << "\n"; //  51
+    if (IF.ninc        >=0) os << "ninc      = " << IF.ninc      << "\n"; //  1
+    if (IF.cdrift         ) os << "cdrift    = " << IF.cdrift    << "\n"; //  2
+    if (IF.stol        >=0) os << "stol      = " << IF.stol      << "\n"; //  3
+    if (IF.ssout          ) os << "ssout     = " << IF.ssout     << "\n"; //  4
+    if (IF.ctetg          ) os << "ctetg     = " << IF.ctetg     << "\n"; //  5
+    if (IF.fem            ) os << "fem       = " << IF.fem       << "\n"; //  6
+    if (IF.dyn            ) os << "dyn       = " << IF.dyn       << "\n"; //  7
+    if (IF.hm             ) os << "hm        = " << IF.hm        << "\n"; //  8
+    if (IF.tf          >=0) os << "tf        = " << IF.tf        << "\n"; //  9
+    if (IF.dt          >=0) os << "dt        = " << IF.dt        << "\n"; // 10
+    if (IF.dtout       >=0) os << "dtout     = " << IF.dtout     << "\n"; // 11
+    if (IF.tsw         >=0) os << "tsw       = " << IF.tsw       << "\n"; // 12
+    if (IF.ndiv        >=0) os << "ndiv      = " << IF.ndiv      << "\n"; // 13
+    if (IF.nip         >=0) os << "nip       = " << IF.nip       << "\n"; // 14
+    if (IF.o2             ) os << "o2        = " << IF.o2        << "\n"; // 15
+    if (IF.ray            ) os << "ray       = " << IF.ray       << "\n"; // 16
+    if (IF.am          >=0) os << "am        = " << IF.am        << "\n"; // 17
+    if (IF.ak          >=0) os << "ak        = " << IF.ak        << "\n"; // 18
+    if (IF.rk             ) os << "rk        = " << IF.rk        << "\n"; // 19
+    if (IF.rkscheme   !="") os << "rkscheme  = " << IF.rkscheme  << "\n"; // 20
+    if (IF.rkstol      >=0) os << "rkstol    = " << IF.rkstol    << "\n"; // 21
+    if (IF.refdat     !="") os << "refdat    = " << IF.refdat    << "\n"; // 22
+    if (IF.refsim     !="") os << "refsim    = " << IF.refsim    << "\n"; // 23
+    if (IF.refana     !="") os << "refana    = " << IF.refana    << "\n"; // 24
+    if (IF.idxvert1    >=0) os << "idxvert1  = " << IF.idxvert1  << "\n"; // 25
+    if (IF.idxvert2    >=0) os << "idxvert2  = " << IF.idxvert2  << "\n"; // 26
+    if (IF.idxvert3    >=0) os << "idxvert3  = " << IF.idxvert3  << "\n"; // 27
+    if (IF.hasoptdbl1     ) os << "optdbl1   = " << IF.optdbl1   << "\n"; // 28
+    if (IF.hasoptdbl2     ) os << "optdbl2   = " << IF.optdbl2   << "\n"; // 29
+    if (IF.hasoptdbl3     ) os << "optdbl3   = " << IF.optdbl3   << "\n"; // 30
+    if (IF.nldt_nsml   >0 ) os << "nldt_nsml = " << IF.nldt_nsml << "\n"; // 31
+    if (IF.nldt_nn     >0 ) os << "nldt_nn   = " << IF.nldt_nn   << "\n"; // 32
+    if (IF.nldt_n      >0 ) os << "nldt_n    = " << IF.nldt_n    << "\n"; // 33
+    if (IF.nldt_ll     >0 ) os << "nldt_ll   = " << IF.nldt_ll   << "\n"; // 34
+    if (IF.nldt_sch    >0 ) os << "nldt_sch  = " << IF.nldt_sch  << "\n"; // 35
+    if (IF.nldt_m      >0 ) os << "nldt_m    = " << IF.nldt_m    << "\n"; // 36
+    if (IF.maxit       >0 ) os << "maxit     = " << IF.maxit     << "\n"; // 37
+    if (IF.tolr        >=0) os << "tolr      = " << IF.tolr      << "\n"; // 38
+    if (IF.fnkey.size()>0 ) os << "fnkey     = " << IF.fnkey     << "\n"; // 39
+    if (IF.haspcam0       ) os << "pcam0     = " << IF.pcam0     << "\n"; // 40
+    if (IF.scheme     !="") os << "scheme    = " << IF.scheme    << "\n"; // 41
+    if (IF.vtufile        ) os << "vtufile   = " << IF.vtufile   << "\n"; // 42
+    if (IF.suscheme   !="") os << "suscheme  = " << IF.suscheme  << "\n"; // 43
+    if (IF.sustol      >=0) os << "sustol    = " << IF.sustol    << "\n"; // 44
+    if (IF.surkscheme !="") os << "surkscheme= " << IF.surkscheme<< "\n"; // 45
+    if (IF.dcmaxit      >0) os << "dcmaxit   = " << IF.dcmaxit   << "\n"; // 46
+    if (IF.dcftol       >0) os << "dcftol    = " << IF.dcftol    << "\n"; // 47
+    if (IF.haspw0         ) os << "pw0       = " << IF.pw0       << "\n"; // 48
+    if (IF.rkdyncte       ) os << "rkdyncte  = " << IF.rkdyncte  << "\n"; // 49
     os << "\nPath:\n"                        << (*IF.Path)      << "\n";
     os << "\nElements properties:\n"         << (*IF.Prps)      << "\n";
     os << "\nOutput nodes:\n"                << (*IF.OutNods)   << "\n";
@@ -759,67 +754,65 @@ inline InpFile::InpFile (wxFrame * Parent)
 
     // main
     ADD_WXPANEL     (p_mai, sz_mai_t, sz_mai, 7, 2);
-    ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_matid     , "matid    ", matid    ); //   1
-    ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_flwid     , "flwid    ", flwid    ); //   2
-    ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_ninc      , "ninc     ", ninc     ); //   3
-    ADD_WXCHECKBOX2 (p_mai, sz_mai, wxID_ANY, c_fem       , "fem      ", fem      ); //   8
-    ADD_WXCHECKBOX2 (p_mai, sz_mai, wxID_ANY, c_dyn       , "dyn      ", dyn      ); //   9
-    ADD_WXCHECKBOX2 (p_mai, sz_mai, wxID_ANY, c_hm        , "hm       ", hm       ); //  10
-    ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_pcam0     , "pcam0    ", pcam0    ); //  42
+    ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_ninc      , "ninc     ", ninc     ); //   1
+    ADD_WXCHECKBOX2 (p_mai, sz_mai, wxID_ANY, c_fem       , "fem      ", fem      ); //   6
+    ADD_WXCHECKBOX2 (p_mai, sz_mai, wxID_ANY, c_dyn       , "dyn      ", dyn      ); //   7
+    ADD_WXCHECKBOX2 (p_mai, sz_mai, wxID_ANY, c_hm        , "hm       ", hm       ); //   8
+    ADD_WXNUMINPUT2 (p_mai, sz_mai, wxID_ANY, c_pcam0     , "pcam0    ", pcam0    ); //  40
                                                                                             
     // local integration                                                                    
     ADD_WXPANEL     (p_loc, sz_loc_t, sz_loc, 2, 2);                                        
-    ADD_WXCHECKBOX2 (p_loc, sz_loc, wxID_ANY, c_cdrift    , "cdrift   ", cdrift   ); //   4
-    ADD_WXNUMINPUT2 (p_loc, sz_loc, wxID_ANY, c_stol      , "stol     ", stol     ); //   5
+    ADD_WXCHECKBOX2 (p_loc, sz_loc, wxID_ANY, c_cdrift    , "cdrift   ", cdrift   ); //   2
+    ADD_WXNUMINPUT2 (p_loc, sz_loc, wxID_ANY, c_stol      , "stol     ", stol     ); //   3
                                                                                             
     // fem solution                                                                         
     ADD_WXPANEL     (p_fem, sz_fem_t, sz_fem, 18, 2);                             
-    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_ssout     , "ssout    ", ssout    ); //   6
-    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_ctetg     , "ctetg    ", ctetg    ); //   7
-    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_tf        , "tf       ", tf       ); //  11
-    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_dt        , "dt       ", dt       ); //  12
-    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_dtout     , "dtout    ", dtout    ); //  13
-    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_tsw       , "tsw      ", tsw      ); //  14
-    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_ndiv      , "ndiv     ", ndiv     ); //  15
-    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_nip       , "nip      ", nip      ); //  16
-    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_o2        , "o2       ", o2       ); //  17
-    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_ray       , "ray      ", ray      ); //  18
-    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_am        , "am       ", am       ); //  19
-    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_ak        , "ak       ", ak       ); //  20
-    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_rk        , "rk       ", rk       ); //  21
-    ADD_WXTEXTCTRL2 (p_fem, sz_fem, wxID_ANY, c_rkscheme  , "rkscheme ", rkscheme ); //  22
-    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_rkstol    , "rkstol   ", rkstol   ); //  23
-    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_maxit     , "maxit    ", maxit    ); //  39
-    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_tolr      , "tolr     ", tolr     ); //  40
-    ADD_WXTEXTCTRL2 (p_fem, sz_fem, wxID_ANY, c_scheme    , "scheme   ", scheme   ); //  43
-    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_vtufile   , "vtufile  ", vtufile  ); //  44
+    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_ssout     , "ssout    ", ssout    ); //   4
+    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_ctetg     , "ctetg    ", ctetg    ); //   5
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_tf        , "tf       ", tf       ); //   9
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_dt        , "dt       ", dt       ); //  10
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_dtout     , "dtout    ", dtout    ); //  11
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_tsw       , "tsw      ", tsw      ); //  12
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_ndiv      , "ndiv     ", ndiv     ); //  13
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_nip       , "nip      ", nip      ); //  14
+    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_o2        , "o2       ", o2       ); //  15
+    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_ray       , "ray      ", ray      ); //  16
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_am        , "am       ", am       ); //  17
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_ak        , "ak       ", ak       ); //  18
+    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_rk        , "rk       ", rk       ); //  19
+    ADD_WXTEXTCTRL2 (p_fem, sz_fem, wxID_ANY, c_rkscheme  , "rkscheme ", rkscheme ); //  20
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_rkstol    , "rkstol   ", rkstol   ); //  21
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_maxit     , "maxit    ", maxit    ); //  37
+    ADD_WXNUMINPUT2 (p_fem, sz_fem, wxID_ANY, c_tolr      , "tolr     ", tolr     ); //  38
+    ADD_WXTEXTCTRL2 (p_fem, sz_fem, wxID_ANY, c_scheme    , "scheme   ", scheme   ); //  41
+    ADD_WXCHECKBOX2 (p_fem, sz_fem, wxID_ANY, c_vtufile   , "vtufile  ", vtufile  ); //  42
                                                                                             
     // reference files                                                                      
     ADD_WXPANEL     (p_rfi, sz_rfi_t, sz_rfi, 3, 2);                                        
-    ADD_WXTEXTCTRL2 (p_rfi, sz_rfi, wxID_ANY, c_refdat    , "refdat   ", refdat   ); //  24
-    ADD_WXTEXTCTRL2 (p_rfi, sz_rfi, wxID_ANY, c_refsim    , "refsim   ", refsim   ); //  25
-    ADD_WXTEXTCTRL2 (p_rfi, sz_rfi, wxID_ANY, c_refana    , "refana   ", refana   ); //  26
+    ADD_WXTEXTCTRL2 (p_rfi, sz_rfi, wxID_ANY, c_refdat    , "refdat   ", refdat   ); //  22
+    ADD_WXTEXTCTRL2 (p_rfi, sz_rfi, wxID_ANY, c_refsim    , "refsim   ", refsim   ); //  23
+    ADD_WXTEXTCTRL2 (p_rfi, sz_rfi, wxID_ANY, c_refana    , "refana   ", refana   ); //  24
     c_refdat->SetMinSize (wxSize(200,20));
     c_refsim->SetMinSize (wxSize(200,20));
     c_refana->SetMinSize (wxSize(200,20));
                                                                                             
     // nonlinear steps                                                                      
     ADD_WXPANEL     (p_nls, sz_nls_t, sz_nls, 6, 2);                                        
-    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_nsml , "nldt_nsml", nldt_nsml); //  33
-    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_nn   , "nldt_nn  ", nldt_nn  ); //  34
-    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_n    , "nldt_n   ", nldt_n   ); //  35
-    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_ll   , "nldt_ll  ", nldt_ll  ); //  36
-    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_sch  , "nldt_sch ", nldt_sch ); //  37
-    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_m    , "nldt_m   ", nldt_m   ); //  38
+    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_nsml , "nldt_nsml", nldt_nsml); //  31
+    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_nn   , "nldt_nn  ", nldt_nn  ); //  32
+    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_n    , "nldt_n   ", nldt_n   ); //  33
+    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_ll   , "nldt_ll  ", nldt_ll  ); //  34
+    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_sch  , "nldt_sch ", nldt_sch ); //  35
+    ADD_WXNUMINPUT2 (p_nls, sz_nls, wxID_ANY, c_nldt_m    , "nldt_m   ", nldt_m   ); //  36
                                                                                             
     // others                                                                               
     ADD_WXPANEL     (p_oth, sz_oth_t, sz_oth, 6, 2);                                        
-    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_idxvert1  , "idxvert1 ", idxvert1 ); //  27
-    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_idxvert2  , "idxvert2 ", idxvert2 ); //  28
-    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_idxvert3  , "idxvert3 ", idxvert3 ); //  29
-    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_optdbl1   , "optdbl1  ", optdbl1  ); //  30
-    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_optdbl2   , "optdbl2  ", optdbl2  ); //  31
-    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_optdbl3   , "optdbl3  ", optdbl3  ); //  32
+    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_idxvert1  , "idxvert1 ", idxvert1 ); //  25
+    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_idxvert2  , "idxvert2 ", idxvert2 ); //  26
+    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_idxvert3  , "idxvert3 ", idxvert3 ); //  27
+    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_optdbl1   , "optdbl1  ", optdbl1  ); //  28
+    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_optdbl2   , "optdbl2  ", optdbl2  ); //  29
+    ADD_WXNUMINPUT2 (p_oth, sz_oth, wxID_ANY, c_optdbl3   , "optdbl3  ", optdbl3  ); //  30
 
     // path
     Path  = new GUI::WxDictTable;         Path->Transposed = false;
@@ -877,47 +870,55 @@ inline void InpFile::OnSave (wxCommandEvent & Event)
     {
         std::cout << "fem = " << fem << std::endl;
         std::fstream of(fd.GetPath().ToStdString().c_str(), std::ios::out);
-        of << "matid     = " << matid     << std::endl; //  1
-        of << "flwid     = " << flwid     << std::endl; //  2
-        of << "ninc      = " << ninc      << std::endl; //  3
-        of << "cdrift    = " << cdrift    << std::endl; //  4
-        of << "stol      = " << stol      << std::endl; //  5
-        of << "ssout     = " << ssout     << std::endl; //  6
-        of << "ctetg     = " << ctetg     << std::endl; //  7
-        of << "fem       = " << fem       << std::endl; //  8
-        of << "dyn       = " << dyn       << std::endl; //  9
-        of << "hm        = " << hm        << std::endl; // 10
-        of << "tf        = " << tf        << std::endl; // 11
-        of << "dt        = " << dt        << std::endl; // 12
-        of << "dtout     = " << dtout     << std::endl; // 13
-        of << "tsw       = " << tsw       << std::endl; // 14
-        of << "ndiv      = " << ndiv      << std::endl; // 15
-        of << "nip       = " << nip       << std::endl; // 16
-        of << "o2        = " << o2        << std::endl; // 17
-        of << "ray       = " << ray       << std::endl; // 18
-        of << "am        = " << am        << std::endl; // 19
-        of << "ak        = " << ak        << std::endl; // 20
-        of << "rk        = " << rk        << std::endl; // 21
-        of << "rkscheme  = " << rkscheme  << std::endl; // 22
-        of << "rkstol    = " << rkstol    << std::endl; // 23
-        of << "refdat    = " << refdat    << std::endl; // 24
-        of << "refsim    = " << refsim    << std::endl; // 25
-        of << "refana    = " << refana    << std::endl; // 26
-        of << "idxvert1  = " << idxvert1  << std::endl; // 27
-        of << "idxvert2  = " << idxvert2  << std::endl; // 28
-        of << "idxvert3  = " << idxvert3  << std::endl; // 29
-        of << "optdbl1   = " << optdbl1   << std::endl; // 30
-        of << "optdbl2   = " << optdbl2   << std::endl; // 31
-        of << "optdbl3   = " << optdbl3   << std::endl; // 32
-        of << "nldt_nsml = " << nldt_nsml << std::endl; // 33
-        of << "nldt_nn   = " << nldt_nn   << std::endl; // 34
-        of << "nldt_n    = " << nldt_n    << std::endl; // 35
-        of << "nldt_ll   = " << nldt_ll   << std::endl; // 36
-        of << "nldt_sch  = " << nldt_sch  << std::endl; // 37
-        of << "nldt_m    = " << nldt_m    << std::endl; // 38
-        of << "maxit     = " << maxit     << std::endl; // 39
-        of << "tolr      = " << tolr      << std::endl; // 40
-        of << "npath     = " << Path->Keys.Size() << std::endl;
+        of << "ninc       = " << ninc       << std::endl; //  1
+        of << "cdrift     = " << cdrift     << std::endl; //  2
+        of << "stol       = " << stol       << std::endl; //  3
+        of << "ssout      = " << ssout      << std::endl; //  4
+        of << "ctetg      = " << ctetg      << std::endl; //  5
+        of << "fem        = " << fem        << std::endl; //  6
+        of << "dyn        = " << dyn        << std::endl; //  7
+        of << "hm         = " << hm         << std::endl; //  8
+        of << "tf         = " << tf         << std::endl; //  9
+        of << "dt         = " << dt         << std::endl; // 10
+        of << "dtout      = " << dtout      << std::endl; // 11
+        of << "tsw        = " << tsw        << std::endl; // 12
+        of << "ndiv       = " << ndiv       << std::endl; // 13
+        of << "nip        = " << nip        << std::endl; // 14
+        of << "o2         = " << o2         << std::endl; // 15
+        of << "ray        = " << ray        << std::endl; // 16
+        of << "am         = " << am         << std::endl; // 17
+        of << "ak         = " << ak         << std::endl; // 18
+        of << "rk         = " << rk         << std::endl; // 19
+        of << "rkscheme   = " << rkscheme   << std::endl; // 20
+        of << "rkstol     = " << rkstol     << std::endl; // 21
+        of << "refdat     = " << refdat     << std::endl; // 22
+        of << "refsim     = " << refsim     << std::endl; // 23
+        of << "refana     = " << refana     << std::endl; // 24
+        of << "idxvert1   = " << idxvert1   << std::endl; // 25
+        of << "idxvert2   = " << idxvert2   << std::endl; // 26
+        of << "idxvert3   = " << idxvert3   << std::endl; // 27
+        of << "optdbl1    = " << optdbl1    << std::endl; // 28
+        of << "optdbl2    = " << optdbl2    << std::endl; // 29
+        of << "optdbl3    = " << optdbl3    << std::endl; // 30
+        of << "nldt_nsml  = " << nldt_nsml  << std::endl; // 31
+        of << "nldt_nn    = " << nldt_nn    << std::endl; // 32
+        of << "nldt_n     = " << nldt_n     << std::endl; // 33
+        of << "nldt_ll    = " << nldt_ll    << std::endl; // 34
+        of << "nldt_sch   = " << nldt_sch   << std::endl; // 35
+        of << "nldt_m     = " << nldt_m     << std::endl; // 36
+        of << "maxit      = " << maxit      << std::endl; // 37
+        of << "tolr       = " << tolr       << std::endl; // 39
+        of << "pcam0      = " << pcam0      << std::endl; // 40
+        of << "scheme     = " << scheme     << std::endl; // 41
+        of << "vtufile    = " << vtufile    << std::endl; // 42
+        of << "suscheme   = " << suscheme   << std::endl; // 43
+        of << "sustol     = " << sustol     << std::endl; // 44
+        of << "surkscheme = " << surkscheme << std::endl; // 45
+        of << "dcmaxit    = " << dcmaxit    << std::endl; // 46
+        of << "dcftol     = " << dcftol     << std::endl; // 47
+        of << "pw0        = " << pw0        << std::endl; // 48
+        of << "rkdyncte   = " << rkdyncte   << std::endl; // 49
+        of << "npath      = " << Path->Keys.Size() << std::endl;
 
         String buf;
         for (size_t i=0; i<Path->Keys.Size(); ++i)

@@ -133,61 +133,59 @@ BPy::class_<InpFile>("InpFile")
     .def("SetPrmsInis", &InpFile::SetPrmsInis, IN_SetPrmsInis())
     .def("ReadPrmIni",  &InpFile::PyReadPrmIni)
     .def(BPy::self_ns::str(BPy::self))
-    .def_readwrite("matid"      , &InpFile::matid     ) //   1
-    .def_readwrite("flwid"      , &InpFile::flwid     ) //   2
-    .def_readwrite("ninc"       , &InpFile::ninc      ) //   3
-    .def_readwrite("cdrift"     , &InpFile::cdrift    ) //   4
-    .def_readwrite("stol"       , &InpFile::stol      ) //   5
-    .def_readwrite("ssout"      , &InpFile::ssout     ) //   6
-    .def_readwrite("ctetg"      , &InpFile::ctetg     ) //   7
-    .def_readwrite("fem"        , &InpFile::fem       ) //   8
-    .def_readwrite("dyn"        , &InpFile::dyn       ) //   9
-    .def_readwrite("hm"         , &InpFile::hm        ) //  10
-    .def_readwrite("tf"         , &InpFile::tf        ) //  11
-    .def_readwrite("dt"         , &InpFile::dt        ) //  12
-    .def_readwrite("dtout"      , &InpFile::dtout     ) //  13
-    .def_readwrite("tsw"        , &InpFile::tsw       ) //  14
-    .def_readwrite("ndiv"       , &InpFile::ndiv      ) //  15
-    .def_readwrite("nip"        , &InpFile::nip       ) //  16
-    .def_readwrite("o2"         , &InpFile::o2        ) //  17
-    .def_readwrite("ray"        , &InpFile::ray       ) //  18
-    .def_readwrite("am"         , &InpFile::am        ) //  19
-    .def_readwrite("ak"         , &InpFile::ak        ) //  20
-    .def_readwrite("rk"         , &InpFile::rk        ) //  21
-    .def_readwrite("rkscheme"   , &InpFile::rkscheme  ) //  22
-    .def_readwrite("rkstol"     , &InpFile::rkstol    ) //  23
-    .def_readwrite("refdat"     , &InpFile::refdat    ) //  24
-    .def_readwrite("refsim"     , &InpFile::refsim    ) //  25
-    .def_readwrite("refana"     , &InpFile::refana    ) //  26
-    .def_readwrite("idxvert1"   , &InpFile::idxvert1  ) //  27
-    .def_readwrite("idxvert2"   , &InpFile::idxvert2  ) //  28
-    .def_readwrite("idxvert3"   , &InpFile::idxvert3  ) //  29
-    .def_readwrite("optdbl1"    , &InpFile::optdbl1   ) //  30
-    .def_readwrite("optdbl2"    , &InpFile::optdbl2   ) //  31
-    .def_readwrite("optdbl3"    , &InpFile::optdbl3   ) //  32
-    .def_readwrite("hasoptdbl1" , &InpFile::hasoptdbl1) //  30b
-    .def_readwrite("hasoptdbl2" , &InpFile::hasoptdbl2) //  31b
-    .def_readwrite("hasoptdbl3" , &InpFile::hasoptdbl3) //  32b
-    .def_readwrite("nldt_nsml"  , &InpFile::nldt_nsml ) //  33
-    .def_readwrite("nldt_nn"    , &InpFile::nldt_nn   ) //  34
-    .def_readwrite("nldt_n"     , &InpFile::nldt_n    ) //  35
-    .def_readwrite("nldt_ll"    , &InpFile::nldt_ll   ) //  36
-    .def_readwrite("nldt_sch"   , &InpFile::nldt_sch  ) //  37
-    .def_readwrite("nldt_m"     , &InpFile::nldt_m    ) //  38
-    .def_readwrite("maxit"      , &InpFile::maxit     ) //  39
-    .def_readwrite("tolr"       , &InpFile::tolr      ) //  40
-    .def_readwrite("fnkey"      , &InpFile::fnkey     ) //  41
-    .def_readwrite("pcam0"      , &InpFile::pcam0     ) //  42
-    .def_readwrite("haspcam0"   , &InpFile::haspcam0  ) //  42b
-    .def_readwrite("scheme"     , &InpFile::scheme    ) //  43
-    .def_readwrite("vtufile"    , &InpFile::vtufile   ) //  44
-    .def_readwrite("suscheme"   , &InpFile::suscheme  ) //  45
-    .def_readwrite("sustol"     , &InpFile::sustol    ) //  46
-    .def_readwrite("surkscheme" , &InpFile::surkscheme) //  47
-    .def_readwrite("dcmaxit"    , &InpFile::dcmaxit   ) //  48
-    .def_readwrite("dcftol"     , &InpFile::dcftol    ) //  49
-    .def_readwrite("pw0"        , &InpFile::pw0       ) //  50
-    .def_readwrite("rkdyncte"   , &InpFile::rkdyncte  ) //  51
+    .def_readwrite("ninc"       , &InpFile::ninc      ) //   1 
+    .def_readwrite("cdrift"     , &InpFile::cdrift    ) //   2
+    .def_readwrite("stol"       , &InpFile::stol      ) //   3
+    .def_readwrite("ssout"      , &InpFile::ssout     ) //   4
+    .def_readwrite("ctetg"      , &InpFile::ctetg     ) //   5
+    .def_readwrite("fem"        , &InpFile::fem       ) //   6
+    .def_readwrite("dyn"        , &InpFile::dyn       ) //   7
+    .def_readwrite("hm"         , &InpFile::hm        ) //   8
+    .def_readwrite("tf"         , &InpFile::tf        ) //   9
+    .def_readwrite("dt"         , &InpFile::dt        ) //  10
+    .def_readwrite("dtout"      , &InpFile::dtout     ) //  11
+    .def_readwrite("tsw"        , &InpFile::tsw       ) //  12
+    .def_readwrite("ndiv"       , &InpFile::ndiv      ) //  13
+    .def_readwrite("nip"        , &InpFile::nip       ) //  14
+    .def_readwrite("o2"         , &InpFile::o2        ) //  15
+    .def_readwrite("ray"        , &InpFile::ray       ) //  16
+    .def_readwrite("am"         , &InpFile::am        ) //  17
+    .def_readwrite("ak"         , &InpFile::ak        ) //  18
+    .def_readwrite("rk"         , &InpFile::rk        ) //  19
+    .def_readwrite("rkscheme"   , &InpFile::rkscheme  ) //  20
+    .def_readwrite("rkstol"     , &InpFile::rkstol    ) //  21
+    .def_readwrite("refdat"     , &InpFile::refdat    ) //  22
+    .def_readwrite("refsim"     , &InpFile::refsim    ) //  23
+    .def_readwrite("refana"     , &InpFile::refana    ) //  24
+    .def_readwrite("idxvert1"   , &InpFile::idxvert1  ) //  25
+    .def_readwrite("idxvert2"   , &InpFile::idxvert2  ) //  26
+    .def_readwrite("idxvert3"   , &InpFile::idxvert3  ) //  27
+    .def_readwrite("optdbl1"    , &InpFile::optdbl1   ) //  28
+    .def_readwrite("optdbl2"    , &InpFile::optdbl2   ) //  29
+    .def_readwrite("optdbl3"    , &InpFile::optdbl3   ) //  30
+    .def_readwrite("hasoptdbl1" , &InpFile::hasoptdbl1) //  28b
+    .def_readwrite("hasoptdbl2" , &InpFile::hasoptdbl2) //  29b
+    .def_readwrite("hasoptdbl3" , &InpFile::hasoptdbl3) //  30b
+    .def_readwrite("nldt_nsml"  , &InpFile::nldt_nsml ) //  31
+    .def_readwrite("nldt_nn"    , &InpFile::nldt_nn   ) //  32
+    .def_readwrite("nldt_n"     , &InpFile::nldt_n    ) //  33
+    .def_readwrite("nldt_ll"    , &InpFile::nldt_ll   ) //  34
+    .def_readwrite("nldt_sch"   , &InpFile::nldt_sch  ) //  35
+    .def_readwrite("nldt_m"     , &InpFile::nldt_m    ) //  36
+    .def_readwrite("maxit"      , &InpFile::maxit     ) //  37
+    .def_readwrite("tolr"       , &InpFile::tolr      ) //  38
+    .def_readwrite("fnkey"      , &InpFile::fnkey     ) //  39
+    .def_readwrite("pcam0"      , &InpFile::pcam0     ) //  40
+    .def_readwrite("haspcam0"   , &InpFile::haspcam0  ) //  40b
+    .def_readwrite("scheme"     , &InpFile::scheme    ) //  41
+    .def_readwrite("vtufile"    , &InpFile::vtufile   ) //  42
+    .def_readwrite("suscheme"   , &InpFile::suscheme  ) //  43
+    .def_readwrite("sustol"     , &InpFile::sustol    ) //  44
+    .def_readwrite("surkscheme" , &InpFile::surkscheme) //  45
+    .def_readwrite("dcmaxit"    , &InpFile::dcmaxit   ) //  46
+    .def_readwrite("dcftol"     , &InpFile::dcftol    ) //  47
+    .def_readwrite("pw0"        , &InpFile::pw0       ) //  48
+    .def_readwrite("rkdyncte"   , &InpFile::rkdyncte  ) //  49
     ;
 
 //////////////////////////////////////////////////////////////////////////////////// mesh /////

@@ -540,7 +540,7 @@ int main(int argc, char **argv) try
 #endif
 
     // error
-    double tol_dI1dt  = 1.0e-7;
+    double tol_dI1dt  = 1.0e-6;
     double tol_dI2dt  = 1.0e-6;
     double tol_dI3dt  = 1.0e-7;
     double tol_dpdt   = 1.0e-6;
@@ -580,7 +580,7 @@ int main(int argc, char **argv) try
 #ifdef HAS_TENSORS
     double tol_dvdt[3][3]= {{1.0e-7, 1.0e-7, 1.0e-7},
                             {1.0e-6, 1.0e-6, 1.0e-7},
-                            {1.0e-6, 1.0e-6, 1.0e-7}};
+                            {1.0e-6, 1.0e-6, 1.0e-6}};
     for (size_t k=0; k<3; ++k)
     for (size_t i=0; i<3; ++i)
         printf("  max_err_dv%zd%zddt = %s%16.8e%s\n",k,i,(max_err_dvdt[k][i]>tol_dvdt[k][i]?TERM_RED:TERM_GREEN),max_err_dvdt[k][i],TERM_RST);

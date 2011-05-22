@@ -1,4 +1,4 @@
-matid    = 0
+matids   = 0 -1
 ninc     = 10
 cdrift   = 1
 ssout    = 1

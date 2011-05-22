@@ -82,7 +82,7 @@ int main(int argc, char **argv) try
 
     // models
     Dict mdls;
-    mdls.Set(-1, "name E nu psa", MODEL("LinElastic"),  1.0e+6, 0.3,  1.0);
+    mdls.Set(-1, "name E nu psa rho", MODEL("LinElastic"),  1.0e+6, 0.3,  1.0, 1.0);
 
     // initial values
     Dict inis;

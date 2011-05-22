@@ -285,37 +285,13 @@ int main(int argc, char **argv) try
     String fkey = inp_fname.substr (0, inp_fname.find(".inp"));
 
     // read input file
-    InpFile inp;
-    inp.Read (inp_fname.CStr());
+    bool verbose  = true;
+    bool forcegty = false;
+    INIT_MAT_INP (argc, argv, inp_fname, mat_fname, verbose, forcegty,   mat, inp);
 
     // correct default values
     if (inp.stol<0) inp.stol = 1.0e-5;
     if (inp.ninc<0) inp.ninc = 20;
-
-    // parse materials file (with initial values)
-    Dict prms, inis;
-    String model_name;
-    //ReadMaterial (-1, inp.matid, mat_fname.CStr(), model_name, prms, inis);
-    inis.Set (-1, "sx sy sz", -pcam0, -pcam0, -pcam0);
-
-    // flow material data
-    String flw_name;
-    if (inp.flwid>=0)
-    {
-        Dict flw_prms, flw_inis;
-        //ReadMaterial (-1, inp.flwid, mat_fname.CStr(), flw_name, flw_prms, flw_inis, /*withModel*/false);
-        if (flw_name!="UnsatFlow") throw new Fatal("Flow model name must be UnsatFlow at the moment");
-        inis += flw_inis;
-        prms += flw_prms;
-    }
-
-    // output
-    cout << inp;
-    cout << "\nMaterial data:\n";
-    cout << "  name = " << model_name << endl;   if (inp.flwid>0)
-    cout << "  flow = " << flw_name   << endl;
-    cout << "  prms = " << prms       << endl;
-    cout << "  inis = " << inis       << endl << endl;
 
     // auxiliary variables
     Vec_t         dsig(6), deps(6);   // increments for each path (total divided by ninc)
@@ -348,120 +324,44 @@ int main(int argc, char **argv) try
                                               (inp.o2 ? GEOM("Hex20")     : GEOM("Hex8")), True, True);
 
         // select some nodes for output
-        Array<int> out_nods(8);
+        inp.OutNods->Resize(8);
         if (inp.o2)
         {
-            if (inp.ndiv==3) out_nods = 48,51,60,68, 0,3,12,15;
-            else             out_nods = 4,5,6,7, 10,11,14,15;
+            if (inp.ndiv==3) (*inp.OutNods) = 48,51,60,68, 0,3,12,15;
+            else             (*inp.OutNods) = 4,5,6,7, 10,11,14,15;
         }
         else
         {
-            if (inp.ndiv==3) out_nods = 0,3,12,15, 48,51,60,63;
-            else             out_nods = 0,1,2,3, 4,5,6,7;
+            if (inp.ndiv==3) (*inp.OutNods) = 0,3,12,15, 48,51,60,63;
+            else             (*inp.OutNods) = 0,1,2,3, 4,5,6,7;
         }
 
         // boundary condition functions
         BCF bcf;
         bcf.tsw = inp.tsw<0;
-        if (inis.HasKey(-1)) bcf.pw = (inis(-1).HasKey("pw") ? inis(-1)("pw") : 0.0); // current pw
-        else                 bcf.pw = 0.0;
+        bcf.pw  = (inp.haspw0 ? inp.pw0 : 0.0);
 
         // domain and solver
-        FEM::Domain dom(mesh, prps, prms, inis, fkey.CStr(), &out_nods);
-        FEM::Solver sol(dom);
-        sol.CteTg = inp.ctetg;
-
-        // dynamic scheme
-        if (inp.rk)
-        {
-            sol.DScheme  = FEM::Solver::RK_t;
-            sol.RKScheme = inp.rkscheme;
-            sol.RKSTOL   = inp.rkstol;
-        }
-
-        // hydro-mechanical analysis
-        if (inp.hm) inp.dyn = true;
-
-        // dynamic analysis
-        if (inp.dyn)
-        {
-            dom.MFuncs[-11] = &bcf;
-            dom.MFuncs[-21] = &bcf;
-            dom.MFuncs[-31] = &bcf;
-            if (inp.ray)
-            {
-                sol.DampAm = inp.am;
-                sol.DampAk = inp.ak;
-                sol.DampTy = FEM::Solver::Rayleigh_t;
-            }
-            if (inp.hm) sol.DampTy = FEM::Solver::HMCoup_t;
-        }
+        FEMALLOC (mesh, mat, inp,   dom, sol);
 
         // solve
-        for (size_t i=0; i<inp.Path->Keys.Size(); ++i)
-        {
-            // set prescribed increments
-            inp.GetIncs (inp.Path->Keys[i], 1.0, dsig, deps, prescDeps, dpw, dSw, prescDpw, prescDSw);
-
-            // set solver
-            if (prescDpw) sol.DScheme = FEM::Solver::RK_t; // it has to be RK because GN22 doesn't account for U BCs yet
-
-            // solve
-            Dict bcs;
-            bcs.Set (-10, "ux", 0.0);
-            bcs.Set (-20, "uy", 0.0);
-            bcs.Set (-30, "uz", 0.0);
-            if (inp.hm)
-            {
-                bcs.Set (-10, "pw", 0.0);
-                bcs.Set (-20, "pw", 0.0);
-                bcs.Set (-30, "pw", 0.0);
-            }
-            if (inp.dyn)
-            {
-                if (prescDSw) throw new Fatal("FEM/HM: prescribed Sw is not available yet");
-                else if (prescDpw)
-                {
-                    bcf.pw += dpw;
-                    bcs.Set(-11, "pw bcf", 0.0, True);
-                    bcs.Set(-21, "pw bcf", 0.0, True);
-                    bcs.Set(-31, "pw bcf", 0.0, True);
-                }
-                else
-                {
-                    if (prescDeps[0]) throw new Fatal("Dyn: prescribed strain is not available yet"); else bcs.Set(-11, "qn bcf", dsig(0), True);
-                    if (prescDeps[1]) throw new Fatal("Dyn: prescribed strain is not available yet"); else bcs.Set(-21, "qn bcf", dsig(1), True);
-                    if (prescDeps[2]) throw new Fatal("Dyn: prescribed strain is not available yet"); else bcs.Set(-31, "qn bcf", dsig(2), True);
-                }
-            }
-            else
-            {
-                if (prescDeps[0]) bcs.Set(-11, "ux", deps(0)); else bcs.Set(-11, "qn", dsig(0));
-                if (prescDeps[1]) bcs.Set(-21, "uy", deps(1)); else bcs.Set(-21, "qn", dsig(1));
-                if (prescDeps[2]) bcs.Set(-31, "uz", deps(2)); else bcs.Set(-31, "qn", dsig(2));
-            }
-            dom.SetBCs   (bcs);
-            dom.PrintBCs (cout, inp.tf);
-            sol.SSOut = inp.ssout;
-            if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout, fkey.CStr());
-            else
-            {
-                sol.Solve    (inp.ninc);
-                dom.WriteVTU (fkey.CStr());
-            }
-        }
+        FEMSOLVE (verbose, inp, dom, sol);
     }
 
     // single point integration
     else
     {
+        // model name
+        String model_name;
+        MODEL.Val2Key ((*inp.Prps)(-1)("name"), model_name);
+
         // driver
-        Driver drv(model_name, prms(-1), inis(-1));
+        Driver drv(model_name, (*inp.Prms)(-1), (*inp.Inis)(-1));
 
         // allocate model and set initial values
-        Model * mdl = AllocModel (model_name, 3, prms(-1), /*AnotherMdl*/NULL);
+        Model * mdl = AllocModel (model_name, 3, (*inp.Prms)(-1), /*AnotherMdl*/NULL);
         EquilibState sta(3);
-        mdl->InitIvs (inis(-1), &sta);
+        mdl->InitIvs ((*inp.Inis)(-1), &sta);
 
         // allocate memory
         D11.AllocSpace (6,6, 50);

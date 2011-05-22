@@ -106,17 +106,17 @@ int main(int argc, char **argv) try
     FEM::Domain::PARA = parallel;
     Array<int> out_verts(-300,/*justone*/true);
     Dict prps, mdls;
-    prps.Set (-1, "prob geom psa active rho", PROB("Equilib"), GEOM("Quad4"), 1., 1., 1.0);
-    prps.Set (-2, "prob geom psa active rho", PROB("Equilib"), GEOM("Quad4"), 1., 0., 1.0);
+    prps.Set (-1, "prob geom psa active", PROB("Equilib"), GEOM("Quad4"), 1., 1.);
+    prps.Set (-2, "prob geom psa active", PROB("Equilib"), GEOM("Quad4"), 1., 0.);
     if (nonlin)
     {
-        mdls.Set (-1, "name K0 G0 alp bet psa", MODEL("NLElastic"), 4000.0, 4000.0, 0.4, 0.4, 1.);
-        mdls.Set (-2, "name K0 G0 alp bet psa", MODEL("NLElastic"), 4000.0, 4000.0, 0.4, 0.4, 1.);
+        mdls.Set (-1, "name K0 G0 alp bet psa rho", MODEL("NLElastic"), 4000.0, 4000.0, 0.4, 0.4, 1., 1.);
+        mdls.Set (-2, "name K0 G0 alp bet psa rho", MODEL("NLElastic"), 4000.0, 4000.0, 0.4, 0.4, 1., 1.);
     }
     else
     {
-        mdls.Set (-1, "name E nu psa", MODEL("LinElastic"), 1000.0, 0.2, 1.);
-        mdls.Set (-2, "name E nu psa", MODEL("LinElastic"), 1000.0, 0.2, 1.);
+        mdls.Set (-1, "name E nu psa rho", MODEL("LinElastic"), 1000.0, 0.2, 1., 1.);
+        mdls.Set (-2, "name E nu psa rho", MODEL("LinElastic"), 1000.0, 0.2, 1., 1.);
     }
     FEM::Domain dom(mesh, prps, mdls, inis, fkey.CStr(), &out_verts);
 

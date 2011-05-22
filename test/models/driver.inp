@@ -1,6 +1,5 @@
-# driver.inp
-
-matid    = 3
+################## driver.inp
+matids   = 3 -1
 ninc     = 10
 cdrift   = 1
 ssout    = 1

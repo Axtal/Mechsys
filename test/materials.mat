@@ -2,6 +2,7 @@
 
 ID    = 0
 name  = LinElastic
+nctes = 0
 nprms = 2
 E     = 60000000.0
 nu    = 0.3
@@ -9,6 +10,7 @@ ninis = 0
 
 ID    = 1
 name  = ElastoPlastic
+nctes = 0
 nprms = 5
 E     = 6000.0
 nu    = 0.3
@@ -19,6 +21,7 @@ ninis = 0
 
 ID    = 2
 name  = ElastoPlastic
+nctes = 0
 nprms = 6
 E     = 6000.0
 nu    = 0.3
@@ -30,6 +33,7 @@ ninis = 0
 
 ID    = 3
 name  = CamClay
+nctes = 0
 nprms = 4
 lam   = 0.01
 kap   = 0.001
@@ -40,6 +44,7 @@ v0    = 2.0
 
 ID    = 4
 name  = CamClay
+nctes = 0
 nprms = 4
 lam   = 0.0891
 kap   = 0.0196
@@ -50,12 +55,14 @@ v0    = 1.691
 
 ID     = 5
 name   = UnsatFlow
-nprms  = 6
-gamW   = 10.0
-kwsat  = 1.0e-2
-Mkw    = 1.0
-bc_lam = 0.8
-bc_sb  = 1.8
-bc_wr  = 0.01
-ninis  = 2
-n      = 0.3
+nctes  = 4
+grav   = 9.8    # m/s2
+gamW   = 9.8    # kN/m3
+rhoS   = 2.668  # Mg/m3
+por    = 0.2975
+nprms  = 3
+kwsat  = 4.5e-6  # m/s
+akw    = 1.0
+HZ     = 1
+ninis  = 1
+pw     = 0.0

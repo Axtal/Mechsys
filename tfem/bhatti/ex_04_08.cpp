@@ -130,7 +130,7 @@ int main(int argc, char **argv) try
 
     // error tolerance
     SDPair nod_tol;
-    nod_tol.Set("ux uy wz  Rux Ruy Rwz", 1.0e-15,1.0e-15,1.0e-15, 1.0e-15,1.0e-13,1.0e-14);
+    nod_tol.Set("ux uy wz  Rux Ruy Rwz", 1.0e-15,1.0e-15,1.0e-15, 1.0e-15,1.0e-13,1.0e-13);
     err_flag = err_flag;
     bool err_nod = dom.CheckErrorNods (nod_sol, nod_tol);
 
