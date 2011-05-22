@@ -65,6 +65,7 @@ PROC_VER=3.2.8
 PROC=procps-$PROC_VER
 SPHASH=sparsehash-1.8.1
 IGRAPH=igraph-0.5.4
+SOPLEX=soplex-1.5.0
 
 compile_scalapack() {
     LDIR=$MECHSYS_ROOT/pkg/$SCALAPACK_DIR/lib
@@ -155,6 +156,13 @@ download_and_compile() {
             DO_PATCH=0
             DO_MAKE=1
             DO_CONF=1
+            ;;
+        soplex)
+            PKG=$SOPLEX
+            PKG_DIR=$PKG
+            LOCATION=http://soplex.zib.de/download/soplex-1.5.0.tgz
+            DO_PATCH=0
+            DO_MAKE=1
             ;;
         *)
             echo
@@ -254,6 +262,7 @@ download_and_compile mumps
 download_and_compile proc
 download_and_compile sphash
 download_and_compile igraph
+download_and_compile soplex
 
 echo
 echo "Finished ###################################################################"
