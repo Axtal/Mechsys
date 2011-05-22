@@ -32,14 +32,15 @@ public:
     void   Init    (SDPair const & Ini, size_t NIvs=0);
     void   Backup  () { throw new Fatal("UnsatFlowState::Backup: this method is not available yet"); }
     void   Restore () { throw new Fatal("UnsatFlowState::Restore: this method is not available yet"); }
-    size_t PckSize () const { return 3; }
+    size_t PckSize () const { return 4; }
     void   Pack    (Array<double>       & V) const;
     void   Unpack  (Array<double> const & V);
 
     // Data
-    double n;  ///< Porosity
-    double Sw; ///< Saturation
-    double pc; ///< Capillary pressure (pc = pa-pw = -pw)
+    double n;      ///< Porosity
+    double Sw;     ///< Saturation
+    double pc;     ///< Capillary pressure (pc = pa-pw = -pw)
+    bool   Drying; ///< Drying ? (otherwise wetting) : for history-dependent models (hysteresis)
 };
 
 
@@ -48,9 +49,10 @@ public:
 
 inline void UnsatFlowState::Init (SDPair const & Ini, size_t NIvs)
 {
-    n  = Ini("n");
-    pc = Ini("pc");
-    Sw = Ini("Sw");
+    n      = Ini("n");
+    pc     = Ini("pc");
+    Sw     = Ini("Sw");
+    Drying = false;
 }
 
 inline void UnsatFlowState::Pack (Array<double> & V) const
@@ -59,14 +61,16 @@ inline void UnsatFlowState::Pack (Array<double> & V) const
     V[0] = n;
     V[1] = Sw;
     V[2] = pc;
+    V[3] = Drying;
 }
 
 inline void UnsatFlowState::Unpack (Array<double> const & V)
 {
     if (V.Size()!=PckSize()) throw new Fatal("UnsatFlowState::Unpack: Size of given vector (%zd) is different of correct size of Pack (%zd)",V.Size(),PckSize());
-    n  = V[0];
-    Sw = V[1];
-    pc = V[2];
+    n      = V[0];
+    Sw     = V[1];
+    pc     = V[2];
+    Drying = V[3];
 }
 
 

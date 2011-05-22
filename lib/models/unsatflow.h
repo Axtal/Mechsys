@@ -37,10 +37,10 @@ public:
     static Vec_t Iv; ///< Identity vector (NCo)
 
     // enums
-    enum WRC_t { BC_t, ZI_t, HZ_t }; ///< WRC type
+    enum WRC_t { BC_t, ZI_t, HZ_t, PW_t }; ///< WRC type
 
     // Constructor
-    UnsatFlow (int NDim, SDPair const & Prms, Model const * EquilibMdl);
+    UnsatFlow (int NDim, SDPair const & Prms, Model const * EquilibMdl=NULL);
 
     // Methods
     void   InitIvs   (SDPair const & Ini, State * Sta) const;                  ///< Initialize internal values
@@ -58,13 +58,18 @@ public:
 
     // Data
     Mat_t  kwsatb; ///< Saturated kw bar
-    double akw;    ///< Expoent of kw model
-    WRC_t  wrc;    ///< Water retention curve model
+    double akw;    ///< Exponent of kw model
+    WRC_t  WRC;    ///< Water retention curve model
+    String Name;   ///< Model name
 
     // SWRC parameters
     double bc_lam, bc_sb,  bc_wr;                      ///< Brooks & Corey model parameters
     double zi_del, zi_bet, zi_gam, zi_a, zi_b, zi_alp; ///< Zienkiewicz et al. 1990 (zi_bet and zi_a => [m])
     double hz_a,   hz_b,   hz_A,   hz_B;               ///< Huang and Zienkiewicz (Gawin, Schrefler ...)
+    double ld,  xRd, yR, xRw, bd, bw, b1;              ///< Pedroso and Williams (PW)
+
+    // Derived constants
+    double y0, c1d, c2d, c3d, c1w, c2w, c3w; // Pedroso and Williams (PW)
 
     // Read-write variables (scratchpad)
     mutable double c, C, chi, Cpc, Ceps;
@@ -75,8 +80,8 @@ public:
 #undef HMSTRESSUPDATE_DECLARE
 
 private:
-    double _Cpc  (double pc, double Sw) const;
-    double _Ceps (double pc, double Sw) const;
+    double _Cpc  (bool Drying, double pc, double Sw) const;
+    double _Ceps (bool Drying, double pc, double Sw) const;
 
     double _RK_pc, _RK_Dev, _RK_Dpc, _RK_Sw, _RK_DSw;
     int _RK_func_Sw (double t, double const Sw[], double dSwdt[]);
@@ -95,16 +100,18 @@ Vec_t UnsatFlow::Iv;
 
 
 inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms, Model const * EquilibMdl)
-    : Model (NDim,Prms,/*niv*/0,"UnsatFlow"), EMdl(EquilibMdl)
+    : Model (NDim,Prms,/*niv*/0,"UnsatFlow"), EMdl(EquilibMdl), WRC(PW_t), Name("Pedroso-Williams")
 {
     // parameters
-    wrc = BC_t;
-    if (Prms.HasKey("ZI")) wrc = ZI_t;
-    if (Prms.HasKey("HZ")) wrc = HZ_t;
-    switch (wrc)
+    if (Prms.HasKey("BC")) WRC = BC_t;
+    if (Prms.HasKey("ZI")) WRC = ZI_t;
+    if (Prms.HasKey("HZ")) WRC = HZ_t;
+    if (Prms.HasKey("PW")) WRC = PW_t;
+    switch (WRC)
     {
         case BC_t:
         {
+            Name   = "Brooks-Corey";
             akw    = Prms("akw");
             bc_lam = (Prms.HasKey("bc_lam") ? Prms("bc_lam") : 0.8 );
             bc_sb  = (Prms.HasKey("bc_sb" ) ? Prms("bc_sb" ) : 1.8 );
@@ -114,6 +121,7 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms, Model const * Equili
         }
         case ZI_t:
         {
+            Name   = "Zienkiewicz";
             zi_del = (Prms.HasKey("zi_del") ? Prms("zi_del") : 0.0842);
             zi_bet = (Prms.HasKey("zi_bet") ? Prms("zi_bet") : 0.7   );
             zi_gam = (Prms.HasKey("zi_gam") ? Prms("zi_gam") : 2.0   );
@@ -124,17 +132,40 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms, Model const * Equili
         }
         case HZ_t:
         {
+            Name = "Huang-Zienkiewicz";
             hz_a = (Prms.HasKey("hz_a"  ) ? Prms("hz_a"  ) : 0.10152);
             hz_b = (Prms.HasKey("hz_b"  ) ? Prms("hz_b"  ) : 2.4279 );
             hz_A = (Prms.HasKey("hz_A"  ) ? Prms("hz_A"  ) : 2.207  );
             hz_B = (Prms.HasKey("hz_B"  ) ? Prms("hz_B"  ) : 1.0121 );
             break;
         }
+        case PW_t:
+        {
+            Name = "Pedroso-Williams";
+            akw  = Prms("akw");
+            ld   = (Prms.HasKey("ld" ) ? Prms("ld" ) : 2.8);
+            xRd  = (Prms.HasKey("xRd") ? Prms("xRd") : 0.88);
+            yR   = (Prms.HasKey("yR" ) ? Prms("yR" ) : 0.04);
+            xRw  = (Prms.HasKey("xRw") ? Prms("xRw") : 0.7);
+            bd   = (Prms.HasKey("bd" ) ? Prms("bd" ) : 3.0);
+            bw   = (Prms.HasKey("bw" ) ? Prms("bw" ) : 5.0);
+            b1   = (Prms.HasKey("b1" ) ? Prms("b1" ) : 1.8);
+
+            // derived constants
+            y0  = 1.0; // saturation for pc=0
+            c1d = bd * ld;
+            c2d = exp(bd * yR);
+            c3d = exp(bd * (y0 + ld * xRd)) - c2d * exp(c1d * xRd);
+            c1w = -bw * ld;
+            c2w = exp(-bw * y0);
+            c3w = exp(-bw * ld * xRw) - c2w * exp(c1w * xRw);
+        }
     }
 
     // saturated conductivity matrix
     kwsatb.change_dim (NDim, NDim);
-    double m = Prms("kwsat") / Prms("gamW");
+    GamW = Prms("gamW");
+    double m = Prms("kwsat") / GamW;
     if (NDim==3) kwsatb =  m, 0., 0.,   0., m, 0.,   0., 0., m;
     else         kwsatb =  m, 0.,   0., m;
 
@@ -144,7 +175,7 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms, Model const * Equili
     // Iv
     if (size(Iv)==0)
     {
-        Iv.change_dim(EMdl->NCps);
+        Iv.change_dim(NDim==2 ? 4 : 6);
         Iv(0) = 1.;
         Iv(1) = 1.;
         Iv(2) = 1.;
@@ -187,15 +218,16 @@ inline void UnsatFlow::Update (double Dpw, double DEv, UnsatFlowState * Sta)
     ode.Evolve (/*tf*/1.0);
 
     // set new state
-    Sta->Sw  = ode.Y[0];
-    Sta->pc += (-Dpw);
-    Sta->n  += DEv;
+    Sta->Sw     = ode.Y[0];
+    Sta->pc    += (-Dpw);
+    Sta->n     += DEv;
+    Sta->Drying = (_RK_Dpc>0.0); // drying/wetting ?
 }
 
 inline void UnsatFlow::TgVars (UnsatFlowState const * Sta) const
 {
-    Cpc  = _Cpc  (Sta->pc, Sta->Sw);
-    Ceps = _Ceps (Sta->pc, Sta->Sw);
+    Cpc  = _Cpc  (Sta->Drying, Sta->pc, Sta->Sw);
+    Ceps = _Ceps (Sta->Drying, Sta->pc, Sta->Sw);
     c   = Sta->Sw + Sta->n * Ceps;
     C   = -Sta->n * Cpc;
     chi = Sta->Sw;
@@ -256,7 +288,7 @@ inline double UnsatFlow::rw (double Sw) const
     {
         if (Sw>0.0)
         {
-            switch (wrc)
+            switch (WRC)
             {
                 case BC_t: { return pow(Sw,akw); }
                 case ZI_t:
@@ -273,6 +305,7 @@ inline double UnsatFlow::rw (double Sw) const
                     double res = 1.0 - hz_A*pow(1.0-Sw, hz_B);
                     return (res<0.0 ? 0.0 : res);
                 }
+                case PW_t: { return pow(Sw,akw); }
                 default: throw new Fatal("UnsatFlow::rw: WRC is invalid");
             }
         }
@@ -281,11 +314,11 @@ inline double UnsatFlow::rw (double Sw) const
     else return 1.0;
 }
 
-inline double UnsatFlow::_Cpc (double pc, double Sw) const
+inline double UnsatFlow::_Cpc (bool Drying, double pc, double Sw) const
 {
     if (pc>0.0 && Sw>0.0)
     {
-        switch (wrc)
+        switch (WRC)
         {
             case BC_t:
             {
@@ -302,23 +335,50 @@ inline double UnsatFlow::_Cpc (double pc, double Sw) const
             {
                 return -(hz_a*hz_b*pow(pc/GamW,hz_b))/pc;
             }
+            case PW_t:
+            {
+                double x   = log(1.0+pc);
+                double y   = Sw;
+                double lb  = 0.0;
+                if (Drying)
+                {
+                    double Dd  = (y-yR>0.0 ? y-yR : 0.0);
+                    double ldb = ld * (1.0 - exp(-bd * Dd));
+                    double yd  = -ld * x + log(c3d + c2d * exp(c1d * x)) / bd;
+                    double D   = (yd-y>0.0 ? yd-y : 0.0);
+                    double yb  = y/y0;
+                    double b2  = bw;
+                    double b2b = b2 * sqrt((yb>0.0 ? yb : 0.0));  // b2b = b2
+                           lb  = ldb * exp(-b2b * D);
+                }
+                else
+                {
+                    double Dw  = (y0-y>0.0 ? y0-y : 0.0);
+                    double lwb = ld * (1.0 - exp(-bw * Dw));
+                    double yw  = -ld * x - log(c3w + c2w * exp(c1w * x)) / bw;
+                    double D   = (y-yw>0.0 ? y-yw : 0.0);
+                           lb  = lwb * exp(-b1 * D);
+                }
+                return -lb/(1.0+pc);
+            }
             default: throw new Fatal("UnsatFlow::_Cpc: WRC is invalid");
         }
     }
     else return 0.0;
 }
 
-inline double UnsatFlow::_Ceps (double pc, double Sw) const
+inline double UnsatFlow::_Ceps (bool Drying, double pc, double Sw) const
 {
     return 0.0;
 }
 
 inline int UnsatFlow::_RK_func_Sw (double t, double const Y[], double dYdt[])
 {
-    double pc   = _RK_pc + t*_RK_Dpc;
-    double Sw   = Y[0];
-    Cpc  = _Cpc  (pc, Sw);
-    Ceps = _Ceps (pc, Sw);
+    double pc  = _RK_pc + t*_RK_Dpc;
+    double Sw  = Y[0];
+    bool   dry = (_RK_Dpc>0.0);
+    Cpc     = _Cpc  (dry, pc, Sw);
+    Ceps    = _Ceps (dry, pc, Sw);
     dYdt[0] = Ceps*_RK_Dev + Cpc*_RK_Dpc; // dSwdt
     //std::cout << Y[0] << "   " << dYdt[0] << std::endl;
     return GSL_SUCCESS;
@@ -326,10 +386,11 @@ inline int UnsatFlow::_RK_func_Sw (double t, double const Y[], double dYdt[])
 
 inline int UnsatFlow::_RK_func_pc (double t, double const Y[], double dYdt[])
 {
-    double Sw   = _RK_Sw + t*_RK_DSw;
-    double pc   = Y[0];
-    Cpc  = _Cpc  (pc, Sw);
-    Ceps = _Ceps (pc, Sw);
+    double Sw  = _RK_Sw + t*_RK_DSw;
+    double pc  = Y[0];
+    bool   dry = (_RK_DSw<0.0);
+    Cpc  = _Cpc  (dry, pc, Sw);
+    Ceps = _Ceps (dry, pc, Sw);
     if (fabs(Cpc)>1.0e-7) dYdt[0] = (1.0/Cpc) * (_RK_DSw - Ceps*_RK_Dev); // dpcdt
     else                  dYdt[0] = 1.0e+8;
     //std::cout << "_RK_func_pc: pc = " << Y[0] << "    dpcdt = " << dYdt[0] << std::endl;
@@ -347,8 +408,8 @@ inline void UnsatFlow::GenCurve (Array<double> pcs, char const * Filekey, size_t
 
     // header and initial output
     std::ostringstream oss;
-    oss << Util::_8s<<"pc"   << Util::_8s<<"Sw"   << Util::_8s<<"n"   << Util::_8s<<"rw"       << std::endl;
-    oss << Util::_8s<<sta.pc << Util::_8s<<sta.Sw << Util::_8s<<sta.n << Util::_8s<<rw(sta.Sw) << std::endl;
+    oss << Util::_8s<<"pc"   << Util::_8s<<"Sw"   << Util::_6<<"Drying"   << Util::_8s<<"n"   << Util::_8s<<"rw"       << Util::_8s<<"kw"                        << std::endl;
+    oss << Util::_8s<<sta.pc << Util::_8s<<sta.Sw << Util::_6<<sta.Drying << Util::_8s<<sta.n << Util::_8s<<rw(sta.Sw) << Util::_8s<<rw(sta.Sw)*kwsatb(0,0)*GamW << std::endl;
 
     // update
     for (size_t i=1; i<pcs.Size(); ++i)
@@ -357,7 +418,7 @@ inline void UnsatFlow::GenCurve (Array<double> pcs, char const * Filekey, size_t
         for (size_t j=0; j<Np; ++j)
         {
             Update (-dpc, 0.0, &sta);
-            oss << Util::_8s<<sta.pc << Util::_8s<<sta.Sw << Util::_8s<<sta.n << Util::_8s<<rw(sta.Sw) << std::endl;
+            oss << Util::_8s<<sta.pc << Util::_8s<<sta.Sw << Util::_6<<sta.Drying << Util::_8s<<sta.n << Util::_8s<<rw(sta.Sw) << Util::_8s<<rw(sta.Sw)*kwsatb(0,0)*GamW << std::endl;
         }
     }
 
@@ -394,12 +455,13 @@ int UnsatFlowRegister()
 {
     ModelFactory   ["UnsatFlow"] = UnsatFlowMaker;
     MODEL.Set      ("UnsatFlow", (double)MODEL.Keys.Size());
-    MODEL_PRM_NAMES["UnsatFlow"].Resize(18);
+    MODEL_PRM_NAMES["UnsatFlow"].Resize(26);
     MODEL_PRM_NAMES["UnsatFlow"] = "kwsat",  "akw",
                                    "bc_lam", "bc_sb",  "bc_wr",
                                    "zi_del", "zi_bet", "zi_gam", "zi_a", "zi_b", "zi_alp",
                                    "hz_a",   "hz_b",   "hz_A",   "hz_B",
-                                   "BC",     "ZI",     "HZ";
+                                   "ld",     "xRd",    "yR",     "xRw",  "bd",   "bw",  "b1",
+                                   "BC",     "ZI",     "HZ",     "PW";
     MODEL_IVS_NAMES["UnsatFlow"].Resize(2);
     MODEL_IVS_NAMES["UnsatFlow"] = "pw", "Sw";
     return 0;

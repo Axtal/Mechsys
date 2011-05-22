@@ -43,40 +43,36 @@ int main(int argc, char **argv) try
     if (argc<2)
     {
         cout << "Usage:\n";
-        cout << "         " << argv[0] << " WRC {pcf}\n";
+        cout << "         " << argv[0] << " WRC {pwfin}\n";
         cout << "in which\n";
-        cout << "           WRC: 0 = BC\n";
-        cout << "                1 = HZ\n";
-        cout << "                2 = ZI\n";
+        cout << "           WRC: BC\n";
+        cout << "                HZ\n";
+        cout << "                ZI\n";
+        cout << "                PW\n";
         return 0;
     }
-    int    wrc  = atoi(argv[1]);
-    double pc   = 0.0;
-    double Sw   = 1.0;
-    double pcf  = 100.0;
-    int    ndiv = 100;
-    if (argc>2) pcf = atof(argv[2]);
+    String wrc   = argv[1];
+    double pw0   =   0.0;
+    double pwfin = -10.0;
+    int    ndiv  = 200;
+    if (argc>2) pwfin = atof(argv[2]);
+    double porosity = 0.3;
 
+    // model
     SDPair prms, inis;
-    prms.Set ("gamW kwsat akw WRC", 10.0, 1.0, 2.2, (double)wrc);
-    inis.Set ("pw Sw n", -pc, Sw, 0.3);
+    String keys("gamW kwsat akw por ");
+    keys.append(wrc);
+    prms.Set (keys.CStr(), 10.0, 1.0, 2.2, porosity, TRUE);
+    inis.Set ("pw", pw0);
     UnsatFlow      mdl(/*ndim*/3, prms, /*anothermdl*/NULL);
     UnsatFlowState sta(/*ndim*/3);
     mdl.InitIvs (inis, &sta);
 
-    std::ofstream of("test_wrcs.res",std::ios::out);
-    of << _8s<<"pc"    << _8s<<"Sw"    << _8s<<"kw"                            << endl;
-    of << _8s<< sta.pc << _8s<< sta.Sw << _8s<< mdl.rw(sta.Sw)*mdl.kwsatb*10.0 << endl;
-
-    double dpc = (pcf-pc)/ndiv;
-    while (sta.pc<pcf)
-    {
-        mdl.Update (-dpc, /*dev*/0.0, &sta);
-        of << _8s<< sta.pc << _8s<< sta.Sw << _8s<< mdl.rw(sta.Sw)*mdl.kwsatb*10.0 << endl;
-    }
-
-    of.close();
-    cout << "file <" << TERM_CLR_BLUE_H << "test_wrcs.res" << TERM_RST << "> written" << endl;
+    // generate data
+    cout << "\nModel: " << mdl.Name << endl;
+    //Array<double> pcs(-pw0, 10.0, -pw0);
+    Array<double> pcs(-pw0, 2.6, 1.0, 10.0, -pw0);
+    mdl.GenCurve (pcs, "test_wrcs", ndiv);
 
     // end
     return 0;
