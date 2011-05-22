@@ -167,6 +167,7 @@ inline void UnsatFlow::HMStressUpdate::Update (Vec_t const & DEps, double Dpw, S
     dev  = Calc_ev(deps);
 
     // loading condition
+    fsta->Drying = (dpc>0.0);
     double aint;
     if (Mdl->HMCoup) sta->Ldg = Mdl->LoadCond (sta, -pc0, deps, Dpw);
     else             sta->Ldg = Mdl->LoadCond (sta,       deps, aint);

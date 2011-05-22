@@ -1432,7 +1432,7 @@ inline void Solver::_GN22_update (double tf, double Dt)
 #endif
             if (ResidOK()) break;
         }
-        if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations (TolR=%g). NormR = %g",It,TolR,NormR);
+        if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations (TolR=%g). TolR*NormR=%g, NormR=%g",It,TolR,TolR*NormR,NormR);
 
         // next time step
         dt = (Dom.Time+dt>tf ? tf-Dom.Time : dt);
