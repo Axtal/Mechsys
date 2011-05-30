@@ -42,11 +42,12 @@ int main(int argc, char **argv) try
     size_t ny = 100;
     double nu = 0.01;
     Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), /*dx*/1.0, /*dt*/1.0);
-    Dom.AddDisk(0,Vec3_t(15.0,20.0,0.0),Vec3_t( 0.01,0.0,0.0),Vec3_t(0.0,0.0, 0.01),3.0,10.0,1.0);
-    Dom.AddDisk(0,Vec3_t(85.0,20.0,0.0),Vec3_t(-0.01,0.01,0.0),Vec3_t(0.0,0.0,-0.01),3.0,10.0,1.0);
+    //Dom.AddDisk(0,Vec3_t(15.0,20.0,0.0),Vec3_t( 0.01,0.0,0.0),Vec3_t(0.0,0.0, 0.01),3.0,10.0,1.0);
+    //Dom.AddDisk(0,Vec3_t(85.0,20.0,0.0),Vec3_t(-0.01,0.01,0.0),Vec3_t(0.0,0.0,-0.01),3.0,10.0,1.0);
+    Dom.AddDisk(0,Vec3_t(15.0,50.0,0.0),Vec3_t( 0.01,0.0,0.0),Vec3_t(0.0,0.0, 0.01),3.0,10.0,1.0);
     UserData dat;
     Dom.UserData = &dat;
-    double rho0 = 0.001;
+    double rho0 = 0.01;
     Vec3_t v0(0.0,0.0,0.0);
 
     //Initializing values
@@ -68,7 +69,7 @@ int main(int argc, char **argv) try
     }
 
     //Solving
-    Dom.Solve(10000.0,20.0,NULL,Report,"test03");
+    Dom.Solve(10000.0,200.0,NULL,Report,"test03");
 }
 MECHSYS_CATCH
 

@@ -81,6 +81,7 @@ public:
 
 inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t TheNdim, double TheCs, double TheTau)
 {
+    IsSolid= false;
     ID     = TheID;
     Method = TheMethod;
     Index  = TheIndexes;
@@ -111,7 +112,7 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
     for (size_t k=0;k<Nneigh;k++)
     {
         //iVec3_t nindex = Index + C[k];
-        blitz::TinyVector<int,3>  nindex = Index + C[k];
+        blitz::TinyVector<int,3>   nindex = Index + C[k];
         if (nindex[0]==        -1) nindex[0] = TheNdim[0]-1;
         if (nindex[0]==TheNdim[0]) nindex[0] = 0;
         if (nindex[1]==        -1) nindex[1] = TheNdim[1]-1;

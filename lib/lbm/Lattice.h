@@ -40,10 +40,10 @@ public:
     void Solve(double Tf, double dtOut, ptFun_t ptSetup=NULL, ptFun_t ptReport=NULL,
                char const * FileKey=NULL, bool RenderVideo=true, size_t Nproc=1);   ///< Solve the LBM equation in time
     void Stream();                                                                  ///< Stream the velocity distributions
-    void Homogenize();                                                              ///< Homogenize the initial state
+    void SolidDisk(Vec3_t const & X, double R);                                     ///< Add a solid fixed disk in space
     void SetZeroGamma();                                                            ///< Set an initial value for the fluid/solid ratio of each cell
-    void ApplyBC();                                                                 ///< apply the boundary conditions
     double Psi(double);                                                             ///< Interaction potential
+    double SolidFraction();                                                         ///< Solid fraction
     void ApplyForce();                                                              ///< Apply molecular forces
     void Collide();                                                                 ///< apply the collision operator
     void CollideAlt();                                                              ///< apply the collision operator
@@ -124,6 +124,20 @@ inline void Lattice::Stream()
     }
 }
 
+inline void Lattice::SolidDisk(Vec3_t const & X, double R)
+{
+    for (size_t n=std::max(0.0,double(X(0)-R-dx)/dx);n<=std::min(double(Ndim(0)-1),double(X(0)+R+dx)/dx);n++)
+    for (size_t m=std::max(0.0,double(X(1)-R-dx)/dx);m<=std::min(double(Ndim(1)-1),double(X(1)+R+dx)/dx);m++)
+    {
+        Cell  * cell = GetCell(iVec3_t(n,m,0));
+        double x     = dx*cell->Index(0);
+        double y     = dx*cell->Index(1);
+        double z     = dx*cell->Index(2);
+        Vec3_t  C(x,y,z);
+        if (norm(C-X)<R) cell->IsSolid = true;
+    }
+}
+
 inline void Lattice::SetZeroGamma()
 {
     for (size_t i=0;i<Cells.Size();i++)
@@ -136,6 +150,16 @@ inline void Lattice::SetZeroGamma()
 inline double Lattice::Psi(double rho)
 {
     return Psiref*exp(-Rhoref/rho);
+}
+
+inline double Lattice::SolidFraction()
+{
+    double Sf = 0.0;
+    for (size_t i=0; i<Cells.Size(); i++)
+    {
+        if (Cells[i]->IsSolid||Cells[i]->Gamma>0.0) Sf+=1.0;
+    }
+    return Sf/Cells.Size();
 }
 
 inline void Lattice::ApplyForce()

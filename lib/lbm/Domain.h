@@ -161,11 +161,21 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     ResetContacts();
     ResetDisplacements();
 
-    if (ptReport!=NULL) (*ptReport) ((*this), UserData);
-
     double tout = Time;
     while (Time < Tf)
     {
+        if (Time >= tout)
+        {
+            if (FileKey!=NULL)
+            {
+                String fn;
+                fn.Printf    ("%s_%08d", FileKey, idx_out);
+                if ( RenderVideo) Lat.WriteVTK (fn.CStr());
+                if (ptReport!=NULL) (*ptReport) ((*this), UserData);
+            }
+            tout += dtOut;
+            idx_out++;
+        }
         if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
 
         //Assigning a vlaue of zero to the particles forces and torques
@@ -195,18 +205,6 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         Lat.BounceBack();
         Lat.Stream();
         
-        if (Time >= tout)
-        {
-            if (FileKey!=NULL)
-            {
-                String fn;
-                fn.Printf    ("%s_%08d", FileKey, idx_out);
-                Lat.WriteVTK (fn.CStr());
-                if (ptReport!=NULL) (*ptReport) ((*this), UserData);
-            }
-            tout += dtOut;
-            idx_out++;
-        }
 
         if (MaxDisplacement()>Alpha)
         {
