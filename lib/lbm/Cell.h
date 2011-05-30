@@ -38,8 +38,8 @@ public:
 	static const double   WEIGHTSD2Q9   [ 9]; ///< Weights for the equilibrium distribution functions (D2Q9)
 	static const double   WEIGHTSD3Q15  [15]; ///< Weights for the equilibrium distribution functions (D3Q15)
 	//static const double   WEIGHTSD3Q27  [27]; ///< Weights for the equilibrium distribution functions (D3Q27)
-	static const Vec3_t   LVELOCD2Q9    [ 9]; ///< Local velocities (D2Q9) 
-	static const Vec3_t   LVELOCD3Q15   [15]; ///< Local velocities (D3Q15)
+	static Vec3_t   LVELOCD2Q9    [ 9]; ///< Local velocities (D2Q9) 
+	static Vec3_t   LVELOCD3Q15   [15]; ///< Local velocities (D3Q15)
 	//static const Vec3_t   LVELOCD3Q27   [27]; ///< Local velocities (D3Q27)
 	static const size_t   OPPOSITED2Q9  [ 9]; ///< Opposite directions (D2Q9) 
 	static const size_t   OPPOSITED3Q15 [15]; ///< Opposite directions (D3Q15)
@@ -166,15 +166,34 @@ inline void Cell::Initialize(double Rho, Vec3_t const & V)
 }
 
 
-const double Cell::WEIGHTSD2Q9 [ 9] = { 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36., 1./36., 1./36. };
-const double Cell::WEIGHTSD3Q15[15] = { 2./9., 1./9., 1./9., 1./9., 1./9.,  1./9.,  1./9., 1./72., 1./72. , 1./72., 1./72., 1./72., 1./72., 1./72., 1./72.};
-const Vec3_t Cell::LVELOCD2Q9  [ 9] = { {0,0,0}, {1,0,0}, {0,1,0}, {-1,0,0}, {0,-1,0}, {1,1,0}, {-1,1,0}, {-1,-1,0}, {1,-1,0} };
-const Vec3_t Cell::LVELOCD3Q15 [15] =
-{
-	{ 0, 0, 0}, { 1, 0, 0}, {-1, 0, 0}, { 0, 1, 0}, { 0,-1, 0}, 
-	{ 0, 0, 1}, { 0, 0,-1}, { 1, 1, 1}, {-1,-1,-1}, { 1, 1,-1}, 
-	{-1,-1, 1}, { 1,-1, 1}, {-1, 1,-1}, { 1,-1,-1}, {-1, 1, 1} 
-};
+const double Cell::WEIGHTSD2Q9   [ 9] = { 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36., 1./36., 1./36. };
+const double Cell::WEIGHTSD3Q15  [15] = { 2./9., 1./9., 1./9., 1./9., 1./9.,  1./9.,  1./9., 1./72., 1./72. , 1./72., 1./72., 1./72., 1./72., 1./72., 1./72.};
 const size_t Cell::OPPOSITED2Q9  [ 9] = { 0, 3, 4, 1, 2, 7, 8, 5, 6 };                       ///< Opposite directions (D2Q9) 
 const size_t Cell::OPPOSITED3Q15 [15] = { 0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13}; ///< Opposite directions (D3Q15)
+Vec3_t Cell::LVELOCD2Q9  [ 9]; ///< Local velocities (D2Q9) 
+Vec3_t Cell::LVELOCD3Q15 [15]; ///< Local velocities (D3Q15)
+
+
+/*TODO: Go back to the previous version since this is not nice
+ *      Changes made for g++ 4.3.2 */
+int __allocate_constants ()
+{
+    Cell::LVELOCD2Q9  [0] =  0 ,  0 , 0;
+    Cell::LVELOCD2Q9  [1] =  1 ,  0 , 0;
+    Cell::LVELOCD2Q9  [2] =  0 ,  1 , 0;
+    Cell::LVELOCD2Q9  [3] = -1 ,  0 , 0;
+    Cell::LVELOCD2Q9  [4] =  0 , -1 , 0;
+    Cell::LVELOCD2Q9  [5] =  1 ,  1 , 0;
+    Cell::LVELOCD2Q9  [6] = -1 ,  1 , 0;
+    Cell::LVELOCD2Q9  [7] = -1 , -1 , 0;
+    Cell::LVELOCD2Q9  [8] =  1 , -1 , 0;
+
+    Cell::LVELOCD3Q15[ 0]= 0, 0, 0;  Cell::LVELOCD3Q15[ 1]= 1, 0, 0;  Cell::LVELOCD3Q15[ 2]=-1, 0, 0;  Cell::LVELOCD3Q15[ 3]= 0, 1, 0;  Cell::LVELOCD3Q15[ 4]= 0,-1, 0;
+    Cell::LVELOCD3Q15[ 5]= 0, 0, 1;  Cell::LVELOCD3Q15[ 6]= 0, 0,-1;  Cell::LVELOCD3Q15[ 7]= 1, 1, 1;  Cell::LVELOCD3Q15[ 8]=-1,-1,-1;  Cell::LVELOCD3Q15[ 9]= 1, 1,-1; 
+    Cell::LVELOCD3Q15[10]=-1,-1, 1;  Cell::LVELOCD3Q15[11]= 1,-1, 1;  Cell::LVELOCD3Q15[12]=-1, 1,-1;  Cell::LVELOCD3Q15[13]= 1,-1,-1;  Cell::LVELOCD3Q15[14]=-1, 1, 1;
+
+    return 0;
+}
+int __dummy__allocate_constants = __allocate_constants();
+
 #endif // MECHSYS_LBM_CELL_H
