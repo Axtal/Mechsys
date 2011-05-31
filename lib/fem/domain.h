@@ -425,13 +425,18 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     // print header of output files
     OutResults (/*vtufname*/NULL, /*headeronly*/true);
 
-    // write file with IDs of output nodes
+    // write file with IDs and tags of output nodes
     if (FNKey!=NULL && OutV!=NULL)
     {
         String buf(FNKey);  buf.append("_out_nods.res");
         std::ofstream of(buf.CStr(), std::ios::out);
-        for (size_t i=0; i<OutNods.Size(); ++i) of << OutNods[i]->Vert.ID << " ";
-        of << std::endl;
+        buf.Printf("%6s %6s %16s %16s %16s\n","id","tag","x","y","z");
+        of << buf;
+        for (size_t i=0; i<OutNods.Size(); ++i)
+        {
+            buf.Printf("%6d %6d %16.8e %16.8e %16.8e\n",OutNods[i]->Vert.ID, OutNods[i]->Vert.Tag, OutNods[i]->Vert.C(0), OutNods[i]->Vert.C(1), OutNods[i]->Vert.C(2));
+            of << buf;
+        }
         of.close();
     }
 }

@@ -111,7 +111,7 @@ def GetLst (idx=0): # linestyle
 # ====================
 # dat: dictionary with the following content:
 #   dat = {'sx':[1,2,3],'ex':[0,1,2]}
-def read_table(filename):
+def read_table(filename, num_int_columns=0):
     if not os.path.isfile(filename): raise Exception("[1;31mread_table: could not find file <[1;34m%s[0m[1;31m>[0m"%filename)
     file   = open(filename,'r')
     header = file.readline().split()
@@ -120,7 +120,8 @@ def read_table(filename):
     for lin in file:
         res = lin.split()
         for i, key in enumerate(header):
-            dat[key].append(float(res[i]))
+            if i<num_int_columns: dat[key].append(int  (res[i]))
+            else:                 dat[key].append(float(res[i]))
     file.close()
     for k, v in dat.iteritems():
         dat[k] = array(v)
@@ -132,7 +133,7 @@ def read_table(filename):
 # filenames: list with file names
 # dat: dictionary with the following content:
 #   dat = {'fkey1':{'sx':[1,2,3],'ex':[0,1,2]}}
-def read_tables(filenames):
+def read_tables(filenames, num_int_columns=0):
     dat = {}
     for fn in filenames:
         if not os.path.isfile(fn): raise Exception("[1;31mread_tables: could not find file <[1;34m%s[0m[1;31m>[0m"%filename)
@@ -144,7 +145,8 @@ def read_tables(filenames):
         for lin in file:
             res = lin.split()
             for i, key in enumerate(header):
-                dat[fkey][key].append(float(res[i]))
+                if i<num_int_columns: dat[fkey][key].append(int  (res[i]))
+                else:                 dat[fkey][key].append(float(res[i]))
         file.close()
     return dat
 

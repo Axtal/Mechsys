@@ -390,6 +390,9 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="K0")      { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
                 else if (key=="surf")    { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
                 else if (key=="water")   { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
+                else if (key=="E")       { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
+                else if (key=="A")       { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
+                else if (key=="Izz")     { elemprps.Set (key.CStr(), atof(str_val.CStr()));      idxdat++; }
                 else throw new Fatal("InpFile::Read: Reading elements properties. Error in file <%s> at line # %d when reading data of Properties # %d. Key==%s is invalid or in the wrong place",FileName,line_num,idxeprps,key.CStr());
                 if (idxdat==ndat)
                 {

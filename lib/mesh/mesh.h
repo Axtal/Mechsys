@@ -231,6 +231,7 @@ public:
                    char const * Extra=NULL) const;                   ///< (.mpy) Write Python script that calls mesh_drawing.py
 
     // Auxiliar methods
+    int  FindVert    (int Tag)                                                 const; ///< Find ID of first vertex with Tag. Returns -1 if not found
     void BoundingBox (Vec3_t & Min, Vec3_t & Max)                              const; ///< Limits of mesh
     void ThrowError  (std::istringstream & iss, char const * Message)          const; ///< Used in ReadMesh
     void Adjacency   (Array<int> & Xadj, Array<int> & Adjncy, bool Full=false);       ///< Find list of adjacent elements
@@ -328,6 +329,15 @@ std::ostream & operator<< (std::ostream & os, Generic const & M)
         else                     os << "],\n   ";
     }
     return os;
+}
+
+inline int Generic::FindVert (int Tag) const
+{
+    for (size_t i=0; i<TgdVerts.Size(); ++i)
+    {
+        if (TgdVerts[i]->Tag==Tag) return TgdVerts[i]->ID;
+    }
+    return -1;
 }
 
 inline void Generic::BoundingBox (Vec3_t & Min, Vec3_t & Max) const
@@ -509,11 +519,8 @@ inline void Generic::ReadMesh (char const * FileKey, bool Shell)
                     else if (str!=",") ThrowError (iss, "Verts: last vertex: ',' or ']' lacking");
 
                     // allocate vertex
-                    Verts.Push (new Vertex);
-                    if (vid!=Verts.Size()-1) throw new Fatal("Generic::ReadMesh: Verts IDs must be sequential. Vertex ID (%d) must be equal to (%d)",vid,Verts.Size()-1);
-                    Verts[vid]->ID  = vid;
-                    Verts[vid]->Tag = vtag;
-                    Verts[vid]->C   = x, y, z;
+                    int new_vid = PushVert (vtag, x, y, z);
+                    if (new_vid!=(int)vid) throw new Fatal("Generic::ReadMesh: Verts IDs must be sequential. Vertex ID (%d) must be equal to (%d)",vid,new_vid);
 
                     break;
                 }
@@ -528,41 +535,23 @@ inline void Generic::ReadMesh (char const * FileKey, bool Shell)
                     iss >> comma >> ctag >> comma >> str;
                     if (str!="[") ThrowError (iss, "Cells: opening brackets of connectivity '[' lacking");
 
-                    // allocate cell
-                    Cells.Push (new Cell);
-                    if (cid!=Cells.Size()-1) throw new Fatal("Generic::ReadMesh: Cells IDs must be sequential. Vertex ID (%d) must be equal to (%d)",cid,Cells.Size()-1);
-                    Cells[cid]->ID  = cid;
-                    Cells[cid]->Tag = ctag;
-
                     // read connectivity
+                    Array<int> con;
                     while (iss>>vid)
                     {
-                        Cells[cid]->V.Push (Verts[vid]);
+                        con.Push (Verts[vid]->ID);
                         iss >> str;
                         if (str=="]") break;
                         else if (str!=",") ThrowError (iss, "Cells: closing brackets of connectivity: ',' or ']' lacking");
                     }
 
-                    // set shares information
-                    for (size_t i=0; i<Cells[cid]->V.Size(); ++i)
-                    {
-                        Share sha = {Cells[cid],i};
-                        Cells[cid]->V[i]->Shares.Push (sha);
-                    }
-                    
+                    // allocate cell
+                    int new_cid = PushCell (ctag, con);
+                    if (new_cid!=(int)cid) throw new Fatal("Generic::ReadMesh: Cells IDs must be sequential. Cell ID (%d) must be equal to (%d)",cid,new_cid);
+
                     iss >> comma;
                     iss >> str;
                     if (str!="{") ThrowError (iss, "Cells: opening braces of bry tags '{' lacking");
-
-                    // check connectivity
-                    if (NDim==2 && Cells[cid]->V.Size()>=3)
-                    {
-                        Vec3_t p0;  p0 = Cells[cid]->V[0]->C - Cells[cid]->V[1]->C;
-                        Vec3_t p1;  p1 = Cells[cid]->V[0]->C - Cells[cid]->V[2]->C;
-                        Vec3_t p2 = blitz::cross(p0,p1);
-                        if (fabs(p2(0))>1.0e-10 || fabs(p2(1)>1.0e-10)) throw new Fatal("Generic::ReadMesh: All vertices of cells must be on the x-y plane");
-                        if (p2(2)<0.0) throw new Fatal("Generic::ReadMesh: Numbering of vertices is incorrect (must be counter-clockwise)");
-                    }
 
                     // read boundary tags
                     while (iss>>str)
