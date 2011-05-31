@@ -1,5 +1,5 @@
 #
-#  This file is part of MUMPS 4.9.2, built on Thu Nov  5 07:05:08 UTC 2009
+#  This file is part of MUMPS 4.10.0, built on Tue May 10 12:56:32 UTC 2011
 #
 #Begin orderings
 
@@ -35,7 +35,7 @@ IPORD    = -I$(topdir)/PORD/include/
 LPORD    = -L$(LPORDDIR) -lpord
 
 LMETISDIR = /usr/lib
-#IMETIS    = # Metis doesn't need include files (Fortran interface avail.)
+IMETIS    = /usr/include/parmetis # Should be provided if you use parmetis
 
 # You have to choose one among the following two lines depending on
 # the type of analysis you want to perform. If you want to perform only
@@ -60,24 +60,28 @@ IORDERINGSC = $(IMETIS) $(IPORD) $(ISCOTCH)
 ########################################################################
 ################################################################################
 
-PLAT    =
-RM = /bin/rm -f
-CC = mpicc
-FC = mpif77
-FL = mpif77
-AR = ar vr
-#RANLIB = ranlib
-RANLIB  = echo
-
 ifdef MECHSYS_ROOT
 else
     MECHSYS_ROOT = $(HOME)
 endif
 
+PLAT    =
+LIBEXT  = .a
+OUTC    = -o 
+OUTF    = -o 
+RM = /bin/rm -f
+CC = mpicc
+FC = mpif77
+FL = mpif77
+AR = ar vr 
+#RANLIB = ranlib
+RANLIB  = echo
+#SCALAP  = /local/SCALAPACK/libscalapack.a /local/BLACS/LIB/blacs_MPI-LINUX-0.a   /local/BLACS/LIB/blacsF77init_MPI-LINUX-0.a  /local/BLACS/LIB/blacs_MPI-LINUX-0.a
 SCALAP  = $(MECHSYS_ROOT)/pkg/scalapack_installer_0.96/lib/libscalapack.a $(MECHSYS_ROOT)/pkg/scalapack_installer_0.96/lib/blacs.a $(MECHSYS_ROOT)/pkg/scalapack_installer_0.96/lib/blacsC.a $(MECHSYS_ROOT)/pkg/scalapack_installer_0.96/lib/blacsF77.a $(MECHSYS_ROOT)/pkg/scalapack_installer_0.96/lib/blacs.a
 #INCPAR = -I/usr/local/include
-INCPAR = 
+INCPAR = -I/usr/lib/openmpi/include
 # LIBPAR = $(SCALAP)  -L/usr/local/lib/ -llammpio -llamf77mpi -lmpi -llam -lutil -ldl -lpthread
+#LIBPAR = $(SCALAP)  -L/usr/local/mpich/lib/ -lmpich 
 LIBPAR = $(SCALAP)
 # See point 17 in the FAQ to have more details on the compilation of mpich with gfortran
 INCSEQ = -I$(topdir)/libseq
@@ -93,6 +97,6 @@ OPTF    = -O -Dintel_ -DALLOW_NON_INIT
 OPTL    = -O 
 OPTC    = -O
 #End Optimized options
-INC = $(INCPAR)
-LIB = $(LIBPAR)
+INCS = $(INCPAR)
+LIBS = $(LIBPAR)
 LIBSEQNEEDED =

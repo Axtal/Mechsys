@@ -55,23 +55,23 @@ fi
 
 test -d $MECHSYS_ROOT/pkg || mkdir $MECHSYS_ROOT/pkg
 
-TRIANGLE=triangle1.6
-TETGEN=tetgen1.4.3
-VORO=voro++0.3.1
-MTL4=mtl4
-SCALAPACK=scalapack_installer
-SCALAPACK_DIR=scalapack_installer_0.96
-MUMPS=MUMPS_4.9.2
-PROC_VER=3.2.8
-PROC=procps-$PROC_VER
-SPHASH=sparsehash-1.8.1
-IGRAPH=igraph-0.5.4
-SOPLEX=soplex-1.5.0
+VER_TRIANGLE=1.6
+VER_TETGEN=1.4.3
+VER_VORO=0.3.1
+VER_SCALAPACK=0.96
+VER_MUMPS=4.10.0
+VER_PROC=3.2.8
+VER_SPHASH=1.8.1
+VER_IGRAPH=0.5.4
+VER_SOPLEX=1.5.0
+
+INC_OPENMPI=/usr/lib/openmpi/include/  # $MECHSYS_ROOT/pkg/openmpi-1.4.2
+LIB_LAPACK=/usr/lib/liblapack.so
+LIB_BLAS=/usr/lib/libblas.so
 
 compile_scalapack() {
-    LDIR=$MECHSYS_ROOT/pkg/$SCALAPACK_DIR/lib
-    python setup.py --notesting --mpiincdir=/usr/lib/openmpi/include/ --lapacklib=/usr/lib/liblapack.so --blaslib=/usr/lib/libblas.so
-    #python setup.py --notesting --mpiincdir=/home/dorival/pkg/openmpi-1.4.2/ompi/include/ --lapacklib=/usr/lib/liblapack.so --blaslib=/usr/lib/libblas.so
+    LDIR=$MECHSYS_ROOT/pkg/scalapack_installer_$VER_SCALAPACK/lib
+    python setup.py --notesting --mpiincdir=$INC_OPENMPI --lapacklib=$LIB_LAPACK --blaslib=$LIB_BLAS
     ln -s $LDIR/blacs.a    $LDIR/libblacs.a
     ln -s $LDIR/blacsC.a   $LDIR/libblacsC.a
     ln -s $LDIR/blacsF77.a $LDIR/libblacsF77.a
@@ -79,12 +79,13 @@ compile_scalapack() {
 
 compile_mumps() {
     cp $MECHSYS_ROOT/mechsys/patches/mumps/Makefile.inc .
+    make clean
     make
 }
 
 proc_links() {
-    LDIR=$MECHSYS_ROOT/pkg/$PROC/proc
-    ln -s $LDIR/libproc-$PROC_VER.so $LDIR/libproc.so
+    LDIR=$MECHSYS_ROOT/pkg/procps-$VER_PROC/proc
+    ln -s $LDIR/libproc-$VER_PROC.so $LDIR/libproc.so
 }
 
 error_message() {
@@ -96,85 +97,76 @@ error_message() {
 }
 
 download_and_compile() {
+    PKG=""
+    PKG_DIR=""
+    EXT=tar.gz
+    LOCATION=""
+    EXTRA_CMD=""
+    CONF_PRMS=""
     IS_SVN=0
-    DO_PATCH=1
+    DO_PATCH=0
     DO_CONF=0
     DO_MAKE=1
-    CONF_PRMS=""
-    CMD=""
     case "$1" in
         triangle)
-            PKG=$TRIANGLE
-            PKG_DIR=$PKG
-            LOCATION=http://mechsys.nongnu.org/software/$PKG.tar.gz
+            PKG=triangle$VER_TRIANGLE
+            LOCATION=http://mechsys.nongnu.org/software/$PKG.$EXT
+            DO_PATCH=1
             ;;
         tetgen)
-            PKG=$TETGEN
-            PKG_DIR=$PKG
-            LOCATION=http://mechsys.nongnu.org/software/$PKG.tar.gz
+            PKG=tetgen$VER_TETGEN
+            LOCATION=http://mechsys.nongnu.org/software/$PKG.$EXT
+            DO_PATCH=1
             ;;
         voro)
-            PKG=$VORO
-            PKG_DIR=$PKG
-            LOCATION=http://mechsys.nongnu.org/software/$PKG.tar.gz
+            PKG=voro++$VER_VORO
+            LOCATION=http://mechsys.nongnu.org/software/$PKG.$EXT
+            DO_PATCH=1
             DO_MAKE=0
             ;;
         mtl4)
-            PKG=$MTL4
-            PKG_DIR=$PKG
+            PKG=mtl4
             LOCATION=https://svn.osl.iu.edu/tlc/trunk/mtl4/trunk
             IS_SVN=1
-            DO_PATCH=0
             DO_MAKE=0
             ;;
         scalapack)
-            PKG=$SCALAPACK
-            PKG_DIR=$SCALAPACK_DIR
-            LOCATION=http://www.netlib.org/scalapack/$PKG.tgz
-            DO_PATCH=0
+            PKG=scalapack_installer
+            PKG_DIR=scalapack_installer_$VER_SCALAPACK
+            EXT=tgz
+            LOCATION=http://www.netlib.org/scalapack/$PKG.$EXT
             DO_MAKE=0
-            CMD=compile_scalapack
+            EXTRA_CMD=compile_scalapack
             ;;
         mumps)
-            PKG=$MUMPS
-            PKG_DIR=$PKG
-            LOCATION=""
-            DO_PATCH=0
+            PKG=MUMPS_$VER_MUMPS
+            #LOCATION=""
+            LOCATION=http://mumps.enseeiht.fr/$PKG.$EXT
             DO_MAKE=0
-            CMD=compile_mumps
+            EXTRA_CMD=compile_mumps
             ;;
         proc)
-            PKG=$PROC
-            PKG_DIR=$PROC
-            LOCATION=http://procps.sourceforge.net/$PKG.tar.gz
-            DO_PATCH=0
-            CMD=proc_links
+            PKG=procps-$VER_PROC
+            LOCATION=http://procps.sourceforge.net/$PKG.$EXT
+            EXTRA_CMD=proc_links
             ;;
         sphash)
-            PKG=$SPHASH
-            PKG_DIR=$PKG
-            LOCATION=http://google-sparsehash.googlecode.com/files/$PKG.tar.gz
-            DO_PATCH=0
+            PKG=sparsehash-$VER_SPHASH
+            LOCATION=http://google-sparsehash.googlecode.com/files/$PKG.$EXT
             DO_CONF=1
-            DO_MAKE=1
             ;;
         igraph)
-            PKG=$IGRAPH
-            PKG_DIR=$PKG
-            LOCATION=http://sourceforge.net/projects/igraph/files/C%20library/0.5.4/igraph-0.5.4.tar.gz
-            DO_PATCH=0
-            DO_MAKE=1
+            PKG=igraph-$VER_IGRAPH
+            LOCATION=http://sourceforge.net/projects/igraph/files/C%20library/$VER_IGRAPH/$PKG.$EXT
             DO_CONF=1
             ;;
         soplex)
-            PKG=$SOPLEX
-            PKG_DIR=$PKG
-            LOCATION=http://soplex.zib.de/download/soplex-1.5.0.tgz
-            DO_PATCH=0
-            DO_MAKE=1
+            PKG=soplex-$VER_SOPLEX
+            EXT=tgz
+            LOCATION=http://soplex.zib.de/download/$PKG.$EXT
             ;;
         *)
-            error_message "download_and_compile_tar_gz: __Internal_error__"
+            error_message "download_and_compile: __Internal_error__"
             exit 1
             ;;
     esac
@@ -183,6 +175,18 @@ download_and_compile() {
 
     # change into the packages directory
     cd $MECHSYS_ROOT/pkg
+
+    # package filename and directory
+    PKG_FILENAME=$PKG.$EXT
+    if [ -z "$PKG_DIR" ]; then PKG_DIR=$PKG; fi
+
+    # check for package that must be existing (cannot be downloaded)
+    if [ -z "$LOCATION" ]; then
+        if [ ! -e "$PKG_FILENAME" ]; then
+            error_message "Please download <$PKG_FILENAME> first"
+            return
+        fi
+    fi
 
     # (re)compile or return (erasing existing package) ?
     if [ "$IS_SVN" -eq 0 ]; then
@@ -211,23 +215,13 @@ download_and_compile() {
 
     # download package
     if [ "$IS_SVN" -eq 0 ]; then
-        FILENAME=""
-        if [ -e $PKG.tar.gz ]; then FILENAME=$PKG.tar.gz; fi
-        if [ -e $PKG.tgz    ]; then FILENAME=$PKG.tgz;    fi
-        if [ "$FORCEDOWNLOAD" -eq 1   -o   -z "$FILENAME" ]; then
-            if [ -z "$LOCATION" ]; then
-                if [ -z "$FILENAME" ]; then
-                    error_message "Please download <$PKG.tar.gz> first"
-                    return
-                fi
-            else
-                if [ ! -z "$FILENAME" ]; then
-                    echo "    Removing existing <$FILENAME>"
-                    rm $FILENAME
-                fi
-                echo "    Downloading <$FILENAME>"
-                wget $LOCATION
+        if [ "$FORCEDOWNLOAD" -eq 1   -o   ! -e "$PKG_FILENAME" ]; then
+            if [ -e "$PKG_FILENAME" ]; then
+                echo "    Removing existing <$PKG_FILENAME>"
+                rm $PKG_FILENAME
             fi
+            echo "    Downloading <$PKG_FILENAME>"
+            wget $LOCATION
         fi
     else
         if [ ! -d "$MECHSYS_ROOT/pkg/$PKG_DIR" ]; then
@@ -239,7 +233,7 @@ download_and_compile() {
     # uncompress package
     if [ "$IS_SVN" -eq 0 ]; then
         echo "        . . . uncompressing . . ."
-        tar xzf $FILENAME
+        tar xzf $PKG_FILENAME
     fi
 
     # change into the package directory
@@ -264,10 +258,11 @@ download_and_compile() {
     fi
 
     # execute specific command
-    if [ ! -z "$CMD" ]; then
+    if [ ! -z "$EXTRA_CMD" ]; then
         echo "        . . . command . . . . . ."
-        $CMD
+        $EXTRA_CMD
     fi
+    echo "        . . . finished . . . . . "
 }
 
 download_and_compile triangle
