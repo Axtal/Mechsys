@@ -69,6 +69,7 @@
 
 #define FEMSOLVE(verbose, inp, dom, sol)                                             \
     for (FEM::Domain::Models_t::const_iterator it=dom.Mdls.begin(); it!=dom.Mdls.end(); ++it) inp.SetSUp (it->second); \
+    if (inp.ninc<1) inp.ninc = 1;                                                    \
     inp.SetSolver (sol);                                                             \
     for (size_t i=0; i<inp.Stages.Size(); ++i)                                       \
     {                                                                                \
@@ -88,6 +89,7 @@
 
 #define FEMSOLVE_RK(verbose, inp, dom, sol)                                             \
     for (FEM::Domain::Models_t::const_iterator it=dom.Mdls.begin(); it!=dom.Mdls.end(); ++it) inp.SetSUp (it->second); \
+    if (inp.ninc<1) inp.ninc = 1;                                                       \
     inp.SetSolver (sol);                                                                \
     for (size_t i=0; i<inp.Stages.Size(); ++i)                                          \
     {                                                                                   \

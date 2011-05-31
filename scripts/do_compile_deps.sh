@@ -10,8 +10,9 @@ echo
 echo "****************************************************************************"
 echo "* You can call this script with an option to force recompiling everything  *"
 echo "* and/or an option to also download packages                               *"
-echo "*                                                                          *"
-echo "* Example:                                                                 *"
+echo "*                                                  recompile     download  *"
+echo "*                                                          |     |         *"
+echo "* Example:                                                 V     V         *"
 echo "*   sh $MECHSYS_ROOT/mechsys/scripts/do_compile_deps.sh {0,1} {0,1}        *"
 echo "*                                                                          *"
 echo "* By default, the code will not be compiled if this was done before.       *"
@@ -41,10 +42,10 @@ if [ "$#" -gt 0 ]; then
     fi
 fi
 
-FULL=0
+FORCEDOWNLOAD=0
 if [ "$#" -gt 1 ]; then
-    FULL=$2
-    if [ "$FULL" -lt 0 -o "$FULL" -gt 1 ]; then
+    FORCEDOWNLOAD=$2
+    if [ "$FORCEDOWNLOAD" -lt 0 -o "$FORCEDOWNLOAD" -gt 1 ]; then
         echo
         echo "The option for downloading and compilation of additional packages must be either 1 or 0. ($2 is invalid)"
         echo
@@ -84,6 +85,14 @@ compile_mumps() {
 proc_links() {
     LDIR=$MECHSYS_ROOT/pkg/$PROC/proc
     ln -s $LDIR/libproc-$PROC_VER.so $LDIR/libproc.so
+}
+
+error_message() {
+    echo
+    echo
+    echo "    [1;31m Error: $1 [0m"
+    echo
+    echo
 }
 
 download_and_compile() {
@@ -165,70 +174,78 @@ download_and_compile() {
             DO_MAKE=1
             ;;
         *)
-            echo
-            echo "download_and_compile_tar_gz: __Internal_error__"
+            error_message "download_and_compile_tar_gz: __Internal_error__"
             exit 1
             ;;
     esac
     echo
     echo "********************************** ${1} ********************************"
 
-    # erase existent directory ?
+    # change into the packages directory
     cd $MECHSYS_ROOT/pkg
-    if [ -d "$MECHSYS_ROOT/pkg/$PKG_DIR" ]; then
-        if [ "$RECOMPILE" -eq 1 ]; then
-            echo "    Recompiling $PKG"
-            if [ "$IS_SVN" -eq 1 ]; then
-                echo "    Updating $PKG SVN repository"
-                svn co $LOCATION $PKG
-            else
-                rm -rf $MECHSYS_ROOT/pkg/$PKG_DIR
-            fi
-        else
-            echo "    Using existing $PKG_DIR"
-            return
-        fi
 
-    # download SVN package
+    # (re)compile or return (erasing existing package) ?
+    if [ "$IS_SVN" -eq 0 ]; then
+        if [ -d "$MECHSYS_ROOT/pkg/$PKG_DIR" ]; then
+            if [ "$RECOMPILE" -eq 1   -o   "$FORCEDOWNLOAD" -eq 1 ]; then
+                echo "    Erasing existing $PKG_DIR"
+                rm -rf $MECHSYS_ROOT/pkg/$PKG_DIR
+            else
+                echo "    Using existing $PKG_DIR"
+                return
+            fi
+        fi
     else
-        echo "    New compilation of $PKG"
-        if [ "$IS_SVN" -eq 1 ]; then
-            echo "    Downloading $PKG SVN repository"
+        if [ -d "$MECHSYS_ROOT/pkg/$PKG_DIR" ]; then
+            if [ "$RECOMPILE" -eq 1   -o   "$FORCEDOWNLOAD" -eq 1 ]; then
+                echo "    Updating existing $PKG SVN repository"
+                cd $PKG_DIR
+                svn up
+                cd $MECHSYS_ROOT/pkg
+            else
+                echo "    Using existing $PKG SVN repository in $PKG_DIR"
+                return
+            fi
+        fi
+    fi
+
+    # download package
+    if [ "$IS_SVN" -eq 0 ]; then
+        FILENAME=""
+        if [ -e $PKG.tar.gz ]; then FILENAME=$PKG.tar.gz; fi
+        if [ -e $PKG.tgz    ]; then FILENAME=$PKG.tgz;    fi
+        if [ "$FORCEDOWNLOAD" -eq 1   -o   -z "$FILENAME" ]; then
+            if [ -z "$LOCATION" ]; then
+                if [ -z "$FILENAME" ]; then
+                    error_message "Please download <$PKG.tar.gz> first"
+                    return
+                fi
+            else
+                if [ ! -z "$FILENAME" ]; then
+                    echo "    Removing existing <$FILENAME>"
+                    rm $FILENAME
+                fi
+                echo "    Downloading <$FILENAME>"
+                wget $LOCATION
+            fi
+        fi
+    else
+        if [ ! -d "$MECHSYS_ROOT/pkg/$PKG_DIR" ]; then
+            echo "    Downloading new $PKG SVN repository"
             svn co $LOCATION $PKG
         fi
     fi
 
-    # download and uncompressing package
+    # uncompress package
     if [ "$IS_SVN" -eq 0 ]; then
-        if [ -e $PKG.tar.gz ]; then
-            echo "    Using local <$PKG.tar.gz>"
-        else
-            if [ -e $PKG.tgz ]; then
-                echo "    Using local <$PKG.tgz>"
-            else
-                echo "    Downloading package"
-                if [ -z "$LOCATION" ]; then
-                    echo
-                    echo
-                    echo "    [1;31mPlease, download <$PKG.tar.gz> first[0m"
-                    echo
-                    echo
-                    return
-                else
-                    wget $LOCATION
-                fi
-            fi
-        fi
         echo "        . . . uncompressing . . ."
-        if [ -e $PKG.tar.gz ]; then
-            tar xzf $PKG.tar.gz
-        else
-            tar xzf $PKG.tgz
-        fi
+        tar xzf $FILENAME
     fi
 
-    # patch
+    # change into the package directory
     cd $PKG_DIR
+
+    # patch
     if [ "$DO_PATCH" -eq 1 ]; then
         echo "        . . . patching . . ."
         sh $MECHSYS_ROOT/mechsys/patches/${1}/do_patch.sh
@@ -246,7 +263,7 @@ download_and_compile() {
         make > /dev/null 2> /dev/null
     fi
 
-    # given command
+    # execute specific command
     if [ ! -z "$CMD" ]; then
         echo "        . . . command . . . . . ."
         $CMD

@@ -1371,8 +1371,8 @@ inline void Domain::SaveState (char const * FileKey) const
     hid_t hdf = H5Fcreate (fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 
     // number of nodes and elements
-    int     nods_sz[1] = { Nods.Size() };
-    int     eles_sz[1] = { Eles.Size() };
+    int     nods_sz[1] = { static_cast<int>(Nods.Size()) };
+    int     eles_sz[1] = { static_cast<int>(Eles.Size()) };
     double  time   [1] = { Time };
     hsize_t unit_sz[1] = { 1 };
     H5LTmake_dataset_int    (hdf, "/NNods", 1, unit_sz, nods_sz);
