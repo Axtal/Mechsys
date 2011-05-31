@@ -73,7 +73,7 @@ int main(int argc, char **argv) try
     x[0] = 5.0;   x[1] = 7.0;
     cout << "\nWith grads (BFGS)\n";
     fmin = sol.Find (x);
-    bool err3 = (fabs(x[0]-1.0)>1.e-13 || fabs(x[1]-2.0)>1.0e-12 || fabs(fmin-30.0)>1.0e-16);
+    bool err3 = (fabs(x[0]-1.0)>1.e-12 || fabs(x[1]-2.0)>1.0e-12 || fabs(fmin-30.0)>1.0e-16);
     cout << "xmin = (" << x[0] << ", " << x[1] << ")  =>  fmin = " << fmin << endl;
     cout << "err_x = " << fabs(x[0]-1.0) << ", err_y = " << fabs(x[1]-2.0) << ", err_fmin = " << fabs(fmin-30.0) << endl;
 

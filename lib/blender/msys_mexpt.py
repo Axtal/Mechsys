@@ -25,7 +25,7 @@ Group: 'Themes'
 Tooltip: 'Mesh export'
 """
 __author__  = "Dorival Pedroso"
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __bpydoc__  = """TODO"""
 
 import os
@@ -58,6 +58,11 @@ def get_selected_edges(msh):
 def export_mesh(fn,outedg,is3d):
     obj, msh, edm = get_active_mesh()
     if msh!=None:
+
+        # transform to global coordinates
+        ori = obj.getData(mesh=1)
+        msh = ori.copy() # copy for transformation
+        msh.transform(obj.matrix)
 
         # check
         if not is3d:
@@ -191,10 +196,11 @@ def get_key(key):
 ######################################################## Properties
 
 def set_tag(obj,key,id,tag):
-    print id, tag
     sid = str(id)
     if not obj.properties.has_key(key): obj.properties[key] = {}
-    if tag==0: obj.properties[key].pop    (sid)
+    if tag==0:
+        try: obj.properties[key].pop (sid)
+        except: pass
     else:      obj.properties[key].update({sid:tag})
     if len(obj.properties[key])==0: obj.properties.pop(key)
 
@@ -227,7 +233,7 @@ def event(evt, val):
     elif evt==Draw.ESCKEY: Draw.Redraw(1)
 
 # button events
-#@TC
+@TC
 def bevent(evt):
     if evt==EVT_VTAG: # ===========================================
         obj, msh, edm = get_active_mesh()

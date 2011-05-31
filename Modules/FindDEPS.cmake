@@ -28,8 +28,8 @@ OPTION(A_MAKE_TERM_NOCOLORS "Don't use colors when printing to terminal ?"      
 OPTION(A_MAKE_STDVECTOR     "Use std::vector instead of own implemenatation ?"     OFF)
                                                                                    
 # Options                                                                          
-OPTION(A_USE_THREAD         "Use c++0x multithreading ? "                          OFF)
-OPTION(A_USE_MPI            "Use OpenMPI ? "                                       OFF)
+OPTION(A_USE_THREAD         "Use (p)Threads ?"                                     OFF)
+OPTION(A_USE_MPI            "Use OpenMPI ?"                                        OFF)
 OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
 OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
 OPTION(A_USE_VTK            "Use VTK ?"                                            OFF)
@@ -42,6 +42,7 @@ OPTION(A_USE_PARMETIS       "Use ParMETIS"                                      
 OPTION(A_USE_MUMPS          "Use MUMPS"                                            OFF)
 
 ADD_DEFINITIONS(-fmessage-length=0) # Each error message will appear on a single line; no line-wrapping will be done.
+ADD_DEFINITIONS(-std=c++0x)         # New C++ standard
 
 ### FLAGS ###############################################################################################
 
@@ -118,6 +119,7 @@ INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindPROC.cmake     ) # 21
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindSPHASH.cmake   ) # 22
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindTENSORS.cmake  ) # 23
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindIGRAPH.cmake   ) # 24
+INCLUDE (FindThreads)                                       # 25
 
 # 1
 if(wxWidgets_FOUND AND A_USE_WXW)
@@ -351,7 +353,12 @@ else(IGRAPH_FOUND)
     SET (MISSING "${MISSING} IGraph")
 endif(IGRAPH_FOUND)
 
-#25
-IF(A_USE_THREAD)
-    ADD_DEFINITIONS (-DUSE_THREAD -std=c++0x -pthread)
-ENDIF(A_USE_THREAD)
+# 25
+if(Threads_FOUND AND A_USE_THREAD)
+    SET (LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
+    ADD_DEFINITIONS (-DUSE_THREAD)
+else(Threads_FOUND AND A_USE_THREAD)
+    if(A_USE_THREAD)
+        SET (MISSING "${MISSING} (p)Threads")
+    endif(A_USE_THREAD)
+endif(Threads_FOUND AND A_USE_THREAD)

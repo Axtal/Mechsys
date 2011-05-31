@@ -4,7 +4,10 @@ from Blender import *
 from bpy     import *
 
 # Get dictionary
-try:    d = Registry.GetKey('gui_dict')
+try:
+    d = Registry.GetKey('gui_dict')
+    try:    d['show']
+    except: d = {'show':False}
 except: d = {'show':False}
 
 # Draw 
@@ -23,13 +26,13 @@ if d['show']:
         BGL.glLoadMatrixf  (view_buffer)
 
         # get mesh and transform to global coordinates
-        msh = obj.getData(mesh=1)
-        ori = [v for v in msh.verts] # create a copy before transforming to global coordinates
+        ori = obj.getData(mesh=1)
+        msh = ori.copy() # copy for transformation
         msh.transform(obj.matrix)
 
         # draw vertices IDs
         if d['showvid']:
-            BGL.glColor3f (1.0, 1.0, 0.0)
+            BGL.glColor3f (1.0, 1.0, 1.0)
             for v in msh.verts:
                 BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
                 Draw.Text         ('%d'%(v.index))
@@ -44,7 +47,7 @@ if d['show']:
 
         # draw solids IDs
         if d['showsid']:
-            BGL.glColor3f (0.7, 0.0, 0.0)
+            BGL.glColor3f (1.0, 1.0, 1.0)
             for f in msh.faces:
                 BGL.glRasterPos3f (f.cent[0], f.cent[1], f.cent[2])
                 Draw.Text         ('%d'%(f.index))
@@ -52,17 +55,17 @@ if d['show']:
         # draw vertices tags
         if d['showvta']:
             if obj.properties.has_key('vtags'):
-                BGL.glColor3f (0.8, 0.8, 0.70)
+                BGL.glColor3f (1.0, 1.0, 0.0)
                 for k, v in obj.properties['vtags'].iteritems():
                     vid = int(k)
                     pos = msh.verts[vid].co
                     BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                    Draw.Text         ('    %d'%(v))
+                    Draw.Text         ('%d'%(v))
 
         # draw edges tags
         if d['showeta']:
             if obj.properties.has_key('etags'):
-                BGL.glColor3f (0.551, 1.0, 0.370)
+                BGL.glColor3f (0.541, 1.0, 0.541)
                 for k, v in obj.properties['etags'].iteritems():
                     eid = int(k)
                     dP  = msh.edges[eid].v2.co-msh.edges[eid].v1.co
@@ -73,12 +76,9 @@ if d['show']:
         # draw edges tags
         if d['showsta']:
             if obj.properties.has_key('stags'):
-                BGL.glColor3f (0.9, 0.1, 0.3)
+                BGL.glColor3f (0.8, 0.0, 0.0)
                 for k, v in obj.properties['stags'].iteritems():
                     sid = int(k)
                     pos = msh.faces[sid].cent
                     BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                    Draw.Text         ('    %d'%(v))
-
-        # restore mesh to local coordinates
-        msh.verts = ori
+                    Draw.Text         ('%d'%(v))
