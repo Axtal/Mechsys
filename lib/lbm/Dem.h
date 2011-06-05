@@ -124,7 +124,7 @@ inline void Disk::ImprintDisk(Lattice & Lat)
 
         if (len>0.0)
         {
-            cell->Gamma   = len/(4*Lat.dx);
+            cell->Gamma   = std::max(len/(4*Lat.dx),cell->Gamma);
             if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat.G)>1.0e-12) continue;
             Vec3_t B      = C - X;
             Vec3_t VelP   = V + cross(W,B);
