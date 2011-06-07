@@ -144,7 +144,7 @@ inline SGrid & SGrid::Resize (int Nx, double Xmin, double Xmax, int Ny, double Y
 {
     if (Nx<2) throw new Fatal("SGrid::Resize: Nx==N[0]=%d must be greater than 1",Nx);
     if (Ny<2) throw new Fatal("SGrid::Resize: Ny==N[1]=%d must be greater than 1",Ny);
-    if (Nz<2) throw new Fatal("SGrid::Resize: Nz==N[2]=%d must be greater than 1",Nz);
+    if (Nz<1) throw new Fatal("SGrid::Resize: Nz==N[2]=%d must be greater than 1",Nz);
     _Nx = Nx;  _Xmin = Xmin;  _Xmax = Xmax;
     _Ny = Ny;  _Ymin = Ymin;  _Ymax = Ymax;
     _Nz = Nz;  _Zmin = Zmin;  _Zmax = Zmax;
@@ -158,7 +158,7 @@ inline SGrid & SGrid::Resize (int Nx, double Xmin, double Xmax, int Ny, double Y
     _sgrid    -> SetDimensions         (Nx,Ny,Nz);
     double dx  = (Xmax-Xmin)/(Nx-1.0);
     double dy  = (Ymax-Ymin)/(Ny-1.0);
-    double dz  = (Zmax-Zmin)/(Nz-1.0);
+    double dz  = (Nz>1 ? (Zmax-Zmin)/(Nz-1.0) : 0.0);
     double f   = 0.0;
     Vec3_t x, v;
     if (_func==NULL)

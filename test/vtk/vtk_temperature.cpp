@@ -35,13 +35,13 @@ void T (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
 int main(int argc, char **argv) try
 {
     // number:  nx ny nz
-    Array<int> N(10, 5, 2);
+    Array<int> N(10, 5, 1);
     if (argc>1) N[0] = atoi(argv[1]);
     if (argc>2) N[1] = atoi(argv[2]);
     if (argc>3) N[2] = atoi(argv[3]);
     if (N[0]<2) throw new Fatal("nx must be greater than 1");
     if (N[1]<2) throw new Fatal("ny must be greater than 1");
-    if (N[2]<2) throw new Fatal("nz must be greater than 1");
+    if (N[2]<1) throw new Fatal("nz must be greater than 0");
 
     // limits
     Array<double> L(0,10, 0,5, 0,1); // xmin,xmax  ymin,ymax  zmin,zmax
