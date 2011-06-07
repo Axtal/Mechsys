@@ -30,6 +30,7 @@
 #include <vtkTextProperty.h>
 #include <vtkPointData.h>
 #include <vtkStructuredGridWriter.h>
+#include <vtkColorTransferFunction.h>
 
 // MechSys
 #include <mechsys/vtk/win.h>
@@ -64,6 +65,7 @@ public:
                       int Ny, double Ymin, double Ymax,
                       int Nz, double Zmin, double Zmax);
     SGrid & SetColor (char const * Name="black", double Opacity=1.0);
+    SGrid & SetCMap  (double Fmin, double Fmax, char const * Name="Diverging");
     SGrid & SetFunc  (GridCallBack Func, void * UserData=NULL) { _func=Func;  _udat=UserData;  _calc_f();  return (*this); }
 
     // Access methods
@@ -74,25 +76,29 @@ public:
     vtkPoints         * GetPoints  ()                        { return _points;                      }
     vtkDoubleArray    * GetScalars ()                        { return _scalars;                     }
     vtkDoubleArray    * GetVectors ()                        { return _vectors;                     }
-    
+
     // Methods
-    void ShowWire   ()             { _sgrid_actor->GetProperty()->SetRepresentationToWireframe(); }
-    void ShowPoints (int PtSize=4) { _sgrid_actor->GetProperty()->SetRepresentationToPoints();  _sgrid_actor->GetProperty()->SetPointSize(PtSize); }
-    void ShowIds    (double OriX=90, double OriY=90, double OriZ=45, double Scale=0.003, int SizePt=14, bool Shadow=true, char const * Color="blue");
-    void AddTo      (VTK::Win & win);
-    void WriteVTK   (char const * Filekey);
-    void FilterV    (double F=0.0, double Tol=1.0e-3, bool Normalize=false);
+    void ShowWire    ()             { _sgrid_actor->GetProperty()->SetRepresentationToWireframe(); }
+    void ShowSurface ()             { _sgrid_actor->GetProperty()->SetRepresentationToSurface(); }
+    void ShowPoints  (int PtSize=4) { _sgrid_actor->GetProperty()->SetRepresentationToPoints();  _sgrid_actor->GetProperty()->SetPointSize(PtSize); }
+    void ShowIds     (double OriX=90, double OriY=90, double OriZ=45, double Scale=0.003, int SizePt=14, bool Shadow=true, char const * Color="blue");
+    void AddTo       (VTK::Win & win);
+    void WriteVTK    (char const * Filekey);
+    void FilterV     (double F=0.0, double Tol=1.0e-3, bool Normalize=false);
 
 private:
-    GridCallBack             _func;
-    void                   * _udat;
-    vtkPoints              * _points;
-    vtkDoubleArray         * _scalars;
-    vtkDoubleArray         * _vectors;
-    vtkStructuredGrid      * _sgrid;
-    vtkDataSetMapper       * _sgrid_mapper;
-    vtkActor               * _sgrid_actor;
-    Array<vtkTextActor3D*>   _text;
+    GridCallBack               _func;
+    void                     * _udat;
+    vtkPoints                * _points;
+    vtkDoubleArray           * _scalars;
+    vtkDoubleArray           * _vectors;
+    vtkStructuredGrid        * _sgrid;
+    vtkDataSetMapper         * _sgrid_mapper;
+    vtkActor                 * _sgrid_actor;
+    vtkColorTransferFunction * _color_func;
+    Array<vtkTextActor3D*>     _text;
+    double                     _Fmin;
+    double                     _Fmax;
     void _create ();
     void _calc_f ();
 };
@@ -102,24 +108,27 @@ private:
 
 
 inline SGrid::SGrid (int N[3], double L[6], GridCallBack Func, void * UserData)
-    : _func(Func), _udat(UserData) 
+    : _func(Func), _udat(UserData)
 {
     _create ();
-    Resize  (N,L);
+    Resize  (N,L); // also calculates F and set _Fmin and _Fmax
+    SetCMap (_Fmin, _Fmax);
 }
 
 inline SGrid::SGrid (Array<int> const & N, Array<double> const & L, GridCallBack Func, void * UserData)
-    : _func(Func), _udat(UserData) 
+    : _func(Func), _udat(UserData)
 {
     _create ();
-    Resize  (N,L);
+    Resize  (N,L); // also calculates F and set _Fmin and _Fmax
+    SetCMap (_Fmin, _Fmax);
 }
 
 inline SGrid::SGrid (int Nx, double Xmin, double Xmax, int Ny, double Ymin, double Ymax, int Nz, double Zmin, double Zmax, GridCallBack Func, void * UserData)
-    : _func(Func), _udat(UserData) 
+    : _func(Func), _udat(UserData)
 {
     _create ();
-    Resize  (Nx,Xmin,Xmax, Ny,Ymin,Ymax, Nz,Zmin,Zmax);
+    Resize  (Nx,Xmin,Xmax, Ny,Ymin,Ymax, Nz,Zmin,Zmax); // also calculates F and set _Fmin and _Fmax
+    SetCMap (_Fmin, _Fmax);
 }
 
 inline SGrid & SGrid::Resize (int Nx, double Xmin, double Xmax, int Ny, double Ymin, double Ymax, int Nz, double Zmin, double Zmax)
@@ -141,6 +150,17 @@ inline SGrid & SGrid::Resize (int Nx, double Xmin, double Xmax, int Ny, double Y
     size_t idx = 0;
     double f   = 0.0;
     Vec3_t x, v;
+    if (_func==NULL)
+    {
+        _Fmin = 0.0;
+        _Fmax = 1.0;
+    }
+    else
+    {
+        x = Xmin, Ymin, Zmin;
+        (*_func) (x, _Fmin, v, _udat);
+        (*_func) (x, _Fmax, v, _udat);
+    }
     for (int k=0; k<Nz; ++k)
     for (int j=0; j<Ny; ++j)
     for (int i=0; i<Nx; ++i)
@@ -157,6 +177,8 @@ inline SGrid & SGrid::Resize (int Nx, double Xmin, double Xmax, int Ny, double Y
             (*_func) (x, f, v, _udat);
             _scalars -> InsertTuple1 (idx, f);
             _vectors -> InsertTuple3 (idx, v(0), v(1), v(2));
+            if (f<_Fmin) _Fmin = f;
+            if (f>_Fmax) _Fmax = f;
         }
         idx++;
     }
@@ -173,6 +195,7 @@ inline SGrid::~SGrid ()
     _sgrid        -> Delete();
     _sgrid_mapper -> Delete();
     _sgrid_actor  -> Delete();
+    _color_func   -> Delete();
     for (size_t i=0; i<_text.Size(); ++i) _text[i] -> Delete();
 }
 
@@ -181,6 +204,24 @@ inline SGrid & SGrid::SetColor (char const * Name, double Opacity)
     Vec3_t c = Colors::Get(Name);
     _sgrid_actor->GetProperty()->SetColor   (c.data());
     _sgrid_actor->GetProperty()->SetOpacity (Opacity);
+    return (*this);
+}
+
+inline SGrid & SGrid::SetCMap (double Fmin, double Fmax, char const * Name)
+{
+    if (strcmp(Name,"Rainbow")==0)
+    {
+        _color_func -> SetColorSpaceToHSV ();
+        _color_func -> HSVWrapOff         ();
+        _color_func -> AddHSVPoint        (Fmin, 0.66667, 1.0, 1.0);
+        _color_func -> AddHSVPoint        (Fmax, 0.0, 1.0, 1.0);
+    }
+    else
+    {
+        _color_func -> SetColorSpaceToDiverging ();
+        _color_func -> AddRGBPoint              (Fmin, 0.230, 0.299, 0.754);
+        _color_func -> AddRGBPoint              (Fmax, 0.706, 0.016, 0.150);
+    }
     return (*this);
 }
 
@@ -238,14 +279,16 @@ inline void SGrid::FilterV (double F, double Tol, bool Normalize)
 
 inline void SGrid::_create ()
 {
-    _points       = vtkPoints         ::New();
-    _scalars      = vtkDoubleArray    ::New();
-    _vectors      = vtkDoubleArray    ::New();
-    _sgrid        = vtkStructuredGrid ::New();
-    _sgrid_mapper = vtkDataSetMapper  ::New();
-    _sgrid_actor  = vtkActor          ::New();
+    _points       = vtkPoints                ::New();
+    _scalars      = vtkDoubleArray           ::New();
+    _vectors      = vtkDoubleArray           ::New();
+    _sgrid        = vtkStructuredGrid        ::New();
+    _sgrid_mapper = vtkDataSetMapper         ::New();
+    _sgrid_actor  = vtkActor                 ::New();
+    _color_func   = vtkColorTransferFunction ::New();
     _sgrid        -> SetPoints        (_points);
     _sgrid_mapper -> SetInput         (_sgrid);
+    _sgrid_mapper -> SetLookupTable   (_color_func);
     _sgrid_actor  -> SetMapper        (_sgrid_mapper);
     _sgrid_actor  -> GetProperty() -> SetPointSize (4);
     ShowWire ();
@@ -256,6 +299,17 @@ inline void SGrid::_calc_f ()
 {
     double f;
     Vec3_t x, v;
+    if (_func==NULL)
+    {
+        _Fmin = 0.0;
+        _Fmax = 1.0;
+    }
+    else
+    {
+        GetPoint (0, x);
+        (*_func) (x, _Fmin, v, _udat);
+        (*_func) (x, _Fmax, v, _udat);
+    }
     for (int i=0; i<Size(); ++i)
     {
         GetPoint (i, x);
@@ -269,6 +323,8 @@ inline void SGrid::_calc_f ()
             (*_func) (x, f, v, _udat);
             _scalars -> SetTuple1 (i, f);
             _vectors -> SetTuple3 (i, v(0), v(1), v(2));
+            if (f<_Fmin) _Fmin = f;
+            if (f>_Fmax) _Fmax = f;
         }
     }
 }

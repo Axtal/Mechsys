@@ -23,7 +23,8 @@ SET(PROGS
   objects
   sgridarrows
   triangulation01
-  triangulation02)
+  triangulation02
+  vtk_temperature)
 
 FOREACH(var ${PROGS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
