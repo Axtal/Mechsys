@@ -47,9 +47,27 @@ int main(int argc, char **argv) try
     Array<double> L(0,10, 0,5, 0,1); // xmin,xmax  ymin,ymax  zmin,zmax
 
     // grid
-    VTK::SGrid gri(N, L, T);
-    //gri.ShowPoints ();
+    //VTK::SGrid gri(N, L, T);  bool use_T = true;  // <<<<  Using Function
+    VTK::SGrid gri(N, L);       bool use_T = false; // <<<<  Setting each point
+
+    // Show surface
     gri.ShowSurface ();
+
+    // Seting points
+    if (!use_T)
+    {
+        for (int k=0; k<N[2]; ++k)
+        for (int j=0; j<N[1]; ++j)
+        for (int i=0; i<N[0]; ++i)
+        {
+            if (i>3 && i<6 && j>1 && j<3) gri.SetF (i,j,k, 20);
+            else                          gri.SetF (i,j,k, i+j);
+        }
+        gri.RescaleCMap();
+    }
+
+    // Set colormap
+    gri.SetCMap ("Rainbow");
     
     // window and axes
     VTK::Win  win;

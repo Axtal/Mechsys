@@ -65,8 +65,14 @@ public:
                       int Ny, double Ymin, double Ymax,
                       int Nz, double Zmin, double Zmax);
     SGrid & SetColor (char const * Name="black", double Opacity=1.0);
-    SGrid & SetCMap  (double Fmin, double Fmax, char const * Name="Diverging");
     SGrid & SetFunc  (GridCallBack Func, void * UserData=NULL) { _func=Func;  _udat=UserData;  _calc_f();  return (*this); }
+
+    // Additional methods
+    double GetF        (int i, int j, int k) const     { return _scalars->GetTuple1 (i+j*_Nx+k*_Nx*_Ny); }
+    void   SetF        (int i, int j, int k, double F) { _scalars->SetTuple1 (i+j*_Nx+k*_Nx*_Ny, F); }
+    void   SetCMap     (double Fmin, double Fmax, char const * Name="Diverging");
+    void   SetCMap     (                          char const * Name="Diverging") { SetCMap (_Fmin, _Fmax, Name); }
+    void   RescaleCMap ();
 
     // Access methods
     int                 Size       ()                  const { return _points->GetNumberOfPoints(); }
@@ -99,6 +105,9 @@ private:
     Array<vtkTextActor3D*>     _text;
     double                     _Fmin;
     double                     _Fmax;
+    int                        _Nx, _Ny, _Nz;
+    double                     _Xmin,_Xmax, _Ymin,_Ymax, _Zmin,_Zmax;
+    String                     _cmap_name;
     void _create ();
     void _calc_f ();
 };
@@ -136,6 +145,9 @@ inline SGrid & SGrid::Resize (int Nx, double Xmin, double Xmax, int Ny, double Y
     if (Nx<2) throw new Fatal("SGrid::Resize: Nx==N[0]=%d must be greater than 1",Nx);
     if (Ny<2) throw new Fatal("SGrid::Resize: Ny==N[1]=%d must be greater than 1",Ny);
     if (Nz<2) throw new Fatal("SGrid::Resize: Nz==N[2]=%d must be greater than 1",Nz);
+    _Nx = Nx;  _Xmin = Xmin;  _Xmax = Xmax;
+    _Ny = Ny;  _Ymin = Ymin;  _Ymax = Ymax;
+    _Nz = Nz;  _Zmin = Zmin;  _Zmax = Zmax;
     _points   -> Reset                 ();
     _points   -> Allocate              (Nx*Ny*Nz);
     _scalars  -> Reset                 ();
@@ -147,7 +159,6 @@ inline SGrid & SGrid::Resize (int Nx, double Xmin, double Xmax, int Ny, double Y
     double dx  = (Xmax-Xmin)/(Nx-1.0);
     double dy  = (Ymax-Ymin)/(Ny-1.0);
     double dz  = (Zmax-Zmin)/(Nz-1.0);
-    size_t idx = 0;
     double f   = 0.0;
     Vec3_t x, v;
     if (_func==NULL)
@@ -165,6 +176,7 @@ inline SGrid & SGrid::Resize (int Nx, double Xmin, double Xmax, int Ny, double Y
     for (int j=0; j<Ny; ++j)
     for (int i=0; i<Nx; ++i)
     {
+        int idx = i + j*_Nx + k*_Nx*_Ny;
         x = Xmin+i*dx, Ymin+j*dy, Zmin+k*dz;
         _points -> InsertPoint (idx, x.data());
         if (_func==NULL)
@@ -180,7 +192,6 @@ inline SGrid & SGrid::Resize (int Nx, double Xmin, double Xmax, int Ny, double Y
             if (f<_Fmin) _Fmin = f;
             if (f>_Fmax) _Fmax = f;
         }
-        idx++;
     }
     _sgrid -> GetPointData() -> SetScalars (_scalars);
     _sgrid -> GetPointData() -> SetVectors (_vectors);
@@ -207,22 +218,39 @@ inline SGrid & SGrid::SetColor (char const * Name, double Opacity)
     return (*this);
 }
 
-inline SGrid & SGrid::SetCMap (double Fmin, double Fmax, char const * Name)
+inline void SGrid::SetCMap (double Fmin, double Fmax, char const * Name)
 {
-    if (strcmp(Name,"Rainbow")==0)
+    _cmap_name = Name;
+    double midpoint  = 0.5; // halfway between the control points
+    double sharpness = 0.0; // linear
+    if (_color_func->GetSize()==2) _color_func->RemoveAllPoints(); // existent
+    if (_cmap_name=="Rainbow")
     {
         _color_func -> SetColorSpaceToHSV ();
         _color_func -> HSVWrapOff         ();
-        _color_func -> AddHSVPoint        (Fmin, 0.66667, 1.0, 1.0);
-        _color_func -> AddHSVPoint        (Fmax, 0.0, 1.0, 1.0);
+        _color_func -> AddHSVPoint        (Fmin, 2.0/3.0, 1.0, 1.0, midpoint, sharpness);
+        _color_func -> AddHSVPoint        (Fmax, 0.0,     1.0, 1.0, midpoint, sharpness);
     }
     else
     {
         _color_func -> SetColorSpaceToDiverging ();
-        _color_func -> AddRGBPoint              (Fmin, 0.230, 0.299, 0.754);
-        _color_func -> AddRGBPoint              (Fmax, 0.706, 0.016, 0.150);
+        _color_func -> HSVWrapOn                ();
+        _color_func -> AddRGBPoint              (Fmin, 0.230, 0.299, 0.754, midpoint, sharpness);
+        _color_func -> AddRGBPoint              (Fmax, 0.706, 0.016, 0.150, midpoint, sharpness);
     }
-    return (*this);
+}
+
+inline void SGrid::RescaleCMap ()
+{
+    _Fmin = _scalars->GetTuple1 (0);
+    _Fmax = _Fmin;
+    for (int i=0; i<_scalars->GetNumberOfTuples(); ++i)
+    {
+        double f = _scalars->GetTuple1(i);
+        if (f<_Fmin) _Fmin = f;
+        if (f>_Fmax) _Fmax = f;
+    }
+    SetCMap (_Fmin, _Fmax, _cmap_name.CStr());
 }
 
 inline void SGrid::ShowIds (double OriX, double OriY, double OriZ, double Scale, int SizePt, bool Shadow, char const * Color)
