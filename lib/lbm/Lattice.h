@@ -20,6 +20,11 @@
 #ifndef MECHSYS_LBM_LATTICE_H
 #define MECHSYS_LBM_LATTICE_H
 
+// Hdf5
+#ifdef USE_HDF5
+#include <hdf5.h>
+#include <hdf5_hl.h>
+#endif
 
 // MechSys
 #include <mechsys/lbm/Cell.h>
@@ -49,6 +54,9 @@ public:
     void CollideAlt();                                                              ///< apply the collision operator
     void BounceBack();                                                              ///< apply interaction with solids
     void WriteVTK(char const * FileKey);                                            ///< Write the state in a VTK file
+#ifdef USE_HDF5
+    void WriteXDMF(char const * FileKey);                                           ///< Write the state in a XDMF file
+#endif
     Cell * GetCell(iVec3_t const & v);                                              ///< Get pointer to cell at v
 
 
@@ -292,6 +300,94 @@ inline void Lattice::BounceBack()
         for (size_t j = 0;j<Cells[i]->Nneigh;j++) Cells[i]->F[j]     = Cells[i]->Ftemp[Cells[i]->Op[j]];
     }
 }
+
+#ifdef USE_HDF5
+inline void Lattice::WriteXDMF(char const * FileKey)
+{
+    String fn(FileKey);
+    fn.append(".h5");
+    hid_t     file_id;
+    file_id = H5Fcreate(fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+    // Creating data sets
+    float *Density   = new float[Ndim[0]*Ndim[1]*Ndim[2]];
+    float *Gamma     = new float[Ndim[0]*Ndim[1]*Ndim[2]];
+    float *Velocity  = new float[Ndim[0]*Ndim[1]*Ndim[2]];
+    float *MassFlux  = new float[Ndim[0]*Ndim[1]*Ndim[2]];
+
+
+    for (size_t i=0;i<Cells.Size();i++)
+    {
+        double rho;
+        Vec3_t vel;
+        rho = Cells[i]->VelDen(vel);
+        Density  [i] = (float) rho;
+        Gamma    [i] = (float) Cells[i]->Gamma;
+        Velocity [i] = (float) norm(vel);
+        MassFlux [i] = (float) rho*norm(vel);
+    }
+
+    //Write the data
+    hsize_t dims[1];
+    dims[0] = Ndim(0)*Ndim(1)*Ndim(2);
+    H5LTmake_dataset_float(file_id,"Density" ,1,dims,Density );
+    H5LTmake_dataset_float(file_id,"Gamma"   ,1,dims,Gamma   );
+    H5LTmake_dataset_float(file_id,"Velocity",1,dims,Velocity);
+    H5LTmake_dataset_float(file_id,"MassFlux",1,dims,MassFlux);
+
+    delete [] Density ;
+    delete [] Gamma   ;
+    delete [] Velocity;
+    delete [] MassFlux;
+
+    //Closing the file
+    H5Fclose(file_id);
+
+	// Writing xmf file
+    std::ostringstream oss;
+    oss << "<?xml version=\"1.0\" ?>\n";
+    oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
+    oss << "<Xdmf Version=\"2.0\">\n";
+    oss << " <Domain>\n";
+    oss << "   <Grid Name=\"mesh1\" GridType=\"Uniform\">\n";
+    oss << "     <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"" << Ndim(0) << " " << Ndim(1) << "\"/>\n";
+    oss << "     <Geometry GeometryType=\"ORIGIN_DXDY\">\n";
+    oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\"> 0.0 0.0\n";
+    oss << "       </DataItem>\n";
+    oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\"> 1.0 1.0\n";
+    oss << "       </DataItem>\n";
+    oss << "     </Geometry>\n";
+    oss << "     <Attribute Name=\"Density\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << Ndim(0) << " " << Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Density\n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Gamma\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << Ndim(0) << " " << Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Gamma\n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << Ndim(0) << " " << Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Velocity\n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"MassFlux\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << Ndim(0) << " " << Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/MassFlux\n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "   </Grid>\n";
+    oss << " </Domain>\n";
+    oss << "</Xdmf>\n";
+
+    fn = FileKey;
+    fn.append(".xmf");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
+}
+#endif
 
 inline void Lattice::WriteVTK(char const * FileKey)
 {

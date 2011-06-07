@@ -68,9 +68,9 @@ int main(int argc, char **argv) try
 {
     double u_max  = 0.1;                 // Poiseuille's maximum velocity
     double Re     = 100;                 // Reynold's number
-    size_t nx = 200;
-    size_t ny = 50;
-    size_t nz = 50;
+    size_t nx = 150;
+    size_t ny = 150;
+    size_t nz = 150;
     int radius = ny/10 + 1;           // radius of inner circle (obstacle)
     double nu     = u_max*(2*radius)/Re; // viscocity
     Lattice Lat(D3Q15, nu, iVec3_t(nx,ny,nz), 1.0, 1.0);

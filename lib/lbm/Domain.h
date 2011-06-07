@@ -169,8 +169,15 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             if (FileKey!=NULL)
             {
                 String fn;
-                fn.Printf    ("%s_%08d", FileKey, idx_out);
-                if ( RenderVideo) Lat.WriteVTK (fn.CStr());
+                fn.Printf    ("%s_%04d", FileKey, idx_out);
+                if ( RenderVideo) 
+                {
+                    #ifdef USE_HDF5
+                    Lat.WriteXDMF(fn.CStr());
+                    #else
+                    Lat.WriteVTK (fn.CStr());
+                    #endif
+                }
                 if (ptReport!=NULL) (*ptReport) ((*this), UserData);
             }
             tout += dtOut;

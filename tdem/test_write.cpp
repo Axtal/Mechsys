@@ -28,7 +28,7 @@ using DEM::Domain;
 int main( void )
 {
     Domain dom;
-    dom.AddVoroPack (-1, 0.1, 2.0, 2.0, 2.0, 2, 4, 8, 1.0, true, 1200, 1.0,1.0);
+    dom.AddVoroPack (-1, 0.1, 10.0, 10.0, 10.0, 10, 10, 10, 1.0, true, 1200, 1.0,1.0);
     dom.Initialize();
     dom.Save("domainwrite");
     dom.WritePOV("domainwrite");
