@@ -322,7 +322,7 @@ inline void Lattice::WriteXDMF(char const * FileKey)
         Vec3_t vel;
         rho = Cells[i]->VelDen(vel);
         Density  [i] = (float) rho;
-        Gamma    [i] = (float) Cells[i]->Gamma;
+        Gamma    [i] = (float) Cells[i]->IsSolid? 1.0:Cells[i]->Gamma;
         Velocity [i] = (float) norm(vel);
         MassFlux [i] = (float) rho*norm(vel);
     }
