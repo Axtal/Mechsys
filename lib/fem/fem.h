@@ -97,13 +97,21 @@
         if (verbose) dom.PrintBCs (cout);                                               \
         if (inp.vtufile)                                                                \
         {                                                                               \
-            if (inp.dyn) sol.DynSolve    (inp.tf, inp.dt, inp.dtout, inp.fnkey.CStr()); \
-            else         sol.SteadySolve (inp.ninc, inp.fnkey.CStr());                  \
+            if (inp.vwp) sol.VWPSolve (inp.tf, inp.dt, inp.dtout, inp.fnkey.CStr());    \
+            else                                                                        \
+            {                                                                           \
+                if (inp.dyn) sol.DynSolve    (inp.tf, inp.dt, inp.dtout, inp.fnkey.CStr()); \
+                else         sol.SteadySolve (inp.ninc, inp.fnkey.CStr());                  \
+            }                                                                           \
         }                                                                               \
         else                                                                            \
         {                                                                               \
-            if (inp.dyn) sol.DynSolve    (inp.tf, inp.dt, inp.dtout);                   \
-            else         sol.SteadySolve (inp.ninc);                                    \
+            if (inp.vwp) sol.VWPSolve (inp.tf, inp.dt, inp.dtout);                      \
+            else                                                                        \
+            {                                                                           \
+                if (inp.dyn) sol.DynSolve    (inp.tf, inp.dt, inp.dtout);               \
+                else         sol.SteadySolve (inp.ninc);                                \
+            }                                                                           \
         }                                                                               \
     }
 

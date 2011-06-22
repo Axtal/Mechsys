@@ -138,6 +138,7 @@ public:
     double pw0;         ///< 48 pw0
     bool   haspw0;      ///< has pw0 ?
     bool   rkdyncte;    ///< 49 rk scheme dyn cte M and C
+    bool   vwp;         ///< 50 v-w-p TPM formulation ?
 
     // Additional data
     Dict * Prms; ///< parameters (set by SetMat)
@@ -296,6 +297,7 @@ inline void InpFile::Defaults ()
     pw0        = 0;      // 48
     haspw0     = false;
     rkdyncte   = true;   // 49
+    vwp        = false;  // 50
 }
 
 inline void InpFile::Read (char const * FileName)
@@ -499,6 +501,7 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="dcftol")     dcftol    = val;                        // 47
                 else if (key=="pw0")      { pw0       = val;     haspw0 = true; }   // 48
                 else if (key=="rkdyncte")   rkdyncte  = (bool)atoi(str_val.CStr()); // 49
+                else if (key=="vwp")        vwp       = (bool)atoi(str_val.CStr()); // 50
                 else if (key=="npath")    { npath     = (int)val;  reading_path   = true; }
                 else if (key=="nelemprps"){ nelemprps = (int)val;  reading_eprps  = true; }
                 else if (key=="nstages")  { nstages   = (int)val;  reading_stages = true; }
@@ -709,6 +712,7 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     if (IF.dcftol       >0) os << "dcftol    = " << IF.dcftol    << "\n"; // 47
     if (IF.haspw0         ) os << "pw0       = " << IF.pw0       << "\n"; // 48
     if (IF.rkdyncte       ) os << "rkdyncte  = " << IF.rkdyncte  << "\n"; // 49
+    if (IF.vwp            ) os << "vwp       = " << IF.vwp       << "\n"; // 50
     os << "\nPath:\n"                        << (*IF.Path)      << "\n";
     os << "\nElements properties:\n"         << (*IF.Prps)      << "\n";
     os << "\nOutput nodes:\n"                << (*IF.OutNods)   << "\n";
@@ -921,6 +925,7 @@ inline void InpFile::OnSave (wxCommandEvent & Event)
         of << "dcftol     = " << dcftol     << std::endl; // 47
         of << "pw0        = " << pw0        << std::endl; // 48
         of << "rkdyncte   = " << rkdyncte   << std::endl; // 49
+        of << "vwp        = " << vwp        << std::endl; // 50
         of << "npath      = " << Path->Keys.Size() << std::endl;
 
         String buf;

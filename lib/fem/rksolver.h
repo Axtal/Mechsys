@@ -60,6 +60,7 @@ public:
     void SteadySolve (int NInc=1,                         char const * FKey=NULL);
     void TransSolve  (double tf, double dt, double dtOut, char const * FKey=NULL);
     void DynSolve    (double tf, double dt, double dtOut, char const * FKey=NULL);
+    void VWPSolve    (double tf, double dt, double dtOut, char const * FKey=NULL);
 
     // Data (read/write)
     bool          WithInfo; ///< Print information ?
@@ -98,6 +99,7 @@ public:
     int  TransFunc      (double t, double const Y[], double dYdt[]); ///< Transient problems: callback for RK solver
     int  DynFunc        (double t, double const Y[], double dYdt[]); ///< Dynamic problems: callback for RK solver
     void DynUpFunc      (double t, double Y[]);                      ///< Dynamic problems: callback for RK solver (update)
+    int  VWPFunc        (double t, double const Y[], double dYdt[]); ///< v-w-p formulation: callback for RK solver
     void Initialize     ();                                          ///< Allocate memory
     void AssembleK      ();                                          ///< Assemble K
     void AssembleKM     ();                                          ///< Assemble K and M
@@ -573,6 +575,166 @@ inline void RKSolver::DynUpFunc (double t, double Y[])
         rkeq -= niv;
         for (size_t j=0; j<niv; ++j) Y[rkeq++] = Dom.ActEles[i]->GetIV (j);
     }
+}
+
+inline void RKSolver::VWPSolve (double tf, double dt, double dtOut, char const * FKey)
+{
+    // initialize 
+    Initialize ();
+
+    // allocate triplets and vectors
+    A  .change_dim (NEq);
+    V  .change_dim (NEq);
+    U  .change_dim (NEq);
+    F  .change_dim (NEq);
+    Fi .change_dim (NEq);
+    M11.AllocSpace (NEq,NEq,K11_size+pEQ.Size()+NnzLag); // augmented
+    M12.AllocSpace (NEq,NEq,K12_size);
+    M21.AllocSpace (NEq,NEq,K21_size);
+    M22.AllocSpace (NEq,NEq,K22_size);
+    if (DampTy!=None_t)
+    {
+        C11.AllocSpace (NEq,NEq,K11_size);
+        C12.AllocSpace (NEq,NEq,K12_size);
+        C21.AllocSpace (NEq,NEq,K21_size);
+        C22.AllocSpace (NEq,NEq,K22_size);
+    }
+
+    // allocate ode solver
+    NNu = 2*(NEq-pEQ.Size()); // number of nodal unknowns
+    Numerical::ODESolver<RKSolver> ode(this, &RKSolver::DynFunc, NNu+NIv, Scheme.CStr(), STOL, dt);
+    //ode.UpFun = &RKSolver::DynUpFunc;
+    //if (Scheme!="ME") throw new Fatal("RKSolver::DynSolve: This method works only with 'ME' at this time. Scheme==%s is not available yet",Scheme.CStr());
+
+    // set initial values
+    ode.t    = Dom.Time;
+    int rkeq = 0;
+    for (size_t i=0; i<Dom.ActNods.Size();     ++i)
+    for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
+    {
+        if (!Dom.ActNods[i]->pU(j))
+        {
+            ode.Y[rkeq++] = Dom.ActNods[i]->V(j); // V1
+            ode.Y[rkeq++] = Dom.ActNods[i]->U(j); // U1
+        }
+    }
+    for (size_t i=0; i<Dom.ActEles.Size();     ++i)
+    for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j)
+    {
+        ode.Y[rkeq++] = Dom.ActEles[i]->GetIV(j);
+    }
+
+    // first output
+    printf("\n%s--- Stage solution --- Dynamic --------------------------------%s\n",TERM_CLR1,TERM_RST);
+    printf("%s%10s%s\n",TERM_CLR2,"Time",TERM_RST);
+    Dom.OutResults (FKey);
+
+    // solve
+    double tout = Dom.Time + dtOut;
+    while (Dom.Time<tf)
+    {
+        // evolve
+        ode.Evolve (tout);
+        Dom.Time = ode.t;
+
+        // update
+        size_t rkeq = 0;
+        for (size_t i=0; i<Dom.ActNods.Size();     ++i)
+        for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
+        {
+            if (!Dom.ActNods[i]->pU(j))
+            {
+                Dom.ActNods[i]->V(j) = ode.Y[rkeq++];                     // V1
+                Dom.ActNods[i]->U(j) = ode.Y[rkeq++];                     // U1
+                Dom.ActNods[i]->F(j) = Dom.ActNods[i]->PFOrZero(j,ode.t); // F1
+            }
+            else
+            {
+                Dom.ActNods[i]->V(j) = Dom.ActNods[i]->PVIdxDOF(j,ode.t); // V2
+                Dom.ActNods[i]->U(j) = Dom.ActNods[i]->PUIdxDOF(j,ode.t); // U2
+            }
+        }
+        for (size_t i=0; i<Dom.ActEles.Size(); ++i)
+        {
+            size_t niv = Dom.ActEles[i]->NIVs();
+            for (size_t j=0; j<niv; ++j) Dom.ActEles[i]->SetIV (j, ode.Y[rkeq++]);
+        }
+
+        // output
+        if (WithInfo) printf("%10.6f\n",Dom.Time);
+        Dom.OutResults (FKey);
+        tout += dtOut;
+        if (tout>tf) tout = tf;
+    }
+}
+
+inline int RKSolver::VWPFunc (double t, double const Y[], double dYdt[])
+{
+    int rkeq = 0;
+    for (size_t i=0; i<Dom.ActNods.Size();     ++i)
+    for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
+    {
+        int eq = Dom.ActNods[i]->Eq(j);
+        if (!Dom.ActNods[i]->pU(j))
+        {
+            V(eq) = Y[rkeq++];                     // V1
+            U(eq) = Y[rkeq++];                     // U1
+            F(eq) = Dom.ActNods[i]->PFOrZero(j,t); // F1
+        }
+        else
+        {
+            A(eq) = Dom.ActNods[i]->PAIdxDOF(j,t); // A2
+            V(eq) = Dom.ActNods[i]->PVIdxDOF(j,t); // V2
+            U(eq) = Dom.ActNods[i]->PUIdxDOF(j,t); // U2
+        }
+    }
+    set_to_zero (Fi);
+    for (size_t i=0; i<Dom.ActEles.Size(); ++i)
+    {
+        for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j) Dom.ActEles[i]->SetIV (j, Y[rkeq++]);
+        Dom.ActEles[i]->CorrectIVs ();
+        Dom.ActEles[i]->SetFint (&Fi);
+    }
+
+    F -= Fi; // F = F - Fi
+    //for (size_t i=0; i<pEQ.Size(); ++i) F(pEQ[i]) = A(pEQ[i]); // F2 = A2
+    if (DynCteM)
+    {
+        if (USys==NULL)
+        {
+            AssembleMC ();
+            USys = new UMFPACK::Sys (M11);
+        }
+    }
+    else AssembleMC ();
+    Sparse::SubMult (M12, A, F); if (DampTy!=None_t) { // F1 -= M12*A2
+    Sparse::SubMult (C11, V, F);                       // F1 -= C11*V1
+    Sparse::SubMult (C12, V, F); }                     // F1 -= C12*V2
+    if (DynCteM) USys->Solve         (F, A);           // A1  = inv(M11)*F1
+    else         UMFPACK::Solve (M11, F, A);           // A1  = inv(M11)*F1
+
+    rkeq = 0;
+    for (size_t i=0; i<Dom.ActNods.Size();     ++i)
+    for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
+    {
+        if (!Dom.ActNods[i]->pU(j))
+        {
+            int eq = Dom.ActNods[i]->Eq(j);
+            dYdt[rkeq++] = A(eq); // A1
+            dYdt[rkeq++] = V(eq); // V1
+        }
+    }
+    if (NIv>0)
+    {
+        for (size_t i=0; i<Dom.ActEles.Size(); ++i)
+        {
+            Vec_t dIVdt;
+            Dom.ActEles[i]->CalcIVRate (t, U, V, dIVdt);
+            for (size_t j=0; j<Dom.ActEles[i]->NIVs(); ++j) dYdt[rkeq++] = dIVdt(j);
+        }
+    }
+
+    return GSL_SUCCESS;
 }
 
 inline void RKSolver::Initialize ()

@@ -186,6 +186,7 @@ BPy::class_<InpFile>("InpFile")
     .def_readwrite("dcftol"     , &InpFile::dcftol    ) //  47
     .def_readwrite("pw0"        , &InpFile::pw0       ) //  48
     .def_readwrite("rkdyncte"   , &InpFile::rkdyncte  ) //  49
+    .def_readwrite("vwp"        , &InpFile::vwp       ) //  50
     ;
 
 //////////////////////////////////////////////////////////////////////////////////// mesh /////
