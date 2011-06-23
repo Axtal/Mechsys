@@ -153,7 +153,8 @@ public:
     void FCoordMatrix  (size_t IdxFace, Mat_t & C) const; ///< Matrix with coordinates of face nodes
     void ShapeMatrix   (Mat_t & M)                 const; ///< Matrix with shape functions evaluated at IPs
     void CalcShape     (Mat_t const & C,  IntegPoint const & IP,  double & detJ, double & Coef) const; ///< Results are in GE->N
-    void CalcFaceShape (Mat_t const & FC, IntegPoint const & FIP, double & detJ, double & Coef) const; ///< Results are in GE->FN
+    void CalcFaceShape (Mat_t const & FC, IntegPoint const & FIP, double & detJ, double & Coef, double h=1.0) const; ///< Results are in GE->FN
+    void CalcFaceShape (Mat_t const & FC, IntegPoint const & FIP, Mat_t & J, double & detJ, double & Coef, double h=1.0) const; ///< Results are in GE->FN
     void CoordsOfIP    (size_t IdxIP, Vec_t & X)   const; ///< x-y-z coordinates of integration point (IP)
 
     // Data
@@ -274,7 +275,7 @@ inline void Element::CalcShape (Mat_t const & C, IntegPoint const & IP, double &
     Coef = detJ*IP.w;
 }
 
-inline void Element::CalcFaceShape (Mat_t const & FC, IntegPoint const & FIP, double & detJ, double & Coef) const
+inline void Element::CalcFaceShape (Mat_t const & FC, IntegPoint const & FIP, double & detJ, double & Coef, double h) const
 {
     if (GE==NULL) throw new Fatal("Element::ShapeMatrix: This method works only when GE (geometry element) is not NULL");
 
@@ -287,7 +288,42 @@ inline void Element::CalcFaceShape (Mat_t const & FC, IntegPoint const & FIP, do
     detJ = Det(J);
 
     // coefficient used during integration
-    Coef = detJ*FIP.w;
+    Coef = h*detJ*FIP.w;
+
+    // correct Coef for axisymmetric problems
+    if (GTy==axs_t)
+    {
+        // calculate radius=x at this FIP
+        double radius = 0.0;
+        for (size_t i=0; i<GE->NFN; ++i) radius += GE->FN(i)*FC(i,0);
+        Coef *= radius;
+    }
+}
+
+inline void Element::CalcFaceShape (Mat_t const & FC, IntegPoint const & FIP, Mat_t & J, double & detJ, double & Coef, double h) const
+{
+    if (GE==NULL) throw new Fatal("Element::ShapeMatrix: This method works only when GE (geometry element) is not NULL");
+
+    // geometric data
+    GE->FaceShape  (FIP.r, FIP.s);
+    GE->FaceDerivs (FIP.r, FIP.s);
+
+    // face/edge Jacobian and its determinant
+    //J.change_dim (NDim-1, NDim);
+    J    = GE->FdNdR * FC;
+    detJ = Det(J);
+
+    // coefficient used during integration
+    Coef = h*detJ*FIP.w;
+
+    // correct Coef for axisymmetric problems
+    if (GTy==axs_t)
+    {
+        // calculate radius=x at this FIP
+        double radius = 0.0;
+        for (size_t i=0; i<GE->NFN; ++i) radius += GE->FN(i)*FC(i,0);
+        Coef *= radius;
+    }
 }
 
 inline void Element::StateAtIPs (Array<SDPair> & Results) const

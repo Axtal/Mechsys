@@ -32,7 +32,7 @@ public:
     void   Init    (SDPair const & Ini, size_t NIvs=0);
     void   Backup  () { throw new Fatal("UnsatFlowState::Backup: this method is not available yet"); }
     void   Restore () { throw new Fatal("UnsatFlowState::Restore: this method is not available yet"); }
-    size_t PckSize () const { return 4; }
+    size_t PckSize () const { return 6; }
     void   Pack    (Array<double>       & V) const;
     void   Unpack  (Array<double> const & V);
 
@@ -41,6 +41,8 @@ public:
     double Sw;     ///< Saturation
     double pc;     ///< Capillary pressure (pc = pa-pw = -pw)
     bool   Drying; ///< Drying ? (otherwise wetting) : for history-dependent models (hysteresis)
+    double RhoW;   ///< Real water density
+    double RhoS;   ///< Real solids density
 };
 
 
@@ -52,6 +54,8 @@ inline void UnsatFlowState::Init (SDPair const & Ini, size_t NIvs)
     n      = Ini("n");
     pc     = Ini("pc");
     Sw     = Ini("Sw");
+    RhoW   = Ini("RhoW");
+    RhoS   = Ini("RhoS");
     Drying = false;
 }
 
@@ -62,6 +66,8 @@ inline void UnsatFlowState::Pack (Array<double> & V) const
     V[1] = Sw;
     V[2] = pc;
     V[3] = Drying;
+    V[4] = RhoW;
+    V[5] = RhoS;
 }
 
 inline void UnsatFlowState::Unpack (Array<double> const & V)
@@ -71,6 +77,8 @@ inline void UnsatFlowState::Unpack (Array<double> const & V)
     Sw     = V[1];
     pc     = V[2];
     Drying = V[3];
+    RhoW   = V[4];
+    RhoS   = V[5];
 }
 
 

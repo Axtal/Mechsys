@@ -46,6 +46,7 @@ public:
     void   InitIvs   (SDPair const & Ini, State * Sta) const;                  ///< Initialize internal values
     void   Update    (double Dpw, double DEv, UnsatFlowState * Sta);           ///< Update state
     void   TgVars    (UnsatFlowState const * Sta) const;                       ///< Calculate c, C, chi, and kwb
+    void   TgVars    (UnsatFlowState const * Sta, Vec_t const & Ww, double & Cpw, double & Cvs, Vec_t & fwd) const;
     void   TgIncs    (UnsatFlowState const * Sta, double Dpw, double DEv, double & DSw, double & Dchi) const;
     double FindSw    (double pc);                                              ///< Find Sw corresponding to pc by integrating from (pc,Sw)=(0,1) to pc (disregarding Dev)
     double Findpc    (double Sw);                                              ///< Find pc corresponding to Sw by integrating from (pc,Sw)=(0,1) to Sw (disregarding Dev)
@@ -57,10 +58,12 @@ public:
     Model const * EMdl;
 
     // Data
+    Mat_t  kwsatI; ///< Inverse of saturated kw
     Mat_t  kwsatb; ///< Saturated kw bar
     double akw;    ///< Exponent of kw model
     WRC_t  WRC;    ///< Water retention curve model
     String Name;   ///< Model name
+    double Cw;     ///< Compressibility of water
 
     // SWRC parameters
     double bc_lam, bc_sb,  bc_wr;                      ///< Brooks & Corey model parameters
@@ -163,11 +166,18 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms, Model const * Equili
     }
 
     // saturated conductivity matrix
+    Mat_t kwsat(NDim, NDim);
     kwsatb.change_dim (NDim, NDim);
     GamW = Prms("gamW");
     double m = Prms("kwsat") / GamW;
+    if (NDim==3) kwsat  =  Prms("kwsat"), 0., 0.,   0., Prms("kwsat"), 0.,   0., 0., Prms("kwsat");
+    else         kwsat  =  Prms("kwsat"), 0.,   0., Prms("kwsat");
     if (NDim==3) kwsatb =  m, 0., 0.,   0., m, 0.,   0., 0., m;
     else         kwsatb =  m, 0.,   0., m;
+    Inv (kwsat, kwsatI);
+
+    // compressibility of water
+    Cw = (Prms.HasKey("Cw") ? Prms("Cw") : 0.0);
 
     // stress update
     HMSUp.SetModel (EquilibMdl, this);
@@ -231,6 +241,17 @@ inline void UnsatFlow::TgVars (UnsatFlowState const * Sta) const
     c   = Sta->Sw + Sta->n * Ceps;
     C   = -Sta->n * Cpc;
     chi = Sta->Sw;
+}
+
+inline void UnsatFlow::TgVars (UnsatFlowState const * Sta, Vec_t const & Ww, double & Cpw, double & Cvs, Vec_t & fwd) const
+{
+    double gamw = Grav * Sta->RhoW;
+    double nw   = Sta->n * Sta->Sw;
+    double Cn   = 0.0; // == dSwdn
+
+    Cpw = nw * Cw  -  Sta->n * Sta->RhoW * _Cpc(Sta->Drying, Sta->pc, Sta->Sw);
+    Cvs = Sta->n * Sta->RhoW * Cn * (1.0-Sta->n)  +  Sta->Sw * Sta->RhoW;
+    fwd = (-nw*nw*gamw/rw(Sta->Sw)) * kwsatI * Ww;
 }
 
 inline void UnsatFlow::TgIncs (UnsatFlowState const * Sta, double Dpw, double DEv, double & DSw, double & Dchi) const
