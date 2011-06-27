@@ -46,7 +46,8 @@ public:
     void   Pack    (Array<double>       & V) const;
     void   Unpack  (Array<double> const & V);
 
-    // Auxiliar methods
+    // Auxiliary methods
+    void Output (SDPair & KeysVals) const;
     void Output (std::ostream & os, bool WithHeader=false, char const * NF="%16.8e") const;
 
     // Operators
@@ -158,6 +159,25 @@ inline void EquilibState::Unpack (Array<double> const & V)
     }
     for (size_t i=0; i<niv; ++i) Ivs(i) = V[2*ncp+i];
     Ldg = static_cast<bool>(V[2*ncp + niv]);
+}
+
+inline void EquilibState::Output (SDPair & KeysVals) const
+{
+    size_t ncp = size(Sig);
+    if (ncp==4)
+    {
+        KeysVals.Set("sx sy sz sxy  ex ey ez exy  pcam qcam  ev ed",
+                     Sig(0), Sig(1), Sig(2), Sig(3)/Util::SQ2,
+                     Eps(0), Eps(1), Eps(2), Eps(3)/Util::SQ2,
+                     Calc_pcam(Sig), Calc_qcam(Sig), Calc_ev(Eps), Calc_ed(Eps));
+    }
+    else
+    {
+        KeysVals.Set("sx sy sz sxy syz szx  ex ey ez exy eyz ezx  pcam qcam  ev ed",
+                     Sig(0), Sig(1), Sig(2), Sig(3)/Util::SQ2, Sig(4)/Util::SQ2, Sig(5)/Util::SQ2,
+                     Eps(0), Eps(1), Eps(2), Eps(3)/Util::SQ2, Eps(4)/Util::SQ2, Eps(5)/Util::SQ2,
+                     Calc_pcam(Sig), Calc_qcam(Sig), Calc_ev(Eps), Calc_ed(Eps));
+    }
 }
 
 inline void EquilibState::Output (std::ostream & os, bool WithHeader, char const * NF) const

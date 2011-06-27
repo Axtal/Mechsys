@@ -25,6 +25,9 @@
 class UnsatFlowState : public State
 {
 public:
+    // static
+    static Array<String> Keys;
+
     // Constructor
     UnsatFlowState (int NDim) : State(NDim) {}
 
@@ -36,6 +39,9 @@ public:
     void   Pack    (Array<double>       & V) const;
     void   Unpack  (Array<double> const & V);
 
+    // Auxiliary methods
+    void Output (SDPair & KeysVals) const;
+
     // Data
     double n;      ///< Porosity
     double Sw;     ///< Saturation
@@ -45,6 +51,8 @@ public:
     double RhoS;   ///< Real solids density
 };
 
+Array<String> UnsatFlowState::Keys;
+
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -52,11 +60,17 @@ public:
 inline void UnsatFlowState::Init (SDPair const & Ini, size_t NIvs)
 {
     n      = Ini("n");
-    pc     = Ini("pc");
     Sw     = Ini("Sw");
+    pc     = Ini("pc");
+    Drying = false;
     RhoW   = Ini("RhoW");
     RhoS   = Ini("RhoS");
-    Drying = false;
+
+    if (Keys.Size()==0)
+    {
+        Keys.Resize(6);
+        Keys = "n", "Sw", "pc", "drying", "RhoW", "RhoS";
+    }
 }
 
 inline void UnsatFlowState::Pack (Array<double> & V) const
@@ -79,6 +93,11 @@ inline void UnsatFlowState::Unpack (Array<double> const & V)
     Drying = V[3];
     RhoW   = V[4];
     RhoS   = V[5];
+}
+
+inline void UnsatFlowState::Output (SDPair & KeysVals) const
+{
+    KeysVals.Set ("n Sw pc drying RhoW RhoS", n, Sw, pc, (double)Drying, RhoW, RhoS);
 }
 
 

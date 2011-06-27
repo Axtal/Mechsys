@@ -27,7 +27,7 @@
 namespace FEM
 {
 
-class UWPElem : public EquilibElem
+class UWPElem : public Element
 {
 public:
     // typedefs
@@ -35,36 +35,38 @@ public:
     typedef std::map<size_t,BCFuncs       *> IdxToBcf_t;
 
     // Static
-    static size_t NDp;  ///< Number of DOFs of pressure = GEp->NN
-    static size_t NDt;  ///< Total number of DOFs = NDu + NDp
-    static Mat_t  M;    ///< NDu,NDu
-    static Mat_t  Mw;   ///< NDu,NDu
-    static Mat_t  Hw;   ///< NDp,NDp
-    static Vec_t  f;    ///< NDu
-    static Vec_t  fw;   ///< NDu
-    static Vec_t  hw;   ///< NDu
-    static Vec_t  cw;   ///< NDu
-    static Vec_t  ew;   ///< NDp
-    static Mat_t  dNdX; ///< NDim,GE->NN
-    static Mat_t  B;    ///< NCo,NDu
-    static Mat_t  Bp;   ///< NDim,GE->NN  == dNdX
-    static Mat_t  N;    ///< NDim,NDu
-    static Mat_t  Np;   ///< 1,NDp
-    static Vec_t  Npv;  ///< NDp
-    static Mat_t  J;    ///< NDim,NDim     Jacobian
-    static Mat_t  Ji;   ///< NDim,NDim     Inverse of jacobian
-    static Mat_t  Jf;   ///< NDim-1,NDim   Jacobian of face
-    static double DetJ; ///< Determinant of Jacobian
-    static double Coef; ///< Coef for integration
-    static Vec_t  V;    ///< NDu
-    static Vec_t  Ww;   ///< NDu
-    static Vec_t  Pw;   ///< NDp
-    static Mat_t  Co;   ///< GE->NN,NDim   Coordinates matrix
-    static Mat_t  Cf;   ///< GE->NFN,NDim  Face coordinates matrix
-    static Mat_t  lw;   ///< NDim,NDim     O2 tensor: velocity gradient == Sum_n (vsn+wwn) dy Gn
-    static Vec_t  ww;   ///< NDim          ww = N * Ww
-    static Vec_t  d;    ///< NCo           O2 tensor: rate of deformation of solids == B*v
-    static Vec_t  fwd;  ///< NDim          drag force vector
+    static size_t        NCo;     ///< Number of stress/strain components == 2*NDim
+    static size_t        NDu;     ///< Number of DOFs (displacements) == NN*NDim
+    static size_t        NDp;     ///< Number of DOFs of pressure = GEp->NN
+    static Mat_t         M;       ///< NDu,NDu
+    static Mat_t         Mw;      ///< NDu,NDu
+    static Mat_t         Hw;      ///< NDp,NDp
+    static Vec_t         f;       ///< NDu
+    static Vec_t         fw;      ///< NDu
+    static Vec_t         hw;      ///< NDu
+    static Vec_t         cw;      ///< NDu
+    static Vec_t         ew;      ///< NDp
+    static Mat_t         dNdX;    ///< NDim,GE->NN
+    static Mat_t         B;       ///< NCo,NDu
+    static Mat_t         Bp;      ///< NDim,GE->NN  == dNdX
+    static Mat_t         N;       ///< NDim,NDu
+    static Mat_t         Np;      ///< 1,NDp
+    static Vec_t         Npv;     ///< NDp
+    static Mat_t         J;       ///< NDim,NDim     Jacobian
+    static Mat_t         Ji;      ///< NDim,NDim     Inverse of jacobian
+    static Mat_t         Jf;      ///< NDim-1,NDim   Jacobian of face
+    static double        DetJ;    ///< Determinant of Jacobian
+    static double        Coef;    ///< Coef for integration
+    static Vec_t         V;       ///< NDu
+    static Vec_t         Ww;      ///< NDu
+    static Vec_t         Pw;      ///< NDp
+    static Mat_t         Co;      ///< GE->NN,NDim   Coordinates matrix
+    static Mat_t         Cf;      ///< GE->NFN,NDim  Face coordinates matrix
+    static Mat_t         lw;      ///< NDim,NDim     O2 tensor: velocity gradient == Sum_n (vsn+wwn) dy Gn
+    static Vec_t         ww;      ///< NDim          ww = N * Ww
+    static Vec_t         d;       ///< NCo           O2 tensor: rate of deformation of solids == B*v
+    static Vec_t         fwd;     ///< NDim          drag force vector
+    static Array<String> StaKeys; ///< State keys such as 'sx', 'sy', to be extrapolated to nodes
 
     // Constructor
     UWPElem (int                  NDim,   ///< Space dimension
@@ -83,11 +85,11 @@ public:
     void CalcSurfLoads (double Time, Vec_t & Sl, Vec_t & Sq)  const;
     void GetLoc        (Array<size_t> & LocV, Array<size_t> & LocWw, Array<size_t> & LocPw) const;
     void ElemEqs       (double Time, Vec_t const & V_g, Vec_t const & Ww_g, Vec_t const & Pw_g) const;
-    void StateKeys     (Array<String> & Keys)                 const;
+    void StateKeys     (Array<String> & Keys)                 const { Keys = StaKeys; }
     void StateAtIP     (SDPair & KeysVals, int IdxIP)         const;
 
     // Internal Methods
-    void Interp (Mat_t const & C, IntegPoint const & IP) const; ///< Interpolation matrices
+    void Interp (Mat_t const & C, IntegPoint const & IP, double h=1.0) const; ///< Interpolation matrices
 
     // Data
     Array<UnsatFlowState*>         FSta;    ///< Flow state
@@ -98,57 +100,74 @@ public:
     Vec_t                          g;       ///< Gravity vector: [0,-g]^T  or  [0,0,-g]^T
 };
 
-size_t UWPElem::NDp = 0;
-size_t UWPElem::NDt = 0;
-Mat_t  UWPElem::M;
-Mat_t  UWPElem::Mw;
-Mat_t  UWPElem::Hw;
-Vec_t  UWPElem::f;
-Vec_t  UWPElem::fw;
-Vec_t  UWPElem::hw;
-Vec_t  UWPElem::cw;
-Vec_t  UWPElem::ew;
-Mat_t  UWPElem::dNdX;
-Mat_t  UWPElem::B;
-Mat_t  UWPElem::Bp;
-Mat_t  UWPElem::N;
-Mat_t  UWPElem::Np;
-Vec_t  UWPElem::Npv;
-Mat_t  UWPElem::J;
-Mat_t  UWPElem::Ji;
-Mat_t  UWPElem::Jf;
-double UWPElem::DetJ;
-double UWPElem::Coef;
-Vec_t  UWPElem::V;
-Vec_t  UWPElem::Ww;
-Vec_t  UWPElem::Pw;
-Mat_t  UWPElem::Co;
-Mat_t  UWPElem::Cf;
-Mat_t  UWPElem::lw;
-Vec_t  UWPElem::ww;
-Vec_t  UWPElem::d;
-Vec_t  UWPElem::fwd;
+size_t        UWPElem::NCo = 0;
+size_t        UWPElem::NDu = 0;
+size_t        UWPElem::NDp = 0;
+Mat_t         UWPElem::M;
+Mat_t         UWPElem::Mw;
+Mat_t         UWPElem::Hw;
+Vec_t         UWPElem::f;
+Vec_t         UWPElem::fw;
+Vec_t         UWPElem::hw;
+Vec_t         UWPElem::cw;
+Vec_t         UWPElem::ew;
+Mat_t         UWPElem::dNdX;
+Mat_t         UWPElem::B;
+Mat_t         UWPElem::Bp;
+Mat_t         UWPElem::N;
+Mat_t         UWPElem::Np;
+Vec_t         UWPElem::Npv;
+Mat_t         UWPElem::J;
+Mat_t         UWPElem::Ji;
+Mat_t         UWPElem::Jf;
+double        UWPElem::DetJ;
+double        UWPElem::Coef;
+Vec_t         UWPElem::V;
+Vec_t         UWPElem::Ww;
+Vec_t         UWPElem::Pw;
+Mat_t         UWPElem::Co;
+Mat_t         UWPElem::Cf;
+Mat_t         UWPElem::lw;
+Vec_t         UWPElem::ww;
+Vec_t         UWPElem::d;
+Vec_t         UWPElem::fwd;
+Array<String> UWPElem::StaKeys;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
 inline UWPElem::UWPElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model const * XMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : EquilibElem(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes),
+    : Element(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes),
       FMdl(static_cast<UnsatFlow const*>(XMdl)), HasGrav(false)
 {
     // check
+    if (GE  ==NULL) throw new Fatal("UWPElem::UWPElem: GE (geometry element) must be defined");
+    if (Mdl ==NULL) throw new Fatal("UWPElem::UWPElem: Model must be defined");
     if (XMdl==NULL) throw new Fatal("UWPElem::UWPElem: E(x)tra Model (flow model) must be defined by means of 'xname' key");
 
     // gravity vector
     g.change_dim(NDim);
     set_to_zero(g);
 
+    // allocate and initialize state at each IP
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        // mechanical state
+        Sta.Push     (new EquilibState(NDim));
+        Mdl->InitIvs (Ini, Sta[i]);
+
+        // hydraulic state
+        FSta.Push     (new UnsatFlowState(NDim));
+        FMdl->InitIvs (Ini, FSta[i]);
+    }
+
     // set constants of this class (just once)
     if (NDp==0)
     {
+        NCo = 2*NDim;
+        NDu = NDim*GE->NN;
         NDp = GE->NN;
-        NDt = NDu + NDp;
 
         M .change_dim (NDu,NDu);
         Mw.change_dim (NDu,NDu);
@@ -181,45 +200,24 @@ inline UWPElem::UWPElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, M
         ww .change_dim (NDim);
         d  .change_dim (NCo);
         fwd.change_dim (NDim);
+
+        StaKeys = EquilibState::Keys;
+        for (size_t i=0; i<Mdl->NIvs; ++i)                   StaKeys.Push (Mdl->IvNames[i]);
+        for (size_t i=0; i<UnsatFlowState::Keys.Size(); ++i) StaKeys.Push (UnsatFlowState::Keys[i]);
+        StaKeys.Push ("rw");
+        StaKeys.Push ("H");
+        StaKeys.Push ("qwx");
+        StaKeys.Push ("qwy"); if (NDim==3)
+        StaKeys.Push ("qwz");
     }
 
-    // initial data
-    bool   geosta = (Prp.HasKey("geosta") ? Prp("geosta")>0 : false);
-    bool   pos_pw = (Prp.HasKey("pospw")  ? Prp("pospw")>0  : false);
-    double gamW   = XMdl->Prms("gamW");
-
-    // allocate and initialize flow state at each IP
-    SDPair ini(Ini);
-    for (size_t i=0; i<GE->NIP; ++i)
-    {
-        // pw at IP
-        if (geosta)
-        {
-            // elevation of point
-            Vec_t X;
-            CoordsOfIP (i, X);
-            double z = (NDim==2 ? X(1) : X(2));
-
-            // pore-water pressure
-            double hw = Prp("water")-z; // column of water
-            double pw = (hw>0.0 ? gamW*hw : (pos_pw ? 0.0 : gamW*hw));
-            ini.Set ("pw", pw);
-        }
-
-        // init flow state
-        FSta.Push     (new UnsatFlowState(NDim));
-        FMdl->InitIvs (ini, FSta[i]);
-    }
-
-    // pore-water pressure at nodes (extrapolated)
-    Vec_t pwe(NDp);
+    // set pore-water pressure at nodes (extrapolated) -- TODO: should average between shared nodes
     Array<SDPair> res;
     StateAtNodes (res);
-    for (size_t i=0; i<NDp; ++i)
+    for (size_t i=0; i<GE->NN; ++i)
     {
         double pw = -res[i]("pc");
         Con[i]->U("pw") = pw;
-        pwe(i) = pw;
     }
 }
 
@@ -460,30 +458,18 @@ inline void UWPElem::ElemEqs (double Time, Vec_t const & V_g, Vec_t const & Ww_g
     }
 }
 
-inline void UWPElem::StateKeys (Array<String> & Keys) const
-{
-    EquilibElem::StateKeys (Keys);
-    Keys.Push ("n");
-    Keys.Push ("pc");
-    Keys.Push ("Sw");
-    Keys.Push ("rw");
-    Keys.Push ("qwx");
-    Keys.Push ("qwy"); if (NDim==3)
-    Keys.Push ("qwz");
-    Keys.Push ("H");
-}
-
 inline void UWPElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
 {
     // check
     if (FSta[IdxIP]->Sw<0.0) throw new Fatal("UWPElem::StateAtIP: Sw<0");
 
-    // output
+    // equilib state
+    Sta [IdxIP]->Output (KeysVals);
+    for (size_t k=0; k<Mdl->NIvs; ++k) KeysVals.Set (Mdl->IvNames[k].CStr(), static_cast<EquilibState const *>(Sta[IdxIP])->Ivs(k));
+
+    // hydraulic state
+    FSta[IdxIP]->Output (KeysVals);
     double rw = FMdl->rw(FSta[IdxIP]->Sw);
-    EquilibElem::StateAtIP (KeysVals, IdxIP);
-    KeysVals.Set ("n",  FSta[IdxIP]->n);
-    KeysVals.Set ("pc", FSta[IdxIP]->pc);
-    KeysVals.Set ("Sw", FSta[IdxIP]->Sw);
     KeysVals.Set ("rw", rw);
 
     // elevation of point
@@ -495,9 +481,13 @@ inline void UWPElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
     double pw = -FSta[IdxIP]->pc;
     KeysVals.Set ("H", z + pw/FMdl->GamW);
 
+    // seepage velocity vector
+    KeysVals.Set ("qwx qwy", 0.0, 0.0); if (NDim==3)
+    KeysVals.Set ("qwz",     0.0);
+
     // vector of current pw at nodes of element
-    Vec_t pwe(NDp);
-    for (size_t i=0; i<GE->NN; ++i) pwe(i) = Con[i]->U("pw");
+    //Vec_t pwe(NDp);
+    //for (size_t i=0; i<GE->NN; ++i) pwe(i) = Con[i]->U("pw");
 
     // pore-water pressure gradient at IP
     //double detJ, coef;
@@ -514,7 +504,7 @@ inline void UWPElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
     //KeysVals.Set ("qwz", -rw*mqw(2));
 }
 
-inline void UWPElem::Interp (Mat_t const & C, IntegPoint const & IP) const
+inline void UWPElem::Interp (Mat_t const & C, IntegPoint const & IP, double h) const
 {
     // deriv of shape func w.r.t natural coordinates
     GE->Shape  (IP.r, IP.s, IP.t);

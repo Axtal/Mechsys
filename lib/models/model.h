@@ -42,6 +42,7 @@ public:
     virtual size_t PckSize ()                        const =0; ///< Size of pack
     virtual void   Pack    (Array<double>       & V) const =0; ///< Pack all values into V
     virtual void   Unpack  (Array<double> const & V)       =0; ///< Unpack all values from V
+    virtual void   Output  (SDPair & KeysVals)       const =0; ///< Output internal state
 };
 
 #include <mechsys/models/equilibstate.h>

@@ -91,6 +91,7 @@ public:
     void PrintBCs       (std::ostream & os, double tf=1.0)                const; ///< Print boundary conditions
     void SaveState      (char const * FileKey)                            const; ///< Save Nodes and Elements' state to an HDF5 file
     void LoadState      (char const * FileKey);                                  ///< Load Nodes and Elements' state from an HDF5 file
+    void SetGeostatic   (SDPair const & Data);                                   ///< Set geostatic state
 
     // Internal methods
     void NodalResults  (bool OnlyOutNods=false) const;                        ///< Calculate extrapolated values at elments IPs' to nodes
@@ -1511,6 +1512,78 @@ inline void Domain::LoadState (char const * FileKey)
 #else
     throw new Fatal("Domain::LoadState: This method needs USE_HDF5 defined");
 #endif
+}
+
+inline void Domain::SetGeostatic (SDPair const & Data)
+{
+    // Prp must have: geosta, surf, K0, gamNat, gamSat
+    // Prp may  have: wtable, gamW, pospw (to force only positive values of pw)
+
+    /*
+        double z_surf    = Prp("surf");
+        double K0        = Prp("K0");
+        bool   pos_pw    = (Prp.HasKey("pospw") ? Prp("pospw")>0 : false);
+        bool   has_water = Prp.HasKey("water");
+        double z_water   = 0;
+        if (GTy==pse_t)          throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, geometry cannot be of 'plane-stress' (pse) type");
+        if (!Prp.HasKey("K0"))   throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, 'K0' must be provided in 'Prp' dictionary");
+        if (!Prp.HasKey("surf")) throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, 'surf' must be provided in 'Prp' dictionary");
+        if (has_water)
+        {
+            z_water = Prp("water");
+            if (z_water>z_surf) throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, 'water' must be smaller than or equal to 'surf'");
+            // TODO: this last condition can be removed, but sv calculation in the next lines must be corrected
+        }
+        if (Mdl->GamW  <0.0) throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, 'gamW' must be positive");
+        if (Mdl->GamNat<0.0) throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, 'gamNat' must be positive");
+        if (Mdl->GamSat<0.0) throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, 'gamSat' must be positive");
+        for (size_t i=0; i<GE->NIP; ++i)
+        {
+            // elevation of point
+            Vec_t X;
+            CoordsOfIP (i, X);
+            double z = (NDim==2 ? X(1) : X(2));
+            if (z>z_surf) throw new Fatal("EquilibElem::EquilibElem: 'surf' must be greater than any point in the domain.\n\tThere is a point [%g,%g,%g] above surf=%g.",X(0),X(1),(NDim==3?X(2):0.0),z_surf);
+
+            // pore-water pressure and total vertical stress
+            double pw = 0.0;
+            double sv;
+            if (has_water)
+            {
+                double hw = z_water-z; // column of water
+                pw = (hw>0.0 ? Mdl->GamW*hw : (pos_pw ? 0.0 : Mdl->GamW*hw));
+                if (z>z_water) sv = (z_surf-z)*Mdl->GamNat;
+                else sv = (z_surf-z_water)*Mdl->GamNat + (z_water-z)*Mdl->GamSat;
+            }
+            else sv = (z_surf-z)*Mdl->GamNat;   
+            sv *= (-1.0); // convert soil-mech. convention to classical mech. convention
+
+            // vertical and horizontal effective stresses
+            double sv_ = sv + pw;  // effective vertical stresss
+            double sh_ = K0*sv_;   // effective horizontal stress
+            double sh  = sh_ - pw; // total horizontal stress
+
+            // set stress tensor with __total__ stresses
+            Vec_t & sig = static_cast<EquilibState *>(Sta[i])->Sig;
+            if (NDim==2) sig = sh, sv, sh, 0.0;
+            else         sig = sh, sh, sv, 0.0,0.0,0.0;
+        }
+
+
+        // pw at IP
+        if (geosta)
+        {
+            // elevation of point
+            Vec_t X;
+            CoordsOfIP (i, X);
+            double z = (NDim==2 ? X(1) : X(2));
+
+            // pore-water pressure
+            double hw = Prp("water")-z; // column of water
+            double pw = (hw>0.0 ? gamW*hw : (pos_pw ? 0.0 : gamW*hw));
+            ini.Set ("pw", pw);
+        }
+    */
 }
 
 // Internal methods

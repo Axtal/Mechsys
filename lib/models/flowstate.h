@@ -41,6 +41,7 @@ public:
     size_t PckSize () const { return 2*size(Vel)+size(Ivs); }
     void   Pack    (Array<double>       & V) const;
     void   Unpack  (Array<double> const & V);
+    void   Output  (SDPair & KeysVals) const;
 
 	// Data
 	Vec_t Vel, VelBkp; ///< Velocity
@@ -115,6 +116,23 @@ inline void FlowState::Unpack (Array<double> const & V)
         Gra(i) = V[nrw+i];
     }
     for (size_t i=0; i<niv; ++i) Ivs(i) = V[2*nrw+i];
+}
+
+inline void FlowState::Output (SDPair & KeysVals) const
+{
+    size_t ndim = size(Vel);
+    if (ndim==2)
+    {
+        KeysVals.Set("vx vy  gx gy",
+                     Vel(0), Vel(1),
+                     Gra(0), Gra(1));
+    }
+    else
+    {
+        KeysVals.Set("vx vy vz  gx gy gz",
+                     Vel(0), Vel(1), Vel(2),
+                     Gra(0), Gra(1), Gra(2));
+    }
 }
 
 
