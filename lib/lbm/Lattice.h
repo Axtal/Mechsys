@@ -72,7 +72,7 @@ public:
     double                                    dx;               // grid space
     double                                    dt;               // time step
     double                                    Tau;              // Relaxation time
-    double                                    Rhoref;           //Values for th intermolecular force
+    double                                    Rhoref;           // Values for th intermolecular force
     double                                    Psiref;           // 
     Array<Cell *>                             Cells;            // Array of pointer cells
     Array<std::pair<Cell *, Cell*> >          CellPairs;        // Array of pairs of cells for interaction
@@ -350,7 +350,7 @@ inline void Lattice::WriteXDMF(char const * FileKey)
     oss << "<Xdmf Version=\"2.0\">\n";
     oss << " <Domain>\n";
     oss << "   <Grid Name=\"mesh1\" GridType=\"Uniform\">\n";
-    oss << "     <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"" << Ndim(0) << " " << Ndim(1) << "\"/>\n";
+    oss << "     <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"" << Ndim(1) << " " << Ndim(0) << "\"/>\n";
     oss << "     <Geometry GeometryType=\"ORIGIN_DXDY\">\n";
     oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\"> 0.0 0.0\n";
     oss << "       </DataItem>\n";
