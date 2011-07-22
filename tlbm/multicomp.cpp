@@ -28,6 +28,9 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
+    Array<double> nu(2);
+    nu[0] = 
+
     return 0;
     
 	//Now you have to enter the true viscosity as an array for each component

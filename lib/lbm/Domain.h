@@ -43,7 +43,7 @@ public:
 
     //Constructor
     Domain (LBMethod      Method, ///< Type of array, for example D2Q9
-    Array<double>         nu,     ///< Viscosity ofr each fluid
+    Array<double>         nu,     ///< Viscosity for each fluid
     iVec3_t               Ndim,   ///< Cell divisions per side
     double                dx,     ///< Space spacing
     double                dt);    ///< Time step
@@ -225,7 +225,7 @@ inline void Domain::ApplyForce()
                         }
                         else 
                         {
-                            c ->BForce    += -Gmix*psi*c->W[k]*nb_psi*c->C[k];
+                            c ->BForce    += -Gmix*rho*c->W[k]*nb_rho*c->C[k];
                         }
                     }
                 }
