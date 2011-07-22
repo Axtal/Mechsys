@@ -94,7 +94,6 @@ int main(int argc, char **argv) try
     double error = err_l + err_p + err_E;
     cout << "Error in angular momentum = " << err_l <<endl;
     cout << "Error in linear  momentum = " << err_p <<endl;
-    cout << "Error in total energy     = " << err_E <<endl;
 
 
     // results
