@@ -30,20 +30,20 @@ int main(int argc, char **argv) try
 {
     size_t nx = 200;
     size_t ny = 200;
-    double nu = 0.1;
+    double nu = 1.0/6.0;
     double dx = 1.0;
     double dt = 1.0;
     double Tf = 10000.0;
     Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
-    Dom.Lat.G    = -200.0;
-    Dom.Lat.Gs   = -200.0;
+    Dom.Lat[0].G    = -100.0;
+    Dom.Lat[0].Gs   = -200.0;
 	for (size_t i=0; i<nx; ++i)
 	for (size_t j=0; j<ny; ++j)
 	{
 		
 		double rho0 = (200.0 +(1.0*rand())/RAND_MAX)*dx*dx;
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
-		Dom.Lat.GetCell(iVec3_t(i,j,0))->Initialize (rho0, v0);
+		Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize (rho0, v0);
 	}
 
 	// Solve

@@ -37,9 +37,9 @@ struct UserData
 void Setup(Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
-    for (size_t i=0;i<dom.Lat.Cells.Size();i++)
+    for (size_t i=0;i<dom.Lat[0].Cells.Size();i++)
     {
-        Cell * c = dom.Lat.Cells[i];
+        Cell * c = dom.Lat[0].Cells[i];
         c->BForcef = c->Density()*dat.g;
     }
     double alpha = 1.0;
@@ -71,7 +71,7 @@ int main(int argc, char **argv) try
 {
     size_t nx = 200;
     size_t ny = 200;
-    double nu = 0.01;
+    double nu = 0.08;
     double dx = 1.0;
     double dt = 1.0;
     double Tf = 10000.0;
@@ -79,32 +79,32 @@ int main(int argc, char **argv) try
     Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
     UserData dat;
     Dom.UserData = &dat;
-    Dom.Lat.G    = -200.0;
-    Dom.Lat.Gs   = -200.0;
-    dat.g        = 0.0,-0.001,0.0;
-    dat.Tf       = Tf;
-    dat.Xmin     = 0.0,0.0,0.0;
-    dat.Xmax     = nx*dx,ny*dx,0.0;
-    dat.Kn       = 1.0e5*rho/500.0;
+    Dom.Lat[0].G    = -200.0;
+    Dom.Lat[0].Gs   = -200.0;
+    dat.g           = 0.0,-0.001,0.0;
+    dat.Tf          = Tf;
+    dat.Xmin        = 0.0,0.0,0.0;
+    dat.Xmax        = nx*dx,ny*dx,0.0;
+    dat.Kn          = 1.0e5*rho/500.0;
 
     //Set solid boundaries
     for (size_t i=0;i<nx;i++)
     {
-        dat.Bottom.Push(Dom.Lat.GetCell(iVec3_t(i,0   ,0)));
-        Dom.Lat.GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
+        dat.Bottom.Push(Dom.Lat[0].GetCell(iVec3_t(i,0   ,0)));
+        Dom.Lat[0].GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
     }
     for (size_t i=0;i<ny;i++)
     {
-        Dom.Lat.GetCell(iVec3_t(0   ,i,0))->IsSolid = true;
-        Dom.Lat.GetCell(iVec3_t(nx-1,i,0))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(0   ,i,0))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(nx-1,i,0))->IsSolid = true;
     }
 
     for (int i=0;i<nx;i++)
     for (int j=0;j<ny;j++)
     {
         Vec3_t v0(0.0,0.0,0.0);
-        if (j<ny/2.0) Dom.Lat.GetCell(iVec3_t(i,j,0))->Initialize(1300.0,v0);
-        else          Dom.Lat.GetCell(iVec3_t(i,j,0))->Initialize(  50.0,v0);
+        if (j<ny/2.0) Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,v0);
+        else          Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(  50.0,v0);
     }
 
     Dom.AddDisk(0,Vec3_t(0.50*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);

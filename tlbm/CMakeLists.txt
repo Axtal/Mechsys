@@ -17,19 +17,19 @@
 ########################################################################
 
 SET(PROGS
-    basic
-    cylinder
-    colloid
+    #basic
+    #cylinder
+    #colloid
     bubble
-    ball
-    drop
-    magnus
+    #ball
+    #drop
+    #magnus
     multicomp
-    cap_grain
-    capi
-    dam
-    porous
-    swell
+    #cap_grain
+    #capi
+    #dam
+    #porous
+    #swell
     test01
     test02
     test03

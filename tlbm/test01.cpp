@@ -81,8 +81,8 @@ int main(int argc, char **argv) try
     //Assigning the left and right cells
     for (size_t i=0;i<ny;i++)
     {
-        dat.Left .Push(Dom.Lat.GetCell(iVec3_t(0   ,i,0)));
-        dat.Right.Push(Dom.Lat.GetCell(iVec3_t(nx-1,i,0)));
+        dat.Left .Push(Dom.Lat[0].GetCell(iVec3_t(0   ,i,0)));
+        dat.Right.Push(Dom.Lat[0].GetCell(iVec3_t(nx-1,i,0)));
         
         // set parabolic profile
         double L  = ny - 2;                       // channel width in cell units
@@ -110,17 +110,17 @@ int main(int argc, char **argv) try
     //Assigning solid boundaries at top and bottom
     for (size_t i=0;i<nx;i++)
     {
-        Dom.Lat.GetCell(iVec3_t(i,0   ,0))->IsSolid = true;
-        Dom.Lat.GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,0   ,0))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
     }
 
     double rho0 = 1.0;
     Vec3_t v0(0.08,0.0,0.0);
 
     //Initializing values
-    for (size_t i=0;i<Dom.Lat.Cells.Size();i++)
+    for (size_t i=0;i<Dom.Lat[0].Cells.Size();i++)
     {
-        Dom.Lat.Cells[i]->Initialize(rho0, v0);
+        Dom.Lat[0].Cells[i]->Initialize(rho0, v0);
     }
 
     //Solving

@@ -41,12 +41,20 @@ public:
     //typedefs
     typedef void (*ptDFun_t) (Domain & Dom, void * UserData);
 
-    //Constructor
+    //Constructors
     Domain (LBMethod      Method, ///< Type of array, for example D2Q9
     Array<double>         nu,     ///< Viscosity for each fluid
     iVec3_t               Ndim,   ///< Cell divisions per side
     double                dx,     ///< Space spacing
     double                dt);    ///< Time step
+
+    //Special constructor with only one component, the parameters are the same as above
+    Domain (LBMethod      Method, ///< Type of array, for example D2Q9
+    double                nu,     ///< Viscosity for each fluid
+    iVec3_t               Ndim,   ///< Cell divisions per side
+    double                dx,     ///< Space spacing
+    double                dt);    ///< Time step
+
 
     //Methods
 #ifdef USE_HDF5
@@ -85,6 +93,14 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     {
         Lat.Push(Lattice(Method,nu[i],Ndim,dx,Thedt));
     }
+    Time = 0.0;
+    dt   = Thedt;
+    Alpha= 10.0;
+}
+
+inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, double Thedt)
+{
+    Lat.Push(Lattice(Method,nu,Ndim,dx,Thedt));
     Time = 0.0;
     dt   = Thedt;
     Alpha= 10.0;
@@ -190,7 +206,7 @@ inline void Domain::ApplyForce()
 {
     for (size_t i=0;i<Lat.Size();i++)
     {
-        for (size_t j=0;j<Lat[j].Cells.Size();j++)
+        for (size_t j=0;j<Lat[i].Cells.Size();j++)
         {
             Cell * c = Lat[i].Cells[j];
             if (fabs(c->Gamma-1.0)<1.0e-12) continue;
@@ -208,7 +224,7 @@ inline void Domain::ApplyForce()
                     {
                         if (nb->Gamma>0.0||nb->IsSolid)
                         {
-                            c ->BForce    += -Lat[i].Gs*psi*c->W[k]*nb_psi*c->C[k];
+                            c ->BForce    += -Lat[i].Gs*psi*c->W[k]*c->C[k];
                             //nb->BForce    -= -Lat[i].Gs*psi*c->W[k]*nb_psi*c->C[k];
                         }
                         else
@@ -258,6 +274,7 @@ void Domain::Collide ()
             if (c->IsSolid) continue;
             if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
             double rho = c->Density();
+            //double rho = c->VelDen(Vmix);
             double Tau = Lat[j].Tau;
             Vec3_t DV  = Vmix + c->BForce*dt/rho;
             double Bn  = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
@@ -409,7 +426,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         for(size_t i=0;i<Particles.Size();i++)
         {
             Particles[i]->F = Particles[i]->Ff;
-            Particles[i]->T = Particles[i]->Ff;
+            Particles[i]->T = Particles[i]->Tf;
         }
 
         //Set Gamma values of the lattice cell to zero
@@ -427,7 +444,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         for(size_t i=0;i<Particles.Size()  ;i++) Particles[i]->Translate(dt);
 
         //Move fluid
-        ApplyForce();
+        if (Lat.Size()>1||fabs(Lat[0].G)>1.0e-12) ApplyForce();
         Collide();
         for(size_t j=0;j<Lat.Size();j++)
         {
