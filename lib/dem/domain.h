@@ -142,6 +142,7 @@ public:
     void EnergyOutput      (size_t IdxOut, std::ostream & OutFile);                                             ///< Output of the energy variables
     void GetGSD            (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv=10) const;     ///< Get the Grain Size Distribution
     void Clusters          ();                                                                                  ///< Check the bounded particles in the domain and how many connected clusters are still present
+    void DelParticles      (Array<int> const & Tags);                                                           ///< Delete particle
 
     // Access methods
     Particle       * GetParticle  (int Tag, bool Check=true);       ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
@@ -2328,6 +2329,20 @@ inline void Domain::Clusters ()
 
     Util::Tree tree(connections);
     tree.GetClusters(Listofclusters);
+}
+
+inline void Domain::DelParticles (Array<int> const & Tags)
+{
+    Array<int> idxs; // indices to be deleted
+    for (size_t i=0; i<Particles.Size(); ++i)
+    {
+        for (size_t j=0; j<Tags.Size(); ++j)
+        {
+            if (Particles[i]->Tag==Tags[j]) idxs.Push(i);
+        }
+    }
+    if (idxs.Size()<1) throw new Fatal("Domain::DelParticles: Could not find any particle to be deleted");
+    Particles.DelItems (idxs);
 }
 
 inline Particle * Domain::GetParticle (int Tag, bool Check)

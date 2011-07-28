@@ -34,6 +34,7 @@ ENDIF(A_WITH_PYTHON_MODULE)
 IF(A_WITH_TDEM)
     SET(EXES
       dem_genpack
+      dem_viewpack
       dem_viewres
       dem_joinres)
 

@@ -30,7 +30,7 @@ class Visualise
 {
 public:
     // Constuctor & Destructor
-     Visualise (DEM::Domain const & Dom, int TagPart, bool ShowVert=false, bool ShowEdge=false, int ThRes=12, int PhiRes=12, int CylRes=12);
+     Visualise (DEM::Domain const & Dom, Array<int> const & TagParts, Array<int> const & TagWalls, bool ShowVert=false, bool ShowEdge=false, int ThRes=12, int PhiRes=12, int CylRes=12);
     ~Visualise ();
 
     // Methods
@@ -39,7 +39,8 @@ public:
 
     // Data
     DEM::Domain const & Dom;         // domain
-    int                 TagPart;     // tag of particles (everything else is wall)
+    Array<int>          TagParts;    // tag of particles
+    Array<int>          TagWalls;    // tag of walls
     bool                ShowVert;    // show all vertices of particles
     bool                ShowEdge;    // show all edges of particles
     String              PartColor;   // color of particles
@@ -65,9 +66,8 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Visualise::Visualise (DEM::Domain const & D, int TP, bool SV, bool SE, int ThRes, int PhiRes, int CylRes)
+inline Visualise::Visualise (DEM::Domain const & D, Array<int> const & TPs, Array<int> const & TWs, bool SV, bool SE, int ThRes, int PhiRes, int CylRes)
     : Dom         (D),
-      TagPart     (TP),
       ShowVert    (SV),
       ShowEdge    (SE),
       PartColor   ("brown"),
@@ -75,6 +75,9 @@ inline Visualise::Visualise (DEM::Domain const & D, int TP, bool SV, bool SE, in
       PartOpacity (1.0),
       WallOpacity (0.1)
 {
+    TagParts = TPs;
+    TagWalls = TWs;
+
     PartFaces.SetColor (PartColor.CStr(), PartOpacity);
     WallFaces.SetColor (WallColor.CStr(), WallOpacity);
 
@@ -92,7 +95,7 @@ inline Visualise::Visualise (DEM::Domain const & D, int TP, bool SV, bool SE, in
         else
         {
             // complex particles
-            if (p.Tag==TagPart)
+            if (TagParts.Has(p.Tag))
             {
                 // spheres
                 if (ShowVert)
@@ -132,8 +135,9 @@ inline Visualise::Visualise (DEM::Domain const & D, int TP, bool SV, bool SE, in
             }
 
             // walls
-            else
+            else if (TagWalls.Has(p.Tag))
             {
+                /*
                 for (size_t j=0; j<p.Verts.Size(); ++j)
                 {
                     WallVerts.Push (new VTK::Sphere((*p.Verts[j]), p.Props.R, ThRes, PhiRes));
@@ -142,9 +146,10 @@ inline Visualise::Visualise (DEM::Domain const & D, int TP, bool SV, bool SE, in
 
                 for (size_t j=0; j<p.Edges.Size(); ++j)
                 {
-                    WallEdges.Push (new VTK::Cylinder((*p.Edges[j]->X0), (*p.Edges[j]->X1), p.Props.R, /*cap*/false, CylRes));
+                    WallEdges.Push (new VTK::Cylinder((*p.Edges[j]->X0), (*p.Edges[j]->X1), p.Props.R, false, CylRes));
                     WallEdges.Last () -> SetColor (WallColor.CStr(), WallOpacity);
                 }
+                */
 
                 for (size_t j=0; j<p.Faces.Size(); ++j)
                 {
@@ -171,6 +176,9 @@ inline Visualise::Visualise (DEM::Domain const & D, int TP, bool SV, bool SE, in
                     po->Delete();
                 }
             }
+
+            // unknown particle
+            else throw new Fatal("Visualise::Visualise: Unknow particle: Tag = %d",p.Tag);
         }
     }
 }
@@ -190,8 +198,8 @@ inline void Visualise::Update ()
     size_t i_part_face_point = 0; // index of particle point at face
 
     // walls
-    size_t i_wall_vert       = 0; // index of wall vertex
-    size_t i_wall_edge       = 0; // index of wall edge
+    //size_t i_wall_vert       = 0; // index of wall vertex
+    //size_t i_wall_edge       = 0; // index of wall edge
     size_t i_wall_face_point = 0; // index of wall point at face
 
     for (size_t i=0; i<Dom.Particles.Size(); ++i)
@@ -208,7 +216,7 @@ inline void Visualise::Update ()
         else
         {
             // complex particles
-            if (p.Tag==TagPart)
+            if (TagParts.Has(p.Tag))
             {
                 // spheres
                 if (ShowVert)
@@ -244,8 +252,9 @@ inline void Visualise::Update ()
             }
 
             // walls
-            else
+            else if (TagWalls.Has(p.Tag))
             {
+                /*
                 for (size_t j=0; j<p.Verts.Size(); ++j)
                 {
                     WallVerts[i_wall_vert]->SetCenter ((*p.Verts[j]));
@@ -257,6 +266,7 @@ inline void Visualise::Update ()
                     WallEdges[i_wall_edge]->SetPoints ((*p.Edges[j]->X0), (*p.Edges[j]->X1));
                     i_wall_edge++;
                 }
+                */
 
                 for (size_t j=0; j<p.Faces.Size(); ++j)
                 {

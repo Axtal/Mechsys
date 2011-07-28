@@ -39,7 +39,7 @@ struct Data
     ~Data () { if (Vis!=NULL) delete Vis; }
     void Init (DEM::Domain const & Dom)
     {
-        Vis = new Visualise(Dom, /*part*/-10);
+        Vis = new Visualise(Dom, /*parts*/Array<int>(-10,true), /*walls*/Array<int>(-1,-2,-3,-4,-5,-6));
         VTK::Axes axe(1.0, /*hline*/false, /*reverse*/false, /*full*/true);
         Vis->AddTo  (Win);
         axe .AddTo  (Win);
@@ -69,10 +69,11 @@ int main(int argc, char **argv) try
     bool   voro  = false;  // Voronoi particles
     bool   vtk   = true;   // show VTK window
     bool   ascii = true;   // write ASCII file instead of HDF5 (spheres only)
-    bool   sim   = false;  // run simulation
-    double tf    = 10.0;   // final time
-    double dt    = 1.0e-2; // time step
+    bool   sim   = true;   // run simulation
+    double tf    = 20.0;   // final time
+    double dt    = 1.0e-4; // time step
     double dtOut = 1.0;    // output time step
+    bool   HCP   = true;   // HCP packing
     if (argc>1) num   = atoi(argv[1]);
     if (argc>2) voro  = atoi(argv[2]);
     if (argc>3) vtk   = atoi(argv[3]);
@@ -81,6 +82,7 @@ int main(int argc, char **argv) try
     if (argc>6) tf    = atof(argv[6]);
     if (argc>7) dt    = atof(argv[7]);
     if (argc>8) dtOut = atof(argv[8]);
+    if (argc>9) HCP   = atoi(argv[9]);
     if (ascii && voro) throw new Fatal("ASCII file works only with spheres");
 
     // user data and domain
@@ -93,22 +95,27 @@ int main(int argc, char **argv) try
     size_t seed     = 123;
     double fraction = 1.0;
     if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction);
-    else      dom.GenSpheres  (-10, L, num, /*rho*/1.0, "HCP", /*seed*/1000, /*fraction*/0.8);
+    else
+    {
+        if (HCP) dom.GenSpheres  (-10, L, num, /*rho*/1.0, "HCP",    /*seed*/1000, /*fraction*/1.0);
+        else     dom.GenSpheres  (-10, L, num, /*rho*/1.0, "Normal", /*seed*/1000, /*fraction*/1.0);
+    }
 
+    // run simulation
     if (sim)
     {
         // generate walls
-        double c = 0.8;
+        double c = 1.0;
         dom.Center   ();
-        dom.AddPlane (-1,Vec3_t(  -c, 0.0, 0.0), /*R*/0.02, /*lx*/2*c, /*ly*/2*c, /*rho*/1.0, PI/2.0, &OrthoSys::e1); // -x face
-        dom.AddPlane (-2,Vec3_t(   c, 0.0, 0.0), /*R*/0.02, /*lx*/2*c, /*ly*/2*c, /*rho*/1.0, PI/2.0, &OrthoSys::e1); // +x face
-        dom.AddPlane (-3,Vec3_t( 0.0,  -c, 0.0), /*R*/0.02, /*lx*/2*c, /*ly*/2*c, /*rho*/1.0, PI/2.0, &OrthoSys::e0); // -y face
-        dom.AddPlane (-4,Vec3_t( 0.0,   c, 0.0), /*R*/0.02, /*lx*/2*c, /*ly*/2*c, /*rho*/1.0, PI/2.0, &OrthoSys::e0); // +y face
-        dom.AddPlane (-5,Vec3_t( 0.0, 0.0,  -c), /*R*/0.02, /*lx*/2*c, /*ly*/2*c, /*rho*/1.0);                        // -z face
-        dom.AddPlane (-6,Vec3_t( 0.0, 0.0,   c), /*R*/0.02, /*lx*/2*c, /*ly*/2*c, /*rho*/1.0);                        // +z face
+        dom.AddPlane (-1,Vec3_t(  -c, 0.0, 0.0), /*R*/0.2, /*lx*/2.5*c, /*ly*/2.5*c, /*rho*/1.0, PI/2.0, &OrthoSys::e1); // -x face
+        dom.AddPlane (-2,Vec3_t(   c, 0.0, 0.0), /*R*/0.2, /*lx*/2.5*c, /*ly*/2.5*c, /*rho*/1.0, PI/2.0, &OrthoSys::e1); // +x face
+        dom.AddPlane (-3,Vec3_t( 0.0,  -c, 0.0), /*R*/0.2, /*lx*/2.5*c, /*ly*/2.5*c, /*rho*/1.0, PI/2.0, &OrthoSys::e0); // -y face
+        dom.AddPlane (-4,Vec3_t( 0.0,   c, 0.0), /*R*/0.2, /*lx*/2.5*c, /*ly*/2.5*c, /*rho*/1.0, PI/2.0, &OrthoSys::e0); // +y face
+        dom.AddPlane (-5,Vec3_t( 0.0, 0.0,  -c), /*R*/0.2, /*lx*/2.5*c, /*ly*/2.5*c, /*rho*/1.0);                        // -z face
+        dom.AddPlane (-6,Vec3_t( 0.0, 0.0,   c), /*R*/0.2, /*lx*/2.5*c, /*ly*/2.5*c, /*rho*/1.0);                        // +z face
 
         // set properties of particles
-        double Kn  = 1.0;
+        double Kn  = 100.0;
         double Kt  = 1.0;
         double Gn  = 1.0;
         double Gt  = 1.0;
@@ -141,7 +148,7 @@ int main(int argc, char **argv) try
         {
             if (dom.Particles[i]->Tag==-10)
             {
-                dom.Particles[i]->Ff = dom.Particles[i]->Props.m*Vec3_t(0.0,0.0,-0.1);
+                dom.Particles[i]->Ff = dom.Particles[i]->Props.m*Vec3_t(0.0,0.0,-0.01);
             }
         }
 
@@ -153,7 +160,7 @@ int main(int argc, char **argv) try
         dom.GetParticle(-5)->FixVeloc();
         dom.GetParticle(-6)->FixVeloc();
 
-        // solve
+        // solve (fall)
         dom.ResetInteractons (); // this is necessary if FixVeloc is applied after dom.Initialize
         dom.Solve (tf, dt, dtOut, /*setup*/NULL, (vtk ? &Report : NULL));
 
@@ -161,7 +168,7 @@ int main(int argc, char **argv) try
         if (vtk) dat.Win.Show ();
 
         // move walls
-        double v = 0.04;
+        double v = 0.001;
         dom.GetParticle(-1)->FixVeloc(  v, 0.0, 0.0);
         dom.GetParticle(-2)->FixVeloc( -v, 0.0, 0.0);
         dom.GetParticle(-3)->FixVeloc(0.0,   v, 0.0);
@@ -169,9 +176,16 @@ int main(int argc, char **argv) try
         dom.GetParticle(-5)->FixVeloc(0.0, 0.0,   v);
         dom.GetParticle(-6)->FixVeloc(0.0, 0.0,  -v);
 
-        // solve
+        // solve (isotropic compression)
         dom.ResetInteractons (); // this is necessary if FixVeloc is applied after dom.Initialize
-        dom.Solve (2*tf, dt, dtOut, /*setup*/NULL, (vtk ? &Report : NULL));
+        try
+        {
+            dom.Solve (10*tf, dt, dtOut, /*setup*/NULL, (vtk ? &Report : NULL));
+        }
+        catch (Fatal *)
+        {
+            std::cout << "\n>>> Maximum compression achieved <<<\n" << std::endl;
+        }
 
         // visualise
         if (vtk) dat.Win.Show ();
@@ -222,16 +236,20 @@ int main(int argc, char **argv) try
         }
 
         // open file and save data
-        String buf("hcpack.dat");
+        String buf("xpack-spheres.dat");
         std::ofstream of(buf.CStr(), std::ios::out);
         of << oss.str();
         of.close();
-        cout << "file [1;34m<hcpack.dat>[0m written" << endl;
+        cout << "file [1;34m<"<<buf<<">[0m written" << endl;
     }
     else
     {
-        dom.Save("hcpack");
-        cout << "file [1;34m<hcpack.hdf5>[0m written" << endl;
+        // delete walls
+        dom.DelParticles (Array<int>(-1,-2,-3,-4,-5,-6));
+
+        // save HDF5
+        dom.Save("xpack-voro");
+        cout << "file [1;34m<xpack-voro.hdf5>[0m written" << endl;
     }
 
     // end
