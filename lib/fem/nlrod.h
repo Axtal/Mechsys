@@ -37,6 +37,7 @@ public:
     size_t PckSize ()                        const { return 2; }
     void   Pack    (Array<double>       & V) const { V.Resize(2);  V = sa, ea; }
     void   Unpack  (Array<double> const & V)       { sa=V[0]; ea=V[1]; }
+    void   Output  (SDPair & KeysVals)       const { KeysVals.Set("sa ea", sa, ea); }
     double sa, sa_bkp; ///< Axial stress
     double ea, ea_bkp; ///< Axial strain
 };
@@ -193,10 +194,8 @@ inline void NLRod::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
 inline void NLRod::GetState (SDPair & KeysVals, int none) const
 {
-    double ea = static_cast<NLRodState*>(Sta[0])->ea;
-    double sa = static_cast<NLRodState*>(Sta[0])->sa;
-    double fa = A*sa;
-    KeysVals.Set("fa sa ea",fa,sa,ea);
+    Sta[0]->Output (KeysVals);
+    KeysVals.Set ("fa", A*static_cast<NLRodState*>(Sta[0])->sa);
 }
 
 
