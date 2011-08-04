@@ -89,10 +89,10 @@ int main(int argc, char **argv) try
     d.Particles[3]->Index=3;
 
     // initialize
-    d.Particles[0]->Initialize(5000);
-    d.Particles[1]->Initialize(5000);
-    d.Particles[2]->Initialize(5000);
-    d.Particles[3]->Initialize(5000);
+    //d.Particles[0]->Initialize(5000);
+    //d.Particles[1]->Initialize(5000);
+    //d.Particles[2]->Initialize(5000);
+    //d.Particles[3]->Initialize(5000);
 
     d.AddSphere(-1,d.Particles[2]->x,0.2,1.0);
 

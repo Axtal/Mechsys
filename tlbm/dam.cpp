@@ -21,70 +21,83 @@
 #include <stdlib.h>
 
 // MechSys
-#include <mechsys/lbm/lattice.h>
-#include <mechsys/lbm/mixture.h>
+#include <mechsys/lbm/Domain.h>
 
 using std::cout;
 using std::endl;
 
+struct UserData
+{
+    Vec3_t             g;
+};
+
+void Setup(Domain & dom, void * UD)
+{
+    UserData & dat = (*static_cast<UserData *>(UD));
+    for (size_t j=0;j<dom.Lat.Size();j++)
+    for (size_t i=0;i<dom.Lat[j].Cells.Size();i++)
+    {
+        Cell * c = dom.Lat[j].Cells[i];
+        c->BForcef = c->Density()*dat.g;
+    }
+}
+
 int main(int argc, char **argv) try
 {
-	//allocate viscosity
-	double nu[2];
-	nu[0]=0.5*1./6.;
-	nu[1]=1./6.;
 
-	// Allocate lattice
-	LBM::Mixture m( /*FileKey*/ "dam", /*Is3D*/false, /*NComp*/2,nu,/*Nx*/100, /*Ny*/150,1,1,1.);
+    Array<double> nu(2);
+    nu[0] = 0.1;
+    nu[1] = 0.1;
 
-	// Set walls (top and bottom)
-	// Lattice 0
-	for (size_t i=0; i<m.GetLattice(0)->Top()   .Size(); ++i) m.GetLattice(0)->Top()[i]->SetSolid();
-	for (size_t i=0; i<m.GetLattice(0)->Bottom().Size(); ++i) m.GetLattice(0)->Bottom()[i]->SetSolid();		
-	for (size_t i=0; i<m.GetLattice(0)->Left()  .Size(); ++i) m.GetLattice(0)->Left()[i]->SetSolid();
-	for (size_t i=0; i<m.GetLattice(0)->Right() .Size(); ++i) m.GetLattice(0)->Right()[i]->SetSolid();	
+    size_t nx = 200, ny = 200;
+    Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
+    UserData dat;
+    Dom.UserData = &dat;
+    dat.g           = 0.0,-0.001,0.0;
 
-	// Lattice 1
-	for (size_t i=0; i<m.GetLattice(1)->Top()   .Size(); ++i) m.GetLattice(1)->Top()[i]->SetSolid();
-	for (size_t i=0; i<m.GetLattice(1)->Bottom().Size(); ++i) m.GetLattice(1)->Bottom()[i]->SetSolid();
-	for (size_t i=0; i<m.GetLattice(1)->Left()  .Size(); ++i) m.GetLattice(1)->Left()[i]->SetSolid();
-	for (size_t i=0; i<m.GetLattice(1)->Right() .Size(); ++i) m.GetLattice(1)->Right()[i]->SetSolid();	
-		
-	for (size_t i=0; i<m.Nx(); ++i)
-	for (size_t j=0; j<m.Ny(); ++j)
-	{
-		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
-		if ((i>m.Nx()/2-10)&&(i<(m.Nx()/2+10))&&(j<m.Ny()/5)) {
-			m.GetLattice(0)->GetCell(i,j)->SetSolid();
-			m.GetLattice(0)->GetCell(i,j)->Initialize(0.0001,v0,m.GetLattice(0)->Cs());
-			m.GetLattice(1)->GetCell(i,j)->SetSolid();
-			m.GetLattice(1)->GetCell(i,j)->Initialize(0.01,v0,m.GetLattice(1)->Cs());
+    for (size_t i=0;i<nx;i++)
+    {
+        Dom.Lat[0].GetCell(iVec3_t(i,0   ,0))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
+        Dom.Lat[1].GetCell(iVec3_t(i,0   ,0))->IsSolid = true;
+        Dom.Lat[1].GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
+    }
+    for (size_t i=0;i<ny;i++)
+    {
+        Dom.Lat[0].GetCell(iVec3_t(0   ,i,0))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(nx-1,i,0))->IsSolid = true;
+        Dom.Lat[1].GetCell(iVec3_t(0   ,i,0))->IsSolid = true;
+        Dom.Lat[1].GetCell(iVec3_t(nx-1,i,0))->IsSolid = true;
+    }
+	for (size_t i=0; i<nx; ++i)
+	for (size_t j=0; j<ny; ++j)
+    {
+		if ((i>nx/2.0-10)&&(i<(nx/2.0+10))&&(j<ny/5.0))
+        {
+            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,OrthoSys::O);
+            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,OrthoSys::O);
+            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->IsSolid = true;
+            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->IsSolid = true;
+        }
+		else if ((i<nx/3.0)&&(i>=1)&&(j<9.0*ny/10.0)&&(j>=1)) 
+        {
+            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300,OrthoSys::O);
+            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,OrthoSys::O);
+        }
+        else
+        {
+            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1  ,OrthoSys::O);
+            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(1.0,OrthoSys::O);
+        }
+    }
 
-		}
-		else if ((i<m.Nx()/3)&&(i>=1)&&(j<3*m.Ny()/4)&&(j>=1)) {
-			m.GetLattice(0)->GetCell(i,j)->Initialize(2.22,v0,m.GetLattice(0)->Cs());
-			m.GetLattice(1)->GetCell(i,j)->Initialize(0.01,v0,m.GetLattice(1)->Cs());
-		}
-		else {
-			m.GetLattice(0)->GetCell(i,j)->Initialize(0.0001,v0,m.GetLattice(0)->Cs());
-			m.GetLattice(1)->GetCell(i,j)->Initialize(0.01,v0,m.GetLattice(1)->Cs());
-		}
+    // Set parameters
+    Dom.Lat[0].G  = -200.0;
+    Dom.Lat[0].Gs = -200.0;
+    Dom.Lat[1].G  =  0.0;
+    Dom.Lat[1].Gs =  0.0;
+    Dom.Gmix      =  0.001;
 
-	}
-
-	m.GetLattice(0)->SetG(-3.5)->SetGSolid(-0.0)->Homogenize();
-	m.GetLattice(1)->SetG(-0.0)->SetGSolid(-0.0)->Homogenize();
-	m.SetMixG(0.0);
-	
-	
-	
-
-	// Solve
-	m.WriteState(0);
-	//l.Solve(/*tIni*/0.0, /*tFin*/200.0, /*dt*/1.0, /*dtOut*/10.0);
-
-	m.SetGravity(0.0,-0.001,0.0);
-	m.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dtOut*/10.);
-
+    Dom.Solve(5000,50.0,Setup,NULL,"dam");
 }
 MECHSYS_CATCH

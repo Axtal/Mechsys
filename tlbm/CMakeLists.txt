@@ -27,7 +27,7 @@ SET(PROGS
     multicomp
     #cap_grain
     #capi
-    #dam
+    dam
     #porous
     #swell
     test01

@@ -271,9 +271,9 @@ void Domain::Collide ()
         for (size_t j=0;j<Lat.Size();j++)
         {
             Cell * c = Lat[j].Cells[i];
-            if (c->IsSolid) continue;
-            if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
             double rho = c->Density();
+            if (c->IsSolid||rho<1.0e-12) continue;
+            if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
             //double rho = c->VelDen(Vmix);
             double Tau = Lat[j].Tau;
             Vec3_t DV  = Vmix + c->BForce*dt/rho;
@@ -303,9 +303,16 @@ void Domain::Collide ()
                     throw new Fatal("Lattice::Collide: Redefine your time step, the current value ensures unstability");
                 }
             }
-            for (size_t j=0;j<c->Nneigh;j++)
+            for (size_t k=0;k<c->Nneigh;k++)
             {
-                c->F[j] = fabs(c->Ftemp[j]);
+                if (isnan(c->Ftemp[k]))
+                {
+                    c->Gamma = 2.0;
+                    WriteXDMF("error");
+                    std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << std::endl;
+                    throw new Fatal("Lattice::Collide: Body force gives nan value, check parameters");
+                }
+                c->F[k] = fabs(c->Ftemp[k]);
             }
         }
     }   

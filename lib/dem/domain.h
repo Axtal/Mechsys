@@ -1026,6 +1026,19 @@ inline void Domain::AddRice (int Tag, const Vec3_t & X, double R, double L, doub
     // add particle
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 
+    Particles[Particles.Size()-1]->Q          = q;
+    Particles[Particles.Size()-1]->Props.V    = (4.0/3.0)*M_PI*R*R*R + M_PI*L*R*R;
+    Particles[Particles.Size()-1]->Props.m    = rho*Particles[Particles.Size()-1]->Props.V;
+    Particles[Particles.Size()-1]->I          = (1.0/3.0)*M_PI*rho*R*R*R*L*L + (1.0/12.0)*M_PI*rho*R*R*L*L*L + (3.0/4.0)*M_PI*rho*R*R*R*R*L + (8.0/15.0)*M_PI*rho*R*R*R*R*R,
+                                                (1.0/3.0)*M_PI*rho*R*R*R*L*L + (1.0/12.0)*M_PI*rho*R*R*L*L*L + (3.0/4.0)*M_PI*rho*R*R*R*R*L + (8.0/15.0)*M_PI*rho*R*R*R*R*R,
+                                                0.5*M_PI*rho*R*R*R*R*L + (8.0/15.0)*M_PI*rho*R*R*R*R*R;
+    Particles[Particles.Size()-1]->x          = X;
+    Particles[Particles.Size()-1]->Ekin       = 0.0;
+    Particles[Particles.Size()-1]->Erot       = 0.0;
+    Particles[Particles.Size()-1]->Dmax       = 0.5*L + R;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
+
     // clean up
     if (!ThereisanAxis) delete Axis;
 }
