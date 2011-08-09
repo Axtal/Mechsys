@@ -128,8 +128,8 @@ inline void Disk::ImprintDisk(Lattice & Lat)
             if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat.G)>1.0e-12) continue;
             Vec3_t B      = C - X;
             Vec3_t VelP   = V + cross(W,B);
-            Vec3_t V;
-            double rho = cell->VelDen(V);
+            Vec3_t V   = cell->Vel;
+            double rho = cell->Rho;
             double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
             for (size_t j=0;j<cell->Nneigh;j++)
             {

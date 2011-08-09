@@ -118,17 +118,20 @@ inline Lattice::Lattice(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, doubl
 inline void Lattice::Stream()
 {
     // Assign temporal distributions
-    for (size_t i=0;i<Cells.Size()    ;i++)
-    for (size_t j=0;j<Cells[i]->Nneigh;j++)
+    for (size_t i=1;i<Cells.Size()    ;i++)
+    for (size_t j=1;j<Cells[i]->Nneigh;j++)
     {
         Cells[Cells[i]->Neighs[j]]->Ftemp[j] = Cells[i]->F[j];
     }
 
     // Swap the distribution values
     for (size_t i=0;i<Cells.Size()    ;i++)
-    for (size_t j=0;j<Cells[i]->Nneigh;j++)
     {
-        Cells[i]->F[j] = Cells[i]->Ftemp[j];
+        for (size_t j=1;j<Cells[i]->Nneigh;j++)
+        {
+            Cells[i]->F[j] = Cells[i]->Ftemp[j];
+        }
+        Cells[i]->Rho = Cells[i]->VelDen(Cells[i]->Vel);
     }
 }
 
@@ -177,8 +180,8 @@ inline void Lattice::ApplyForce()
         //Cell * c  = CellPairs[i].first;
         //Cell * nb = CellPairs[i].second;
         //if (fabs(c->Gamma-1.0)+fabs(nb->Gamma-1.0)<1.0e-12) continue;
-        //double psi    = Psi(c->Density()/);
-        //double nb_psi = Psi(nb->Density()/);
+        //double psi    = Psi(c->Rho/);
+        //double nb_psi = Psi(nb->Rho/);
         //double C      = G;
         //if (nb->IsSolid)
         //{
@@ -194,12 +197,12 @@ inline void Lattice::ApplyForce()
     for (size_t i=0;i<Cells.Size();i++)
     {
         Cell * c = Cells[i];
-        double psi = Psi(c->Density());
+        double psi = Psi(c->Rho);
         if (fabs(c->Gamma-1.0)<1.0e-12) continue;
         for (size_t j=1;j<c->Nneigh;j++)
         {
             Cell * nb     = Cells[c->Neighs[j]];
-            double nb_psi = Psi(nb->Density());
+            double nb_psi = Psi(nb->Rho);
             double C      = G;
             if (nb->Gamma>0.0||nb->IsSolid)
             {
@@ -415,7 +418,7 @@ inline void Lattice::WriteVTK(char const * FileKey)
 	oss << "SCALARS Density float 1\n";
 	oss << "LOOKUP_TABLE default\n";
 	for (size_t i=0; i<Cells.Size(); i++)
-		oss << Cells[i]->Density() << "\n";
+		oss << Cells[i]->Rho << "\n";
 
 	// Density field
 	oss << "SCALARS Gamma float 1\n";
@@ -433,7 +436,7 @@ inline void Lattice::WriteVTK(char const * FileKey)
 	for (size_t i=0; i<Cells.Size(); ++i)
 	{
 		Vec3_t v; Cells[i]->Velocity(v);
-		v *= Cells[i]->Density();
+		v *= Cells[i]->Rho;
 		oss << v(0) << " " << v(1) << " " << v(2) << "\n";
 	}
 

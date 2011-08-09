@@ -77,6 +77,7 @@ public:
     Array <Disk *>               Particles;         ///< Array of Disks
     Array <Interacton *>       Interactons;         ///< Array of insteractons
     Array <Interacton *>      CInteractons;         ///< Array of valid interactons
+    Array <iVec3_t>              CellPairs;         ///< pairs of cells
     set<pair<Disk *, Disk *> > Listofpairs;         ///< List of pair of particles associated per interacton for memory optimization
     double                            Time;         ///< Time of the simulation
     double                              dt;         ///< Timestep
@@ -89,6 +90,7 @@ public:
 
 inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx, double Thedt)
 {
+    if (nu.Size()==0) throw new Fatal("Declare at leat one fluid please");
     for (size_t i=0;i<nu.Size();i++)
     {
         Lat.Push(Lattice(Method,nu[i],Ndim,dx,Thedt));
@@ -122,9 +124,8 @@ inline void Domain::WriteXDMF(char const * FileKey)
         float * MassFlux  = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
         for (size_t i=0;i<Lat[j].Cells.Size();i++)
         {
-            double rho;
-            Vec3_t vel;
-            rho = Lat[j].Cells[i]->VelDen(vel);
+            double rho = Lat[j].Cells[i]->Rho;
+            Vec3_t vel = Lat[j].Cells[i]->Vel;
             Density  [i] = (float) rho;
             Gamma    [i] = (float) Lat[j].Cells[i]->IsSolid? 1.0:Lat[j].Cells[i]->Gamma;
             Velocity [i] = (float) norm(vel);
@@ -204,50 +205,91 @@ inline void Domain::WriteXDMF(char const * FileKey)
 
 inline void Domain::ApplyForce()
 {
-    for (size_t i=0;i<Lat.Size();i++)
+    for (size_t i=0;i<CellPairs.Size();i++)
     {
-        for (size_t j=0;j<Lat[i].Cells.Size();j++)
+        size_t ind1 = CellPairs[i](0);
+        size_t ind2 = CellPairs[i](1);
+        size_t vec  = CellPairs[i](2);
+        for (size_t j=0;j<Lat.Size();j++)
         {
-            Cell * c = Lat[i].Cells[j];
-            if (fabs(c->Gamma-1.0)<1.0e-12) continue;
-            double rho = c->Density();
-            double psi = Lat[i].Psi(rho);
-            for (size_t k=1;k<c->Nneigh;k++)
+            bool solid = false;
+            Cell * c = Lat[j].Cells[ind1];
+            double psi;
+            if (c->IsSolid||c->Gamma>0.0)
             {
-                //if (c->Neighs[k]>j) continue;
-                for (size_t l=0;l<Lat.Size();l++)
-                {   
-                    Cell * nb     = Lat[l].Cells[c->Neighs[k]];
-                    double nb_rho = nb->Density();
-                    double nb_psi = Lat[l].Psi(nb_rho);
-                    if (i==l)
-                    {
-                        if (nb->Gamma>0.0||nb->IsSolid)
-                        {
-                            c ->BForce    += -Lat[i].Gs*psi*c->W[k]*c->C[k];
-                            //nb->BForce    -= -Lat[i].Gs*psi*c->W[k]*nb_psi*c->C[k];
-                        }
-                        else
-                        {
-                            c ->BForce    += -Lat[i].G*psi*c->W[k]*nb_psi*c->C[k];
-                            //nb->BForce    -= -Lat[i].G*psi*c->W[k]*nb_psi*c->C[k];
-                        }
-                    }
-                    else
-                    {
-                        if (nb->Gamma>0.0||nb->IsSolid)
-                        {
-                            continue;
-                        }
-                        else 
-                        {
-                            c ->BForce    += -Gmix*rho*c->W[k]*nb_rho*c->C[k];
-                        }
-                    }
+                psi   = 1.0;
+                solid = true;
+            }
+            else psi = Lat[j].Psi(c->Rho);
+            for (size_t k=0;k<Lat.Size();k++)
+            {
+                Cell * nb = Lat[k].Cells[ind2];
+                double nb_psi;
+                if (nb->IsSolid||nb->Gamma>0.0)
+                {
+                    nb_psi = 1.0;
+                    solid  = true;
                 }
+                else nb_psi = Lat[k].Psi(nb->Rho);
+                double G;
+                solid ? G = Lat[j].Gs : G = Lat[j].G; 
+                Vec3_t BF(OrthoSys::O);
+                if (j==k)
+                {
+                    BF += -G*psi*nb_psi*c->W[vec]*c->C[vec];
+                }
+                else if(!solid)
+                {
+                    BF += -Gmix*c->Rho*nb->Rho*c->W[vec]*c->C[vec];
+                }
+                c ->BForce += BF;
+                nb->BForce -= BF;
             }
         }
     }
+
+
+    //for (size_t i=0;i<Lat.Size();i++)
+    //{
+        //for (size_t j=0;j<Lat[i].Cells.Size();j++)
+        //{
+            //Cell * c = Lat[i].Cells[j];
+            //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
+            //double rho = c->Rho;
+            //double psi = Lat[i].Psi(rho);
+            //for (size_t k=1;k<c->Nneigh;k++)
+            //{
+                //for (size_t l=0;l<Lat.Size();l++)
+                //{   
+                    //Cell * nb     = Lat[l].Cells[c->Neighs[k]];
+                    //double nb_rho = nb->Rho;
+                    //double nb_psi = Lat[l].Psi(nb_rho);
+                    //if (i==l)
+                    //{
+                        //if (nb->Gamma>0.0||nb->IsSolid)
+                        //{
+                            //c ->BForce    += -Lat[i].Gs*psi*c->W[k]*c->C[k];
+                        //}
+                        //else
+                        //{
+                            //c ->BForce    += -Lat[i].G*psi*c->W[k]*nb_psi*c->C[k];
+                        //}
+                    //}
+                    //else
+                    //{
+                        //if (nb->Gamma>0.0||nb->IsSolid)
+                        //{
+                            //continue;
+                        //}
+                        //else 
+                        //{
+                            //c ->BForce    += -Gmix*rho*c->W[k]*nb_rho*c->C[k];
+                        //}
+                    //}
+                //}
+            //}
+        //}
+    //}
 }
 
 void Domain::Collide ()
@@ -260,10 +302,8 @@ void Domain::Collide ()
         {
             Cell * c = Lat[j].Cells[i];
             double tau = Lat[j].Tau;
-            Vec3_t V;
-            double rho = c->VelDen(V);
-            num += V*rho/tau;
-            den += rho/tau;
+            num += c->Vel*c->Rho/tau;
+            den += c->Rho/tau;
         }
         Vec3_t Vmix = num/den;
 
@@ -271,10 +311,9 @@ void Domain::Collide ()
         for (size_t j=0;j<Lat.Size();j++)
         {
             Cell * c = Lat[j].Cells[i];
-            double rho = c->Density();
+            double rho = c->Rho;
             if (c->IsSolid||rho<1.0e-12) continue;
             if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
-            //double rho = c->VelDen(Vmix);
             double Tau = Lat[j].Tau;
             Vec3_t DV  = Vmix + c->BForce*dt/rho;
             double Bn  = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
@@ -308,7 +347,9 @@ void Domain::Collide ()
                 if (isnan(c->Ftemp[k]))
                 {
                     c->Gamma = 2.0;
+                    #ifdef USE_HDF5
                     WriteXDMF("error");
+                    #endif
                     std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << std::endl;
                     throw new Fatal("Lattice::Collide: Body force gives nan value, check parameters");
                 }
@@ -404,6 +445,20 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     }
     ResetContacts();
     ResetDisplacements();
+    
+    // Creates pair of cells to speed up body force calculation
+    for (size_t i=0;i<Lat[0].Cells.Size();i++)
+    {
+        Cell * c = Lat[0].Cells[i];
+        for (size_t j=1;j<c->Nneigh;j++)
+        {
+            Cell * nb = Lat[0].Cells[c->Neighs[j]];
+            if (nb->ID>c->ID) 
+            {
+                if (!c->IsSolid||!nb->IsSolid) CellPairs.Push(iVec3_t(i,nb->ID,j));
+            }
+        }
+    }
 
     double tout = Time;
     while (Time < Tf)

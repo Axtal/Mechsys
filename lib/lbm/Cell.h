@@ -64,7 +64,9 @@ public:
     size_t       Nneigh;   ///< Number of neighbors
     size_t       ID;      ///< Tag for the particle
     double       Cs;       ///< Velocity of the grid
+    double       Rho;      ///< Density of the Cell
     iVec3_t      Index;    ///< Vector of indexes
+    Vec3_t       Vel;      ///< Velocity of the Cell
     Vec3_t       VelBC;    ///< Velocity at boundary
     Vec3_t       BForce;   ///< Applied body force
     Vec3_t       BForcef;  ///< Fixed Applied body force
@@ -153,16 +155,17 @@ inline double Cell::VelDen(Vec3_t & V)
     return rho;
 }
 
-inline double Cell::Feq(size_t k, Vec3_t const & V, double Rho)
+inline double Cell::Feq(size_t k, Vec3_t const & V, double TheRho)
 {
     double VdotC = dot(V,C[k]);
     double VdotV = dot(V,V);
-    return W[k]*Rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
+    return W[k]*TheRho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
 }
 
-inline void Cell::Initialize(double Rho, Vec3_t const & V)
+inline void Cell::Initialize(double TheRho, Vec3_t const & V)
 {
-    for (size_t k=0;k<Nneigh;k++) F[k] = Feq(k,V,Rho);
+    for (size_t k=0;k<Nneigh;k++) F[k] = Feq(k,V,TheRho);
+    Rho = VelDen(Vel);
 }
 
 
