@@ -29,8 +29,7 @@
 #include <mechsys/fem/elems/quad8.h>
 #include <mechsys/fem/equilibelem.h>
 #include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
-#include <mechsys/fem/rksolver.h>
+#include <mechsys/fem/solvers/stdsolver.h>
 #include <mechsys/models/linelastic.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/util.h>
@@ -121,24 +120,10 @@ int main(int argc, char **argv) try
     //cout << dom << endl;
 
     // solver
-    if (rksolver)
-    {
-        FEM::RKSolver sol(dom);
-        sol.DampTy  = FEM::RKSolver::Rayleigh_t;
-        sol.DampAm  = 0.005;
-        sol.DampAk  = 0.272;
-        sol.DynSolve (/*tf*/100, /*dt*/1.0, /*dtOut*/1.0, fnkey.CStr());
-    }
-    else
-    {
-        FEM::Solver sol(dom);
-        sol.DScheme = FEM::Solver::GN22_t;
-        sol.DampTy  = FEM::Solver::Rayleigh_t;
-        sol.DampAm  = 0.005;
-        sol.DampAk  = 0.272;
-        //sol.CteTg   = true;
-        sol.DynSolve (/*tf*/100, /*dt*/1.0, /*dtOut*/1.0, fnkey.CStr());
-    }
+    SDPair flags;
+    flags.Set ("ray am ak", 1., 0.005, 0.272);
+    FEM::STDSolver sol(dom, flags);
+    sol.DynSolve (/*tf*/100, /*dt*/1.0, /*dtOut*/1.0, fnkey.CStr());
 
     return 0.0;
 }

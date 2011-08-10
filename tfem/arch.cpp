@@ -25,7 +25,7 @@
 #include <mechsys/fem/elems/tri6.h>
 #include <mechsys/fem/equilibelem.h>
 #include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
+#include <mechsys/fem/solvers/stdsolver.h>
 #include <mechsys/models/linelastic.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
@@ -64,9 +64,8 @@ int main(int argc, char **argv) try
     FEM::Domain dom(mesh, prps, mdls, inis, "arch", &out_verts);
 
     // solver
-    FEM::Solver sol(dom);
-    sol.Scheme = FEM::Solver::FE_t;
-    //sol.Scheme = FEM::Solver::NR_t;
+    SDPair flags;
+    FEM::STDSolver sol(dom, flags);
 
     ////////////////////////////////////////////////////////////////////////////////////////// Run /////
     

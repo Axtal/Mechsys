@@ -30,7 +30,7 @@
 #include <mechsys/models/linelastic.h>
 #include <mechsys/models/elastoplastic.h>
 #include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
+#include <mechsys/fem/solvers/stdsolver.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 
@@ -60,27 +60,28 @@ struct OutDat
     int    nstg;
 };
 
-void OutFun (FEM::Solver const & Sol, void * Dat)
+void OutFun (FEM::Solver * Sol, void * Dat)
 {
+    FEM::STDSolver * sol = static_cast<FEM::STDSolver*>(Sol);
     OutDat * dat = static_cast<OutDat*>(Dat);
 
     // current P
-    double P = Sol.Dom.Time*(DelP/dat->nstg);
+    double P = sol->Dom.Time*(DelP/dat->nstg);
 
     //////////////////////////////////////////////////////////////////////////////////// Control Node /////
     
     {
         size_t inod = 41;
-        FEM::Node const & nod = (*Sol.Dom.Nods[inod]);
+        FEM::Node const & nod = (*sol->Dom.Nods[inod]);
         int    eqx    = nod.Eq("ux");
         int    eqy    = nod.Eq("uy");
-        double ux     = Sol.U    (eqx),   uy     = Sol.U    (eqy);
-        double fx     = Sol.F    (eqx),   fy     = Sol.F    (eqy);
-        double fx_int = Sol.F_int(eqx),   fy_int = Sol.F_int(eqy);
+        double ux     = sol->U    (eqx),   uy     = sol->U    (eqy);
+        double fx     = sol->F    (eqx),   fy     = sol->F    (eqy);
+        double fx_int = sol->F_int(eqx),   fy_int = sol->F_int(eqy);
         double ur     = sqrt(ux*ux + uy*uy);
         double fr     = sqrt(fx*fx + fy*fy);
         double fr_int = sqrt(fx_int*fx_int + fy_int*fy_int);
-        dat->of << _6_3 << Sol.Dom.Time << _8s << P << _8s << ur << _8s << fr_int << _8s << fr << endl;
+        dat->of << _6_3 << sol->Dom.Time << _8s << P << _8s << ur << _8s << fr_int << _8s << fr << endl;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////// Elems /////
@@ -96,7 +97,7 @@ void OutFun (FEM::Solver const & Sol, void * Dat)
         eles = 4, 5, 6, 7;
         for (size_t i=0; i<eles.Size(); ++i)
         {
-            FEM::Element const & ele = (*Sol.Dom.Eles[i]);
+            FEM::Element const & ele = (*sol->Dom.Eles[i]);
             Array<SDPair> res;
             ele.StateAtIPs (res);
             for (size_t j=0; j<ele.GE->NIP; ++j)
@@ -134,7 +135,7 @@ void OutFun (FEM::Solver const & Sol, void * Dat)
 
 int main(int argc, char **argv) try
 {
-    bool two_stages = false;
+    bool two_stages = true;
     if (argc>1) two_stages = atoi(argv[1]);
 
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
@@ -170,8 +171,9 @@ plot(dat['x'],dat['y'],'ro',lw=3)\n");
 
     // solver
     OutDat dat_stg1("owen_hinton_02_stg1");  dat_stg1.nstg = (two_stages ? 2 : 1);
-    FEM::Solver sol(dom, &OutFun, &dat_stg1);
-    sol.SetScheme ("NR");
+    SDPair flags;
+    flags.Set("nr", 1.);
+    FEM::STDSolver sol(dom, flags, &OutFun, &dat_stg1);
 
     // stage # 1 -----------------------------------------------------------
     double dp = (two_stages ? DelP/2.0 : DelP);

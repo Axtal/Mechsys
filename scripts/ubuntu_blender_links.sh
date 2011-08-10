@@ -6,7 +6,7 @@ fi
 
 echo Considering that MechSys is in $MECHSYS_ROOT
 
-MODULES="3dlink cad dict fem dem gui main mesh shandler mexpt mex3dlink"
+MODULES="3dlink cad dict fem gui main mesh mex3dlink mexpt shandler"
 for m in $MODULES; do
 	ln -s $MECHSYS_ROOT/mechsys/lib/blender/msys_$m.py $HOME/.blender/scripts
 done

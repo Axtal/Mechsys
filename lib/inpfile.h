@@ -37,8 +37,6 @@
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/fem/element.h>   // for PROB
 #include <mechsys/fem/geomelem.h>  // for GEOM
-#include <mechsys/fem/solver.h>
-#include <mechsys/fem/rksolver.h>
 #include <mechsys/matfile.h>
 #include <mechsys/models/model.h>
 
@@ -81,9 +79,8 @@ public:
     void Read        (char const * FileName);
     void SetPrmsInis (MatFile const & Mat, bool ForceGTY=false);
     void GetIncs     (int PathKey, double Div, Vec_t & dsig, Vec_t & deps, Array<bool> & PrescDeps, double & dpw, double & dSw, bool & PrescDpw, bool & PrescDSw) const;
-    void SetSolver   (FEM::Solver & Sol) const;
-    void SetSolver   (FEM::RKSolver & Sol) const;
     void SetSUp      (Model const * Mdl, Model::StressUpdate::pDbgFun pFun=NULL, void * UserData=NULL) const;
+    void SetSolFlags (SDPair & Flags) const;
 
     // Data
     int    ninc;        ///<  1 general number of increments (for all load-unload paths)
@@ -138,7 +135,7 @@ public:
     double pw0;         ///< 48 pw0
     bool   haspw0;      ///< has pw0 ?
     bool   rkdyncte;    ///< 49 rk scheme dyn cte M and C
-    bool   vwp;         ///< 50 v-w-p TPM formulation ?
+    bool   uwp;         ///< 50 u-w-p TPM formulation ?
 
     // Additional data
     Dict * Prms; ///< parameters (set by SetMat)
@@ -297,7 +294,7 @@ inline void InpFile::Defaults ()
     pw0        = 0;      // 48
     haspw0     = false;
     rkdyncte   = true;   // 49
-    vwp        = false;  // 50
+    uwp        = false;  // 50
 }
 
 inline void InpFile::Read (char const * FileName)
@@ -501,7 +498,7 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="dcftol")     dcftol    = val;                        // 47
                 else if (key=="pw0")      { pw0       = val;     haspw0 = true; }   // 48
                 else if (key=="rkdyncte")   rkdyncte  = (bool)atoi(str_val.CStr()); // 49
-                else if (key=="vwp")        vwp       = (bool)atoi(str_val.CStr()); // 50
+                else if (key=="uwp")        uwp       = (bool)atoi(str_val.CStr()); // 50
                 else if (key=="npath")    { npath     = (int)val;  reading_path   = true; }
                 else if (key=="nelemprps"){ nelemprps = (int)val;  reading_eprps  = true; }
                 else if (key=="nstages")  { nstages   = (int)val;  reading_stages = true; }
@@ -612,44 +609,44 @@ inline void InpFile::GetIncs (int PathKey, double Div, Vec_t & dsig, Vec_t & dep
     if (path.HasKey("dSw")) { dSw     = path("dSw")/Div;  PrescDSw     = true; }
 }
 
-inline void InpFile::SetSolver (FEM::Solver & Sol) const
-{
-    if (ssout    ) Sol.SSOut  = ssout;
-    if (ctetg    ) Sol.CteTg  = ctetg;
-    if (hm       ) Sol.DampTy = FEM::Solver::HMCoup_t;
-    if (ray      ) Sol.DampTy = FEM::Solver::Rayleigh_t;
-    if (am    >=0) Sol.DampAm = am;
-    if (ak    >=0) Sol.DampAk = ak;
-    if (rk       )
-    {
-        Sol.DScheme = FEM::Solver::RK_t;
-        if (rkscheme!="") Sol.RKScheme = rkscheme;
-        if (rkstol   >=0) Sol.RKSTOL   = rkstol;
-    }
-    if (maxit  >0 ) Sol.MaxIt = maxit;
-    if (tolr   >=0) Sol.TolR  = tolr;
-    if (scheme!="") Sol.SetScheme (scheme.CStr());
-
-    Sol.NLSteps.clear();
-    if (nldt_nsml>0) Sol.NLSteps.Set("nsml",(double)nldt_nsml);
-    if (nldt_nn  >0) Sol.NLSteps.Set("nn"  ,(double)nldt_nn  );
-    if (nldt_n   >0) Sol.NLSteps.Set("n"   ,(double)nldt_n   );
-    if (nldt_ll  >0) Sol.NLSteps.Set("ll"  ,(double)nldt_ll  );
-    if (nldt_sch >0) Sol.NLSteps.Set("sch" ,(double)nldt_sch );
-    if (nldt_m   >0) Sol.NLSteps.Set("m"   ,(double)nldt_m   );
-}
-
-inline void InpFile::SetSolver (FEM::RKSolver & Sol) const
-{
-    if (ctetg       ) Sol.LinProb = ctetg;
-    if (hm          ) Sol.DampTy  = FEM::RKSolver::HMCoup_t;
-    if (ray         ) Sol.DampTy  = FEM::RKSolver::Rayleigh_t;
-    if (am    >=0   ) Sol.DampAm  = am;
-    if (ak    >=0   ) Sol.DampAk  = ak;
-    if (rkscheme!="") Sol.Scheme  = rkscheme;
-    if (rkstol   >=0) Sol.STOL    = rkstol;
-    Sol.DynCteM = rkdyncte;
-}
+//inline void InpFile::SetSolver (FEM::Solver & Sol) const
+//{
+    //if (ssout    ) Sol.SSOut  = ssout;
+    //if (ctetg    ) Sol.CteTg  = ctetg;
+    //if (hm       ) Sol.DampTy = FEM::Solver::HMCoup_t;
+    //if (ray      ) Sol.DampTy = FEM::Solver::Rayleigh_t;
+    //if (am    >=0) Sol.DampAm = am;
+    //if (ak    >=0) Sol.DampAk = ak;
+    //if (rk       )
+    //{
+        //Sol.DScheme = FEM::Solver::RK_t;
+        //if (rkscheme!="") Sol.RKScheme = rkscheme;
+        //if (rkstol   >=0) Sol.RKSTOL   = rkstol;
+    //}
+    //if (maxit  >0 ) Sol.MaxIt = maxit;
+    //if (tolr   >=0) Sol.TolR  = tolr;
+    //if (scheme!="") Sol.SetScheme (scheme.CStr());
+//
+    //Sol.NLSteps.clear();
+    //if (nldt_nsml>0) Sol.NLSteps.Set("nsml",(double)nldt_nsml);
+    //if (nldt_nn  >0) Sol.NLSteps.Set("nn"  ,(double)nldt_nn  );
+    //if (nldt_n   >0) Sol.NLSteps.Set("n"   ,(double)nldt_n   );
+    //if (nldt_ll  >0) Sol.NLSteps.Set("ll"  ,(double)nldt_ll  );
+    //if (nldt_sch >0) Sol.NLSteps.Set("sch" ,(double)nldt_sch );
+    //if (nldt_m   >0) Sol.NLSteps.Set("m"   ,(double)nldt_m   );
+//}
+//
+//inline void InpFile::SetSolver (FEM::RKSolver & Sol) const
+//{
+    //if (ctetg       ) Sol.LinProb = ctetg;
+    //if (hm          ) Sol.DampTy  = FEM::RKSolver::HMCoup_t;
+    //if (ray         ) Sol.DampTy  = FEM::RKSolver::Rayleigh_t;
+    //if (am    >=0   ) Sol.DampAm  = am;
+    //if (ak    >=0   ) Sol.DampAk  = ak;
+    //if (rkscheme!="") Sol.Scheme  = rkscheme;
+    //if (rkstol   >=0) Sol.STOL    = rkstol;
+    //Sol.DynCteM = rkdyncte;
+//}
 
 inline void InpFile::SetSUp (Model const * Mdl, Model::StressUpdate::pDbgFun pFun, void * UserData) const
 {
@@ -659,6 +656,10 @@ inline void InpFile::SetSUp (Model const * Mdl, Model::StressUpdate::pDbgFun pFu
     if (suscheme  !="") Mdl->SUp.SetScheme (suscheme);
     if (surkscheme!="") Mdl->SUp.RKScheme = surkscheme;
     if (sustol      >0) Mdl->SUp.STOL     = sustol;
+}
+
+inline void InpFile::SetSolFlags (SDPair & Flags) const
+{
 }
 
 std::ostream & operator<< (std::ostream & os, InpFile const & IF)
@@ -712,7 +713,7 @@ std::ostream & operator<< (std::ostream & os, InpFile const & IF)
     if (IF.dcftol       >0) os << "dcftol    = " << IF.dcftol    << "\n"; // 47
     if (IF.haspw0         ) os << "pw0       = " << IF.pw0       << "\n"; // 48
     if (IF.rkdyncte       ) os << "rkdyncte  = " << IF.rkdyncte  << "\n"; // 49
-    if (IF.vwp            ) os << "vwp       = " << IF.vwp       << "\n"; // 50
+    if (IF.uwp            ) os << "uwp       = " << IF.uwp       << "\n"; // 50
     os << "\nPath:\n"                        << (*IF.Path)      << "\n";
     os << "\nElements properties:\n"         << (*IF.Prps)      << "\n";
     os << "\nOutput nodes:\n"                << (*IF.OutNods)   << "\n";
@@ -925,7 +926,7 @@ inline void InpFile::OnSave (wxCommandEvent & Event)
         of << "dcftol     = " << dcftol     << std::endl; // 47
         of << "pw0        = " << pw0        << std::endl; // 48
         of << "rkdyncte   = " << rkdyncte   << std::endl; // 49
-        of << "vwp        = " << vwp        << std::endl; // 50
+        of << "uwp        = " << uwp        << std::endl; // 50
         of << "npath      = " << Path->Keys.Size() << std::endl;
 
         String buf;

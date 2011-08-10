@@ -48,10 +48,11 @@ struct OutDat
     }
 };
 
-void OutFun (FEM::Solver const & Sol, void * Dat)
+void OutFun (FEM::Solver * Sol, void * Dat)
 {
+    FEM::STDSolver * sol = static_cast<FEM::STDSolver*>(Sol);
     OutDat * dat = static_cast<OutDat*>(Dat);
-    dat->of << _6_3 << Sol.Dom.Time << _8s << Sol.U(dat->eqx) << _8s << Sol.F_int(dat->eqx) << _8s << Sol.F(dat->eqx) << endl;
+    dat->of << _6_3 << sol->Dom.Time << _8s << sol->U(dat->eqx) << _8s << sol->F_int(dat->eqx) << _8s << sol->F(dat->eqx) << endl;
 }
 
 int main(int argc, char **argv) try
@@ -87,10 +88,13 @@ int main(int argc, char **argv) try
     dat.eqx = 1; // eq for output
 
     // solver
-    FEM::Solver sol(dom, &OutFun, &dat);
-    sol.SetScheme (scheme);
-    if (strcmp(scheme,"FE")==0) sol.nSS = 1000;
-    //sol.STOL = 1.0e+9;
+    SDPair flags;
+    if (strcmp(scheme,"FE")==0)
+    {
+        flags.Set ("fe",  1.);
+        flags.Set ("nss", 1000.);
+    }
+    FEM::STDSolver sol(dom, flags, &OutFun, &dat);
 
     // weights
     sol.IncsW.Resize (10);

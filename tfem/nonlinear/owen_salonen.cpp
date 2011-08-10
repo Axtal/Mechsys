@@ -123,10 +123,11 @@ int main(int argc, char **argv) try
             //mdls.Set(-1, "name E nu", MODEL("LinElastic"), E, nu);
         }
     }
+    SDPair flags;
+    flags.Set("ssout", 1.);
+    if (NR) flags.Set("nr", 1.);
     FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict(), fkey.CStr(), &out_verts);
-    FEM::Solver sol(dom);
-    if (NR) sol.SetScheme ("NR");
-    sol.SSOut = true;
+    FEM::STDSolver sol(dom, flags);
 
     // solve
     if (unitest)

@@ -152,9 +152,10 @@ int main(int argc, char **argv) try
     FEM::Domain dom(mesh, prps, mdls, inis);//, fkey.CStr(), &out_verts);
 
     // solver
-    FEM::Solver sol(dom);
-    if (FE) sol.SetScheme("FE");
-    if (NR) sol.SetScheme("NR");
+    SDPair flags;
+    if (FE) flags.Set("fe", 1.);
+    if (NR) flags.Set("nr", 1.);
+    FEM::STDSolver sol(dom, flags);
 
     // boundary conditions for stage # 1
     Dict bcs;

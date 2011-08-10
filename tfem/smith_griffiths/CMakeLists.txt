@@ -29,9 +29,7 @@ SET(PROGS
     fig_06_38
     fig_09_08
     fig_11_01
-    fig_11_01_new
     fig_11_04
-    fig_11_04_new
     fig_11_19)
 
 FOREACH(var ${TESTS})

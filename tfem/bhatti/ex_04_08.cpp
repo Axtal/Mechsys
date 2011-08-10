@@ -26,7 +26,7 @@
 #include <mechsys/mesh/mesh.h>
 #include <mechsys/fem/beam.h>
 #include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
+#include <mechsys/fem/solvers/stdsolver.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 
@@ -100,9 +100,8 @@ int main(int argc, char **argv) try
     }
 
     // solver
-    FEM::Solver sol(dom);
-    //sol.CteTg  = true;
-    //sol.Scheme = FEM::Solver::FE_t;
+    SDPair flags;
+    FEM::STDSolver sol(dom, flags);
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;

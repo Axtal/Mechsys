@@ -72,8 +72,9 @@ int main(int argc, char **argv) try
     dom.WriteVTU  ("fig_06_35_stg_0");
 
     // solver
-    FEM::Solver sol(dom);
-    sol.SetScheme ("FE");
+    SDPair flags;
+    flags.Set ("fe", 1.);
+    FEM::STDSolver sol(dom, flags);
 
     // stage # 1 ==============================================================
     Dict bcs;

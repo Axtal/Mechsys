@@ -43,10 +43,11 @@ struct DbgDat
     }
 };
 
-void DbgFun (FEM::Solver const & Sol, void * Dat)
+void DbgFun (FEM::Solver * Sol, void * Dat)
 {
+    FEM::STDSolver * sol = static_cast<FEM::STDSolver*>(Sol);
     DbgDat * dat = static_cast<DbgDat*>(Dat);
-    dat->of << _6_3 << Sol.Dom.Time << _8s << Sol.U(dat->eqx) << _8s << Sol.F_int(dat->eqx) << _8s << Sol.F(dat->eqx) << endl;
+    dat->of << _6_3 << sol->Dom.Time << _8s << sol->U(dat->eqx) << _8s << sol->F_int(dat->eqx) << _8s << sol->F(dat->eqx) << endl;
 }
 
 int main(int argc, char **argv) try
@@ -81,8 +82,9 @@ int main(int argc, char **argv) try
     dat.eqx = 5; // eq for output
 
     // solver
-    FEM::Solver sol(dom, NULL, NULL, &DbgFun, &dat);
-    sol.Scheme = FEM::Solver::NR_t;
+    SDPair flags;
+    flags.Set("NR", 1.);
+    FEM::STDSolver sol(dom, flags, NULL, NULL, &DbgFun, &dat);
 
     // solve
     Dict bcs;

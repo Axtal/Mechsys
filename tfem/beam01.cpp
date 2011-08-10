@@ -25,7 +25,7 @@
 #include <mechsys/fem/beam.h>
 #include <mechsys/fem/rod.h>
 #include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
+#include <mechsys/fem/solvers/stdsolver.h>
 #include <mechsys/models/linelastic.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
@@ -207,8 +207,8 @@ int main(int argc, char **argv) try
         FEM::Domain dom(mesh, prps, Dict(), Dict());
 
         // solver
-        FEM::Solver sol(dom);
-        sol.SetScheme ("FE");
+        SDPair flags;
+        FEM::STDSolver sol(dom, flags);
 
         // run
         dom.SetBCs (bcs);

@@ -28,7 +28,7 @@
 #include <mechsys/fem/elems/hex20.h>
 #include <mechsys/fem/equilibelem.h>
 #include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
+#include <mechsys/fem/solvers/stdsolver.h>
 #include <mechsys/models/linelastic.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/util.h>
@@ -170,8 +170,9 @@ int main(int argc, char **argv) try
     FEM::Domain dom(mesh, prps, mdls, inis);
 
     // solver
-    FEM::Solver sol(dom);
-    sol.Scheme = FEM::Solver::FE_t;
+    SDPair flags;
+    flags.Set ("fe", 1.);
+    FEM::STDSolver sol(dom, flags);
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;

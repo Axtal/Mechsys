@@ -42,8 +42,7 @@
 #include <mechsys/fem/elems/hex20.h>
 #include <mechsys/fem/elems/tet10.h>
 #include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
-#include <mechsys/fem/rksolver.h>
+#include <mechsys/fem/solvers/stdsolver.h>
 #include <mechsys/linalg/matvec.h>
 #endif
 #include <mechsys/models/model.h>
@@ -56,18 +55,22 @@
 #include <mechsys/models/unsatflow.h>
 #include <mechsys/models/unconv04.h>
 #include <mechsys/models/bbmx.h>
-
 #ifndef INCLUDE_MODELS_ONLY
 
-#define FEMALLOC(msh, mat, inp,   DOM, SOL)                                                     \
-    FEM::Domain DOM(msh, (*inp.Prps), (*inp.Prms), (*inp.Inis), inp.fnkey.CStr(), inp.OutNods); \
-    FEM::Solver SOL(dom);
+#define FEM_ALLOC_DOMAIN(msh, mat, inp,   DOM)                                                \
+    FEM::Domain DOM(msh, (*inp.Prps), (*inp.Prms), (*inp.Inis), inp.fnkey.CStr(), inp.OutNods);
 
-#define FEMALLOC_RK(msh, mat, inp,   DOM, SOL)                                                  \
-    FEM::Domain DOM(msh, (*inp.Prps), (*inp.Prms), (*inp.Inis), inp.fnkey.CStr(), inp.OutNods); \
-    FEM::RKSolver SOL(dom);
+/*
+#define FEM_ALLOC_SOLVER(inp, dom,  NAME, FLAGS, PTSOL)  \
+    String NAME;                                         \
+    SDPair FLAGS;                                        \
+    if (inp.uwp) NAME = "UWPSolver";                     \
+    else         NAME = "STDSolver";                     \
+    inp.SetSolFlags (FLAGS);                             \
+    FEM::Solver * PTSOL = AllocSolver(NAME, dom, flags);
 
-#define FEMSOLVE(verbose, inp, dom, sol)                                             \
+
+#define FEM_SOLVE(verbose, inp, dom)                                                 \
     for (FEM::Domain::Models_t::const_iterator it=dom.Mdls.begin(); it!=dom.Mdls.end(); ++it) inp.SetSUp (it->second); \
     if (inp.ninc<1) inp.ninc = 1;                                                    \
     inp.SetSolver (sol);                                                             \
@@ -86,33 +89,6 @@
             else         sol.Solve    (inp.ninc);                                    \
         }                                                                            \
     }
-
-#define FEMSOLVE_RK(verbose, inp, dom, sol)                                             \
-    for (FEM::Domain::Models_t::const_iterator it=dom.Mdls.begin(); it!=dom.Mdls.end(); ++it) inp.SetSUp (it->second); \
-    if (inp.ninc<1) inp.ninc = 1;                                                       \
-    inp.SetSolver (sol);                                                                \
-    for (size_t i=0; i<inp.Stages.Size(); ++i)                                          \
-    {                                                                                   \
-        dom.SetBCs ((*inp.Stages[i]));                                                  \
-        if (verbose) dom.PrintBCs (cout);                                               \
-        if (inp.vtufile)                                                                \
-        {                                                                               \
-            if (inp.vwp) sol.VWPSolve (inp.tf, inp.dt, inp.dtout, inp.fnkey.CStr());    \
-            else                                                                        \
-            {                                                                           \
-                if (inp.dyn) sol.DynSolve    (inp.tf, inp.dt, inp.dtout, inp.fnkey.CStr()); \
-                else         sol.SteadySolve (inp.ninc, inp.fnkey.CStr());                  \
-            }                                                                           \
-        }                                                                               \
-        else                                                                            \
-        {                                                                               \
-            if (inp.vwp) sol.VWPSolve (inp.tf, inp.dt, inp.dtout);                      \
-            else                                                                        \
-            {                                                                           \
-                if (inp.dyn) sol.DynSolve    (inp.tf, inp.dt, inp.dtout);               \
-                else         sol.SteadySolve (inp.ninc);                                \
-            }                                                                           \
-        }                                                                               \
-    }
+*/
 
 #endif

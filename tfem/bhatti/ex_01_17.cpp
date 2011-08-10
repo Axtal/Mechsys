@@ -26,7 +26,7 @@
 #include <mechsys/mesh/mesh.h>
 #include <mechsys/fem/rod.h>
 #include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
+#include <mechsys/fem/solvers/stdsolver.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 
@@ -59,8 +59,9 @@ int main(int argc, char **argv) try
     prps.Set(-1, "prob E A fra", PROB("Rod"), 70000.0, 1000.0, 1.0);
 
     // domain and solver
+    SDPair flags;
     FEM::Domain dom(mesh, prps, /*mdls*/Dict(), /*inis*/Dict());
-    FEM::Solver sol(dom);
+    FEM::STDSolver sol(dom, flags);
 
     // stage # 1 -----------------------------------------------------------
     double alpha = 150.0;

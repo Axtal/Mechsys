@@ -27,7 +27,7 @@
 #include <mechsys/fem/elems/tri3.h>
 #include <mechsys/fem/equilibelem.h>
 #include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
+#include <mechsys/fem/solvers/stdsolver.h>
 #include <mechsys/models/linelastic.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
@@ -123,7 +123,8 @@ int main(int argc, char **argv) try
     }
 
     // solver
-    FEM::Solver sol(dom);
+    SDPair flags;
+    FEM::STDSolver sol(dom, flags);
 
     // stage # 1 -----------------------------------------------------------
     double cbx = (0.283/386.4)*pow(5000.0*2.0*Util::PI/60.0,2.0)/1000.0;

@@ -37,4 +37,4 @@ FOREACH(var ${TESTS})
     SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 ENDFOREACH(var)
 
-SUBDIRS (benchmark bhatti construction nonlinear smith_griffiths transient mixed parallel verification)
+SUBDIRS (benchmark bhatti construction nonlinear smith_griffiths mixed parallel verification)

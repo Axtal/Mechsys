@@ -211,6 +211,8 @@ inline void UnsatFlow::InitIvs (SDPair const & Ini, State * Sta) const
     ini.Set   ("n",   Prms("por"));
     ini.Set   ("pc",  pc);
     ini.Set   ("Sw",  Sw);
+    ini.Set   ("RhoW", Prms("gamW")/Prms("grav"));
+    ini.Set   ("RhoS", Prms("rhoS"));
     sta->Init (ini);
 }
 

@@ -65,16 +65,16 @@ int main(int argc, char **argv) try
     mesh.WriteMPY (inp.fnkey.CStr());
     
     // allocate and solve
-    if (inp.rk)
-    {
-        FEMALLOC_RK (mesh, mat, inp,   dom, sol);
-        FEMSOLVE_RK (verbose, inp, dom, sol);
-    }
-    else
-    {
-        FEMALLOC (mesh, mat, inp,   dom, sol);
-        FEMSOLVE (verbose, inp, dom, sol);
-    }
+    //if (inp.rk)
+    //{
+        //FEMALLOC_RK (mesh, mat, inp,   dom, sol);
+        //FEMSOLVE_RK (verbose, inp, dom, sol);
+    //}
+    //else
+    //{
+        //FEMALLOC (mesh, mat, inp,   dom, sol);
+        //FEMSOLVE (verbose, inp, dom, sol);
+    //}
 
     // end
     return 0.0;

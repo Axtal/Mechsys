@@ -28,8 +28,7 @@
 #include <mechsys/mesh/structured.h>
 #include <mechsys/fem/beam.h>
 #include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
-#include <mechsys/fem/rksolver.h>
+#include <mechsys/fem/solvers/stdsolver.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/util.h>
 #include <mechsys/util/fatal.h>
@@ -85,17 +84,9 @@ int main(int argc, char **argv) try
     dom.SetBCs (bcs);
 
     // solver
-    if (rksolver)
-    {
-        FEM::RKSolver sol(dom);
-        sol.DynSolve (/*tf*/5, /*dt*/0.05, /*dtOut*/0.05, fnkey.CStr());
-    }
-    else
-    {
-        FEM::Solver sol(dom);
-        sol.DScheme = FEM::Solver::GN22_t;
-        sol.DynSolve (/*tf*/5, /*dt*/0.05, /*dtOut*/0.05, fnkey.CStr());
-    }
+    SDPair flags;
+    FEM::STDSolver sol(dom, flags);
+    sol.DynSolve (/*tf*/5, /*dt*/0.05, /*dtOut*/0.05, fnkey.CStr());
 
     return 0.0;
 }
