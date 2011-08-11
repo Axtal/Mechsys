@@ -421,6 +421,9 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="ux")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else if (key=="uy")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else if (key=="uz")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="wwx")   { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="wwy")   { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="wwz")   { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else if (key=="fx")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else if (key=="fy")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else if (key=="fz")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }

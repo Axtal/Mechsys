@@ -33,8 +33,8 @@ public:
 
     // Methods
     void   Init    (SDPair const & Ini, size_t NIvs=0);
-    void   Backup  () { throw new Fatal("UnsatFlowState::Backup: this method is not available yet"); }
-    void   Restore () { throw new Fatal("UnsatFlowState::Restore: this method is not available yet"); }
+    void   Backup  () { nBkp=n; SwBkp=Sw; pcBkp=pc; DryingBkp=Drying; RhoWBkp=RhoW; RhoSBkp=RhoS; }
+    void   Restore () { n=nBkp; Sw=SwBkp; pc=pcBkp; Drying=DryingBkp; RhoW=RhoWBkp; RhoS=RhoSBkp; }
     size_t PckSize () const { return 6; }
     void   Pack    (Array<double>       & V) const;
     void   Unpack  (Array<double> const & V);
@@ -43,12 +43,16 @@ public:
     void Output (SDPair & KeysVals) const;
 
     // Data
-    double n;      ///< Porosity
-    double Sw;     ///< Saturation
-    double pc;     ///< Capillary pressure (pc = pa-pw = -pw)
-    bool   Drying; ///< Drying ? (otherwise wetting) : for history-dependent models (hysteresis)
-    double RhoW;   ///< Real water density
-    double RhoS;   ///< Real solids density
+    double nBkp,      n;      ///< Porosity
+    double SwBkp,     Sw;     ///< Saturation
+    double pcBkp,     pc;     ///< Capillary pressure (pc = pa-pw = -pw)
+    bool   DryingBkp, Drying; ///< Drying ? (otherwise wetting) : for history-dependent models (hysteresis)
+    double RhoWBkp,   RhoW;   ///< Real water density
+    double RhoSBkp,   RhoS;   ///< Real solids density
+
+    Array<double> dndt;
+    Array<double> dSwdt;
+    Array<double> dRhoWdt;
 };
 
 Array<String> UnsatFlowState::Keys;

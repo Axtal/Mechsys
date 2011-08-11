@@ -45,6 +45,19 @@ int main(int argc, char **argv) try
     Util::Sort(a,b,c,d);
     cout << "Result:  " << a << " " << b << " " << c << " " << d << endl;
 
+    cout << TERM_CLR_GREEN_H << "\n// Max //////////////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
+
+    a = 10;  b = 2;  c = 7;
+    cout << "Max("  << a << "," << b << "," << c << ") = " << Util::Max(a,b,c) << endl;
+    cout << "Max("  << b << "," << c << "," << a << ") = " << Util::Max(b,c,a) << endl;
+    cout << "Max("  << c << "," << a << "," << b << ") = " << Util::Max(c,a,b) << endl;
+    cout << "Max("  << a << "," << c << "," << b << ") = " << Util::Max(a,c,b) << endl;
+    cout << "Max("  << c << "," << b << "," << a << ") = " << Util::Max(c,b,a) << endl;
+    cout << "Max("  << b << "," << a << "," << c << ") = " << Util::Max(b,a,c) << endl;
+    cout << "Max("  << a << "," << a << "," << b << ") = " << Util::Max(a,a,b) << endl;
+    cout << "Max("  << b << "," << a << "," << b << ") = " << Util::Max(b,a,b) << endl;
+    cout << "Max("  << c << "," << b << "," << c << ") = " << Util::Max(c,b,c) << endl;
+
     cout << TERM_CLR_GREEN_H << "\n// Keys2Array ///////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
 
     String keys("ux uy uz  fx fy fz");

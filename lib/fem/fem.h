@@ -43,6 +43,7 @@
 #include <mechsys/fem/elems/tet10.h>
 #include <mechsys/fem/domain.h>
 #include <mechsys/fem/solvers/stdsolver.h>
+#include <mechsys/fem/solvers/uwpsolver.h>
 #include <mechsys/linalg/matvec.h>
 #endif
 #include <mechsys/models/model.h>
@@ -60,6 +61,12 @@
 #define FEM_ALLOC_DOMAIN(msh, mat, inp,   DOM)                                                \
     FEM::Domain DOM(msh, (*inp.Prps), (*inp.Prms), (*inp.Inis), inp.fnkey.CStr(), inp.OutNods);
 
+#define FEM_ALLOC_SOLVER(inp, dom, PTSOL)                \
+    String name = (inp.uwp ? "UWPSolver" : "STDSolver"); \
+    SDPair flags;                                        \
+    inp.SetSolFlags (flags);                             \
+    FEM::Solver * PTSOL = AllocSolver (name, dom, flags);
+
 /*
 #define FEM_ALLOC_SOLVER(inp, dom,  NAME, FLAGS, PTSOL)  \
     String NAME;                                         \
@@ -68,27 +75,34 @@
     else         NAME = "STDSolver";                     \
     inp.SetSolFlags (FLAGS);                             \
     FEM::Solver * PTSOL = AllocSolver(NAME, dom, flags);
+*/
 
-
+/*
 #define FEM_SOLVE(verbose, inp, dom)                                                 \
     for (FEM::Domain::Models_t::const_iterator it=dom.Mdls.begin(); it!=dom.Mdls.end(); ++it) inp.SetSUp (it->second); \
     if (inp.ninc<1) inp.ninc = 1;                                                    \
-    inp.SetSolver (sol);                                                             \
-    for (size_t i=0; i<inp.Stages.Size(); ++i)                                       \
-    {                                                                                \
-        dom.SetBCs ((*inp.Stages[i]));                                               \
-        if (verbose) dom.PrintBCs (cout);                                            \
-        if (inp.vtufile)                                                             \
-        {                                                                            \
-            if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout, inp.fnkey.CStr()); \
-            else         sol.Solve    (inp.ninc, inp.fnkey.CStr());                  \
-        }                                                                            \
-        else                                                                         \
-        {                                                                            \
-            if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout);                   \
-            else         sol.Solve    (inp.ninc);                                    \
-        }                                                                            \
+    {
+        String name;
+        if (inp.uwp) name = "UWPSolver";                     \
+        else         name = "STDSolver";                     \
+        inp.SetSolFlags (flags);                             \
+        FEM::Solver * ptsol = AllocSolver(name, dom, flags);
+        for (size_t i=0; i<inp.Stages.Size(); ++i)                                       \
+        {                                                                                \
+            dom.SetBCs ((*inp.Stages[i]));                                               \
+            if (verbose) dom.PrintBCs (std::cout);                                            \
+            if (inp.vtufile)                                                             \
+            {                                                                            \
+                if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout, inp.fnkey.CStr()); \
+                else         sol.Solve    (inp.ninc, inp.fnkey.CStr());                  \
+            }                                                                            \
+            else                                                                         \
+            {                                                                            \
+                if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout);                   \
+                else         sol.Solve    (inp.ninc);                                    \
+            }                                                                            \
+        }
     }
-*/
+    */
 
 #endif

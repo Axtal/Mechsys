@@ -186,7 +186,7 @@ BPy::class_<InpFile>("InpFile")
     .def_readwrite("dcftol"     , &InpFile::dcftol    ) //  47
     .def_readwrite("pw0"        , &InpFile::pw0       ) //  48
     .def_readwrite("rkdyncte"   , &InpFile::rkdyncte  ) //  49
-    .def_readwrite("vwp"        , &InpFile::vwp       ) //  50
+    .def_readwrite("uwp"        , &InpFile::uwp       ) //  50
     ;
 
 //////////////////////////////////////////////////////////////////////////////////// mesh /////
@@ -243,12 +243,15 @@ BPy::class_<FEM::Domain>("FEM_Domain", "FEM domain", BPy::init<Mesh::Generic con
     ;
 
 // Solver
-BPy::class_<FEM::Solver>("FEM_Solver", "FEM solver", BPy::init<FEM::Domain &>())
-    .def("Solve",     &FEM::Solver::Solve,    SO_Solve())
-    .def("DynSolve",  &FEM::Solver::DynSolve, SO_DynSolve())
-    .def("SetScheme", &FEM::Solver::SetScheme)
-    .def_readwrite("MaxIt", &FEM::Solver::MaxIt)
-    .def_readwrite("TolR",  &FEM::Solver::TolR)
-    ;
+//BPy::class_<FEM::Solver>("Solver","generic solver", BPy::init<FEM::Domain &, SDPair>())
+    //;
+
+// STDSolver
+//BPy::class_<FEM::STDSolver, BPy::bases<FEM::Solver> >("FEM_STDSolver", "FEM (standard) solver", BPy::init<FEM::Domain &, SDPair>())
+    //.def("Solve",     &FEM::STDSolver::Solve,    SO_Solve())
+    //.def("DynSolve",  &FEM::STDSolver::DynSolve, SO_DynSolve())
+    //.def_readwrite("MaxIt", &FEM::STDSolver::MaxIt)
+    //.def_readwrite("TolR",  &FEM::STDSolver::TolR)
+    //;
 
 } // BOOST_PYTHON_MODULE

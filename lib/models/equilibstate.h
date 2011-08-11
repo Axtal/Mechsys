@@ -58,6 +58,8 @@ public:
     Vec_t Eps, EpsBkp; ///< Strain
     Vec_t Ivs, IvsBkp; ///< Internal values
     bool  Ldg, LdgBkp; ///< Loading ?
+
+    Array<Vec_t> dSigdt;
 };
 
 Array<String> EquilibState::Keys;

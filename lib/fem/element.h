@@ -127,7 +127,9 @@ public:
     virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF) {} ///< Set boundary conditions
     virtual void AddToF       (double Time, Vec_t & F)                            const {} ///< Add to (external) F vector contribution at each Time
     virtual void ClrBCs       ()                                                        {} ///< Clear boundary conditions
+    virtual void GetLoc       ()                                                  const { throw new Fatal("Element::GetLoc: (no arguments) Method not implemented for this element"); } ///< Get location vector for mounting K/M matrices
     virtual void GetLoc       (Array<size_t> & Loc)                               const { throw new Fatal("Element::GetLoc: Method not implemented for this element"); } ///< Get location vector for mounting K/M matrices
+    virtual void ElemEqs      (double Time, Vec_t const & V, Vec_t const & Ww, Vec_t const & Pw) const { throw new Fatal("Element::GetLoc: Method not implemented for this element"); } ///< Get location vector for mounting K/M matrices
     virtual void CalcK        (Mat_t & K)                                         const { throw new Fatal("Element::CalcK: Method not implemented for this element"); }
     virtual void CalcM        (Mat_t & M)                                         const { throw new Fatal("Element::CalcM: Method not implemented for this element"); }
     virtual void CalcC        (Mat_t & C)                                         const { throw new Fatal("Element::CalcC: Method not implement for this element"); }
@@ -148,6 +150,9 @@ public:
     virtual void   CalcIVRate (double Time, Vec_t const & U, Vec_t const & V, Vec_t & Rate) const {}            ///< Calculate rate of internal variables
     virtual void   CorrectIVs ()                                                                  {}            ///< Correct just set IVs
 
+    virtual double Update  (size_t Idx, Vec_t const & V_g, Vec_t const & dPwdt_g, double dt) { throw new Fatal("Element::Update: Method not implemented in this element"); }  ///< Update state
+    virtual void   Restore ()                                                                { throw new Fatal("Element::Restore: Method not implemented in this element"); } ///< Restore state
+
     // Methods that depend on GE
     void CoordMatrix   (Mat_t & C)                 const; ///< Matrix with coordinates of nodes
     void FCoordMatrix  (size_t IdxFace, Mat_t & C) const; ///< Matrix with coordinates of face nodes
@@ -167,6 +172,7 @@ public:
     GeomType           GTy;    ///< Geometry type
     Array<Node*>       Con;    ///< Connectivity
     Array<State*>      Sta;    ///< State at the centre of the element or at each IP
+    bool               IsUWP;  ///< Is u-w-p element ?
 };
 
 
@@ -175,7 +181,7 @@ public:
 
 inline Element::Element (int TheNDim, Mesh::Cell const & TheCell, Model const * TheMdl, Model const * TheXMdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
     : NDim(TheNDim), Cell(TheCell), Mdl(TheMdl), XMdl(TheXMdl), GE(NULL), Active(Prp.HasKey("active") ? Prp("active") : true),
-      GTy(SDPairToGType(Prp,(NDim==3?"d3d":"d2d")))
+      GTy(SDPairToGType(Prp,(NDim==3?"d3d":"d2d"))), IsUWP(false)
 {
     // connectivity
     Con.Resize (Nodes.Size());

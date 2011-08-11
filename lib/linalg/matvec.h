@@ -1099,7 +1099,7 @@ inline void Dot (ATensor2 const & A, ATensor2 const & B,  ATensor2 & C)
     C(2) = A(8)*B(5)+A(7)*B(4)+A(2)*B(2);
 }
 
-/** Add R to operation involving skew and symm tensors: R += w*S - S*w, in which w = skew(L) = 0.5*(L*L^T). */
+/** Add R to operation involving skew and symm tensors: R += w*S - S*w, in which w = skew(L) = 0.5*(L-L^T). */
 inline void AddSkewTimesOp1 (ATensor2 const & L, Vec_t const & S,  Vec_t & R, double Tol=1.0e-14)
 {
     size_t ncp = size(R);

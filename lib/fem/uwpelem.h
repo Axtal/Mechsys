@@ -31,13 +31,16 @@ class UWPElem : public Element
 {
 public:
     // typedefs
-    typedef std::map<size_t,SDPair  const *> IdxToBcs_t;
-    typedef std::map<size_t,BCFuncs       *> IdxToBcf_t;
+    typedef std::map<size_t,SDPair  > IdxToBcs_t;
+    typedef std::map<size_t,BCFuncs*> IdxToBcf_t;
 
     // Static
     static size_t        NCo;     ///< Number of stress/strain components == 2*NDim
     static size_t        NDu;     ///< Number of DOFs (displacements) == NN*NDim
     static size_t        NDp;     ///< Number of DOFs of pressure = GEp->NN
+    static Array<size_t> LocU;    ///< location of U
+    static Array<size_t> LocWw;   ///< location of Ww
+    static Array<size_t> LocPw;   ///< location of Pw
     static Mat_t         M;       ///< NDu,NDu
     static Mat_t         Mw;      ///< NDu,NDu
     static Mat_t         Hw;      ///< NDp,NDp
@@ -60,6 +63,7 @@ public:
     static Vec_t         V;       ///< NDu
     static Vec_t         Ww;      ///< NDu
     static Vec_t         Pw;      ///< NDp
+    static Vec_t         dPwdt;   ///< NDp
     static Mat_t         Co;      ///< GE->NN,NDim   Coordinates matrix
     static Mat_t         Cf;      ///< GE->NFN,NDim  Face coordinates matrix
     static Mat_t         lw;      ///< NDim,NDim     O2 tensor: velocity gradient == Sum_n (vsn+wwn) dy Gn
@@ -83,13 +87,17 @@ public:
     // Methods
     void SetBCs        (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF);
     void CalcSurfLoads (double Time, Vec_t & Sl, Vec_t & Sq)  const;
-    void GetLoc        (Array<size_t> & LocV, Array<size_t> & LocWw, Array<size_t> & LocPw) const;
+    void GetLoc        () const;
     void ElemEqs       (double Time, Vec_t const & V_g, Vec_t const & Ww_g, Vec_t const & Pw_g) const;
     void StateKeys     (Array<String> & Keys)                 const { Keys = StaKeys; }
     void StateAtIP     (SDPair & KeysVals, int IdxIP)         const;
 
     // Internal Methods
     void Interp (Mat_t const & C, IntegPoint const & IP, double h=1.0) const; ///< Interpolation matrices
+
+    // Methods for Runge-Kutta
+    double Update  (size_t Idx, Vec_t const & V_g, Vec_t const & dPwdt_g, double dt); ///< Calculate rates and update. FE:Idx=0, ME:Idx=1
+    void   Restore ();                                                                ///< Restore state
 
     // Data
     Array<UnsatFlowState*>         FSta;    ///< Flow state
@@ -103,6 +111,9 @@ public:
 size_t        UWPElem::NCo = 0;
 size_t        UWPElem::NDu = 0;
 size_t        UWPElem::NDp = 0;
+Array<size_t> UWPElem::LocU;
+Array<size_t> UWPElem::LocWw;
+Array<size_t> UWPElem::LocPw;
 Mat_t         UWPElem::M;
 Mat_t         UWPElem::Mw;
 Mat_t         UWPElem::Hw;
@@ -125,6 +136,7 @@ double        UWPElem::Coef;
 Vec_t         UWPElem::V;
 Vec_t         UWPElem::Ww;
 Vec_t         UWPElem::Pw;
+Vec_t         UWPElem::dPwdt;
 Mat_t         UWPElem::Co;
 Mat_t         UWPElem::Cf;
 Mat_t         UWPElem::lw;
@@ -141,6 +153,9 @@ inline UWPElem::UWPElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, M
     : Element(NDim,Cell,Mdl,XMdl,Prp,Ini,Nodes),
       FMdl(static_cast<UnsatFlow const*>(XMdl)), HasGrav(false)
 {
+    // set u-w-p element
+    Element::IsUWP = true;
+
     // check
     if (GE  ==NULL) throw new Fatal("UWPElem::UWPElem: GE (geometry element) must be defined");
     if (Mdl ==NULL) throw new Fatal("UWPElem::UWPElem: Model must be defined");
@@ -189,9 +204,10 @@ inline UWPElem::UWPElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, M
         Ji.change_dim (NDim,   NDim);
         Jf.change_dim (NDim-1, NDim);
 
-        V .change_dim (NDu);
-        Ww.change_dim (NDu);
-        Pw.change_dim (NDp);
+        V    .change_dim (NDu);
+        Ww   .change_dim (NDu);
+        Pw   .change_dim (NDp);
+        dPwdt.change_dim (NDp);
 
         Co.change_dim (GE->NN,  NDim);
         Cf.change_dim (GE->NFN, NDim);
@@ -232,11 +248,14 @@ inline void UWPElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs *
     }
 
     // set essential BCs (do not depend on geometry shape)
-    if (BCs.HasKey("ux"))     { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetPU("ux", BCs("ux"), BCF); }
-    if (BCs.HasKey("uy"))     { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetPU("uy", BCs("uy"), BCF); }
-    if (BCs.HasKey("uz"))     { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetPU("uz", BCs("uz"), BCF); }
-    if (BCs.HasKey("pw"))     { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetPU("pw", BCs("pw"), BCF); }
-    if (BCs.HasKey("incsup")) { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetIncSup(BCs("alpha"));     }
+    if (BCs.HasKey("ux"))     { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetPU("ux",  BCs("ux"),  BCF); }
+    if (BCs.HasKey("uy"))     { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetPU("uy",  BCs("uy"),  BCF); }
+    if (BCs.HasKey("uz"))     { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetPU("uz",  BCs("uz"),  BCF); }
+    if (BCs.HasKey("wwx"))    { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetPU("wwx", BCs("wwx"), BCF); }
+    if (BCs.HasKey("wwy"))    { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetPU("wwy", BCs("wwy"), BCF); }
+    if (BCs.HasKey("wwz"))    { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetPU("wwz", BCs("wwz"), BCF); }
+    if (BCs.HasKey("pw"))     { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetPU("pw",  BCs("pw"),  BCF); }
+    if (BCs.HasKey("incsup")) { for (size_t j=0; j<GE->NFN; ++j) Con[GE->FNode(IdxEdgeOrFace,j)]->SetIncSup(BCs("alpha"));       }
 
     // set maps for prescribed loads
     bool has_qx = BCs.HasKey("qx");  // x component of distributed loading
@@ -247,7 +266,7 @@ inline void UWPElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs *
     bool has_qw = BCs.HasKey("qw");  // water flux
     if (has_qx || has_qy || has_qz || has_qn || has_qt || has_qw)
     {
-        LBCs[IdxEdgeOrFace] = &BCs;
+        LBCs[IdxEdgeOrFace] = BCs;
         LBCf[IdxEdgeOrFace] = BCF;
     }
 }
@@ -272,12 +291,12 @@ inline void UWPElem::CalcSurfLoads (double Time, Vec_t & Sl, Vec_t & Sq) const
         double lm = (itt->second==NULL ? 1.0 : itt->second->fm(Time));
 
         // prescribed quantities
-        bool has_qx = it->second->HasKey("qx");  // x component of distributed loading
-        bool has_qy = it->second->HasKey("qy");  // y component of distributed loading
-        bool has_qz = it->second->HasKey("qz");  // z component of distributed loading
-        bool has_qn = it->second->HasKey("qn");  // normal distributed loading
-        bool has_qt = it->second->HasKey("qt");  // tangential distributed loading (2D only)
-        bool has_qw = it->second->HasKey("qw");  // water flux
+        bool has_qx = it->second.HasKey("qx");  // x component of distributed loading
+        bool has_qy = it->second.HasKey("qy");  // y component of distributed loading
+        bool has_qz = it->second.HasKey("qz");  // z component of distributed loading
+        bool has_qn = it->second.HasKey("qn");  // normal distributed loading
+        bool has_qt = it->second.HasKey("qt");  // tangential distributed loading (2D only)
+        bool has_qw = it->second.HasKey("qw");  // water flux
 
         // matrix of coordinates of edge/face
         for (size_t i=0; i<GE->NFN; ++i)
@@ -288,11 +307,11 @@ inline void UWPElem::CalcSurfLoads (double Time, Vec_t & Sl, Vec_t & Sq) const
         if (has_qx || has_qy || has_qz || has_qn || has_qt)
         {
             // loading
-            double qx = (has_qx ? (*it->second)("qx") : 0.0);
-            double qy = (has_qy ? (*it->second)("qy") : 0.0);
-            double qz = (has_qz ? (*it->second)("qz") : 0.0);
-            double qn = (has_qn ? (*it->second)("qn") : 0.0);
-            double qt = (has_qt ? (*it->second)("qt") : 0.0);
+            double qx = (has_qx ? (it->second)("qx") : 0.0);
+            double qy = (has_qy ? (it->second)("qy") : 0.0);
+            double qz = (has_qz ? (it->second)("qz") : 0.0);
+            double qn = (has_qn ? (it->second)("qn") : 0.0);
+            double qt = (has_qt ? (it->second)("qt") : 0.0);
 
             // set
             double detJ, coef;
@@ -345,7 +364,7 @@ inline void UWPElem::CalcSurfLoads (double Time, Vec_t & Sl, Vec_t & Sq) const
         // water flux
         if (has_qw)
         {
-            double qw = (*it->second)("qw");
+            double qw = (it->second)("qw");
             double detJ, coef;
             for (size_t i=0; i<GE->NFIP; ++i)
             {
@@ -360,16 +379,16 @@ inline void UWPElem::CalcSurfLoads (double Time, Vec_t & Sl, Vec_t & Sq) const
     }
 }
 
-inline void UWPElem::GetLoc (Array<size_t> & LocV, Array<size_t> & LocWw, Array<size_t> & LocPw) const
+inline void UWPElem::GetLoc () const
 {
-    LocV .Resize (NDu);
+    LocU .Resize (NDu);
     LocWw.Resize (NDu);
     LocPw.Resize (NDp);
     for (size_t i=0; i<GE->NN; ++i)
     {
-        LocV [i*NDim+0] = Con[i]->Eq("ux");
-        LocV [i*NDim+1] = Con[i]->Eq("uy");  if (NDim==3)
-        LocV [i*NDim+2] = Con[i]->Eq("uz");
+        LocU [i*NDim+0] = Con[i]->Eq("ux");
+        LocU [i*NDim+1] = Con[i]->Eq("uy");  if (NDim==3)
+        LocU [i*NDim+2] = Con[i]->Eq("uz");
         LocWw[i*NDim+0] = Con[i]->Eq("wwx");
         LocWw[i*NDim+1] = Con[i]->Eq("wwy");  if (NDim==3)
         LocWw[i*NDim+2] = Con[i]->Eq("wwz");
@@ -411,6 +430,7 @@ inline void UWPElem::ElemEqs (double Time, Vec_t const & V_g, Vec_t const & Ww_g
     double Cpw, Cvs, trd;
     for (size_t i=0; i<GE->NIP; ++i)
     {
+        // interpolation
         Interp (Co, GE->IPs[i]);
 
         // water relative velocity at IP
@@ -580,6 +600,62 @@ inline void UWPElem::Interp (Mat_t const & C, IntegPoint const & IP, double h) c
     {
         Np (0,j) = GE->N(j);
         Npv(j)   = GE->N(j);
+    }
+}
+
+inline double UWPElem::Update (size_t Idx, Vec_t const & V_g, Vec_t const & dPwdt_g, double dt)
+{
+    // element vectors
+    for (size_t i=0; i<GE->NN; ++i)
+    {
+        V (i*NDim+0) = V_g    (Con[i]->Eq("ux"));
+        V (i*NDim+1) = V_g    (Con[i]->Eq("uy"));  if (NDim==3)
+        V (i*NDim+2) = V_g    (Con[i]->Eq("uz"));
+        dPwdt(i)     = dPwdt_g(Con[i]->Eq("pw"));
+    }
+
+    // coordinates matrix
+    for (size_t i=0; i<GE->NN; ++i)
+    for (int    j=0; j<NDim;   ++j)
+        Co(i,j) = Con[i]->Vert.C[j];
+
+    // update
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        // interpolation
+        Interp (Co, GE->IPs[i]);
+
+        // solids rate of deformation at IP
+        d = B * V;
+
+        // pore-water pressure rate at IP
+        double dpwdt = 0.0;
+        for (size_t k=0; k<GE->NN; ++k) dpwdt += Np(0,k) * dPwdt(k);
+
+        // backup
+        if (Idx==0) // FE
+        {
+            Sta [i]->Backup ();
+            FSta[i]->Backup ();
+        }
+        else // ME
+        {
+            Sta [i]->Restore ();
+            FSta[i]->Restore ();
+        }
+
+        // rate and update
+        FMdl->RateAndUpdate (Idx, d, dpwdt, dt, FSta[i], static_cast<EquilibState*>(Sta[i]));
+    }
+    return 0.0;
+}
+
+inline void UWPElem::Restore ()
+{
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        Sta [i]->Restore ();
+        FSta[i]->Restore ();
     }
 }
 

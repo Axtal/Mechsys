@@ -53,6 +53,7 @@ public:
     double rw        (double Sw) const;                                        ///< kwsat multiplier
     void   GenCurve  (Array<double> pcs, char const * Filekey, size_t Np=100); ///< Generate WRC
     void   Stiffness (State const * Sta, UnsatFlowState const * FSta, Mat_t & D) const; ///< Coupled "effective" stiffness
+    void   RateAndUpdate (size_t Idx, Vec_t const & d, double dpwdt, double dt, UnsatFlowState * FSta, EquilibState * Sta) const;
 
     // Pointer to equilib model
     Model const * EMdl;
@@ -177,7 +178,7 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms, Model const * Equili
     Inv (kwsat, kwsatI);
 
     // compressibility of water
-    Cw = (Prms.HasKey("Cw") ? Prms("Cw") : 0.0);
+    Cw = (Prms.HasKey("Cw") ? Prms("Cw") : 1.0e-7);
 
     // stress update
     HMSUp.SetModel (EquilibMdl, this);
@@ -254,6 +255,52 @@ inline void UnsatFlow::TgVars (UnsatFlowState const * Sta, Vec_t const & Ww, dou
     Cpw = nw * Cw  -  Sta->n * Sta->RhoW * _Cpc(Sta->Drying, Sta->pc, Sta->Sw);
     Cvs = Sta->n * Sta->RhoW * Cn * (1.0-Sta->n)  +  Sta->Sw * Sta->RhoW;
     fwd = (-nw*nw*gamw/rw(Sta->Sw)) * kwsatI * Ww;
+}
+
+inline void UnsatFlow::RateAndUpdate (size_t Idx, Vec_t const & d, double dpwdt, double dt, UnsatFlowState * FSta, EquilibState * Sta) const
+{
+    // alloc vectors
+    if (FSta->dndt.Size()<1)
+    {
+        FSta->dndt   .Resize (2);
+        FSta->dSwdt  .Resize (2);
+        FSta->dRhoWdt.Resize (2);
+    }
+    if (Sta->dSigdt.Size()<1)
+    {
+        Sta->dSigdt.Resize (2);
+        for (size_t i=0; i<2; ++i) Sta->dSigdt[i].change_dim (NCps);
+    }
+
+    // rate
+    double Cn = 0.0; // == dSwdn
+    double pw = -FSta->pc;
+    Mat_t  D;
+    EMdl->Stiffness (Sta, D);
+    FSta->dndt   [Idx] = (1.0-FSta->n)*Tra(d);
+    FSta->dSwdt  [Idx] = -Cpc*dpwdt + Cn*FSta->dndt[Idx];
+    FSta->dRhoWdt[Idx] = Cw*dpwdt;
+    Sta ->dSigdt [Idx] = D*d - (dpwdt*FSta->Sw + pw*FSta->dSwdt[Idx])*I;
+
+    // update
+    if (Idx==0) // Forward-Euler
+    {
+        FSta->n    += FSta->dndt   [0]*dt;
+        FSta->Sw   += FSta->dSwdt  [0]*dt;
+        FSta->RhoW += FSta->dRhoWdt[0]*dt;
+        Sta ->Sig  += Sta ->dSigdt [0]*dt;
+    }
+    else if (Idx==1) // Modified-Euler
+    {
+        FSta->n    += (0.5*dt)*(FSta->dndt   [0] + FSta->dndt   [1]);
+        FSta->Sw   += (0.5*dt)*(FSta->dSwdt  [0] + FSta->dSwdt  [1]);
+        FSta->RhoW += (0.5*dt)*(FSta->dRhoWdt[0] + FSta->dRhoWdt[1]);
+        Sta ->Sig  += (0.5*dt)*(Sta ->dSigdt [0] + Sta ->dSigdt [1]);
+    }
+    else throw new Fatal("UnsatFlow::RateAndUpdate: Idx==%zd is invalid (0=FE, 1=ME)",Idx);
+    FSta->pc     += (-dpwdt)*dt;
+    FSta->Drying  = (FSta->dSwdt[0]<0 ? true : false);
+    Sta ->Eps    += d*dt;
 }
 
 inline void UnsatFlow::TgIncs (UnsatFlowState const * Sta, double Dpw, double DEv, double & DSw, double & Dchi) const

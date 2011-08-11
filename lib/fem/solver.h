@@ -62,16 +62,15 @@ public:
     // Methods
     virtual String Name () const =0;
 
+    // Auxiliary methods
+    double Timestep (int i, int a=7, double L=100.0, int sch=0, double m=2.0) const; ///< Calculate nonlinear steps
+
     // Data
     Domain  & Dom;      ///< Domain
     pOutFun   OutFun;   ///< Output function (called during output)
     void    * OutDat;   ///< Debug data (to be used with either OutFun or DbgFun)
     pOutFun   DbgFun;   ///< Debug function (called everytime for some internal (update) methods)
     void    * DbgDat;   ///< Debug data (to be used with either OutFun or DbgFun)
-
-    // Auxiliary methods
-    static double Timestep (int i, int a=7, double L=100.0, int sch=0, double m=2.0)
-    { return (i<a ? pow(2.0,i)/L : (sch==0 ? pow(2.0,i-a) : pow(2.0,a)/L+m*(i-a))); }
 };
 
 
@@ -85,6 +84,11 @@ inline Solver::Solver (Domain & TheDom, SDPair const & Flags, pOutFun TheOutFun,
       DbgFun   (TheDbgFun),
       DbgDat   (TheDbgDat)
 {
+}
+
+inline double Solver::Timestep (int i, int a, double L, int sch, double m) const
+{
+    return (i<a ? pow(2.0,i)/L : (sch==0 ? pow(2.0,i-a) : pow(2.0,a)/L+m*(i-a)));
 }
 
 

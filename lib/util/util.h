@@ -59,6 +59,12 @@ inline bool   IsNanOrInf (double Val)              { int r=std::fpclassify(Val);
 
 template <typename Val_T> inline Val_T Min (Val_T const & a, Val_T const & b) { return (a<b ? a : b); } ///< Minimum between a and b
 template <typename Val_T> inline Val_T Max (Val_T const & a, Val_T const & b) { return (a>b ? a : b); } ///< Maximum between a and b
+template <typename Val_T> inline Val_T Max (Val_T const & a, Val_T const & b, Val_T const & c)
+{
+    if (a>=b && a>=c) return a;
+    if (b>=a && b>=c) return b;
+    return c;
+} ///< Maximum between a and b and c
 
 /** Swap two values. */
 template <typename Val_T>
