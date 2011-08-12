@@ -212,6 +212,7 @@ inline void Node::SetPU (String const & UKey, double Val, BCFuncs * BCF)
 {
     size_t idx_pu = _PU.ReSet (UKey.CStr(), Val);
     if (idx_pu==_MPU.Size()) _MPU.Push (BCF);
+    else                     _MPU[idx_pu] = BCF;
     _has_incsup = false;
     _pU[_U2IDOF(UKey)] = true;
 }
@@ -220,6 +221,7 @@ inline void Node::AddToPF (String const & FKey, double Val, BCFuncs * BCF)
 {
     size_t idx_pf = _PF.AddVal (FKey.CStr(), Val);
     if (idx_pf==_MPF.Size()) _MPF.Push (BCF);
+    else                     _MPF[idx_pf] = BCF;
 }
 
 inline double Node::PU (size_t IdxPU, double Time) const
@@ -365,12 +367,14 @@ std::ostream & operator<< (std::ostream & os, Node const & N)
     for (size_t i=0; i<N.NPU(); ++i)
     {
         os << N._PU.Keys[i] << "=" << N._PU(N._PU.Keys[i]);
+        if (N._MPU[i]!=NULL) os << "*";
         if (i!=N.NPU()-1) os << " ";
     }
     os << "]" << TERM_CLR5 << " PF=[";
     for (size_t i=0; i<N.NPF(); ++i)
     {
         os << N._PF.Keys[i] << "=" << N._PF(N._PF.Keys[i]);
+        if (N._MPF[i]!=NULL) os << "*";
         if (i!=N.NPF()-1) os << " ";
     }
     os << "]" << TERM_RST;
