@@ -67,7 +67,7 @@ public:
 
 inline UWPSolver::UWPSolver (Domain & Dom, SDPair const & Flags, pOutFun OutFun, void * OutDat, pOutFun DbgFun, void * DbgDat)
     : Solver (Dom, Flags, OutFun, OutDat, DbgFun, DbgDat), WithInfo(true),
-      STOL(1.0e-2), mMin(0.2), mMax(2.0), dTini(0.01), dTlast(-1.0), MaxSS(100)
+      STOL(1.0e-2), mMin(0.2), mMax(2.0), dTini(0.01), dTlast(-1.0), MaxSS(2000)
 {
 }
 
@@ -192,7 +192,8 @@ inline void UWPSolver::Assemble (double Time, Vec_t const & TheV, Vec_t const & 
                 for (size_t j=0; j<UWPElem::LocU.Size(); ++j)
                 {
                     M.PushEntry (UWPElem::LocU[i], UWPElem::LocU[j], UWPElem::M(i,j));
-                    if (!pU[UWPElem::LocU[i]] && !pU[UWPElem::LocU[j]]) Mb.PushEntry (UWPElem::LocU[i], UWPElem::LocU[j], UWPElem::M(i,j) - UWPElem::Mw(i,j));
+                    //if (!pU[UWPElem::LocU[i]] && !pU[UWPElem::LocU[j]]) Mb.PushEntry (UWPElem::LocU[i], UWPElem::LocU[j], UWPElem::M(i,j) - UWPElem::Mw(i,j));
+                    Mb.PushEntry (UWPElem::LocU[i], UWPElem::LocU[j], UWPElem::M(i,j) - UWPElem::Mw(i,j));
                 }
             }
 
@@ -202,7 +203,8 @@ inline void UWPSolver::Assemble (double Time, Vec_t const & TheV, Vec_t const & 
                 hw(UWPElem::LocWw[i]) += UWPElem::hw(i);
                 for (size_t j=0; j<UWPElem::LocWw.Size(); ++j)
                 {
-                    if (!pW[UWPElem::LocWw[i]] && !pW[UWPElem::LocWw[j]]) Mw.PushEntry (UWPElem::LocWw[i], UWPElem::LocWw[j], UWPElem::Mw(i,j));
+                    //if (!pW[UWPElem::LocWw[i]] && !pW[UWPElem::LocWw[j]]) Mw.PushEntry (UWPElem::LocWw[i], UWPElem::LocWw[j], UWPElem::Mw(i,j));
+                    Mw.PushEntry (UWPElem::LocWw[i], UWPElem::LocWw[j], UWPElem::Mw(i,j));
                 }
             }
 
@@ -211,7 +213,8 @@ inline void UWPSolver::Assemble (double Time, Vec_t const & TheV, Vec_t const & 
                 ew(UWPElem::LocPw[i]) += UWPElem::ew(i);
                 for (size_t j=0; j<UWPElem::LocPw.Size(); ++j)
                 {
-                    if (!pP[UWPElem::LocPw[i]] && !pP[UWPElem::LocPw[j]]) Hw.PushEntry (UWPElem::LocPw[i], UWPElem::LocPw[j], UWPElem::Hw(i,j));
+                    //if (!pP[UWPElem::LocPw[i]] && !pP[UWPElem::LocPw[j]]) Hw.PushEntry (UWPElem::LocPw[i], UWPElem::LocPw[j], UWPElem::Hw(i,j));
+                    Hw.PushEntry (UWPElem::LocPw[i], UWPElem::LocPw[j], UWPElem::Hw(i,j));
                 }
             }
 
@@ -234,9 +237,9 @@ inline void UWPSolver::Assemble (double Time, Vec_t const & TheV, Vec_t const & 
         }
     }
 
-    for (size_t i=0; i<pEqU.Size(); ++i) Mb.PushEntry (pEqU[i],pEqU[i], 1.0);
-    for (size_t i=0; i<pEqW.Size(); ++i) Mw.PushEntry (pEqW[i],pEqW[i], 1.0);
-    for (size_t i=0; i<pEqP.Size(); ++i) Hw.PushEntry (pEqP[i],pEqP[i], 1.0);
+    //for (size_t i=0; i<pEqU.Size(); ++i) Mb.PushEntry (pEqU[i],pEqU[i], 1.0);
+    //for (size_t i=0; i<pEqW.Size(); ++i) Mw.PushEntry (pEqW[i],pEqW[i], 1.0);
+    //for (size_t i=0; i<pEqP.Size(); ++i) Hw.PushEntry (pEqP[i],pEqP[i], 1.0);
 
     /*
     M .WriteSMAT("M");
@@ -333,7 +336,7 @@ inline void UWPSolver::Solve (double tf, double, double dtOut, char const * File
     // output initial state
     printf ("\n%s--- Stage solution --- u-w-p Solver -- Runge-Kutta --------------------------%s\n",TERM_CLR1,TERM_RST);
     printf ("%s%10s  %4s%s\n",TERM_CLR2,"Time","NSS",TERM_RST);
-    printf ("%10.6f  %4zd\n",Dom.Time,0);
+    printf ("%10.6f  %4d\n",Dom.Time,0);
     if (Dom.IdxOut==0)
     {
         Dom.OutResults (FileKey);
@@ -392,7 +395,7 @@ inline void UWPSolver::Solve (double tf, double, double dtOut, char const * File
             //break;
 
             // update
-            //if (error<STOL)
+            if (error<STOL)
             {
                 T        += dT;
                 Dom.Time += dt;
@@ -401,16 +404,16 @@ inline void UWPSolver::Solve (double tf, double, double dtOut, char const * File
                 Pw        = Pw_me;
                 if (m>mMax) m = mMax;
             }
-            //else
-            //{
-                //for (size_t k=0; k<Dom.ActEles.Size(); ++k) Dom.ActEles[k]->Restore ();
-                //if (m<mMin) m = mMin;
-            //}
-            //dT = m * dT;
+            else
+            {
+                for (size_t k=0; k<Dom.ActEles.Size(); ++k) Dom.ActEles[k]->Restore ();
+                if (m<mMin) m = mMin;
+            }
+            dT = m * dT;
             if (dT>1.0-T) dT = 1.0-T;
             else dTlast = dT;
         }
-        //if (stp==MaxSS) throw new Fatal("UWPSolver::Solve: Runge-Kutta (2nd order / ME) did not converge after %zd substeps",stp);
+        if (stp==MaxSS) throw new Fatal("UWPSolver::Solve: Runge-Kutta (2nd order / ME) did not converge after %zd substeps",stp);
 
         // update nodes to tout
         

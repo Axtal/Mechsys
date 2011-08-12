@@ -33,9 +33,6 @@
 class UnsatFlow : public Model
 {
 public:
-    // static
-    static Vec_t Iv; ///< Identity vector (NCo)
-
     // enums
     enum WRC_t { BC_t, ZI_t, HZ_t, PW_t }; ///< WRC type
 
@@ -91,8 +88,6 @@ private:
     int _RK_func_Sw (double t, double const Sw[], double dSwdt[]);
     int _RK_func_pc (double t, double const pc[], double dpcdt[]);
 };
-
-Vec_t UnsatFlow::Iv;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -182,15 +177,6 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms, Model const * Equili
 
     // stress update
     HMSUp.SetModel (EquilibMdl, this);
-
-    // Iv
-    if (size(Iv)==0)
-    {
-        Iv.change_dim(NDim==2 ? 4 : 6);
-        Iv(0) = 1.;
-        Iv(1) = 1.;
-        Iv(2) = 1.;
-    }
 }
 
 inline void UnsatFlow::InitIvs (SDPair const & Ini, State * Sta) const
@@ -509,7 +495,7 @@ inline void UnsatFlow::Stiffness (State const * Sta, UnsatFlowState const * FSta
 
     // constitutive stresses
     TgVars (FSta);
-    sta.Sig += (chi*(-FSta->pc))*Iv;
+    sta.Sig += (chi*(-FSta->pc))*I;
 
     // stiffness
     EMdl->Stiffness (&sta, D);

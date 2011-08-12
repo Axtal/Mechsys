@@ -137,6 +137,9 @@ public:
     bool   rkdyncte;    ///< 49 rk scheme dyn cte M and C
     bool   uwp;         ///< 50 u-w-p TPM formulation ?
 
+    Array<String> AllUKeys, AllUKeysBCF;
+    Array<String> AllFKeys, AllFKeysBCF;
+
     // Additional data
     Dict * Prms; ///< parameters (set by SetMat)
     Dict * Inis; ///< initial values (set by SetMat)
@@ -295,6 +298,26 @@ inline void InpFile::Defaults ()
     haspw0     = false;
     rkdyncte   = true;   // 49
     uwp        = false;  // 50
+
+    for (FEM::ElementVarKeys_t::const_iterator it=FEM::ElementVarKeys.begin(); it!=FEM::ElementVarKeys.end(); ++it)
+    {
+        // U keys
+        Array<String> keys;
+        Util::Keys2Array (it->second.first, keys);
+        for (size_t i=0; i<keys.Size(); ++i)
+        {
+            AllUKeys   .XPush (keys[i]);
+            AllUKeysBCF.XPush ("bcf_"+keys[i]);
+        }
+
+        // F keys
+        Util::Keys2Array (it->second.second, keys);
+        for (size_t i=0; i<keys.Size(); ++i)
+        {
+            AllFKeys   .XPush (keys[i]);
+            AllFKeysBCF.XPush ("bcf_"+keys[i]);
+        }
+    }
 }
 
 inline void InpFile::Read (char const * FileName)
@@ -417,20 +440,12 @@ inline void InpFile::Read (char const * FileName)
             {
                 if      (key=="ndat") ndat = atoi(str_val.CStr());
                 else if (ndat<0) throw new Fatal("InpFile::Read: Reading boundary conditions (stages). Error in file <%s> at line # %d: key 'ndat' must come after 'nbcs' and before data. '%s' is in the wrong place",FileName,line_num,key.CStr());
-                else if (key=="tag")   { bcstag = atoi(str_val.CStr());              idxdat++; }
-                else if (key=="ux")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="uy")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="uz")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="wwx")   { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="wwy")   { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="wwz")   { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="fx")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="fy")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="fz")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="qn")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="pw")    { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="bcf")   { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
-                else if (key=="fgrav") { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="tag")           { bcstag = atoi(str_val.CStr());              idxdat++; }
+                else if (AllUKeys   .Has(key)) { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (AllFKeys   .Has(key)) { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (AllUKeysBCF.Has(key)) { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (AllFKeysBCF.Has(key)) { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (key=="fgrav")         { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else throw new Fatal("InpFile::Read: Reading boundary conditions (stages). Error in file <%s> at line # %d when reading data of Stage # %d. Key==%s is invalid or in the wrong place",FileName,line_num,idxstage,key.CStr());
                 if (idxdat==ndat)
                 {

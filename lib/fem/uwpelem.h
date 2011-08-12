@@ -36,40 +36,40 @@ public:
 
     // Static
     static size_t        NCo;     ///< Number of stress/strain components == 2*NDim
-    static size_t        NDu;     ///< Number of DOFs (displacements) == NN*NDim
-    static size_t        NDp;     ///< Number of DOFs of pressure = GEp->NN
+    static size_t        NDu;     ///< Number of DOFs (displacements)     == NN*NDim
+    static size_t        NDp;     ///< Number of DOFs of pressure         == GEp->NN
     static Array<size_t> LocU;    ///< location of U
     static Array<size_t> LocWw;   ///< location of Ww
     static Array<size_t> LocPw;   ///< location of Pw
-    static Mat_t         M;       ///< NDu,NDu
-    static Mat_t         Mw;      ///< NDu,NDu
-    static Mat_t         Hw;      ///< NDp,NDp
-    static Vec_t         f;       ///< NDu
-    static Vec_t         fw;      ///< NDu
-    static Vec_t         hw;      ///< NDu
-    static Vec_t         cw;      ///< NDu
-    static Vec_t         ew;      ///< NDp
-    static Mat_t         dNdX;    ///< NDim,GE->NN
-    static Mat_t         B;       ///< NCo,NDu
-    static Mat_t         Bp;      ///< NDim,GE->NN  == dNdX
-    static Mat_t         N;       ///< NDim,NDu
-    static Mat_t         Np;      ///< 1,NDp
-    static Vec_t         Npv;     ///< NDp
-    static Mat_t         J;       ///< NDim,NDim     Jacobian
-    static Mat_t         Ji;      ///< NDim,NDim     Inverse of jacobian
-    static Mat_t         Jf;      ///< NDim-1,NDim   Jacobian of face
+    static Mat_t         M;       ///< Solids mass matrix:      NDu,NDu
+    static Mat_t         Mw;      ///< Water mass matrix:       NDu,NDu
+    static Mat_t         Hw;      ///< Water storage matrix:    NDp,NDp
+    static Vec_t         f;       ///< Solids force vector:     NDu
+    static Vec_t         fw;      ///< Water force vector:      NDu
+    static Vec_t         hw;      ///< Water gradient vector:   NDu
+    static Vec_t         cw;      ///< Water convection vector: NDu
+    static Vec_t         ew;      ///< Water coupling vector:   NDp
+    static Mat_t         dNdX;    ///< Derivative of shape functions:  NDim,GE->NN
+    static Mat_t         B;       ///< Matrix with deriv of shapes:    NCo,NDu
+    static Mat_t         Bp;      ///< Pressure matrix with derivs:    NDim,GE->NN  == dNdX
+    static Mat_t         N;       ///< Shape functions:                NDim,NDu
+    static Mat_t         Np;      ///< Pressure shape functions:       1,NDp
+    static Vec_t         Npv;     ///< Vector of pressure shape funcs: NDp
+    static Mat_t         J;       ///< Jacobian of dNdX:               NDim,NDim
+    static Mat_t         Ji;      ///< Inverse of J:                   NDim,NDim
+    static Mat_t         Jf;      ///< Jacobian of dNfacedX:           NDim-1,NDim
     static double        DetJ;    ///< Determinant of Jacobian
     static double        Coef;    ///< Coef for integration
-    static Vec_t         V;       ///< NDu
-    static Vec_t         Ww;      ///< NDu
-    static Vec_t         Pw;      ///< NDp
-    static Vec_t         dPwdt;   ///< NDp
-    static Mat_t         Co;      ///< GE->NN,NDim   Coordinates matrix
-    static Mat_t         Cf;      ///< GE->NFN,NDim  Face coordinates matrix
-    static Mat_t         lw;      ///< NDim,NDim     O2 tensor: velocity gradient == Sum_n (vsn+wwn) dy Gn
-    static Vec_t         ww;      ///< NDim          ww = N * Ww
-    static Vec_t         d;       ///< NCo           O2 tensor: rate of deformation of solids == B*v
-    static Vec_t         fwd;     ///< NDim          drag force vector
+    static Vec_t         V;       ///< Element (local) solids velocity vector: NDu
+    static Vec_t         Ww;      ///< Element (local) water rel. velocity:    NDu
+    static Vec_t         Pw;      ///< Element (local) water pressure:         NDp
+    static Vec_t         dPwdt;   ///< Element (local) derivative of pw:       NDp
+    static Mat_t         Co;      ///< Coordinates matrix:                                    GE->NN,NDim   
+    static Mat_t         Cf;      ///< Face coordinates matrix:                               GE->NFN,NDim  
+    static Mat_t         lw;      ///< O2 tensor: velocity gradient == Sum_n (vsn+wwn) dy Gn: NDim,NDim     
+    static Vec_t         ww;      ///< Water rel velocit at IP: ww = N * Ww:                  NDim          
+    static Vec_t         d;       ///< O2 tensor: rate of deformation of solids == B*v:       NCo           
+    static Vec_t         fwd;     ///< Drag force vector:                                     NDim          
     static Array<String> StaKeys; ///< State keys such as 'sx', 'sy', to be extrapolated to nodes
 
     // Constructor
@@ -85,12 +85,12 @@ public:
     ~UWPElem () { for (size_t i=0; i<GE->NIP; ++i) delete FSta[i]; }
 
     // Methods
-    void SetBCs        (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF);
-    void CalcSurfLoads (double Time, Vec_t & Sl, Vec_t & Sq)  const;
-    void GetLoc        () const;
-    void ElemEqs       (double Time, Vec_t const & V_g, Vec_t const & Ww_g, Vec_t const & Pw_g) const;
-    void StateKeys     (Array<String> & Keys)                 const { Keys = StaKeys; }
-    void StateAtIP     (SDPair & KeysVals, int IdxIP)         const;
+    void SetBCs        (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF);                      ///< Set boundary conditions
+    void CalcSurfLoads (double Time, Vec_t & Sl, Vec_t & Sq)  const;                                   ///< Calculate surface loads
+    void GetLoc        ()                                     const;                                   ///< Get location vectors
+    void ElemEqs       (double Time, Vec_t const & V_g, Vec_t const & Ww_g, Vec_t const & Pw_g) const; ///< Element equations: M,Mw,Hw,f,fw,hw,cw,ew
+    void StateKeys     (Array<String> & Keys)                 const { Keys = StaKeys; }                ///< State keys
+    void StateAtIP     (SDPair & KeysVals, int IdxIP)         const;                                   ///< State at IP
 
     // Internal Methods
     void Interp (Mat_t const & C, IntegPoint const & IP, double h=1.0) const; ///< Interpolation matrices
@@ -620,6 +620,7 @@ inline double UWPElem::Update (size_t Idx, Vec_t const & V_g, Vec_t const & dPwd
         Co(i,j) = Con[i]->Vert.C[j];
 
     // update
+    double dpwdt;
     for (size_t i=0; i<GE->NIP; ++i)
     {
         // interpolation
@@ -629,8 +630,7 @@ inline double UWPElem::Update (size_t Idx, Vec_t const & V_g, Vec_t const & dPwd
         d = B * V;
 
         // pore-water pressure rate at IP
-        double dpwdt = 0.0;
-        for (size_t k=0; k<GE->NN; ++k) dpwdt += Np(0,k) * dPwdt(k);
+        dpwdt = dot (Npv, dPwdt);
 
         // backup
         if (Idx==0) // FE
