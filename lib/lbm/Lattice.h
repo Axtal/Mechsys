@@ -117,6 +117,7 @@ inline Lattice::Lattice(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, doubl
 
 inline void Lattice::Stream()
 {
+    
     // Assign temporal distributions
     for (size_t i=1;i<Cells.Size()    ;i++)
     for (size_t j=1;j<Cells[i]->Nneigh;j++)
@@ -124,7 +125,7 @@ inline void Lattice::Stream()
         Cells[Cells[i]->Neighs[j]]->Ftemp[j] = Cells[i]->F[j];
     }
 
-    // Swap the distribution values
+    //Swap the distribution values
     for (size_t i=0;i<Cells.Size()    ;i++)
     {
         for (size_t j=1;j<Cells[i]->Nneigh;j++)

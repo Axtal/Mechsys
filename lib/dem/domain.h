@@ -119,8 +119,8 @@ public:
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode);                                     ///< Add a single voronoi cell, it should be built before tough
-    void AddTorus    (int Tag, Vec3_t const & X, Vec3_t const & N, double Rmax, double R, double rho);                                 ///< Add a single torus at position X with a normal N, circunference Rmax and spheroradius R
-    void AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t const & X1, double R1, double R, double rho);
+    void AddTorus    (int Tag, Vec3_t const & X, Vec3_t const & N, double Rmax, double R, double rho);                           ///< Add a single torus at position X with a normal N, circunference Rmax and spheroradius R
+    void AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t const & X1, double R1, double R, double rho);                ///< Add a cylinder formed by the connection of two circles at positions X0 and X1 and radii R0 and R1
 
     // Methods
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
@@ -1549,7 +1549,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             if (TheFileKey!=NULL)
             {
                 String fn;
-                fn.Printf    ("%s_%08d", TheFileKey, idx_out);
+                fn.Printf    ("%s_%04d", TheFileKey, idx_out);
                 if(RenderVideo) WritePOV     (fn.CStr());
                 EnergyOutput (idx_out, oss_energy);
             }

@@ -81,23 +81,23 @@ int main(int argc, char **argv) try
 		Vec3_t V;  V = 0.0, 0.0, 0.0;
 		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
 		{
-            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
-            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
-            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
-            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(100.0,V);
+            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
+            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
+            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
+            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(100.0,V);
 		}
 		else
 		{
-            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
-            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(100.0,V);
-            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
-            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
+            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
+            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(100.0,V);
+            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
+            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
 		}
     }
 
     // Set parameters
     Dom.Lat[0].G = -200.0;
-    Dom.Lat[0].Gs= -800.0;
+    Dom.Lat[0].Gs= -400.0;
     //Dom.Lat[0].G = -0.0;
     //Dom.Lat[0].Gs= -0.0;
     Dom.Lat[1].G =  0.0;

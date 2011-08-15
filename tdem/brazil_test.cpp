@@ -77,9 +77,12 @@ int main(int argc, char **argv) try
     UserData dat; 
     Domain d(&dat);
     Mesh::Unstructured mesh(2);
+    bool   Render;
     size_t n_divisions = 30;
     double thickness   = 5.0;
     double radius      = 20.0;
+    double Kn          = 1.0e6;
+    double Kt          = 3.3e5;
     double Bn          = 1.0e6;
     double Bt          = 3.3e5;
     double Bm          = 3.3e5;
@@ -93,9 +96,13 @@ int main(int argc, char **argv) try
     double Tf          = 10.0;
     double strf        = 0.01;
 
+
+    infile >> Render;             infile.ignore(200,'\n');
     infile >> n_divisions;        infile.ignore(200,'\n');
     infile >> thickness;          infile.ignore(200,'\n');
     infile >> radius;             infile.ignore(200,'\n');
+    infile >> Kn;                 infile.ignore(200,'\n');
+    infile >> Kt;                 infile.ignore(200,'\n');
     infile >> Bn;                 infile.ignore(200,'\n');
     infile >> Bt;                 infile.ignore(200,'\n');
     infile >> Bm;                 infile.ignore(200,'\n');
@@ -124,7 +131,7 @@ int main(int argc, char **argv) try
 
     mesh.Generate();
     d.GenFromMesh(mesh,0.1*sqrt(Amax/10),3.0,true,false,thickness);
-    d.Alpha = 0.1*sqrt(Amax/10);
+    d.Alpha = 0.5*sqrt(Amax/10);
     d.Center();
     Vec3_t Xmin,Xmax;
     d.BoundingBox(Xmin,Xmax);
@@ -133,9 +140,9 @@ int main(int argc, char **argv) try
     
     // properties of particles prior the brazilian test
     Dict B;
-    B.Set(-1,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Bn/2,Bt/4);
-    B.Set(-2,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Bn/2,Bt/4);
-    B.Set(-3,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Bn/2,Bt/4);
+    B.Set(-1,"Bn Bt Bm Gn Gt Eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
+    B.Set(-2,"Bn Bt Bm Gn Gt Eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
+    B.Set(-3,"Bn Bt Bm Gn Gt Eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
     d.SetProps(B);
 
     Vec3_t velocity(0.0,strf*radius/Tf,0.0);
@@ -149,9 +156,7 @@ int main(int argc, char **argv) try
     dat.p1=p1;
     dat.p2=p2;
 
-    d.WriteBPY(filekey.CStr());
-
-    d.Solve(Tf, dt, dtOut, &Setup, &Report, filekey.CStr());
+    d.Solve(Tf, dt, dtOut, &Setup, &Report, filekey.CStr(),Render);
 
 
     return 0;

@@ -54,6 +54,7 @@ public:
     double       VelDen(Vec3_t & V);                               ///< Calculate both (faster)
     double       Feq(size_t k, Vec3_t const & V, double Rho);      ///< Calculate the equilibrium distribution function
     void         Initialize(double Rho, Vec3_t const & V);         ///< Initialize cell with a given velocity and density
+    void         BounceBack();                                     ///< Apply the bounceback rule to this cell
 
     // Data
     LBMethod     Method;   ///< Is 2D, 3D and how many velocities it has
@@ -166,6 +167,12 @@ inline void Cell::Initialize(double TheRho, Vec3_t const & V)
 {
     for (size_t k=0;k<Nneigh;k++) F[k] = Feq(k,V,TheRho);
     Rho = VelDen(Vel);
+}
+
+inline void Cell::BounceBack()
+{
+    for (size_t j = 0;j<Nneigh;j++) Ftemp[j] = F[j];
+    for (size_t j = 0;j<Nneigh;j++) F[j]     = Ftemp[Op[j]];
 }
 
 

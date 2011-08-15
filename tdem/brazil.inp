@@ -1,6 +1,9 @@
+1             RenderVideo?
 30            n_divisions;        
 1.0           thickness;          
 40.0          radius;             
+5.0e5         Kn;                 
+5.0e5         Kt;                 
 1.0e6         Bn;                 
 1.0e6         Bt;                 
 0.0e3         Bm;                 
