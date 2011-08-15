@@ -426,8 +426,8 @@ Element * FlowElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Mo
 int FlowElemRegister()
 {
     ElementFactory["Flow"]   = FlowElemMaker;
-    ElementVarKeys["Flow2D"] = std::make_pair ("H", "Q");
-    ElementVarKeys["Flow3D"] = std::make_pair ("H", "Q");
+    ElementVarKeys["Flow2D"] = std::make_pair ("hh", "qq");
+    ElementVarKeys["Flow3D"] = std::make_pair ("hh", "qq");
     PROB.Set ("Flow", (double)PROB.Keys.Size());
     return 0;
 }

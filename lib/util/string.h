@@ -22,6 +22,7 @@
 
 // STL
 #include <string>
+#include <boost/algorithm/string.hpp> // for to_upper
 #include <cstdarg> // for va_list, va_start, va_end
 #include <cstdio>  // for vsnprintf
 #include <stdio.h> // for printf
@@ -90,9 +91,11 @@ public:
     int          PrintfV  (String const & Fmt, va_list ArgList) { return _set_msg (Fmt.c_str(), ArgList); } ///< Print with format and ArgList
     char const * CStr     ()                              const { return this->c_str(); }                   ///< Get C-string
     void         TextFmt  (char const * NF);                                                                ///< Convert NF (ex: "%10g") to text Format (ex: "%10s")
-    void         Split    (String & Left, String & Right, char const * Separator=" ");
-    bool         HasWord  (String const & Word) { return (find(Word)!=npos); }
-    void         GetFNKey (String & FNKey);
+    void         Split    (String & Left, String & Right, char const * Separator=" ");                      ///< Split string into left and right parts separated by Separator
+    bool         HasWord  (String const & Word) { return (find(Word)!=npos); }                              ///< Check if string has a word Word
+    void         GetFNKey (String & FNKey);                                                                 ///< Return string without ending ".something"
+    void         ToUpper  () { boost::to_upper ((*this)); }                                                 ///< Convert string to upper case
+    void         ToLower  () { boost::to_lower ((*this)); }                                                 ///< Convert string to lower case
 
     // For compatibility with wxWidgets
     String       & ToStdString()       { return (*this); }

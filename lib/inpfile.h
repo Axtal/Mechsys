@@ -306,18 +306,27 @@ inline void InpFile::Defaults ()
         Util::Keys2Array (it->second.first, keys);
         for (size_t i=0; i<keys.Size(); ++i)
         {
-            AllUKeys   .XPush (keys[i]);
-            AllUKeysBCF.XPush ("bcf_"+keys[i]);
+            AllUKeys.XPush (keys[i]);
+            keys[i].ToUpper();
+            AllUKeysBCF.XPush (keys[i]);
         }
 
         // F keys
+        keys.Clear();
         Util::Keys2Array (it->second.second, keys);
         for (size_t i=0; i<keys.Size(); ++i)
         {
-            AllFKeys   .XPush (keys[i]);
-            AllFKeysBCF.XPush ("bcf_"+keys[i]);
+            AllFKeys.XPush (keys[i]);
+            keys[i].ToUpper();
+            AllFKeysBCF.XPush (keys[i]);
         }
     }
+    /*
+    std::cout << "AllUKeys    = " << AllUKeys    << std::endl;
+    std::cout << "AllUKeysBCF = " << AllUKeysBCF << std::endl;
+    std::cout << "AllFKeys    = " << AllFKeys    << std::endl;
+    std::cout << "AllFKeysBCF = " << AllFKeysBCF << std::endl;
+    */
 }
 
 inline void InpFile::Read (char const * FileName)

@@ -534,24 +534,29 @@ Element * AllocElement(String const & Name, int NDim, Mesh::Cell const & Cell, M
 
 SDPair PROB; ///< Structure mapping the problem name to a unique double value. Ex.: "Equilib" => 1.0
 
-typedef std::map<String, std::pair<String,String> > ElementVarKeys_t; ///< ProbNameNumDim => (UvarKeys,FvarKeys) map
+typedef std::map<String, std::pair<String,String> > ElementVarKeys_t;   ///< ProbNameNumDim => (UvarKeys,FvarKeys) map
+typedef std::map<String, Array<String> >            ElementExtraKeys_t; ///< ProbNameNumDim => extra boundary condition keys
 
-ElementVarKeys_t ElementVarKeys; ///< Maps ProbNameNumDim to (UvarKeys,FvarKeys) Ex.: "Equilib2D" => ("ux uy","fx fy")
+ElementVarKeys_t   ElementVarKeys;   ///< Maps ProbNameNumDim to (UvarKeys,FvarKeys) Ex.: "Equilib2D" => ("ux uy","fx fy")
+ElementExtraKeys_t ElementExtraKeys; ///< Maps ProbNameNumDim to extra BC keys Ex.: "Equilib2D" => ["qn", "qt"]
 
-inline std::pair<String,String> const & ProbND2VarKeys (char const * ProbName, int NumDim) ///< Returns a reference to the var keys
+inline void ProbND2VarKeys (char const * ProbName, int NumDim, std::pair<String,String> const * VarKeys, Array<String> const * ExtraKeys) ///< Returns a reference to the var keys
 {
     String prob_nd;
     prob_nd.Printf ("%s%dD", ProbName, NumDim);
-    ElementVarKeys_t::const_iterator it = ElementVarKeys.find (prob_nd);
-    if (it==ElementVarKeys.end()) throw new Fatal("element.h::ProbND2VarKeys: Could not find ProblemNumDim=%s in ElementVarKeys map",prob_nd.CStr());
-    return it->second;
+    ElementVarKeys_t  ::const_iterator it = ElementVarKeys  .find (prob_nd);
+    ElementExtraKeys_t::const_iterator jt = ElementExtraKeys.find (prob_nd);
+    if (it==ElementVarKeys  .end()) throw new Fatal("element.h::ProbND2VarKeys: __internal_error_: Could not find ProblemNumDim=%s in ElementVarKeys map",prob_nd.CStr());
+    if (jt==ElementExtraKeys.end()) throw new Fatal("element.h::ProbND2VarKeys: __internal_error_: Could not find ProblemNumDim=%s in ElementExtraKeys map",prob_nd.CStr());
+    VarKeys   = &it->second;
+    ExtraKeys = &jt->second;
 }
 
-inline std::pair<String,String> const & CellTag2VarKeys (Dict const & Prps, int NumDim, int CellTag) ///< Returns a reference to the var keys connected to CellTag
+inline void CellTag2VarKeys (Dict const & Prps, int NumDim, int CellTag, std::pair<String,String> const * VarKeys, Array<String> const * ExtraKeys) ///< Returns a reference to the var keys connected to CellTag
 {
     String prob_name;
     PROB.Val2Key (Prps(CellTag)("prob"), prob_name);
-    return ProbND2VarKeys (prob_name.CStr(), NumDim);
+    ProbND2VarKeys (prob_name.CStr(), NumDim, VarKeys, ExtraKeys);
 }
 
 }; // namespace FEM

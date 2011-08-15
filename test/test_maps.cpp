@@ -71,22 +71,31 @@ int main(int argc, char **argv) try
     cout << "Is 'uy' in Keys ? => " << (Util::HasKey(keys,"uy") ? " YES " : " NO ") << endl;
     cout << "Array of keys = " << array << endl;
 
-    cout << TERM_CLR_GREEN_H << "\n// String ///////////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
+    cout << TERM_CLR_GREEN_H << "\n// String: to upper/lower ///////////////////////////////////////////////////////\n" << TERM_RST << endl;
+
+    String phrase("This is a string aAbB");
+    cout << "String        = " << phrase << endl;
+    phrase.ToUpper();
+    cout << "after ToUpper = " << phrase << endl;
+    phrase.ToLower();
+    cout << "after ToLower = " << phrase << endl;
+
+    cout << TERM_CLR_GREEN_H << "\n// String: split ////////////////////////////////////////////////////////////////\n" << TERM_RST << endl;
 
     String line("this is a.### test"), left, right;
     line.Split (left, right, "###");
-    cout << "line  = " << line  << endl;
-    cout << "left  = " << left  << endl;
-    cout << "right = " << right << endl;
+    cout << "String          = " << line  << endl;
+    cout << "left of '###'   = " << left  << endl;
+    cout << "right of '###'  = " << right << endl;
     cout << "has word 'tis'  = " << line.HasWord("tis")  << endl;
     cout << "has word 'this' = " << line.HasWord("this") << endl;
     line = "A = 3";
     line.Split (left, right, "=");
-    cout << "line  = " << line  << endl;
-    cout << "left  = " << left  << endl;
-    cout << "right = " << right << endl;
+    cout << "String          = " << line  << endl;
+    cout << "left of '='     = " << left  << endl;
+    cout << "right of '='    = " << right << endl;
 
-    cout << TERM_CLR_GREEN_H << "\n// String Filename Key //////////////////////////////////////////////////////////\n" << TERM_RST << endl;
+    cout << TERM_CLR_GREEN_H << "\n// String: filename key /////////////////////////////////////////////////////////\n" << TERM_RST << endl;
 
     String filename1("this.is.a.filename.res");
     String filename2("this_is_a_filename.res");

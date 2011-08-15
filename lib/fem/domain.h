@@ -129,19 +129,23 @@ public:
     Array<Node*>          StgNewNods;  ///< Nodes just activated in the new stage set by SetBCs
 
     // Nodal results
-    bool          HasDisps;    ///< Has displacements (ux, ...) ?
-    bool          HasVeloc;    ///< Has velocities (vx, ...) ?
-    bool          HasWDisch;   ///< Has specific water discharge (qwx, ...) ?
-    Array<String> AllUKeys;    ///< All U node keys (ux, uy, H, ...)
-    Array<String> AllFKeys;    ///< All F node keys (fx, fy, Q, ...)
-    Array<String> AllEKeys;    ///< All element keys (sx, sy, vx, vy, ...)
-    mutable Res_t NodResults;  ///< Extrapolated nodal results
-    mutable Res_t NodResCount; ///< Count how many times a variable (key) was added to a node
-};
-
-bool Domain::PARA     = false;
-bool Domain::WithInfo = true;
-
+    bool          HasDisps;        ///< Has displacements (ux, ...) ?
+    bool          HasVeloc;        ///< Has velocities (vx, ...) ?
+    bool          HasWDisch;       ///< Has specific water discharge (qwx, ...) ?
+    Array<String> AllUKeys;        ///< All U node keys (ux, uy, hh, ...)
+    Array<String> AllFKeys;        ///< All F node keys (fx, fy, qq, ...)
+    Array<String> AllUKeysBCF;     ///< All U BC callback functions (UX, UY, HH, ...) : upper case
+    Array<String> AllFKeysBCF;     ///< All F BC callback functions (FX, FY, QQ, ...) : upper case
+    Array<String> AllExtraKeys;    ///< All extra BC keys such as 'qn', 'qt', 's', 'activate', 'grav'
+    Array<String> AllExtraKeysBCF; ///< All extra BC keys such as 'qn', 'qt', 's', 'activate', 'grav'
+    Array<String> AllEKeys;        ///< All element keys (sx, sy, vx, vy, ...)
+    mutable Res_t NodResults;      ///< Extrapolated nodal results
+    mutable Res_t NodResCount;     ///< Count how many times a variable (key) was added to a node
+};                                
+                                  
+bool Domain::PARA     = false;    
+bool Domain::WithInfo = true;     
+                                  
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -276,12 +280,47 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         if (Msh.Verts[i]->Tag<0) TgdNods.Push (Nods.Last());
         VertID2Node[Msh.Verts[i]->ID] = Nods.Last();
 
-        // add DOFs to node
+        // add DOFs to node and set BCs keys, BCs callbacks keys, extra keys, and extra keys callbacks' keys
         for (size_t k=0; k<Msh.Verts[i]->Shares.Size(); ++k)
         {
-            std::pair<String,String> const & varkeys = CellTag2VarKeys (Prps, NDim, Msh.Verts[i]->Shares[k].C->Tag);
-            Nods.Last()->AddDOF (varkeys.first.CStr(), varkeys.second.CStr());
+            std::pair<String,String> const * varkeys;
+            Array<String>            const * extkeys;
+            CellTag2VarKeys (Prps, NDim, Msh.Verts[i]->Shares[k].C->Tag, varkeys, extkeys);
+            Nods.Last()->AddDOF (varkeys->first.CStr(), varkeys->second.CStr());
+            Array<String> ukeys;
+            Array<String> fkeys;
+            Util::Keys2Array (varkeys->first,  ukeys);
+            Util::Keys2Array (varkeys->second, fkeys);
+            for (size_t m=0; m<ukeys.Size(); ++m)
+            {
+                String upukey(ukeys[m]);
+                upukey     .ToUpper ();
+                AllUKeys   .XPush   (ukeys[m]);
+                AllUKeysBCF.XPush   (upukey);
+                if (ukeys[m]=="ux") HasDisps = true;
+            }
+            for (size_t m=0; m<fkeys.Size(); ++m)
+            {
+                String upfkey(fkeys[m]);
+                upfkey     .ToUpper ();
+                AllFKeys   .XPush   (fkeys[m]);
+                AllFKeysBCF.XPush   (upfkey);
+            }
+            for (size_t m=0; m<extkeys->Size(); ++m)
+            {
+                String upextkey((*extkeys)[m]);
+                upextkey       .ToUpper ();
+                AllExtraKeys   .XPush   ((*extkeys)[m]);
+                AllExtraKeysBCF.XPush   (upextkey);
+            }
         }
+
+        std::cout << "AllUKeys        = " << AllUKeys        << std::endl;
+        std::cout << "AllFKeys        = " << AllFKeys        << std::endl;
+        std::cout << "AllUKeysBCF     = " << AllUKeysBCF     << std::endl;
+        std::cout << "AllFKeysBCF     = " << AllFKeysBCF     << std::endl;
+        std::cout << "AllExtraKeys    = " << AllExtraKeys    << std::endl;
+        std::cout << "AllExtraKeysBCF = " << AllExtraKeysBCF << std::endl;
 
 #ifdef HAS_MPI
         if (PARA)
@@ -301,14 +340,6 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
                 OutNods.Push (Nods.Last());
                 FilNods.Push (of);
             }
-        }
-
-        // collect all node keys
-        for (size_t j=0; j<Nods.Last()->NDOF(); ++j)
-        {
-            if (Nods.Last()->UKey(j)=="ux") HasDisps = true;
-            AllUKeys.XPush (Nods.Last()->UKey(j)); // push only if item is not in array yet
-            AllFKeys.XPush (Nods.Last()->FKey(j)); // push only if item is not in array yet
         }
     }
 
@@ -475,26 +506,29 @@ inline void Domain::SetBCs (Dict const & BCs)
     // 'BCs' at the element itself (ex: 'activate', 's':source, 'qn' at beams, etc.).
     // This must come before the setting up of 'real' boundary conditions, since, for example,
     // some nodes may become activated or deactivated
-    ElesWithBC.Resize (0);
-    for (Dict_t::const_iterator dict_it=BCs.begin(); dict_it!=BCs.end(); ++dict_it)
-    {
+    //ElesWithBC.Resize (0);
+    //for (Dict_t::const_iterator dict_it=BCs.begin(); dict_it!=BCs.end(); ++dict_it)
+    //{
         // auxiliar variables
-        int            btag = dict_it->first;  // the element/boundary tag
-        SDPair const & bcs  = dict_it->second; // the boundary conditions
+        //int            btag = dict_it->first;  // the element/boundary tag
+        //SDPair const & bcs  = dict_it->second; // the boundary conditions
 
         // check if tag corresponds to element tag (and not boundary tag)
-        Tag2Eles_t::const_iterator it = Tag2Eles.find(btag);
-        if (it!=Tag2Eles.end()) // found elements with this btag
-        {
+        //Tag2Eles_t::const_iterator it = Tag2Eles.find(btag);
+        //if (it!=Tag2Eles.end()) // found elements with this btag
+        //{
+            //throw new Fatal("FEM::Domain::SetBCs: elements' boundary conditions deactivated");
+
+            /*
             // flag BC set
             bc_set[btag] = Element_t;
 
             // multiplier
-            BCFuncs * bcf = NULL;
-            if (bcs.HasKey("bcf")) // callback specified
+            BCFuncs * xxxxxxxxxxbcf = NULL;
+            if (bcs.HasKey("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxbcf")) // callback specified
             {
                 MDatabase_t::const_iterator q = MFuncs.find(btag);
-                if (q!=MFuncs.end()) bcf = q->second;
+                if (q!=MFuncs.end()) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxbcf = q->second;
                 else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",btag);
             }
 
@@ -510,11 +544,12 @@ inline void Domain::SetBCs (Dict const & BCs)
                 }
 
                 // set BCs
-                ele->SetBCs (/*idx_side(ignored)*/0, bcs, bcf);
+                ele->SetBCs (/idx_side(ignored)/0, bcs, xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxbcf);
                 ElesWithBC.Push (ele);
             }
-        }
-    }
+            */
+        //}
+    //}
 
     // BCs at the edges/faces of elements or at nodes
     typedef std::pair<Element*,int> eleside_t;          // (element,side) pair
@@ -550,24 +585,24 @@ inline void Domain::SetBCs (Dict const & BCs)
                         eleside_t es(TgdEles[j],idx_side); // (edge/face,side) pair
                         for (size_t k=0; k<bcs.Keys.Size(); ++k)
                         {
-                            if (bcs.Keys[k]=="bcf") continue; // BC function (will be set together with another key)
-                            if (bcs.Keys[k]=="bcf") continue; // BC function (will be set together with another key)
                             if (bcs.Keys[k]=="incsup") // is inclined support
                             {
                                 eleside2tag_to_ubc[es].first  = btag;
                                 eleside2tag_to_ubc[es].second = bcs; // has to be copied because of the extra parameters such as 'alpha' and so on
+                                break;
                             }
-                            else if (AllUKeys.Has(bcs.Keys[k])) // is U key
+                            else
                             {
-                                eleside2tag_to_ubc[es].first = btag;
-                                eleside2tag_to_ubc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want F values
-                                if (bcs.Keys.Has("bcf")) eleside2tag_to_ubc[es].second.Set ("bcf", 1.0); // has to keep the multiplier though
-                            }
-                            else // is F key or 'qn', 'qt', etc.
-                            {
-                                eleside2tag_to_fbc[es].first = btag;
-                                eleside2tag_to_fbc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want U values
-                                if (bcs.Keys.Has("bcf")) eleside2tag_to_fbc[es].second.Set ("bcf", 1.0); // has to keep the multiplier though
+                                if (AllUKeys.Has(bcs.Keys[k]) || AllUKeysBCF.Has(bcs.Keys[k])) // is U key or U callback function
+                                {
+                                    eleside2tag_to_ubc[es].first = btag;
+                                    eleside2tag_to_ubc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want F values
+                                }
+                                else // is F key or 'qn', 'qt', etc.
+                                {
+                                    eleside2tag_to_fbc[es].first = btag;
+                                    eleside2tag_to_fbc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want U values
+                                }
                             }
                         }
                     }
@@ -590,8 +625,6 @@ inline void Domain::SetBCs (Dict const & BCs)
                     // split U bcs from F bcs
                     for (size_t k=0; k<bcs.Keys.Size(); ++k)
                     {
-                        if (bcs.Keys[k]=="bcf") continue; // BC function (will be set together with another key)
-                        if (bcs.Keys[k]=="bcf") continue; // BC function (will be set together with another key)
                         if (bcs.Keys[k]=="incsup") // inclined support
                         {
                             nod2tag_to_ubc[TgdNods[j]].first  = btag;
@@ -600,17 +633,15 @@ inline void Domain::SetBCs (Dict const & BCs)
                         }
                         else
                         {
-                            if (AllUKeys.Has(bcs.Keys[k])) // is U key
+                            if (AllUKeys.Has(bcs.Keys[k]) || AllUKeysBCF.Has(bcs.Keys[k])) // is U key or U callback function
                             {
                                 nod2tag_to_ubc[TgdNods[j]].first = btag;
                                 nod2tag_to_ubc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want F values
-                                if (bcs.Keys.Has("bcf")) nod2tag_to_ubc[TgdNods[j]].second.Set ("bcf", 1.0); // has to keep the multiplier though
                             }
-                            else if (AllFKeys.Has(bcs.Keys[k])) // is F key
+                            else if (AllFKeys.Has(bcs.Keys[k]) || AllFKeysBCF.Has(bcs.Keys[k])) // is F key or F callback function
                             {
                                 nod2tag_to_fbc[TgdNods[j]].first = btag;
                                 nod2tag_to_fbc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want F values
-                                if (bcs.Keys.Has("bcf")) nod2tag_to_fbc[TgdNods[j]].second.Set ("bcf", 1.0); // has to keep the multiplier though
                             }
                             else throw new Fatal("FEM::Domain::SetBCs: BC==%s with tag==%d cannot be specified to Node # %d", bcs.Keys[k].CStr(), btag, TgdNods[j]->Vert.ID);
                         }
@@ -636,16 +667,23 @@ inline void Domain::SetBCs (Dict const & BCs)
         int            idx_side = p->first.second;
         int            bc_tag   = p->second.first;
         SDPair const & bcs      = p->second.second;
-        BCFuncs      * bcf      = NULL;
+        BCFuncs      * bcfun    = NULL;
 
-        if (bcs.HasKey("bcf")) // callback specified
+        if (bcs.Keys.Size()!=1)
         {
-            MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
-            if (q!=MFuncs.end()) bcf = q->second;
-            else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",bc_tag);
+            std::ostringstream oss;
+            oss << bcs;
+            throw new Fatal("FEM::Domain::SetBCs:: __internal_error__: There are more than 1 key in SDPair of boundary conditions for edges/faces.\n%s\n",oss.str().c_str());
         }
 
-        ele->SetBCs (idx_side, bcs, bcf);
+        if (AllFKeysBCF.Has(bcs.Keys[0])) // callback specified
+        {
+            MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
+            if (q!=MFuncs.end()) bcfun = q->second;
+            else throw new Fatal("FEM::Domain::SetBCs: Callback function with boundary Tag=%d was not found in MFuncs database",bc_tag);
+        }
+
+        ele->SetBCs (idx_side, bcs, bcfun);
     }
 
     // set F bcs at nodes
@@ -654,9 +692,16 @@ inline void Domain::SetBCs (Dict const & BCs)
         Node         * nod    = p->first;
         int            bc_tag = p->second.first;
         SDPair const & bcs    = p->second.second;
-        BCFuncs      * bcf    = NULL;
+        BCFuncs      * bcfun  = NULL;
 
-        if (bcs.HasKey("bcf")) // callback specified
+        if (bcs.Keys.Size()!=1)
+        {
+            std::ostringstream oss;
+            oss << bcs;
+            throw new Fatal("FEM::Domain::SetBCs:: __internal_error__: There are more than 1 key in SDPair of boundary conditions for nodes.\n%s\n",oss.str().c_str());
+        }
+
+        if (AllFKeysBCF.Has(bcs.Keys[0])) // callback specified
         {
             MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
             if (q!=MFuncs.end()) bcf = q->second;
