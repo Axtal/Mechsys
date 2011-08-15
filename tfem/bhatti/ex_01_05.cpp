@@ -78,7 +78,7 @@ int main(int argc, char **argv) try
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
     bcs.Set( -10, "conv h Tinf", 1.0, 27.0, 20.0);
-    bcs.Set(-100, "H", 300.0);
+    bcs.Set(-100, "hh", 300.0);
     dom.SetBCs (bcs);
     sol.Solve  ();
 
@@ -126,7 +126,7 @@ int main(int argc, char **argv) try
 
     // correct solution
     Table nod_sol;
-    nod_sol.Set("                   H                     RH", dom.Nods.Size(),
+    nod_sol.Set("                  hh                    Rhh", dom.Nods.Size(),
                 3.000000000000000e+02, 8.201709351675694e+01,
                 9.354661202985511e+01, 0.0,
                 2.384369969266794e+01, 0.0,
@@ -142,8 +142,8 @@ int main(int argc, char **argv) try
 
     // error tolerance
     SDPair nod_tol, ele_tol;
-    nod_tol.Set("H RH",  1.0e-13,1.0e-13);
-    ele_tol.Set("gx gy", 1.0e-12,1.0e-12);
+    nod_tol.Set("hh Rhh", 1.0e-13,1.0e-13);
+    ele_tol.Set("gx gy",  1.0e-12,1.0e-12);
 
     // return error flag
     bool err1 = dom.CheckErrorNods(nod_sol, nod_tol);

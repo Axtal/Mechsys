@@ -75,12 +75,12 @@ int main(int argc, char **argv) try
     BCF bcf;
     Array<int> out_nods(1, /*justone*/true);
     FEM::Domain dom(mesh, prps, Dict(), Dict(), fnkey.CStr(), &out_nods);
-    dom.MFuncs[-200] = &bcf; // set database of callbacks
+    dom.MFuncs["-200_fy"] = &bcf; // set database of callbacks
 
     // boundary conditions
     Dict bcs;
     bcs.Set(-100, "ux uy wz", 0.0,0.0,0.0);
-    bcs.Set(-200, "fy bcf",   1.0, TRUE);
+    bcs.Set(-200, "FY", 1.0);
     dom.SetBCs (bcs);
 
     // solver

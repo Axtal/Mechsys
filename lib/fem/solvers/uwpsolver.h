@@ -47,7 +47,7 @@ public:
     // Data
     Array<long>                   pEqU, pEqW, pEqP;   ///< prescribed equations
     Array<bool>                   pU,   pW,   pP;     ///< prescribed ?
-    Vec_t                         V, Ww, Pw;          ///< Vectors
+    Vec_t                         U, V, Ww, Pw;       ///< Vectors
     Vec_t                         V_fe, Ww_fe, Pw_fe; ///< Vectors
     Vec_t                         V_me, Ww_me, Pw_me; ///< Vectors
     Vec_t                         V_er, Ww_er, Pw_er; ///< Vectors
@@ -136,6 +136,7 @@ inline void UWPSolver::Initialize ()
     }
 
     // resize vectors and matrices
+    U     . change_dim (NEqU);
     V     . change_dim (NEqU);
     Ww    . change_dim (NEqW);
     Pw    . change_dim (NEqP);
@@ -165,6 +166,25 @@ inline void UWPSolver::Initialize ()
     Mb    . AllocSpace (NEqU,NEqU,Mb_size);
     Mw    . AllocSpace (NEqW,NEqW,Mw_size);
     Hw    . AllocSpace (NEqP,NEqP,Hw_size);
+
+    // set initial values (from previous stage)
+    for (size_t i=0; i<Dom.ActNods.Size();     ++i)
+    for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
+    {
+        if (Dom.ActNods[i]->UKey(j)=="wwx" || Dom.ActNods[i]->UKey(j)=="wwy" || Dom.ActNods[i]->UKey(j)=="wwz")
+        {
+            Ww(Dom.ActNods[i]->Eq(j)) = Dom.ActNods[i]->U(j);
+        }
+        else if (Dom.ActNods[i]->UKey(j)=="pw")
+        {
+            Pw(Dom.ActNods[i]->Eq(j)) = Dom.ActNods[i]->U(j);
+        }
+        else
+        {
+            U(Dom.ActNods[i]->Eq(j)) = Dom.ActNods[i]->U(j);
+            V(Dom.ActNods[i]->Eq(j)) = Dom.ActNods[i]->V(j);
+        }
+    }
 }
 
 inline void UWPSolver::Assemble (double Time, Vec_t const & TheV, Vec_t const & TheWw, Vec_t const & ThePw)
@@ -363,13 +383,15 @@ inline void UWPSolver::Solve (double tf, double, double dtOut, char const * File
 
             // FE state
             RKFunc (Dom.Time, V, Ww, Pw);
+            //DU    = V     * dt;
             DV    = dVdt  * dt;
             DWw   = dWwdt * dt;
             DPw   = dPwdt * dt;
+            //U_fe  = U  + DU;
             V_fe  = V  + DV;
             Ww_fe = Ww + DWw;
             Pw_fe = Pw + DPw;
-            for (size_t k=0; k<Dom.ActEles.Size(); ++k) Dom.ActEles[k]->Update (0, V, dPwdt, dt);
+            for (size_t k=0; k<Dom.ActEles.Size(); ++k) Dom.ActEles[k]->Update (0, V, dPwdt, dt); // should update U here as well (because of large displacements shape functions)
 
             // ME State
             RKFunc (Dom.Time+dt, V_fe, Ww_fe, Pw_fe);
@@ -399,6 +421,7 @@ inline void UWPSolver::Solve (double tf, double, double dtOut, char const * File
             {
                 T        += dT;
                 Dom.Time += dt;
+                U        += V_me*dt;
                 V         = V_me;
                 Ww        = Ww_me;
                 Pw        = Pw_me;
@@ -416,6 +439,23 @@ inline void UWPSolver::Solve (double tf, double, double dtOut, char const * File
         if (stp==MaxSS) throw new Fatal("UWPSolver::Solve: Runge-Kutta (2nd order / ME) did not converge after %zd substeps",stp);
 
         // update nodes to tout
+        for (size_t i=0; i<Dom.ActNods.Size();     ++i)
+        for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
+        {
+            if (Dom.ActNods[i]->UKey(j)=="wwx" || Dom.ActNods[i]->UKey(j)=="wwy" || Dom.ActNods[i]->UKey(j)=="wwz")
+            {
+                Dom.ActNods[i]->U(j) = Ww(Dom.ActNods[i]->Eq(j));
+            }
+            else if (Dom.ActNods[i]->UKey(j)=="pw")
+            {
+                Dom.ActNods[i]->U(j) = Pw(Dom.ActNods[i]->Eq(j));
+            }
+            else
+            {
+                Dom.ActNods[i]->U(j) = U(Dom.ActNods[i]->Eq(j));
+                Dom.ActNods[i]->V(j) = V(Dom.ActNods[i]->Eq(j));
+            }
+        }
         
         // output
         printf ("%10.6f  %4zd\n",Dom.Time,stp);

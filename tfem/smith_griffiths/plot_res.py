@@ -3,7 +3,7 @@ from msys_fig import *
 
 # input
 op = optparse.OptionParser()
-op.add_option('--tst', '-t', dest='tst', default='0', help='test number')
+op.add_option('--tst', '-t', dest='tst', default='2', help='test number')
 opts, args = op.parse_args()
 
 if opts.tst=='0':
@@ -21,11 +21,19 @@ if opts.tst=='0':
     U = zeros(len(T))
     for i in range(len(T)): U[i] = calc_U(T[i])
 
+    subplot(2,1,1)
     plot(T,U,'g-',label='Analytical')
     plot(dat['Time'],dat['uy'],'ro',lw=2,label='FEM')
     if not gn22==None: plot(gn22['Time'],gn22['uy'],'b+',lw=2,label='FEM(GN22)')
     xlabel('Time')
     ylabel('uy')
+    legend(loc='best')
+    grid()
+
+    subplot(2,1,2)
+    plot(dat['Time'],dat['fy'],lw=2,label='FEM')
+    xlabel('Time')
+    ylabel('fy')
     legend(loc='best')
     grid()
     show()

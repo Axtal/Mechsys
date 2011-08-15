@@ -87,15 +87,17 @@ public:
     String (char        const * Other) : std::string(Other) {}
 
     // Methods
-    int          Printf   (String const & Fmt, ...);                                                        ///< Print with format
-    int          PrintfV  (String const & Fmt, va_list ArgList) { return _set_msg (Fmt.c_str(), ArgList); } ///< Print with format and ArgList
-    char const * CStr     ()                              const { return this->c_str(); }                   ///< Get C-string
-    void         TextFmt  (char const * NF);                                                                ///< Convert NF (ex: "%10g") to text Format (ex: "%10s")
-    void         Split    (String & Left, String & Right, char const * Separator=" ");                      ///< Split string into left and right parts separated by Separator
-    bool         HasWord  (String const & Word) { return (find(Word)!=npos); }                              ///< Check if string has a word Word
-    void         GetFNKey (String & FNKey);                                                                 ///< Return string without ending ".something"
-    void         ToUpper  () { boost::to_upper ((*this)); }                                                 ///< Convert string to upper case
-    void         ToLower  () { boost::to_lower ((*this)); }                                                 ///< Convert string to lower case
+    int          Printf     (String const & Fmt, ...);                                                        ///< Print with format
+    int          PrintfV    (String const & Fmt, va_list ArgList) { return _set_msg (Fmt.c_str(), ArgList); } ///< Print with format and ArgList
+    char const * CStr       ()                              const { return this->c_str(); }                   ///< Get C-string
+    void         TextFmt    (char const * NF);                                                                ///< Convert NF (ex: "%10g") to text Format (ex: "%10s")
+    void         Split      (String & Left, String & Right, char const * Separator=" ");                      ///< Split string into left and right parts separated by Separator
+    bool         HasWord    (String const & Word) { return (find(Word)!=npos); }                              ///< Check if string has a word Word
+    void         GetFNKey   (String & FNKey);                                                                 ///< Return string without ending ".something"
+    void         ToUpper    ()       { boost::to_upper ((*this)); }                                           ///< Convert string to upper case
+    void         ToLower    ()       { boost::to_lower ((*this)); }                                           ///< Convert string to lower case
+    String       ToUpperCpy () const { String tmp((*this)); tmp.ToUpper(); return tmp; }                      ///< (copy) Convert string to lower case
+    String       ToLowerCpy () const { String tmp((*this)); tmp.ToLower(); return tmp; }                      ///< (copy) Convert string to lower case
 
     // For compatibility with wxWidgets
     String       & ToStdString()       { return (*this); }

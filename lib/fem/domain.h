@@ -64,8 +64,8 @@ public:
     enum BryTagType_t { None_t, Element_t, Border_t, Node_t }; ///< type of boundary condition tag
 
     // typedefs
-    typedef std::map<int,BCFuncs*> MDatabase_t; ///< Map tag to M function pointer
-    typedef std::map<int,Model*>   Models_t;    ///< Map tag to model pointer
+    typedef std::map<String,BCFuncs*> MDatabase_t; ///< Map 'tag_varkey' to M function pointer (ex.: '-10_ux')
+    typedef std::map<int,Model*>      Models_t;    ///< Map tag to model pointer
 
     // Constructor
     Domain (Mesh::Generic const & Msh,        ///< The mesh
@@ -283,14 +283,22 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         // add DOFs to node and set BCs keys, BCs callbacks keys, extra keys, and extra keys callbacks' keys
         for (size_t k=0; k<Msh.Verts[i]->Shares.Size(); ++k)
         {
-            std::pair<String,String> const * varkeys;
-            Array<String>            const * extkeys;
-            CellTag2VarKeys (Prps, NDim, Msh.Verts[i]->Shares[k].C->Tag, varkeys, extkeys);
-            Nods.Last()->AddDOF (varkeys->first.CStr(), varkeys->second.CStr());
+            // find variable keys
+            int cell_tag = Msh.Verts[i]->Shares[k].C->Tag;
+            String prob, prob_nd;
+            PROB.Val2Key   (Prps(cell_tag)("prob"), prob);
+            prob_nd.Printf ("%s%dD", prob.CStr(), NDim);
+            ElementVarKeys_t  ::const_iterator it = ElementVarKeys  .find (prob_nd);
+            ElementExtraKeys_t::const_iterator jt = ElementExtraKeys.find (prob_nd);
+            if (it==ElementVarKeys  .end()) throw new Fatal("Domain::Domain: Could not find %s in ElementVarKeys map",prob_nd.CStr());
+            if (jt==ElementExtraKeys.end()) throw new Fatal("Domain::Domain: Could not find %s in ElementExtraKeys map",prob_nd.CStr());
+
+            // add DOF to node
+            Nods.Last()->AddDOF (it->second.first.CStr(), it->second.second.CStr());
+
+            // collect U keys
             Array<String> ukeys;
-            Array<String> fkeys;
-            Util::Keys2Array (varkeys->first,  ukeys);
-            Util::Keys2Array (varkeys->second, fkeys);
+            Util::Keys2Array (it->second.first,  ukeys);
             for (size_t m=0; m<ukeys.Size(); ++m)
             {
                 String upukey(ukeys[m]);
@@ -299,6 +307,10 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
                 AllUKeysBCF.XPush   (upukey);
                 if (ukeys[m]=="ux") HasDisps = true;
             }
+
+            // collect F keys
+            Array<String> fkeys;
+            Util::Keys2Array (it->second.second, fkeys);
             for (size_t m=0; m<fkeys.Size(); ++m)
             {
                 String upfkey(fkeys[m]);
@@ -306,21 +318,25 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
                 AllFKeys   .XPush   (fkeys[m]);
                 AllFKeysBCF.XPush   (upfkey);
             }
-            for (size_t m=0; m<extkeys->Size(); ++m)
+
+            // collect extra keys
+            for (size_t m=0; m<jt->second.Size(); ++m)
             {
-                String upextkey((*extkeys)[m]);
+                String upextkey(jt->second[m]);
                 upextkey       .ToUpper ();
-                AllExtraKeys   .XPush   ((*extkeys)[m]);
+                AllExtraKeys   .XPush   (jt->second[m]);
                 AllExtraKeysBCF.XPush   (upextkey);
             }
         }
 
+        /*
         std::cout << "AllUKeys        = " << AllUKeys        << std::endl;
         std::cout << "AllFKeys        = " << AllFKeys        << std::endl;
         std::cout << "AllUKeysBCF     = " << AllUKeysBCF     << std::endl;
         std::cout << "AllFKeysBCF     = " << AllFKeysBCF     << std::endl;
         std::cout << "AllExtraKeys    = " << AllExtraKeys    << std::endl;
         std::cout << "AllExtraKeysBCF = " << AllExtraKeysBCF << std::endl;
+        */
 
 #ifdef HAS_MPI
         if (PARA)
@@ -494,10 +510,10 @@ inline void Domain::SetBCs (Dict const & BCs)
     if (WithInfo) printf("\n%s--- Domain --- setting BCs and activating/deactivating elements --------------------%s\n",TERM_CLR1,TERM_RST);
 
     // clear previous BCs
-    for (size_t i=0; i<NodsWithPU.Size(); ++i) NodsWithPU[i]->DelPUs ();
-    for (size_t i=0; i<NodsWithPF.Size(); ++i) NodsWithPF[i]->DelPFs ();
+    for (size_t i=0; i<NodsWithPU.Size(); ++i) NodsWithPU[i]->DelPUs    ();
+    for (size_t i=0; i<NodsWithPF.Size(); ++i) NodsWithPF[i]->DelPFs    ();
     for (size_t i=0; i<NodsIncSup.Size(); ++i) NodsIncSup[i]->DelIncSup ();
-    for (size_t i=0; i<ElesWithBC.Size(); ++i) ElesWithBC[i]->ClrBCs ();
+    for (size_t i=0; i<ElesWithBC.Size(); ++i) ElesWithBC[i]->ClrBCs    ();
 
     // map used to track whether BC was already set or not
     std::map<int,BryTagType_t> bc_set; // maps: btag => type of BC: none, element, border, node
@@ -506,50 +522,47 @@ inline void Domain::SetBCs (Dict const & BCs)
     // 'BCs' at the element itself (ex: 'activate', 's':source, 'qn' at beams, etc.).
     // This must come before the setting up of 'real' boundary conditions, since, for example,
     // some nodes may become activated or deactivated
-    //ElesWithBC.Resize (0);
-    //for (Dict_t::const_iterator dict_it=BCs.begin(); dict_it!=BCs.end(); ++dict_it)
-    //{
+    ElesWithBC.Resize (0);
+    for (Dict_t::const_iterator dict_it=BCs.begin(); dict_it!=BCs.end(); ++dict_it)
+    {
         // auxiliar variables
-        //int            btag = dict_it->first;  // the element/boundary tag
-        //SDPair const & bcs  = dict_it->second; // the boundary conditions
+        int            btag = dict_it->first;  // the element/boundary tag
+        SDPair const & bcs  = dict_it->second; // the boundary conditions
 
         // check if tag corresponds to element tag (and not boundary tag)
-        //Tag2Eles_t::const_iterator it = Tag2Eles.find(btag);
-        //if (it!=Tag2Eles.end()) // found elements with this btag
-        //{
-            //throw new Fatal("FEM::Domain::SetBCs: elements' boundary conditions deactivated");
-
-            /*
-            // flag BC set
-            bc_set[btag] = Element_t;
-
-            // multiplier
-            BCFuncs * xxxxxxxxxxbcf = NULL;
-            if (bcs.HasKey("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxbcf")) // callback specified
+        Tag2Eles_t::const_iterator it = Tag2Eles.find(btag);
+        if (it!=Tag2Eles.end()) // found elements with this btag
+        {
+            bc_set[btag] = Element_t; // flag BC set
+            for (size_t k=0; k<bcs.Keys.Size(); ++k)
             {
-                MDatabase_t::const_iterator q = MFuncs.find(btag);
-                if (q!=MFuncs.end()) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxbcf = q->second;
-                else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",btag);
-            }
-
-            // set BCs: ex: 'activate', 's', 'qn', etc.
-            for (size_t i=0; i<it->second.Size(); ++i) // for each element
-            {
-                // check if bc key is not U and is not F (it cannot be, for example: 'ux', 'fx', etc., since these are applied to the edges/faces of the elements only)
-                Element * ele = it->second[i];
-                for (size_t k=0; k<bcs.Keys.Size(); ++k)
+                // callback function
+                BCFuncs * bcfun = NULL;
+                if (AllExtraKeysBCF.Has(bcs.Keys[k])) // callback specified
                 {
-                    if (AllUKeys.Has(bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the element (%d,%d) itself", bcs.Keys[k].CStr(), btag, ele->Cell.ID, ele->Cell.Tag);
-                    if (AllFKeys.Has(bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the element (%d,%d) itself", bcs.Keys[k].CStr(), btag, ele->Cell.ID, ele->Cell.Tag);
+                    String mfkey;
+                    mfkey.Printf ("%d_%s", btag, bcs.Keys[k].ToLowerCpy().CStr());
+                    MDatabase_t::const_iterator q = MFuncs.find(mfkey);
+                    if (q==MFuncs.end()) throw new Fatal("FEM::Domain::SetBCs: Multiplier function with Element Tag=%d was not found in MFuncs database ('%s' key)",btag,mfkey.CStr());
+                    else bcfun = q->second;
                 }
 
-                // set BCs
-                ele->SetBCs (/idx_side(ignored)/0, bcs, xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxbcf);
-                ElesWithBC.Push (ele);
+                // check if bc key is not U or F key
+                if (AllUKeys.Has(bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the Element", bcs.Keys[k].CStr(), btag);
+                if (AllFKeys.Has(bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the Element", bcs.Keys[k].CStr(), btag);
+
+                // set BCs: ex: 'activate', 's', 'qn', etc.
+                SDPair bc;
+                bc.Set (bcs.Keys[k].ToLowerCpy().CStr(), bcs(bcs.Keys[k]));
+                for (size_t i=0; i<it->second.Size(); ++i) // for each element
+                {
+                    Element * ele = it->second[i];
+                    ele->SetBCs (/*idx_side(ignored)*/0, bc, bcfun);
+                    ElesWithBC.Push (ele);
+                }
             }
-            */
-        //}
-    //}
+        }
+    }
 
     // BCs at the edges/faces of elements or at nodes
     typedef std::pair<Element*,int> eleside_t;          // (element,side) pair
@@ -643,7 +656,7 @@ inline void Domain::SetBCs (Dict const & BCs)
                                 nod2tag_to_fbc[TgdNods[j]].first = btag;
                                 nod2tag_to_fbc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k])); // cannot copy bcs here because we don't want F values
                             }
-                            else throw new Fatal("FEM::Domain::SetBCs: BC==%s with tag==%d cannot be specified to Node # %d", bcs.Keys[k].CStr(), btag, TgdNods[j]->Vert.ID);
+                            else throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' (tag==%d) cannot be specified to Nodes (node # %d)", bcs.Keys[k].CStr(), btag, TgdNods[j]->Vert.ID);
                         }
                     }
                 }
@@ -667,23 +680,21 @@ inline void Domain::SetBCs (Dict const & BCs)
         int            idx_side = p->first.second;
         int            bc_tag   = p->second.first;
         SDPair const & bcs      = p->second.second;
-        BCFuncs      * bcfun    = NULL;
-
-        if (bcs.Keys.Size()!=1)
+        for (size_t k=0; k<bcs.Keys.Size(); ++k)
         {
-            std::ostringstream oss;
-            oss << bcs;
-            throw new Fatal("FEM::Domain::SetBCs:: __internal_error__: There are more than 1 key in SDPair of boundary conditions for edges/faces.\n%s\n",oss.str().c_str());
+            String key = bcs.Keys[k].ToLowerCpy();
+            SDPair bc;
+            bc.Set (key.CStr(), bcs(bcs.Keys[k]));
+            if (AllFKeysBCF.Has(bcs.Keys[k]) || AllExtraKeysBCF.Has(bcs.Keys[k])) // callback specified
+            {
+                String mfkey;
+                mfkey.Printf ("%d_%s", bc_tag, key.CStr());
+                MDatabase_t::const_iterator q = MFuncs.find(mfkey);
+                if (q==MFuncs.end()) throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary (edge/face) Tag=%d was not found in MFuncs database ('%s' key)",bc_tag,mfkey.CStr());
+                ele->SetBCs (idx_side, bc, q->second);
+            }
+            else ele->SetBCs (idx_side, bc, NULL);
         }
-
-        if (AllFKeysBCF.Has(bcs.Keys[0])) // callback specified
-        {
-            MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
-            if (q!=MFuncs.end()) bcfun = q->second;
-            else throw new Fatal("FEM::Domain::SetBCs: Callback function with boundary Tag=%d was not found in MFuncs database",bc_tag);
-        }
-
-        ele->SetBCs (idx_side, bcs, bcfun);
     }
 
     // set F bcs at nodes
@@ -692,25 +703,18 @@ inline void Domain::SetBCs (Dict const & BCs)
         Node         * nod    = p->first;
         int            bc_tag = p->second.first;
         SDPair const & bcs    = p->second.second;
-        BCFuncs      * bcfun  = NULL;
-
-        if (bcs.Keys.Size()!=1)
+        for (size_t k=0; k<bcs.Keys.Size(); ++k)
         {
-            std::ostringstream oss;
-            oss << bcs;
-            throw new Fatal("FEM::Domain::SetBCs:: __internal_error__: There are more than 1 key in SDPair of boundary conditions for nodes.\n%s\n",oss.str().c_str());
-        }
-
-        if (AllFKeysBCF.Has(bcs.Keys[0])) // callback specified
-        {
-            MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
-            if (q!=MFuncs.end()) bcf = q->second;
-            else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",bc_tag);
-        }
-
-        for (StrDbl_t::const_iterator q=bcs.begin(); q!=bcs.end(); ++q)
-        {
-            if (q->first!="bcf") nod->AddToPF (q->first, q->second, bcf);
+            if (AllFKeysBCF.Has(bcs.Keys[k])) // callback specified
+            {
+                String key = bcs.Keys[k].ToLowerCpy();
+                String mfkey;
+                mfkey.Printf ("%d_%s", bc_tag, key.CStr());
+                MDatabase_t::const_iterator q = MFuncs.find(mfkey);
+                if (q==MFuncs.end()) throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary (nodes) Tag=%d was not found in MFuncs database ('%s' key)",bc_tag,mfkey.CStr());
+                nod->AddToPF (key, bcs(bcs.Keys[k]), q->second);
+            }
+            else nod->AddToPF (bcs.Keys[k], bcs(bcs.Keys[k]), NULL);
         }
     }
 
@@ -721,16 +725,21 @@ inline void Domain::SetBCs (Dict const & BCs)
         int            idx_side = p->first.second;
         int            bc_tag   = p->second.first;
         SDPair const & bcs      = p->second.second;
-        BCFuncs      * bcf      = NULL;
-
-        if (bcs.HasKey("bcf")) // callback specified
+        for (size_t k=0; k<bcs.Keys.Size(); ++k)
         {
-            MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
-            if (q!=MFuncs.end()) bcf = q->second;
-            else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",bc_tag);
+            String key = bcs.Keys[k].ToLowerCpy();
+            SDPair bc;
+            bc.Set (key.CStr(), bcs(bcs.Keys[k]));
+            if (AllUKeysBCF.Has(bcs.Keys[k])) // callback specified
+            {
+                String mfkey;
+                mfkey.Printf ("%d_%s", bc_tag, key.CStr());
+                MDatabase_t::const_iterator q = MFuncs.find(mfkey);
+                if (q==MFuncs.end()) throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary (edge/face) Tag=%d was not found in MFuncs database ('%s' key)",bc_tag,mfkey.CStr());
+                ele->SetBCs (idx_side, bc, q->second);
+            }
+            else ele->SetBCs (idx_side, bc, NULL);
         }
-
-        ele->SetBCs (idx_side, bcs, bcf);
     }
 
     // set U bcs at nodes
@@ -739,25 +748,26 @@ inline void Domain::SetBCs (Dict const & BCs)
         Node         * nod    = p->first;
         int            bc_tag = p->second.first;
         SDPair const & bcs    = p->second.second;
-        BCFuncs      * bcf    = NULL;
-
-        if (bcs.HasKey("bcf")) // callback specified
+        for (size_t k=0; k<bcs.Keys.Size(); ++k)
         {
-            MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
-            if (q!=MFuncs.end()) bcf = q->second;
-            else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",bc_tag);
-        }
-
-        if (bcs.HasKey("incsup"))
-        {
-            if (NDim!=2) throw new Fatal("FEM::Domain::SetBCs: Inclined support is not implemented for 3D problems yet");
-            nod->SetIncSup (bcs("alpha"));
-        }
-        else
-        {
-            for (StrDbl_t::const_iterator q=bcs.begin(); q!=bcs.end(); ++q)
+            if (bcs.HasKey("incsup"))
             {
-                if (q->first!="bcf") nod->SetPU (q->first, q->second, bcf);
+                if (NDim!=2) throw new Fatal("FEM::Domain::SetBCs: Inclined support is not implemented for 3D problems yet");
+                nod->SetIncSup (bcs("alpha"));
+                break;
+            }
+            else
+            {
+                if (AllUKeysBCF.Has(bcs.Keys[k])) // callback specified
+                {
+                    String key = bcs.Keys[k].ToLowerCpy();
+                    String mfkey;
+                    mfkey.Printf ("%d_%s", bc_tag, key.CStr());
+                    MDatabase_t::const_iterator q = MFuncs.find(mfkey);
+                    if (q==MFuncs.end()) throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary (nodes) Tag=%d was not found in MFuncs database ('%s' key)",bc_tag,mfkey.CStr());
+                    nod->SetPU (key, bcs(bcs.Keys[k]), q->second);
+                }
+                else nod->SetPU (bcs.Keys[k], bcs(bcs.Keys[k]), NULL);
             }
         }
     }

@@ -69,8 +69,9 @@ int main(int argc, char **argv) try
     //return 0;
 
     // solver
-    Solver sol(dom);
-    sol.SetScheme ("FE");
+    SDPair flags;
+    flags.Set ("fe stol tolr", 1., 1.0e-7, 1.0e-10);
+    FEM::STDSolver sol(dom, flags);
 
     sol.Initialize ();
     sol.AssembleKA ();

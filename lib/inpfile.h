@@ -139,6 +139,7 @@ public:
 
     Array<String> AllUKeys, AllUKeysBCF;
     Array<String> AllFKeys, AllFKeysBCF;
+    Array<String> AllEKeys, AllEKeysBCF;
 
     // Additional data
     Dict * Prms; ///< parameters (set by SetMat)
@@ -299,6 +300,7 @@ inline void InpFile::Defaults ()
     rkdyncte   = true;   // 49
     uwp        = false;  // 50
 
+    // U and F keys
     for (FEM::ElementVarKeys_t::const_iterator it=FEM::ElementVarKeys.begin(); it!=FEM::ElementVarKeys.end(); ++it)
     {
         // U keys
@@ -327,6 +329,16 @@ inline void InpFile::Defaults ()
     std::cout << "AllFKeys    = " << AllFKeys    << std::endl;
     std::cout << "AllFKeysBCF = " << AllFKeysBCF << std::endl;
     */
+
+    // Extra keys
+    for (FEM::ElementExtraKeys_t::const_iterator it=FEM::ElementExtraKeys.begin(); it!=FEM::ElementExtraKeys.end(); ++it)
+    {
+        for (size_t i=0; i<it->second.Size(); ++i)
+        {
+            AllEKeys   .XPush (it->second[i]);
+            AllEKeysBCF.XPush (it->second[i].ToUpperCpy());
+        }
+    }
 }
 
 inline void InpFile::Read (char const * FileName)
@@ -452,8 +464,10 @@ inline void InpFile::Read (char const * FileName)
                 else if (key=="tag")           { bcstag = atoi(str_val.CStr());              idxdat++; }
                 else if (AllUKeys   .Has(key)) { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else if (AllFKeys   .Has(key)) { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (AllEKeys   .Has(key)) { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else if (AllUKeysBCF.Has(key)) { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else if (AllFKeysBCF.Has(key)) { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
+                else if (AllEKeysBCF.Has(key)) { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else if (key=="fgrav")         { bcs.Set (key.CStr(), atof(str_val.CStr())); idxdat++; }
                 else throw new Fatal("InpFile::Read: Reading boundary conditions (stages). Error in file <%s> at line # %d when reading data of Stage # %d. Key==%s is invalid or in the wrong place",FileName,line_num,idxstage,key.CStr());
                 if (idxdat==ndat)

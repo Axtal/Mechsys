@@ -709,9 +709,11 @@ Element * EquilibElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl,
 // Register element
 int EquilibElemRegister()
 {
-    ElementFactory["Equilib"]   = EquilibElemMaker;
-    ElementVarKeys["Equilib2D"] = std::make_pair ("ux uy",    "fx fy");
-    ElementVarKeys["Equilib3D"] = std::make_pair ("ux uy uz", "fx fy fz");
+    ElementFactory  ["Equilib"]   = EquilibElemMaker;
+    ElementVarKeys  ["Equilib2D"] = std::make_pair ("ux uy",    "fx fy");
+    ElementVarKeys  ["Equilib3D"] = std::make_pair ("ux uy uz", "fx fy fz");
+    ElementExtraKeys["Equilib2D"] = Array<String>  ("activate", "deactivate", "grav", "qn", "qt");
+    ElementExtraKeys["Equilib3D"] = Array<String>  ("activate", "deactivate", "grav", "qn");
     PROB.Set ("Equilib", (double)PROB.Keys.Size());
     return 0;
 }

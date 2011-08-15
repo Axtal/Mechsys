@@ -137,9 +137,11 @@ int main(int argc, char **argv) try
     */
 
     // solver
-    FEM::Solver sol(dom);
-    if (FE) sol.SetScheme("FE");
-    if (NR) sol.SetScheme("NR");
+    SDPair flags;
+    if (FE) flags.Set ("FE", 1.);
+    if (NR) flags.Set ("NR", 1.);
+    FEM::STDSolver sol(dom, flags);
+
     //sol.CorR = false;
     //sol.Initialize ();
     //sol.AssembleKA ();

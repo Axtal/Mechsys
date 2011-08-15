@@ -92,7 +92,7 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set(-100, "H",           110.0);
+    bcs.Set(-100, "hh",          110.0);
     bcs.Set( -20, "flux",        0.0);
     bcs.Set( -30, "conv h Tinf", 1.0, 55.0, 20.0);
     bcs.Set( -40, "flux",        8000.0);
@@ -109,7 +109,7 @@ int main(int argc, char **argv) try
 
     // correct solution
     Table nod_sol;
-    nod_sol.Set("H", dom.Nods.Size(),
+    nod_sol.Set("hh", dom.Nods.Size(),
                  1.549619804450071e+02,
                  1.512282609195495e+02,
                  1.486731378550244e+02,
@@ -135,7 +135,7 @@ int main(int argc, char **argv) try
 
     // error tolerance
     SDPair nod_tol, ele_tol;
-    nod_tol.Set("H", 1.0e-12);
+    nod_tol.Set("hh", 1.0e-12);
     ele_tol.Set("gx gy", 1.0e-11, 1.0e-11);
 
     // return error flag

@@ -102,11 +102,11 @@ int main(int argc, char **argv) try
     Domain dom(mesh, prps, mdls, inis, "mix02", &out_verts);
 
     // solver
-    Solver sol(dom);
-    sol.STOL = 1.0e-7;
-    sol.TolR = 1.0e-10;
-    if (FE) sol.SetScheme ("FE");
-    if (NR) sol.SetScheme ("NR");
+    SDPair flags;
+    flags.Set ("stol tolr", 1.0e-7, 1.0e-10);
+    if (FE) flags.Set ("fe", 1.);
+    if (NR) flags.Set ("nr", 1.);
+    FEM::STDSolver sol(dom, flags);
 
     /*
     sol.Initialize ();

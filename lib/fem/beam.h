@@ -586,8 +586,9 @@ Element * BeamMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model 
 // Register element
 int BeamRegister()
 {
-    ElementFactory["Beam"]   = BeamMaker;
-    ElementVarKeys["Beam2D"] = std::make_pair ("ux uy wz", "fx fy mz");
+    ElementFactory  ["Beam"]   = BeamMaker;
+    ElementVarKeys  ["Beam2D"] = std::make_pair ("ux uy wz", "fx fy mz");
+    ElementExtraKeys["Beam2D"] = Array<String>  ("qx", "qy", "qn"); 
     PROB.Set ("Beam", (double)PROB.Keys.Size());
     return 0;
 }

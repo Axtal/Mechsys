@@ -128,11 +128,11 @@ int main(int argc, char **argv) try
         FEM::Domain dom(mesh, prps, Dict(), Dict());
 
         // solve
-        Solver sol(dom);
-        sol.WithInfo = false;
-        sol.SetScheme ("FE");
-        dom.SetBCs    (BC[lcase]);
-        sol.Solve     (1);
+        SDPair flags;
+        flags.Set ("fe", 1.);
+        FEM::STDSolver sol(dom, flags);
+        dom.SetBCs (BC[lcase]);
+        sol.Solve  (1);
         printf("\n%s===================================== Load case # %zd =====================================%s\n",TERM_YELLOW_BLUE,lcase,TERM_RST);
 
         // output

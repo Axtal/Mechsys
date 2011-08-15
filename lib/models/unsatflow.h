@@ -259,6 +259,7 @@ inline void UnsatFlow::RateAndUpdate (size_t Idx, Vec_t const & d, double dpwdt,
     }
 
     // rate
+    Cpc = _Cpc (FSta->Drying, FSta->pc, FSta->Sw);
     double Cn = 0.0; // == dSwdn
     double pw = -FSta->pc;
     Mat_t  D;
@@ -267,6 +268,10 @@ inline void UnsatFlow::RateAndUpdate (size_t Idx, Vec_t const & d, double dpwdt,
     FSta->dSwdt  [Idx] = -Cpc*dpwdt + Cn*FSta->dndt[Idx];
     FSta->dRhoWdt[Idx] = Cw*dpwdt;
     Sta ->dSigdt [Idx] = D*d - (dpwdt*FSta->Sw + pw*FSta->dSwdt[Idx])*I;
+
+    //std::cout << "dpwdt = " << dpwdt << std::endl;
+    //std::cout << "Cpc = " << Cpc << std::endl;
+    //std::cout << "dSwdt = " << FSta->dSwdt[Idx] << std::endl;
 
     // update
     if (Idx==0) // Forward-Euler
@@ -285,7 +290,7 @@ inline void UnsatFlow::RateAndUpdate (size_t Idx, Vec_t const & d, double dpwdt,
     }
     else throw new Fatal("UnsatFlow::RateAndUpdate: Idx==%zd is invalid (0=FE, 1=ME)",Idx);
     FSta->pc     += (-dpwdt)*dt;
-    FSta->Drying  = (FSta->dSwdt[0]<0 ? true : false);
+    FSta->Drying  = (dpwdt<0 ? true : false);
     Sta ->Eps    += d*dt;
 }
 

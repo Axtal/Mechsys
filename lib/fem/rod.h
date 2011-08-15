@@ -219,9 +219,11 @@ Element * RodMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model c
 // Register element
 int RodRegister()
 {
-    ElementFactory["Rod"]   = RodMaker;
-    ElementVarKeys["Rod2D"] = std::make_pair ("ux uy",    "fx fy");
-    ElementVarKeys["Rod3D"] = std::make_pair ("ux uy uz", "fx fy fz");
+    ElementFactory  ["Rod"]   = RodMaker;
+    ElementVarKeys  ["Rod2D"] = std::make_pair ("ux uy",    "fx fy");
+    ElementVarKeys  ["Rod3D"] = std::make_pair ("ux uy uz", "fx fy fz");
+    ElementExtraKeys["Rod2D"] = Array<String>  ();
+    ElementExtraKeys["Rod3D"] = Array<String>  ();
     PROB.Set ("Rod", (double)PROB.Keys.Size());
     return 0;
 }

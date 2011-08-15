@@ -96,7 +96,7 @@ inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
 inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF)
 {
     bool has_s    = BCs.HasKey("s");    // source term
-    bool has_H    = BCs.HasKey("H");    // potential
+    bool has_H    = BCs.HasKey("h");    // potential
     bool has_flux = BCs.HasKey("flux"); // flux
     bool has_conv = BCs.HasKey("conv"); // convection
     bool has_per  = BCs.HasKey("per");  // perimeter (length) in which convection is applied (line element only)
@@ -425,9 +425,11 @@ Element * FlowElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Mo
 // Register element
 int FlowElemRegister()
 {
-    ElementFactory["Flow"]   = FlowElemMaker;
-    ElementVarKeys["Flow2D"] = std::make_pair ("hh", "qq");
-    ElementVarKeys["Flow3D"] = std::make_pair ("hh", "qq");
+    ElementFactory  ["Flow"]   = FlowElemMaker;
+    ElementVarKeys  ["Flow2D"] = std::make_pair ("hh", "qq");
+    ElementVarKeys  ["Flow3D"] = std::make_pair ("hh", "qq");
+    ElementExtraKeys["Flow2D"] = Array<String>  ("flux", "conv");
+    ElementExtraKeys["Flow3D"] = Array<String>  ("flux", "conv");
     PROB.Set ("Flow", (double)PROB.Keys.Size());
     return 0;
 }

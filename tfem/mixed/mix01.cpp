@@ -88,12 +88,11 @@ int main(int argc, char **argv) try
     Domain dom(mesh, prps, mdls, inis, "mix01", &out_verts);
 
     // solver
-    Solver sol(dom);
-    sol.STOL = 1.0e-7;
-    sol.TolR = 1.0e-10;
-    sol.dTini = dTini;
-    if (FE) sol.SetScheme ("FE");
-    if (NR) sol.SetScheme ("NR");
+    SDPair flags;
+    flags.Set ("stol tolr dtini", 1.0e-7, 1.0e-10, dTini);
+    if (FE) flags.Set ("fe", 1.);
+    if (NR) flags.Set ("nr", 1.);
+    FEM::STDSolver sol(dom, flags);
 
     /*
     sol.Initialize ();

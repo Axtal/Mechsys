@@ -540,25 +540,6 @@ typedef std::map<String, Array<String> >            ElementExtraKeys_t; ///< Pro
 ElementVarKeys_t   ElementVarKeys;   ///< Maps ProbNameNumDim to (UvarKeys,FvarKeys) Ex.: "Equilib2D" => ("ux uy","fx fy")
 ElementExtraKeys_t ElementExtraKeys; ///< Maps ProbNameNumDim to extra BC keys Ex.: "Equilib2D" => ["qn", "qt"]
 
-inline void ProbND2VarKeys (char const * ProbName, int NumDim, std::pair<String,String> const * VarKeys, Array<String> const * ExtraKeys) ///< Returns a reference to the var keys
-{
-    String prob_nd;
-    prob_nd.Printf ("%s%dD", ProbName, NumDim);
-    ElementVarKeys_t  ::const_iterator it = ElementVarKeys  .find (prob_nd);
-    ElementExtraKeys_t::const_iterator jt = ElementExtraKeys.find (prob_nd);
-    if (it==ElementVarKeys  .end()) throw new Fatal("element.h::ProbND2VarKeys: __internal_error_: Could not find ProblemNumDim=%s in ElementVarKeys map",prob_nd.CStr());
-    if (jt==ElementExtraKeys.end()) throw new Fatal("element.h::ProbND2VarKeys: __internal_error_: Could not find ProblemNumDim=%s in ElementExtraKeys map",prob_nd.CStr());
-    VarKeys   = &it->second;
-    ExtraKeys = &jt->second;
-}
-
-inline void CellTag2VarKeys (Dict const & Prps, int NumDim, int CellTag, std::pair<String,String> const * VarKeys, Array<String> const * ExtraKeys) ///< Returns a reference to the var keys connected to CellTag
-{
-    String prob_name;
-    PROB.Val2Key (Prps(CellTag)("prob"), prob_name);
-    ProbND2VarKeys (prob_name.CStr(), NumDim, VarKeys, ExtraKeys);
-}
-
 }; // namespace FEM
 
 #ifdef USE_BOOST_PYTHON

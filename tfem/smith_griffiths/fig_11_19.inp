@@ -1,14 +1,10 @@
 ###################### General Data
 matids   = 0 -1
 outnods  = 30
-dyn      = 1
 tf       = 0.01
 dt       = 1e-4
 dtout    = 1e-4
 vtufile  = 0
-rk       = 0
-rkscheme = ME
-rkstol   = 1.0e-3
 
 ############### Elements Properties
 nelemprps = 1

@@ -222,9 +222,9 @@ inline UWPElem::UWPElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, M
         for (size_t i=0; i<UnsatFlowState::Keys.Size(); ++i) StaKeys.Push (UnsatFlowState::Keys[i]);
         StaKeys.Push ("rw");
         StaKeys.Push ("H");
-        StaKeys.Push ("qwx");
-        StaKeys.Push ("qwy"); if (NDim==3)
-        StaKeys.Push ("qwz");
+        StaKeys.Push ("gpwx");
+        StaKeys.Push ("gpwy"); if (NDim==3)
+        StaKeys.Push ("gpwz");
     }
 
     // set pore-water pressure at nodes (extrapolated) -- TODO: should average between shared nodes
@@ -484,7 +484,7 @@ inline void UWPElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
     if (FSta[IdxIP]->Sw<0.0) throw new Fatal("UWPElem::StateAtIP: Sw<0");
 
     // equilib state
-    Sta [IdxIP]->Output (KeysVals);
+    Sta[IdxIP]->Output (KeysVals);
     for (size_t k=0; k<Mdl->NIvs; ++k) KeysVals.Set (Mdl->IvNames[k].CStr(), static_cast<EquilibState const *>(Sta[IdxIP])->Ivs(k));
 
     // hydraulic state
@@ -501,27 +501,24 @@ inline void UWPElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
     double pw = -FSta[IdxIP]->pc;
     KeysVals.Set ("H", z + pw/FMdl->GamW);
 
-    // seepage velocity vector
-    KeysVals.Set ("qwx qwy", 0.0, 0.0); if (NDim==3)
-    KeysVals.Set ("qwz",     0.0);
-
     // vector of current pw at nodes of element
-    //Vec_t pwe(NDp);
-    //for (size_t i=0; i<GE->NN; ++i) pwe(i) = Con[i]->U("pw");
+    Vec_t Pw(NDp);
+    for (size_t i=0; i<GE->NN; ++i) Pw(i) = Con[i]->U("pw");
+
+    // coordinates matrix
+    for (size_t i=0; i<GE->NN; ++i)
+    for (int    j=0; j<NDim;   ++j)
+        Co(i,j) = Con[i]->Vert.C[j];
+
+    // interpolation
+    Interp (Co, GE->IPs[IdxIP]);
 
     // pore-water pressure gradient at IP
-    //double detJ, coef;
-    //Mat_t  C, dNdX, B, Bp, N, Np;
-    //CoordMatrix (C);
-    //Interp (C, GE->IPs[IdxIP], dNdX, B, Bp, N, Np, detJ, coef);
-    //Vec_t grad_pw(Bp * pwe);
+    Vec_t grad_pw(Bp * Pw);
 
-    // relative specific discharge
-    //grad_pw += FMdl->GamW*zv;          // grad_pw = grad_pw + gamW*z
-    //Vec_t mqw(FMdl->kwsatb * grad_pw); // -qw
-    //KeysVals.Set ("qwx", -rw*mqw(0));
-    //KeysVals.Set ("qwy", -rw*mqw(1)); if (NDim==3)
-    //KeysVals.Set ("qwz", -rw*mqw(2));
+    // seepage velocity vector
+    KeysVals.Set ("gpwx gpwy", grad_pw(0), grad_pw(1)); if (NDim==3)
+    KeysVals.Set ("gpwz",      grad_pw(2));
 }
 
 inline void UWPElem::Interp (Mat_t const & C, IntegPoint const & IP, double h) const
@@ -669,9 +666,11 @@ Element * UWPElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Mod
 // Register element
 int UWPElemRegister()
 {
-    ElementFactory["UWP"]   = UWPElemMaker;
-    ElementVarKeys["UWP2D"] = std::make_pair ("ux uy wwx wwy pw",        "fx fy fwx fwy qw");
-    ElementVarKeys["UWP3D"] = std::make_pair ("ux uy uz wwx wwy wwz pw", "fx fy fz fwx fwy fwz qw");
+    ElementFactory  ["UWP"]   = UWPElemMaker;
+    ElementVarKeys  ["UWP2D"] = std::make_pair ("ux uy wwx wwy pw",        "fx fy fwx fwy qw");
+    ElementVarKeys  ["UWP3D"] = std::make_pair ("ux uy uz wwx wwy wwz pw", "fx fy fz fwx fwy fwz qw");
+    ElementExtraKeys["UWP2D"] = Array<String>  ("qw", "qx", "qy", "qn", "qt");
+    ElementExtraKeys["UWP3D"] = Array<String>  ("qw", "qx", "qy", "qz", "qn");
     PROB.Set ("UWP", (double)PROB.Keys.Size());
     return 0;
 }
