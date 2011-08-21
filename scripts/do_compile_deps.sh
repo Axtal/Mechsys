@@ -58,6 +58,7 @@ test -d $MECHSYS_ROOT/pkg || mkdir $MECHSYS_ROOT/pkg
 VER_TRIANGLE=1.6
 VER_TETGEN=1.4.3
 VER_VORO=0.3.1
+VER_OPENMPI=1.5.4
 VER_SCALAPACK=0.96
 VER_MUMPS=4.10.0
 VER_PROC=3.2.8
@@ -129,6 +130,12 @@ download_and_compile() {
             LOCATION=https://svn.osl.iu.edu/tlc/trunk/mtl4/trunk
             IS_SVN=1
             DO_MAKE=0
+            ;;
+        openmpi)
+            PKG=openmpi-$VER_OPENMPI
+            EXT=tar.bz2
+            LOCATION=http://www.open-mpi.org/software/ompi/v1.5/downloads/$PKG.$EXT
+            DO_CONF=1
             ;;
         scalapack)
             PKG=scalapack_installer
@@ -233,7 +240,11 @@ download_and_compile() {
     # uncompress package
     if [ "$IS_SVN" -eq 0 ]; then
         echo "        . . . uncompressing . . ."
-        tar xzf $PKG_FILENAME
+        if [ "$EXT" = "tar.bz2" ]; then
+            tar xjf $PKG_FILENAME
+        else
+            tar xzf $PKG_FILENAME
+        fi
     fi
 
     # change into the package directory
@@ -269,6 +280,7 @@ download_and_compile triangle
 download_and_compile tetgen
 download_and_compile voro
 download_and_compile mtl4
+download_and_compile openmpi
 download_and_compile scalapack
 download_and_compile mumps
 download_and_compile proc
