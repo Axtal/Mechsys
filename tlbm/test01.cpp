@@ -33,7 +33,7 @@ struct UserData
     double        rho;
 };
 
-void Setup (Domain & dom, void * UD)
+void Setup (LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     //for (size_t i=0;i<dat.Left.Size();i++)
@@ -73,7 +73,7 @@ int main(int argc, char **argv) try
     size_t ny = 100;
     int radius = ny/10 + 1;           // radius of inner circle (obstacle)
     double nu     = u_max*(2*radius)/Re; // viscocity
-    Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
+    LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
     UserData dat;
     Dom.UserData = &dat;
 

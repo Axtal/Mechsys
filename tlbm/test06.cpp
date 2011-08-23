@@ -34,7 +34,7 @@ struct UserData
     Vec3_t          Xmax;
 };
 
-void Setup(Domain & dom, void * UD)
+void Setup(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     for (size_t i=0;i<dom.Lat[0].Cells.Size();i++)
@@ -76,7 +76,7 @@ int main(int argc, char **argv) try
     double dt = 1.0;
     double Tf = 10000.0;
     double rho= 200.0;
-    Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
+    LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
     UserData dat;
     Dom.UserData = &dat;
     Dom.Lat[0].G    = -200.0;

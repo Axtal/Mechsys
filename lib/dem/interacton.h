@@ -529,15 +529,19 @@ inline void BInteracton::CalcForce(double dt)
         // Normal force
         double delta = (dot(pro2-pro1,n)-L0)/L0;
         if (delta<0.0) delta = 0.0;
-        Vec3_t Fn = -Bn*(delta)*n;
 
         // Tangential Force
         Vec3_t x = 0.5*(pro1+pro2);
-        Vec3_t x1,x2;
+        Vec3_t t1,t2,x1,x2;
+        Rotation(P1->w,P1->Q,t1);
+        Rotation(P2->w,P2->Q,t2);
         x1 = x - P1->x;
         x2 = x - P2->x;
+        Vec3_t vrel = -((P2->v-P1->v)+cross(t2,x2)-cross(t1,x1));
+        Vec3_t vt   = vrel - dot(n,vrel)*n;
         Vec3_t td   = pro2-pro1-dot(pro2-pro1,n)*n;
-        Vec3_t Ft   = -Bt*td/L0;
+        Vec3_t Fn   = (-Bn*(delta) - Gn*dot(n,vrel))*n;
+        Vec3_t Ft   = -Bt*td/L0 - Gt*vt;
 
 #ifdef USE_THREAD
         std::lock_guard<std::mutex> lk1(P1->mtex);

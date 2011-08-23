@@ -43,7 +43,7 @@ struct UserData
     std::ofstream      oss_ss;       ///< file for stress strain data
 };
 
-void Setup (Domain & dom, void * UD)
+void Setup (LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     //for (size_t i=0;i<dat.Left.Size();i++)
@@ -107,7 +107,7 @@ void Setup (Domain & dom, void * UD)
     }
 }
 
-void Report(Domain & dom, void * UD)
+void Report(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     if (dom.idx_out==0)
@@ -132,7 +132,7 @@ int main(int argc, char **argv) try
     double rc     = 5.0;
     double xlim   = 1.1*rc;
     double Kn     = 1.0e2;
-    Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
+    LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
     UserData dat;
     Dom.UserData = &dat;
     Dom.Alpha    = 2.0*rc;

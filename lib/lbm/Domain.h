@@ -35,6 +35,8 @@ using std::map;
 using std::pair;
 using std::make_pair;
 
+namespace LBM
+{
 class Domain
 {
 public:
@@ -90,7 +92,9 @@ public:
 
 inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx, double Thedt)
 {
-    if (nu.Size()==0) throw new Fatal("Declare at leat one fluid please");
+    if (nu.Size()==0) throw new Fatal("LBM::Domain: Declare at leat one fluid please");
+    if (Ndim(2) >1&&Method==D2Q9)  throw new Fatal("LBM::Domain: D2Q9 scheme does not allow for a third dimension, please set Ndim(2)=1 or change to D3Q15");
+    if (Ndim(2)==1&&Method==D3Q15) throw new Fatal("LBM::Domain: Ndim(2) is greater than 1. Either change the method to D2Q9 or increse the z-dimension");
     for (size_t i=0;i<nu.Size();i++)
     {
         Lat.Push(Lattice(Method,nu[i],Ndim,dx,Thedt));
@@ -103,6 +107,8 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
 inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, double Thedt)
 {
     Lat.Push(Lattice(Method,nu,Ndim,dx,Thedt));
+    if (Ndim(2) >1&&Method==D2Q9)  throw new Fatal("LBM::Domain: D2Q9 scheme does not allow for a third dimension, please set Ndim(2)=1 or change to D3Q15");
+    if (Ndim(2)==1&&Method==D3Q15) throw new Fatal("LBM::Domain: Ndim(2) is greater than 1. Either change the method to D2Q9 or increse the z-dimension");
     Time = 0.0;
     dt   = Thedt;
     Alpha= 10.0;
@@ -156,45 +162,89 @@ inline void Domain::WriteXDMF(char const * FileKey)
 
 	// Writing xmf file
     std::ostringstream oss;
-    oss << "<?xml version=\"1.0\" ?>\n";
-    oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
-    oss << "<Xdmf Version=\"2.0\">\n";
-    oss << " <Domain>\n";
-    oss << "   <Grid Name=\"mesh1\" GridType=\"Uniform\">\n";
-    oss << "     <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"" << Lat[0].Ndim(1) << " " << Lat[0].Ndim(0) << "\"/>\n";
-    oss << "     <Geometry GeometryType=\"ORIGIN_DXDY\">\n";
-    oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\"> 0.0 0.0\n";
-    oss << "       </DataItem>\n";
-    oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\"> 1.0 1.0\n";
-    oss << "       </DataItem>\n";
-    oss << "     </Geometry>\n";
-    for (size_t j=0;j<Lat.Size();j++)
-    {
-    oss << "     <Attribute Name=\"Density_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-    oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/Density_" << j << "\n";
-    oss << "       </DataItem>\n";
-    oss << "     </Attribute>\n";
-    oss << "     <Attribute Name=\"Gamma_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-    oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/Gamma_" << j << "\n";
-    oss << "       </DataItem>\n";
-    oss << "     </Attribute>\n";
-    oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-    oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
-    oss << "       </DataItem>\n";
-    oss << "     </Attribute>\n";
-    oss << "     <Attribute Name=\"MassFlux_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-    oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/MassFlux_" << j << "\n";
-    oss << "       </DataItem>\n";
-    oss << "     </Attribute>\n";
-    }
-    oss << "   </Grid>\n";
-    oss << " </Domain>\n";
-    oss << "</Xdmf>\n";
 
+    if (Lat[0].Ndim(2)==1)
+    {
+        oss << "<?xml version=\"1.0\" ?>\n";
+        oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
+        oss << "<Xdmf Version=\"2.0\">\n";
+        oss << " <Domain>\n";
+        oss << "   <Grid Name=\"mesh1\" GridType=\"Uniform\">\n";
+        oss << "     <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"" << Lat[0].Ndim(1) << " " << Lat[0].Ndim(0) << "\"/>\n";
+        oss << "     <Geometry GeometryType=\"ORIGIN_DXDY\">\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\"> 0.0 0.0\n";
+        oss << "       </DataItem>\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\"> 1.0 1.0\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Geometry>\n";
+        for (size_t j=0;j<Lat.Size();j++)
+        {
+        oss << "     <Attribute Name=\"Density_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Density_" << j << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Gamma_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Gamma_" << j << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"MassFlux_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/MassFlux_" << j << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        }
+        oss << "   </Grid>\n";
+        oss << " </Domain>\n";
+        oss << "</Xdmf>\n";
+    }
+    else
+    {
+        oss << "<?xml version=\"1.0\" ?>\n";
+        oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
+        oss << "<Xdmf Version=\"2.0\">\n";
+        oss << " <Domain>\n";
+        oss << "   <Grid Name=\"mesh1\" GridType=\"Uniform\">\n";
+        oss << "     <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"" << Lat[0].Ndim(2) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(0) << "\"/>\n";
+        oss << "     <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> 0.0 0.0 0.0\n";
+        oss << "       </DataItem>\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> 1.0 1.0 1.0\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Geometry>\n";
+        for (size_t j=0;j<Lat.Size();j++)
+        {
+        oss << "     <Attribute Name=\"Density_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Density_" << j << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Gamma_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Gamma_" << j << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"MassFlux_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/MassFlux_" << j << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        }
+        oss << "   </Grid>\n";
+        oss << " </Domain>\n";
+        oss << "</Xdmf>\n";
+    }
     fn = FileKey;
     fn.append(".xmf");
     std::ofstream of(fn.CStr(), std::ios::out);
@@ -525,6 +575,6 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     }
     printf("%s  Final CPU time       = %s\n",TERM_CLR2, TERM_RST);
 }
-
+}
 #endif
 

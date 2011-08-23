@@ -24,8 +24,8 @@
 // Mechsys
 #include <mechsys/lbm/Dem.h>
 #include <mechsys/dem/basic_functions.h>
-
-
+namespace LBM
+{
 class Interacton
 {
 public:
@@ -67,5 +67,5 @@ bool Interacton::UpdateContacts(double Alpha)
     if (norm(D1->X-D2->X) <= D1->R + D2->R + 2*Alpha) return true;
     else                                              return false;
 }
-
+}
 #endif

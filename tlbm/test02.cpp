@@ -22,7 +22,7 @@
 #include<iostream>
 
 // MechSys
-#include <mechsys/lbm/Lattice.h>
+#include <mechsys/lbm/Domain.h>
 
 struct UserData
 {
@@ -32,7 +32,7 @@ struct UserData
     double        rho;
 };
 
-void Setup (Lattice & lat, void * UD)
+void Setup (LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     for (size_t i=0;i<dat.Left.Size();i++)
@@ -68,14 +68,14 @@ int main(int argc, char **argv) try
 {
     double u_max  = 0.1;                 // Poiseuille's maximum velocity
     double Re     = 100;                 // Reynold's number
-    size_t nx = 150;
-    size_t ny = 150;
-    size_t nz = 150;
+    size_t nx = 200;
+    size_t ny = 50;
+    size_t nz = 50;
     int radius = ny/10 + 1;           // radius of inner circle (obstacle)
     double nu     = u_max*(2*radius)/Re; // viscocity
-    Lattice Lat(D3Q15, nu, iVec3_t(nx,ny,nz), 1.0, 1.0);
+    LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), 1.0, 1.0);
     UserData dat;
-    Lat.UserData = &dat;
+    Dom.UserData = &dat;
 
     dat.vmax = u_max;
     //Assigning the left and right cells
@@ -83,13 +83,13 @@ int main(int argc, char **argv) try
     for (size_t i=0;i<ny;i++)
     for (size_t j=0;j<nz;j++)
     {
-        dat.Left .Push(Lat.GetCell(iVec3_t(0   ,i,j)));
-        dat.Right.Push(Lat.GetCell(iVec3_t(nx-1,i,j)));
+        dat.Left .Push(Dom.Lat[0].GetCell(iVec3_t(0   ,i,j)));
+        dat.Right.Push(Dom.Lat[0].GetCell(iVec3_t(nx-1,i,j)));
         
         // set parabolic profile
         double L  = ny - 2;                       // channel width in cell units
-        double yp = i - 1.5;                      // ordinate of cell
-        double zp = j - 1.5;                      // ordinate of cell
+        double yp = i - 1.5;                      // coordinate of cell
+        double zp = j - 1.5;                      // coordinate of cell
         double vx = dat.vmax*4/(L*L*L*L)*(L*yp - yp*yp)*(L*zp - zp*zp); // horizontal velocity
         double vy = 0.0;                          // vertical velocity
 		Vec3_t v(vx, vy, 0.0);                    // velocity vector
@@ -104,13 +104,13 @@ int main(int argc, char **argv) try
 
 	// set inner obstacle
 	int obsX   = ny/2;   // x position
-	int obsY   = ny/2+3; // y position
-	int obsZ   = ny/2+3; // z position
+	int obsY   = ny/2; // y position
+	int obsZ   = ny/2; // z position
     for (int i=0;i<nx;i++)
     for (int j=0;j<ny;j++)
     for (int k=0;k<nz;k++)
     {
-        if (pow(i-obsX,2.0)+pow(j-obsY,2.0)+pow(k-obsZ,2.0)<radius*radius) Lat.GetCell(iVec3_t(i,j,k))->IsSolid = true;
+        if (pow(i-obsX,2.0)+pow(j-obsY,2.0)+pow(k-obsZ,2.0)<radius*radius) Dom.Lat[0].GetCell(iVec3_t(i,j,k))->IsSolid = true;
     }
 
 
@@ -118,24 +118,23 @@ int main(int argc, char **argv) try
     for (size_t i=0;i<nx;i++)
     for (size_t j=0;j<ny;j++)
     {
-        Lat.GetCell(iVec3_t(i,0   ,j))->IsSolid = true;
-        Lat.GetCell(iVec3_t(i,ny-1,j))->IsSolid = true;
-        Lat.GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
-        Lat.GetCell(iVec3_t(i,j,ny-1))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,0   ,j))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,ny-1,j))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,j,ny-1))->IsSolid = true;
     }
 
     double rho0 = 1.0;
     Vec3_t v0(0.08,0.0,0.0);
 
     //Initializing values
-    for (size_t i=0;i<Lat.Cells.Size();i++)
+    for (size_t i=0;i<Dom.Lat[0].Cells.Size();i++)
     {
-        Lat.Cells[i]->Initialize(rho0, v0);
+        Dom.Lat[0].Cells[i]->Initialize(rho0, v0);
     }
 
     //Solving
-    Lat.Time = 0.0;
-    Lat.Solve(10000.0,20.0,Setup,NULL,"test02");
+    Dom.Solve(10000.0,20.0,Setup,NULL,"test02");
  
 }
 MECHSYS_CATCH
