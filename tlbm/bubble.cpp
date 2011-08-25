@@ -37,8 +37,18 @@ int main(int argc, char **argv) try
     double Tf = 10000.0;
     LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
     Dom.Lat[0].G    = -200.0;
-    Dom.Lat[0].Gs   = -200.0;
+    Dom.Lat[0].Gs   =    0.0;
     
+    for (size_t i=0;i<nx;i++)
+    for (size_t j=0;j<ny;j++)
+    {
+        Dom.Lat[0].GetCell(iVec3_t(i,0   ,j))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,ny-1,j))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,j,ny-1))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(0   ,i,j))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(ny-1,i,j))->IsSolid = true;
+    }
 
 
 	for (size_t i=0; i<nx; ++i)

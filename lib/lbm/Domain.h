@@ -64,9 +64,11 @@ public:
 #endif
     void ApplyForce ();                              ///< Apply the interaction forces and the collision operator
     void Collide ();                                 ///< Apply the interaction forces and the collision operator
+    void ImprintLattice ();                          ///< Imprint the DEM particles into the lattices
     void Solve(double Tf, double dtOut, ptDFun_t ptSetup=NULL, ptDFun_t ptReport=NULL,
                char const * FileKey=NULL, bool RenderVideo=true, size_t Nproc=1);                                                          ///< Solve the Domain dynamics
-    void AddDisk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt);        ///< Add a disk element
+    void AddDisk  (int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt);        ///< Add a disk element
+    void AddSphere(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt);        ///< Add a disk element
     void ResetContacts();                            ///< Reset contacts for verlet method DEM
     void ResetDisplacements();                       ///< Reset the displacements for the verlet method DEM
     double  MaxDisplacement();                       ///< Give the maximun displacement of DEM particles
@@ -75,18 +77,18 @@ public:
 
 
     //Data
-    Array<Lattice>                     Lat;         ///< Fluid Lattices
-    Array <Disk *>               Particles;         ///< Array of Disks
-    Array <Interacton *>       Interactons;         ///< Array of insteractons
-    Array <Interacton *>      CInteractons;         ///< Array of valid interactons
-    Array <iVec3_t>              CellPairs;         ///< pairs of cells
-    set<pair<Disk *, Disk *> > Listofpairs;         ///< List of pair of particles associated per interacton for memory optimization
-    double                            Time;         ///< Time of the simulation
-    double                              dt;         ///< Timestep
-    double                           Alpha;         ///< Verlet distance
-    double                            Gmix;         ///< Interaction constant for the mixture
-    void *                        UserData;         ///< User Data
-    size_t                         idx_out;         ///< The discrete time step
+    Array<Lattice>                             Lat;         ///< Fluid Lattices
+    Array <Particle *>                   Particles;         ///< Array of Disks
+    Array <Interacton *>               Interactons;         ///< Array of insteractons
+    Array <Interacton *>              CInteractons;         ///< Array of valid interactons
+    Array <iVec3_t>                      CellPairs;         ///< pairs of cells
+    set<pair<Particle *, Particle *> > Listofpairs;         ///< List of pair of particles associated per interacton for memory optimization
+    double                                    Time;         ///< Time of the simulation
+    double                                      dt;         ///< Timestep
+    double                                   Alpha;         ///< Verlet distance
+    double                                    Gmix;         ///< Interaction constant for the mixture
+    void *                                UserData;         ///< User Data
+    size_t                                 idx_out;         ///< The discrete time step
     
 };
 
@@ -409,6 +411,182 @@ void Domain::Collide ()
     }   
 }
 
+void Domain::ImprintLattice ()
+{
+    
+    // 2D imprint
+    if (Lat[0].Ndim(2)==1)
+    {
+        for (size_t i = 0;i<Particles.Size();i++)
+        {
+            LBM::Particle * Pa = Particles[i];
+            for (size_t n=std::max(0.0,double(Pa->X(0)-Pa->R-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->X(0)+Pa->R+Lat[0].dx)/Lat[0].dx);n++)
+            for (size_t m=std::max(0.0,double(Pa->X(1)-Pa->R-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->X(1)+Pa->R+Lat[0].dx)/Lat[0].dx);m++)
+            {
+                Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,0));
+                double x     = Lat[0].dx*cell->Index(0);
+                double y     = Lat[0].dx*cell->Index(1);
+                double z     = Lat[0].dx*cell->Index(2);
+                Vec3_t  C(x,y,z);
+                Array<Vec3_t> P(4);
+
+                P[0] = C - 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1;
+                P[1] = C + 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1;
+                P[2] = C + 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1;
+                P[3] = C - 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1;
+
+                double len = 0.0;
+                
+                for (size_t j=0;j<4;j++)
+                {
+                    Vec3_t D = P[(j+1)%4] - P[j];
+                    double a = dot(D,D);
+                    double b = 2*dot(P[j]-Pa->X,D);
+                    double c = dot(P[j]-Pa->X,P[j]-Pa->X) - Pa->R*Pa->R;
+                    if (b*b-4*a*c>0.0)
+                    {
+                        double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
+                        double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
+                        if (ta>1.0&&tb>1.0) continue;
+                        if (ta<0.0&&tb<0.0) continue;
+                        if (ta<0.0) ta = 0.0;
+                        if (tb>1.0) tb = 1.0;
+                        len += norm((tb-ta)*D);
+                    }
+                }
+
+                if (len>0.0)
+                {
+                    for (size_t j=0;j<Lat.Size();j++)
+                    {
+                        cell = Lat[j].GetCell(iVec3_t(n,m,0));
+                        cell->Gamma   = std::max(len/(4.0*Lat[0].dx),cell->Gamma);
+                        if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) continue;
+                        Vec3_t B      = C - Pa->X;
+                        Vec3_t VelP   = Pa->V + cross(Pa->W,B);
+                        double rho = cell->Rho;
+                        double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
+                        for (size_t k=0;k<cell->Nneigh;k++)
+                        {
+                            double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
+                            double Fvp     = cell->Feq(k          ,VelP,rho);
+                            cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
+                            Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k];
+                            Pa->F          += Flbm;
+                            Pa->T          += cross(B,Flbm);
+                            //std::cout << i << " " << Pa->F << " " << Flbm << " " << Bn << std::endl;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //3D imprint
+    else
+    {
+        for (size_t i = 0;i<Particles.Size();i++)
+        {
+            LBM::Particle * Pa = Particles[i];
+            for (size_t n=std::max(0.0,double(Pa->X(0)-Pa->R-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->X(0)+Pa->R+Lat[0].dx)/Lat[0].dx);n++)
+            for (size_t m=std::max(0.0,double(Pa->X(1)-Pa->R-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->X(1)+Pa->R+Lat[0].dx)/Lat[0].dx);m++)
+            for (size_t l=std::max(0.0,double(Pa->X(2)-Pa->R-Lat[0].dx)/Lat[0].dx);l<=std::min(double(Lat[0].Ndim(2)-1),double(Pa->X(2)+Pa->R+Lat[0].dx)/Lat[0].dx);l++)
+            {
+                Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,l));
+                double x     = Lat[0].dx*cell->Index(0);
+                double y     = Lat[0].dx*cell->Index(1);
+                double z     = Lat[0].dx*cell->Index(2);
+                Vec3_t  C(x,y,z);
+                Array<Vec3_t> P(8);
+
+                P[0] = C - 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1 + 0.5*Lat[0].dx*OrthoSys::e2; 
+                P[1] = C + 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1 + 0.5*Lat[0].dx*OrthoSys::e2;
+                P[2] = C + 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1 + 0.5*Lat[0].dx*OrthoSys::e2;
+                P[3] = C - 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1 + 0.5*Lat[0].dx*OrthoSys::e2;
+                P[4] = C - 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1 - 0.5*Lat[0].dx*OrthoSys::e2; 
+                P[5] = C + 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1 - 0.5*Lat[0].dx*OrthoSys::e2;
+                P[6] = C + 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1 - 0.5*Lat[0].dx*OrthoSys::e2;
+                P[7] = C - 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1 - 0.5*Lat[0].dx*OrthoSys::e2;
+
+                double len = 0.0;
+                
+                for (size_t j=0;j<4;j++)
+                {
+                    Vec3_t D;
+                    double a; 
+                    double b; 
+                    double c; 
+                    D = P[(j+1)%4] - P[j];
+                    a = dot(D,D);
+                    b = 2*dot(P[j]-Pa->X,D);
+                    c = dot(P[j]-Pa->X,P[j]-Pa->X) - Pa->R*Pa->R;
+                    if (b*b-4*a*c>0.0)
+                    {
+                        double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
+                        double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
+                        if (ta>1.0&&tb>1.0) continue;
+                        if (ta<0.0&&tb<0.0) continue;
+                        if (ta<0.0) ta = 0.0;
+                        if (tb>1.0) tb = 1.0;
+                        len += norm((tb-ta)*D);
+                    }
+                    D = P[(j+1)%4 + 4] - P[j + 4];
+                    a = dot(D,D);
+                    b = 2*dot(P[j + 4]-Pa->X,D);
+                    c = dot(P[j + 4]-Pa->X,P[j + 4]-Pa->X) - Pa->R*Pa->R;
+                    if (b*b-4*a*c>0.0)
+                    {
+                        double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
+                        double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
+                        if (ta>1.0&&tb>1.0) continue;
+                        if (ta<0.0&&tb<0.0) continue;
+                        if (ta<0.0) ta = 0.0;
+                        if (tb>1.0) tb = 1.0;
+                        len += norm((tb-ta)*D);
+                    }
+                    D = P[j+4] - P[j];
+                    a = dot(D,D);
+                    b = 2*dot(P[j]-Pa->X,D);
+                    c = dot(P[j]-Pa->X,P[j]-Pa->X) - Pa->R*Pa->R;
+                    if (b*b-4*a*c>0.0)
+                    {
+                        double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
+                        double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
+                        if (ta>1.0&&tb>1.0) continue;
+                        if (ta<0.0&&tb<0.0) continue;
+                        if (ta<0.0) ta = 0.0;
+                        if (tb>1.0) tb = 1.0;
+                        len += norm((tb-ta)*D);
+                    }
+                }
+
+                if (len>0.0)
+                {
+                    for (size_t j=0;j<Lat.Size();j++)
+                    {
+                        cell = Lat[j].GetCell(iVec3_t(n,m,l));
+                        cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
+                        if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) continue;
+                        Vec3_t B      = C - Pa->X;
+                        Vec3_t VelP   = Pa->V + cross(Pa->W,B);
+                        double rho = cell->Rho;
+                        double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
+                        for (size_t k=0;k<cell->Nneigh;k++)
+                        {
+                            double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
+                            double Fvp     = cell->Feq(k          ,VelP,rho);
+                            cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
+                            Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k];
+                            Pa->F          += Flbm;
+                            Pa->T          += cross(B,Flbm);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 inline void Domain::ResetDisplacements()
 {
     for (size_t i=0; i<Particles.Size(); i++)
@@ -442,7 +620,7 @@ inline void Domain::ResetContacts()
             if ((pi_has_vf && pj_has_vf) || !close) continue;
             
             // checking if the interacton exist for that pair of particles
-            set<pair<Disk *, Disk *> >::iterator it = Listofpairs.find(make_pair(Particles[i],Particles[j]));
+            set<pair<Particle *, Particle *> >::iterator it = Listofpairs.find(make_pair(Particles[i],Particles[j]));
             if (it != Listofpairs.end())
             {
                 continue;
@@ -479,6 +657,11 @@ inline void Domain::AddDisk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV
     Particles.Push(new Disk(TheTag,TheX,TheV,TheW,Therho,TheR,dt));
 }
 
+inline void Domain::AddSphere(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
+{
+    Particles.Push(new Sphere(TheTag,TheX,TheV,TheW,Therho,TheR,dt));
+}
+
 inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t ptReport,
                           char const * FileKey, bool RenderVideo, size_t Nproc)
 {
@@ -488,11 +671,10 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
     idx_out     = 0;
     //Connect particles and lattice
-    for(size_t i=0;i<Particles.Size();i++)
-    for(size_t j=0;j<Lat.Size();j++)
-    {
-    	Particles[i]->ImprintDisk(Lat[j]);
-    }
+    //
+    
+    //for(size_t i=0;i<Particles.Size();i++) Particles[i]->ImprintDisk(Lat[0]);
+    ImprintLattice();
     ResetContacts();
     ResetDisplacements();
     
@@ -548,8 +730,8 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         }
         
         //Connect particles and lattice
-        for(size_t i=0;i<Particles.Size();i++)
-        for(size_t j=0;j<Lat.Size();j++) Particles[i]->ImprintDisk(Lat[j]);
+        //for(size_t i=0;i<Particles.Size();i++) Particles[i]->ImprintDisk(Lat[0]);
+        ImprintLattice();
 
         //Move Particles
         for(size_t i=0;i<Interactons.Size();i++) Interactons[i]->CalcForce(dt);

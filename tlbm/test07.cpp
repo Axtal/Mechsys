@@ -52,57 +52,64 @@ void Setup(LBM::Domain & dom, void * UD)
         if (delta > 0.0)  dom.Particles[i]->Ff(1) += dat.Kn*delta;
         delta = - dat.Xmax(1) + dom.Particles[i]->X(1) + dom.Particles[i]->R;
         if (delta > 0.0)  dom.Particles[i]->Ff(1) -= dat.Kn*delta;
+        delta =   dat.Xmin(2) - dom.Particles[i]->X(2) + dom.Particles[i]->R;
+        if (delta > 0.0)  dom.Particles[i]->Ff(2) += dat.Kn*delta;
+        delta = - dat.Xmax(2) + dom.Particles[i]->X(2) + dom.Particles[i]->R;
+        if (delta > 0.0)  dom.Particles[i]->Ff(2) -= dat.Kn*delta;
     }
 }
 
 
 int main(int argc, char **argv) try
 {
-    size_t nx = 200;
-    size_t ny = 200;
-    double nu = 0.1;
+    size_t nx = 100;
+    size_t ny = 100;
+    size_t nz = 100;
+    double nu = 0.05;
     double dx = 1.0;
     double dt = 1.0;
-    double rho= 100.0;
-    LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
+    double rho= 3000.0;
+    LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
     UserData dat;
     Dom.UserData = &dat;
     Dom.Lat[0].G    = -200.0;
     Dom.Lat[0].Gs   = -200.0;
     dat.g        = 0.0,-0.001,0.0;
     dat.Xmin     = 0.0,0.0,0.0;
-    dat.Xmax     = nx*dx,ny*dx,0.0;
+    dat.Xmax     = nx*dx,ny*dx,nz*dx;
     dat.Kn       = 1.0e5*rho/500.0;
 
     //Set solid boundaries
     for (size_t i=0;i<nx;i++)
+    for (size_t j=0;j<ny;j++)
     {
-        Dom.Lat[0].GetCell(iVec3_t(i,0   ,0))->IsSolid = true;
-        Dom.Lat[0].GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
-    }
-    for (size_t i=0;i<ny;i++)
-    {
-        Dom.Lat[0].GetCell(iVec3_t(0   ,i,0))->IsSolid = true;
-        Dom.Lat[0].GetCell(iVec3_t(nx-1,i,0))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,0   ,j))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,ny-1,j))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,j,ny-1))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(0   ,i,j))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(ny-1,i,j))->IsSolid = true;
     }
 
     for (int i=0;i<nx;i++)
     for (int j=0;j<ny;j++)
+    for (int k=0;k<nz;k++)
     {
         Vec3_t v0(0.0,0.0,0.0);
-        if (j<ny/2.0) Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,v0);
-        else          Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(  50.0,v0);
+        if (j<ny/2.0) Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(1800.0 ,v0);
+        else          Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(    .01,v0);
     }
 
-    Dom.AddDisk(0,Vec3_t(0.30*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
-    Dom.AddDisk(0,Vec3_t(0.40*nx,0.8*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
-    Dom.AddDisk(0,Vec3_t(0.50*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
-    Dom.AddDisk(0,Vec3_t(0.60*nx,0.8*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
-    Dom.AddDisk(0,Vec3_t(0.70*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
+    Dom.AddSphere(0,Vec3_t(0.5*nx*dx,0.65*ny*dx,0.5*nz*dx),OrthoSys::O,OrthoSys::O,rho,0.1*ny,dt);
+    //Dom.AddDisk(0,Vec3_t(0.30*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
+    //Dom.AddDisk(0,Vec3_t(0.40*nx,0.8*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
+    //Dom.AddDisk(0,Vec3_t(0.50*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
+    //Dom.AddDisk(0,Vec3_t(0.60*nx,0.8*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
+    //Dom.AddDisk(0,Vec3_t(0.70*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
     //Dom.Particles[Dom.Particles.Size()-1]->FixVelocity();
 
     //Solving
-    Dom.Solve(10000.0,50.0,Setup,NULL,"test05");
+    Dom.Solve(1000.0,10.0,Setup,NULL,"test07");
     //Dom.Solve(10000.0,20.0,NULL,NULL,"test05");
 }
 MECHSYS_CATCH

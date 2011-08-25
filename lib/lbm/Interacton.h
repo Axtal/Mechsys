@@ -31,19 +31,19 @@ class Interacton
 public:
     //Constructor
     Interacton () {};
-    Interacton(Disk * D1, Disk * D2);
+    Interacton(Particle * D1, Particle * D2);
 
     //Methods
     void CalcForce      (double dt);
     bool UpdateContacts (double Alpha);
 
     //Data
-    Disk * D1;       //Pointer to first particle
-    Disk * D2;       //Pointer to second particle
-    double Kn;       //Spring constant 
+    Particle * D1;       //Pointer to first particle
+    Particle * D2;       //Pointer to second particle
+    double     Kn;       //Spring constant 
 };
 
-Interacton::Interacton(Disk * Dp1, Disk * Dp2)
+Interacton::Interacton(Particle * Dp1, Particle * Dp2)
 {
     D1 = Dp1;
     D2 = Dp2;
