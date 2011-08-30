@@ -592,6 +592,7 @@ int main(int argc, char **argv) try
     SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
     dat.tspan = T0 - dom.Time;
     dom.Solve (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_b.CStr(),RenderVideo,Nproc);
+    dom.Save(fkey_b.CStr());
 
     // stage 2: The proper triaxial test /////////////////////////////////////////////////////////////////////////
     String fkey_c(filekey+"_c");
@@ -606,6 +607,7 @@ int main(int argc, char **argv) try
     SetTxTest (sigf, peps, depsdt, thf*M_PI/180, alpf*M_PI/180, isfailure, dat, dom);
     dat.tspan = Tf - dom.Time;
     dom.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_c.CStr(),RenderVideo,Nproc);
+    dom.Save(fkey_c.CStr());
 
     return 0;
 }

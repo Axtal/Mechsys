@@ -65,7 +65,7 @@ int main(int argc, char **argv) try
     size_t nx = 100;
     size_t ny = 100;
     size_t nz = 100;
-    double nu = 0.05;
+    double nu = 0.015;
     double dx = 1.0;
     double dt = 1.0;
     double rho= 3000.0;
@@ -73,7 +73,7 @@ int main(int argc, char **argv) try
     UserData dat;
     Dom.UserData = &dat;
     Dom.Lat[0].G    = -200.0;
-    Dom.Lat[0].Gs   = -200.0;
+    Dom.Lat[0].Gs   = 0.0;
     dat.g        = 0.0,-0.001,0.0;
     dat.Xmin     = 0.0,0.0,0.0;
     dat.Xmax     = nx*dx,ny*dx,nz*dx;
@@ -96,20 +96,22 @@ int main(int argc, char **argv) try
     for (int k=0;k<nz;k++)
     {
         Vec3_t v0(0.0,0.0,0.0);
-        if (j<ny/2.0) Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(1800.0 ,v0);
+        if (j<ny/2.0) Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(2300.0 ,v0);
         else          Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(    .01,v0);
     }
 
-    Dom.AddSphere(0,Vec3_t(0.5*nx*dx,0.65*ny*dx,0.5*nz*dx),OrthoSys::O,OrthoSys::O,rho,0.1*ny,dt);
-    //Dom.AddDisk(0,Vec3_t(0.30*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
-    //Dom.AddDisk(0,Vec3_t(0.40*nx,0.8*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
-    //Dom.AddDisk(0,Vec3_t(0.50*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
-    //Dom.AddDisk(0,Vec3_t(0.60*nx,0.8*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
-    //Dom.AddDisk(0,Vec3_t(0.70*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
-    //Dom.Particles[Dom.Particles.Size()-1]->FixVelocity();
+    Dom.AddSphere(0,Vec3_t(0.58*nx*dx,0.65*ny*dx,0.58*nz*dx),OrthoSys::O,OrthoSys::O,0.9*rho,0.1*ny,dt);
+    Dom.AddSphere(0,Vec3_t(0.57*nx*dx,0.85*ny*dx,0.57*nz*dx),OrthoSys::O,OrthoSys::O,rho,0.1*ny,dt);
+    Dom.AddSphere(0,Vec3_t(0.43*nx*dx,0.65*ny*dx,0.42*nz*dx),OrthoSys::O,OrthoSys::O,rho,0.1*ny,dt);
+    Dom.AddSphere(0,Vec3_t(0.36*nx*dx,0.85*ny*dx,0.63*nz*dx),OrthoSys::O,OrthoSys::O,0.3*rho,0.1*ny,dt);
+    Dom.AddSphere(0,Vec3_t(0.70*nx*dx,0.65*ny*dx,0.40*nz*dx),OrthoSys::O,OrthoSys::O,0.6*rho,0.1*ny,dt);
+    for (size_t i=0;i<Dom.Particles.Size();i++)
+    {
+        Dom.Particles[i]->Kn = 1.0e5*rho/500.0;
+    }
 
     //Solving
-    Dom.Solve(1000.0,10.0,Setup,NULL,"test07");
+    Dom.Solve(4000.0,20.0,Setup,NULL,"test07");
     //Dom.Solve(10000.0,20.0,NULL,NULL,"test05");
 }
 MECHSYS_CATCH

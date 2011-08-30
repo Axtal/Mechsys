@@ -38,9 +38,10 @@ public:
     bool UpdateContacts (double Alpha);
 
     //Data
-    Particle * D1;       //Pointer to first particle
-    Particle * D2;       //Pointer to second particle
-    double     Kn;       //Spring constant 
+    Particle * D1;       ///< Pointer to first particle
+    Particle * D2;       ///< Pointer to second particle
+    double     Kn;       ///< Spring constant 
+    double     Gn;       ///< dissipation constant
 };
 
 Interacton::Interacton(Particle * Dp1, Particle * Dp2)
@@ -48,17 +49,21 @@ Interacton::Interacton(Particle * Dp1, Particle * Dp2)
     D1 = Dp1;
     D2 = Dp2;
     Kn = 2.0*ReducedValue(D1->Kn,D2->Kn);
+    Gn = 2.0*ReducedValue(D1->Gn,D2->Gn)*ReducedValue(D1->M,D2->M);
 }
 
 void Interacton::CalcForce(double dt)
 {
     double dist  = norm(D2->X - D1->X);
     double delta = D1->R + D2->R - dist;
+    //std::cout << delta << std::endl;
     if (delta>0)
     {
-        Vec3_t n = (D2->X - D1->X)/dist;
-        D1->F   -= Kn*delta*n;
-        D2->F   += Kn*delta*n;
+        Vec3_t n    = (D2->X - D1->X)/dist;
+        Vec3_t Vrel = D1->V - D2->V;
+        Vec3_t F    = (Kn*delta + Gn*dot(n,Vrel))*n;
+        D1->F      -= Kn*delta*n;
+        D2->F      += Kn*delta*n;
     }
 }
 

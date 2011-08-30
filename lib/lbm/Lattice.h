@@ -140,8 +140,9 @@ inline void Lattice::SolidDisk(Vec3_t const & X, double R)
 {
     for (size_t n=std::max(0.0,double(X(0)-R-dx)/dx);n<=std::min(double(Ndim(0)-1),double(X(0)+R+dx)/dx);n++)
     for (size_t m=std::max(0.0,double(X(1)-R-dx)/dx);m<=std::min(double(Ndim(1)-1),double(X(1)+R+dx)/dx);m++)
+    for (size_t l=std::max(0.0,double(X(2)-R-dx)/dx);l<=std::min(double(Ndim(2)-1),double(X(2)+R+dx)/dx);l++)
     {
-        Cell  * cell = GetCell(iVec3_t(n,m,0));
+        Cell  * cell = GetCell(iVec3_t(n,m,l));
         double x     = dx*cell->Index(0);
         double y     = dx*cell->Index(1);
         double z     = dx*cell->Index(2);

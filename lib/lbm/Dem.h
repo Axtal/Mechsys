@@ -56,6 +56,7 @@ public:
     double M;              ///< mass of the disk
     double I;              ///< inertia moment of the particle
     double GT;             ///< dissipation constant for the torque
+    double Gn;             ///< dissipation constant for collision
     double Kn;             ///< Stiffness constant
     bVec3_t vf;            ///< prescribed velocities
     bVec3_t wf;            ///< prescribed angular velocities
@@ -201,6 +202,7 @@ inline Sphere::Sphere(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3
     vf  = false,false,false;
     wf  = false,false,false;
     GT  = 1.0e5;
+    Gn  = 8.0;
     Kn  = 1.0e3;
 }
 

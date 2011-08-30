@@ -176,15 +176,16 @@ public:
     Array<Cylinder*>    Cylinders;   ///< Cylindrical features
 
     // Auxiliar methods
-    void   CalcProps (size_t NCalls=5000); ///< Calculate properties: mass, center of mass, and moment of inertia
-    bool   IsInside  (Vec3_t & V);         ///< Find whether the point V is inside the particle or not
-    double IsInside  (double * V);         ///< Find whether the point V is inside the particle or not
-    double MaxX      ();                   ///< Find Maximun X coordinate
-    double MaxY      ();                   ///< Find Maximun Y coordinate
-    double MaxZ      ();                   ///< Find Maximun Y coordinate
-    double MinX      ();                   ///< Find Minimun X coordinate
-    double MinY      ();                   ///< Find Minimun Y coordinate
-    double MinZ      ();                   ///< Find Minimun Y coordinate
+    void   CalcProps  (size_t NCalls=5000); ///< Calculate properties: mass, center of mass, and moment of inertia
+    bool   IsInside   (Vec3_t & V);         ///< Find whether the point V is inside the particle or not
+    bool   IsInsideAlt(Vec3_t & V);         ///< Find whether the point V is inside the particle or not
+    double IsInside   (double * V);         ///< Find whether the point V is inside the particle or not
+    double MaxX       ();                   ///< Find Maximun X coordinate
+    double MaxY       ();                   ///< Find Maximun Y coordinate
+    double MaxZ       ();                   ///< Find Maximun Y coordinate
+    double MinX       ();                   ///< Find Minimun X coordinate
+    double MinY       ();                   ///< Find Minimun Y coordinate
+    double MinZ       ();                   ///< Find Minimun Y coordinate
 
     // Integrants for the calc of properties
     double Vol (double * X); ///< Calculate the volume of the sample at X
@@ -852,6 +853,71 @@ inline bool Particle::IsInside (Vec3_t & V)
         Vec3_t nor;
         Faces[k]->Normal(nor);
         if (dot(pro,nor)<0) inside =true;
+    }
+
+
+    return inside;
+}
+
+inline bool Particle::IsInsideAlt(Vec3_t & V)
+{
+    bool inside = false;
+    size_t nv = Verts.Size(),ne = Edges.Size(),nf = Faces.Size();
+    if (Distance(x,V)>Dmax) return inside;
+    for (size_t i = 0; i < nv; i++)
+    {
+        if (Distance(V,*Verts[i]) < Props.R) {
+            inside = true;
+            return inside;
+        }
+    }
+
+    for (size_t i = 0; i < ne; i++)
+    {
+        if (Distance(V,*Edges[i]) < Props.R) {
+            inside = true;
+            return inside;
+        }
+    }
+    for (size_t i = 0; i < nf; i++)
+    {
+        if (Distance(V,*Faces[i]) < Props.R) {
+            inside = true;
+            return inside;
+        }
+    }
+    if (nf>3)
+    {
+        inside = true;
+        Vec3_t D = V - x;
+        for (size_t i = 0; i < nf; i++)
+        {
+            Vec3_t B = x - *Faces[i]->Edges[0]->X0;
+            Mat3_t M;
+            M(0,0) = -D(0);
+            M(0,1) = (Faces[i]->Edges[0]->dL)(0);
+            M(0,2) = (Faces[i]->Edges[1]->dL)(0);
+            M(1,0) = -D(1);
+            M(1,1) = (Faces[i]->Edges[0]->dL)(1);
+            M(1,2) = (Faces[i]->Edges[1]->dL)(1);
+            M(2,0) = -D(2);
+            M(2,1) = (Faces[i]->Edges[0]->dL)(2);
+            M(2,2) = (Faces[i]->Edges[1]->dL)(2);
+            Vec3_t X;
+            try { Sol(M,B,X); }
+            catch (Fatal * fatal) { continue; }
+            if (X(0)>1.0||X(0)<0.0) continue;
+            B = *Faces[i]->Edges[0]->X0 + Faces[i]->Edges[0]->dL*X(1)+Faces[i]->Edges[1]->dL*X(2);
+            Vec3_t nor;
+            Faces[i]->Normal(nor);
+            bool test = true;
+            for (size_t j=0; j<Faces[i]->Edges.Size(); j++) 
+            {
+                Vec3_t tmp = B-*Faces[i]->Edges[j]->X0;
+                if (dot(cross(Faces[i]->Edges[j]->dL,tmp),nor)<0) test = false;
+            }
+            if (test) inside = false;
+        }
     }
 
 
