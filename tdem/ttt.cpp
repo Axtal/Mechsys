@@ -554,7 +554,7 @@ int main(int argc, char **argv) try
 
     // particle
     if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction);
-    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, Cohesion, !Cohesion, seed, fraction, Eta);
+    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, Cohesion, !Cohesion, seed, fraction, Vec3_t(Beta,Beta,Eta));
     else if (ptype=="tetra")
     {
         Mesh::Unstructured mesh(/*NDim*/3);
@@ -588,11 +588,16 @@ int main(int argc, char **argv) try
     ResetEps  (dom,dat);
     SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
     dat.tspan = T0/2.0 - dom.Time;
+#ifdef USE_HDF5    
+    dom.Save(filekey.CStr());
+#endif
     dom.Solve  (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_a.CStr(),RenderVideo,Nproc);
     SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
     dat.tspan = T0 - dom.Time;
     dom.Solve (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_b.CStr(),RenderVideo,Nproc);
+#ifdef USE_HDF5    
     dom.Save(fkey_b.CStr());
+#endif
 
     // stage 2: The proper triaxial test /////////////////////////////////////////////////////////////////////////
     String fkey_c(filekey+"_c");
@@ -607,7 +612,9 @@ int main(int argc, char **argv) try
     SetTxTest (sigf, peps, depsdt, thf*M_PI/180, alpf*M_PI/180, isfailure, dat, dom);
     dat.tspan = Tf - dom.Time;
     dom.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_c.CStr(),RenderVideo,Nproc);
+#ifdef USE_HDF5    
     dom.Save(fkey_c.CStr());
+#endif
 
     return 0;
 }

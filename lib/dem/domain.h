@@ -110,7 +110,7 @@ public:
     void GenBoundingPlane(int InitialTag, double R, double Cf,bool Cohesion=false);                                              ///< Same as GenBounding but only generates one pair of planes.
     void GenFromMesh     (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);   ///< Generate particles from a FEM mesh generator
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
-    double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, double q=0.0);                                  ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
+    double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                                  ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
     // Single particle addition
     void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
     void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a cube at position X with spheroradius R, side of length L and density rho
@@ -629,7 +629,7 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
 }
 
 inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho
-                                 , bool Cohesion, bool Periodic,size_t Randomseed, double fraction, double qin)
+                                 , bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t qin)
 {
     // info
     Util::Stopwatch stopwatch;
@@ -647,9 +647,9 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
         {
             for (size_t k=0; k<nz; k++)
             {
-                double x = x_min+(i+0.5*qin+(1-qin)*double(rand())/RAND_MAX)*(x_max-x_min)/nx;
-                double y = y_min+(j+0.5*qin+(1-qin)*double(rand())/RAND_MAX)*(y_max-y_min)/ny;
-                double z = z_min+(k+0.5*qin+(1-qin)*double(rand())/RAND_MAX)*(z_max-z_min)/nz;
+                double x = x_min+(i+0.5*qin(0)+(1-qin(0))*double(rand())/RAND_MAX)*(x_max-x_min)/nx;
+                double y = y_min+(j+0.5*qin(1)+(1-qin(1))*double(rand())/RAND_MAX)*(y_max-y_min)/ny;
+                double z = z_min+(k+0.5*qin(2)+(1-qin(2))*double(rand())/RAND_MAX)*(z_max-z_min)/nz;
                 con.put (n,x,y,z);
                 n++;
             }
