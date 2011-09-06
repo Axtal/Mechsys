@@ -31,7 +31,7 @@ struct UserData
     Vec3_t             g;
 };
 
-void Setup(Domain & dom, void * UD)
+void Setup(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     for (size_t j=0;j<dom.Lat.Size();j++)
@@ -46,14 +46,14 @@ int main(int argc, char **argv) try
 {
 
     Array<double> nu(2);
-    nu[0] = 0.1;
-    nu[1] = 0.1;
+    nu[0] = 0.15;
+    nu[1] = 0.15;
 
-    size_t nx = 200, ny = 200;
-    Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
+    size_t nx = 400, ny = 200;
+    LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
     UserData dat;
     Dom.UserData = &dat;
-    dat.g           = 0.0,-0.001,0.0;
+    dat.g           = 0.0,-0.005,0.0;
 
     for (size_t i=0;i<nx;i++)
     {
@@ -79,15 +79,15 @@ int main(int argc, char **argv) try
             Dom.Lat[0].GetCell(iVec3_t(i,j,0))->IsSolid = true;
             Dom.Lat[1].GetCell(iVec3_t(i,j,0))->IsSolid = true;
         }
-		else if ((i<nx/3.0)&&(i>=1)&&(j<9.0*ny/10.0)&&(j>=1)) 
+		else if ((i<nx/8.0)&&(i>=1)&&(j<9.0*ny/10.0)&&(j>=1)) 
         {
-            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300,OrthoSys::O);
+            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(3000,OrthoSys::O);
             Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,OrthoSys::O);
         }
         else
         {
             Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1  ,OrthoSys::O);
-            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(1.0,OrthoSys::O);
+            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(10.0,OrthoSys::O);
         }
     }
 

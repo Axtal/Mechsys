@@ -163,6 +163,7 @@ inline void Lattice::SetZeroGamma()
 inline double Lattice::Psi(double rho)
 {
     return Psiref*exp(-Rhoref/rho);
+    //return Rhoref*(1-exp(-rho/Rhoref));
 }
 
 inline double Lattice::SolidFraction()

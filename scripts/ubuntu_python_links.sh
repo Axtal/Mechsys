@@ -6,9 +6,9 @@ fi
 
 echo Considering that MechSys is in $MECHSYS_ROOT
 
-PYVER=2.7
+PYVER=3
 
 MODULES="ana drawmesh fcrits fig invs linfit matvec plt"
 for m in $MODULES; do
-  sudo ln -s $MECHSYS_ROOT/mechsys/lib/python/msys_$m.py /usr/lib/python$PYVER/dist-packages
+  sudo ln -s $MECHSYS_ROOT/mechsys/lib/python/msys_$m.py /usr/lib64/python$PYVER/dist-packages
 done

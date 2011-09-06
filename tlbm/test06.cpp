@@ -32,6 +32,7 @@ struct UserData
     double            Kn;
     Vec3_t          Xmin;
     Vec3_t          Xmax;
+    double           rho;
 };
 
 void Setup(LBM::Domain & dom, void * UD)
@@ -43,12 +44,20 @@ void Setup(LBM::Domain & dom, void * UD)
         c->BForcef = c->Density()*dat.g;
     }
     double alpha = 1.0;
-    double TC    = 3.0*dat.Tf/4.0;
-    double rho = 500.0*(1.0 + alpha*4.0*dom.Time*(TC-dom.Time)/(TC*TC));
-    if (dom.Time>TC) rho = 500.0;
+    //double TC    = 3.0*dat.Tf/4.0;
+    //double rho = 500.0*(1.0 + alpha*4.0*dom.Time*(TC-dom.Time)/(TC*TC));
+    //if (dom.Time>TC) rho = 500.0;
     for (size_t i=0;i<dat.Bottom.Size();i++)
     {
-        dat.Bottom[i]->Initialize(rho,OrthoSys::O);
+        Cell * c = dat.Bottom[i];
+        c->RhoBC = dat.rho;
+		//if (c->IsSolid) continue;
+		//double vy = -1.0 + (c->F[0]+c->F[1]+c->F[3] + 2.0*(c->F[4]+c->F[7]+c->F[8]))/c->RhoBC;
+		//c->F[2] = c->F[4] - (2.0/3.0)*c->RhoBC*vy; 
+		//c->F[6] = c->F[8] - (1.0/6.0)*c->RhoBC*vy - 0.5*(c->F[3]-c->F[1]);
+		//c->F[5] = c->F[7] - (1.0/6.0)*c->RhoBC*vy + 0.5*(c->F[3]-c->F[1]);
+        //c->Rho = c->VelDen(c->Vel);
+        dat.Bottom[i]->Initialize(dat.rho,OrthoSys::O);
     }
 
     for (size_t i=0;i<dom.Particles.Size();i++)
@@ -66,12 +75,18 @@ void Setup(LBM::Domain & dom, void * UD)
     }
 }
 
+void Report(LBM::Domain & dom, void * UD)
+{
+    UserData & dat = (*static_cast<UserData *>(UD));
+
+}
+
 
 int main(int argc, char **argv) try
 {
     size_t nx = 200;
     size_t ny = 200;
-    double nu = 0.08;
+    double nu = 0.1;
     double dx = 1.0;
     double dt = 1.0;
     double Tf = 10000.0;
@@ -79,13 +94,17 @@ int main(int argc, char **argv) try
     LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
     UserData dat;
     Dom.UserData = &dat;
-    Dom.Lat[0].G    = -200.0;
-    Dom.Lat[0].Gs   = -200.0;
-    dat.g           = 0.0,-0.001,0.0;
-    dat.Tf          = Tf;
-    dat.Xmin        = 0.0,0.0,0.0;
-    dat.Xmax        = nx*dx,ny*dx,0.0;
-    dat.Kn          = 1.0e5*rho/500.0;
+    //Dom.Lat[0].Rhoref   =  2.0;
+    //Dom.Lat[0].G        = -2.0;
+    //Dom.Lat[0].Gs       = -0.0;
+    Dom.Lat[0].G        = -200.0;
+    Dom.Lat[0].Gs       =    0.0;
+    dat.g               = 0.0,-0.001,0.0;
+    dat.Tf              = Tf;
+    dat.Xmin            = 0.0,0.0,0.0;
+    dat.Xmax            = nx*dx,ny*dx,0.0;
+    dat.Kn              = 1.0e5*rho/500.0;
+    dat.rho             = 540.0;
 
     //Set solid boundaries
     for (size_t i=0;i<nx;i++)
@@ -103,13 +122,14 @@ int main(int argc, char **argv) try
     for (int j=0;j<ny;j++)
     {
         Vec3_t v0(0.0,0.0,0.0);
-        if (j<ny/2.0) Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,v0);
-        else          Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(  50.0,v0);
+        //if (j<ny/2.0) Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0 ,v0);
+        //else          Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(  0.001,v0);
+        Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1.0e-6,v0);
     }
 
-    Dom.AddDisk(0,Vec3_t(0.50*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
+    //Dom.AddDisk(0,Vec3_t(0.50*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
     //Solving
-    Dom.Solve(Tf,50.0,Setup,NULL,"test06");
+    Dom.Solve(Tf,50.0,Setup,Report,"test06");
 }
 MECHSYS_CATCH
 

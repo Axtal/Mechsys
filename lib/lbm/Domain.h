@@ -695,6 +695,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     double tout = Time;
     while (Time < Tf)
     {
+        if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
         if (Time >= tout)
         {
             if (FileKey!=NULL)
@@ -714,7 +715,6 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             tout += dtOut;
             idx_out++;
         }
-        if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
 
         //Assigning a vlaue of zero to the particles forces and torques
         for(size_t i=0;i<Particles.Size();i++)
