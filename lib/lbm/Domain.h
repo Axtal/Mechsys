@@ -284,7 +284,7 @@ inline void Domain::ApplyForce()
                 }
                 else nb_psi = Lat[k].Psi(nb->Rho);
                 double G;
-                solid ? G = Lat[j].Gs : G = Lat[j].G; 
+                solid ? G = Lat[j].Gs*2.0*ReducedValue(nb->Gs,c->Gs) : G = Lat[j].G; 
                 Vec3_t BF(OrthoSys::O);
                 if (j==k)
                 {

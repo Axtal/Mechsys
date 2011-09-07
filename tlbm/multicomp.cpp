@@ -30,7 +30,7 @@ struct UserData
     Vec3_t             g;
 };
 
-void Setup(Domain & dom, void * UD)
+void Setup(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     for (size_t j=0;j<dom.Lat.Size();j++)
@@ -49,10 +49,10 @@ int main(int argc, char **argv) try
     nu[0] = 1.0/6.0;
     nu[1] = 1.0/6.0;
 
-    size_t nx = 50, ny = 50;
+    size_t nx = 100, ny = 100;
 
     // Setting top and bottom wall as solid
-    Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
+    LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
     UserData dat;
     Dom.UserData = &dat;
     dat.g           = 0.0,-0.001,0.0;
@@ -73,7 +73,7 @@ int main(int argc, char **argv) try
 
     // Set inner drop
     int obsX = nx/2, obsY = ny/2;
-    int radius =  5;
+    int radius =  nx/10.0;
 
 	for (size_t i=0; i<nx; ++i)
 	for (size_t j=0; j<ny; ++j)
@@ -97,7 +97,7 @@ int main(int argc, char **argv) try
 
     // Set parameters
     Dom.Lat[0].G = -200.0;
-    Dom.Lat[0].Gs= -400.0;
+    Dom.Lat[0].Gs= -600.0;
     //Dom.Lat[0].G = -0.0;
     //Dom.Lat[0].Gs= -0.0;
     Dom.Lat[1].G =  0.0;

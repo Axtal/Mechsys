@@ -90,6 +90,7 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
     Index  = TheIndexes;
     Cs     = TheCs;
     Gamma  = 0.0;
+    Gs     = 1.0;
     Tau    = TheTau;
     if (Method==D2Q9)
     {
