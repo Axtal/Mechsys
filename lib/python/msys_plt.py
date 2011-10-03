@@ -197,7 +197,7 @@ class Plotter:
             if self.mark_lst: plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, '^', color=clr)
             #Grid ()
             axis ('equal')
-            axis ('off')
+            #axis ('off')
 
         # 6) Ek, Q/P ---------------------------------------------------------------------------
         if self.one==6 or self.one<0 and not self.six and not self.four:

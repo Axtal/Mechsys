@@ -379,7 +379,7 @@ class FCrits:
     # Plot failure criteria
     # =====================
     def plot (self, typ='MN', clr='red', lst='-', lwd=1, label=None, np=40, leg_set=True, show_phi=False, fsz=10,
-              plane='oct'):
+              plane='oct', pct_scale=0.1):
 
         # data
         r = self.sc*phi_calc_M(self.phi,'oct') if self.r==None else self.r
@@ -387,11 +387,11 @@ class FCrits:
 
         # data for octahedral plane
         if plane=='oct':
-            samin = -1.1*r if self.samin==None else self.samin
-            samax =  1.1*r if self.samax==None else self.samax
-            sbmin = -1.1*r if self.sbmin==None else self.sbmin
-            sbmax =  1.1*r if self.sbmax==None else self.sbmax
-            samax += 0.3*(samax-samin)
+            samin = -(1.0+pct_scale)*r if self.samin==None else self.samin
+            samax =  (1.0+pct_scale)*r if self.samax==None else self.samax
+            sbmin = -(1.0+pct_scale)*r if self.sbmin==None else self.sbmin
+            sbmax =  (1.0+pct_scale)*r if self.sbmax==None else self.sbmax
+            #samax += 0.3*(samax-samin)
             dsa = (samax-samin)/np
             dsb = (sbmax-sbmin)/np
             for i in range(np):
