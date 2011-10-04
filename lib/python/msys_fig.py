@@ -70,7 +70,7 @@ def Text (x, y, txt, x_offset=0, y_offset=0, units='points', va='bottom', ha='le
 
 def Arc (xc,yc,R, alp_min=0.0, alp_max=pi, ec='red', fc='None', lw=2, ls='solid', label=None, useArc=True, res=200, zorder=0):
     if useArc:
-        gca().add_patch(MPLArc([xc,yc], 2.*R,2.*R, angle=0, theta1=alp_min*180.0/pi, theta2=alp_max*180.0/pi, ls=ls, color=ec, lw=lw, label=label, zorder=zorder))
+        gca().add_patch(MPLArc([xc,yc], 2.*R,2.*R, clip_on=False, angle=0, theta1=alp_min*180.0/pi, theta2=alp_max*180.0/pi, ls=ls, color=ec, lw=lw, label=label, zorder=zorder))
     else:
         A   = linspace(alp_min,alp_max,res)
         dat = [(MPLPath.MOVETO, (xc+R*cos(alp_min),yc+R*sin(alp_min)))]
