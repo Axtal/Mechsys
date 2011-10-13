@@ -53,6 +53,9 @@ public:
     void SetVecScale (double Factor=1.0)                               { _hedgehog->SetScaleFactor(Factor);            }
     void SetWire     ()                                                { _isosurf_actor->GetProperty()->SetRepresentationToWireframe(); }
 
+    // Extra methods
+    void SetMaterial (double Ambient, double Diffuse, double Specular, double SpecularPower);
+
     // Methods
     void AddTo (VTK::Win & win);
 
@@ -129,6 +132,14 @@ inline void IsoSurf::AddTo (VTK::Win & win)
 {
     if (ShowIsoSurf) win.AddActor (_isosurf_actor);
     if (ShowVectors) win.AddActor (_hedgehog_actor);
+}
+
+inline void IsoSurf::SetMaterial (double Ambient, double Diffuse, double Specular, double SpecularPower)
+{
+    _isosurf_actor->GetProperty()->SetAmbient       (Ambient);
+    _isosurf_actor->GetProperty()->SetDiffuse       (Diffuse);
+    _isosurf_actor->GetProperty()->SetSpecular      (Specular);
+    _isosurf_actor->GetProperty()->SetSpecularPower (SpecularPower);
 }
 
 }; // namespace VTK

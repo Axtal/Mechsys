@@ -52,6 +52,7 @@ public:
     // Set Methods
     void SetLabels    (char const * X= "x", char const * Y= "y", char const * Z= "z", char const * Color="blue", int SizePt=22, bool Shadow=true);
     void SetNegLabels (char const * X="-x", char const * Y="-y", char const * Z="-z", char const * Color="red",  int SizePt=22, bool Shadow=true);
+    void SetWireWidth (int Width=1.0) { _axes_actor->GetProperty()->SetLineWidth(Width); }
 
     // Get Methods
     vtkTextActor3D & XLabel() { return (*_x_label_actor); }
@@ -204,7 +205,7 @@ inline void Axes::_create (double Scale, bool DrawHydroLine, bool Reverse, bool 
     _x_label_actor->SetTextProperty (_text_prop);
     _y_label_actor->SetTextProperty (_text_prop);
     _z_label_actor->SetTextProperty (_text_prop);
-    _x_label_actor->SetPosition     (cte,0,0);
+    _x_label_actor->SetPosition     (1.05*cte,0,0);
     _y_label_actor->SetPosition     (0,cte,0);
     _z_label_actor->SetPosition     (0,0,cte);
     _x_label_actor->SetScale        (0.003*Scale);
