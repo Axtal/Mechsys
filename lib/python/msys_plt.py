@@ -32,8 +32,11 @@ class Plotter:
         self.ed_neg_ext = False     # multiply ed by -1 for extension (t<0, where t=sin(3th)
         self.pq_ty      = 'cam'     # invariants type
         self.evd_ty     = 'cam'     # strain invariants type
+        self.mark_ave   = False     # mark average values
         self.mark_max   = False     # mark max (failure) point ?
         self.mark_lst   = False     # mark residual (failure) point ?
+        self.edmin_ave  = 10.0      # minimum Ed for calculating the average values when marking ave
+        self.mark_symb  = '^'       # symbol to mark point
         self.oct_norm   = False     # normalize plot in octahedral plane by p ?
         self.oct_sxyz   = True      # use Sx,Sy,Sz in oct plane instead of S1,S2,S3
         self.isxyz      = (1,0)     # indices for sxyz plot, use negative numbers for principal components
@@ -107,6 +110,13 @@ class Plotter:
             err = abs(evmin-evmax)
             if err>self.evctetol: raise Exception('[1;31mPlotter::plot: evcte cannot be used with evmin=%g and evmax=%g (error=%g, tol=%g)[0m'%(evmin,evmax,err,self.evctetol))
             Ev = repeat (Ev[0], np)
+        if self.mark_ave:
+            if not self.pcte: raise Exception('[1;31mPlotter::plot: mark_ave can only be used with pcte[0m')
+            iave   = logical_and(Ed>=self.edmin_ave, Ed<=self.maxed)
+            Pa     = P[iave]
+            Qa     = Q[iave]
+            QdivPa = Qa/Pa
+            qave   = QdivPa.mean() * P[0]
         QdivP = Q/P
 
         # constants
@@ -130,8 +140,11 @@ class Plotter:
         if self.one==0 or self.one<0:
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot (Ed, Y, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=ms, zorder=zorder)
-            if self.mark_max: plot (Ed[imaQP], Y[imaQP], '^', color=clr)
-            if self.mark_lst: plot (Ed[-1],    Y[-1],    '^', color=clr)
+            if self.mark_max: plot (Ed[imaQP], Y[imaQP], self.mark_symb, color=clr)
+            if self.mark_lst: plot (Ed[-1],    Y[-1],    self.mark_symb, color=clr)
+            if self.mark_ave:
+                if self.div_by_p: axhline (qave/P[0], color=clr, linestyle='dashed')
+                else:             axhline (qave,      color=clr, linestyle='dashed')
             xlabel (r'$\varepsilon_d$ [%]')
             ylabel (Ylbl)
             Grid   ()
@@ -193,8 +206,13 @@ class Plotter:
             pcoef = self.fc_poct if self.oct_norm else 1.0
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot (Sa/pcoef, Sb/pcoef, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=ms, zorder=zorder)
-            if self.mark_max: plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
-            if self.mark_lst: plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, '^', color=clr)
+            if self.mark_max: plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, self.mark_symb, color=clr)
+            if self.mark_lst: plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, self.mark_symb, color=clr)
+            if self.mark_ave:
+                #print 'p=%f, qave=%f, edmin=%f, edmax=%f' % (P[0], qave, self.edmin_ave, self.maxed) # TODO:
+                normab = sqrt(Sa[-1]**2.0 + Sb[-1]**2.0)
+                radius = qave*sqrt(2.0/3.0)
+                plot (radius*Sa[-1]/pcoef/normab,  radius*Sb[-1]/pcoef/normab, self.mark_symb, color=clr)
             #Grid ()
             axis ('equal')
             #axis ('off')
