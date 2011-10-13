@@ -1593,10 +1593,9 @@ inline void EigenVecDerivs (Vec3_t const &  L, Ten1_t const &  v0,     Ten1_t co
 
     // apply pertubation
     Vec3_t l(L);
-    bool pert[3] = { false, false, false };
-    if (fabs(l(0)-l(1))<Pertubation) { l(0)+=Pertubation;  l(1)-=Pertubation;  pert[0]=true; }
-    if (fabs(l(1)-l(2))<Pertubation) { l(1)+=Pertubation;  l(2)-=Pertubation;  pert[1]=true; }
-    if (fabs(l(2)-l(0))<Pertubation) { l(2)+=Pertubation;  l(0)-=Pertubation;  pert[2]=true; }
+    if (fabs(l(0)-l(1))<Pertubation) { l(0)+=Pertubation;  l(1)-=Pertubation; }
+    if (fabs(l(1)-l(2))<Pertubation) { l(1)+=Pertubation;  l(2)-=Pertubation; }
+    if (fabs(l(2)-l(0))<Pertubation) { l(2)+=Pertubation;  l(0)-=Pertubation; }
 
     // derivatives
     double a0 = 0.5/(l(0)-l(1));   double b0 = 0.5/(l(0)-l(2));
