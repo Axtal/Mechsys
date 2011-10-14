@@ -288,6 +288,7 @@ inline void SGrid::WriteVTK (char const * Filekey)
     writer -> SetFileName (buf.CStr());
     writer -> Write       ();
     writer -> Delete      ();
+    printf("File <%s%s.vtk%s> written\n", TERM_CLR_BLUE_H, Filekey, TERM_RST);
 }
 
 inline void SGrid::FilterV (double F, double Tol, bool Normalize)

@@ -40,8 +40,8 @@ class Win
 {
 public:
     // Constructors
-    Win (int Width=300, int Height=300);
-    Win (vtkRenderWindowInteractor * vtkRWI, int Width=300, int Height=300);
+    Win (int Width=600, int Height=600, double BgRed=1.0, double BgGreen=1.0, double BgBlue=1.0);
+    Win (vtkRenderWindowInteractor * vtkRWI, int Width=600, int Height=600, double BgRed=1.0, double BgGreen=1.0, double BgBlue=1.0);
 
     // Destructor
     ~Win ();
@@ -50,7 +50,7 @@ public:
     void AddActor (vtkActor * TheActor, bool RstCam=true);
     void DelActor (vtkActor * TheActor) { _renderer -> RemoveActor(TheActor); }
     void AddLight (vtkLight * Light)    { _renderer -> AddLight(Light);       }
-    void Render   ();
+    void Render   ()                    { _ren_win  -> Render();              }
     void Show     ();
     void WritePNG (char const * Filename);
     void Camera   (double xUp, double yUp, double zUp, double xFoc, double yFoc, double zFoc, double xPos, double yPos, double zPos);
@@ -63,10 +63,10 @@ public:
     // Set methods
     Win & SetViewDefault (bool RevCam=false);
     Win & SetViewPIplane (bool RevCam=false);
-    Win & SetBgColor     (char const * Name="white") { _bg_clr = Colors::Get(Name);  return (*this); }
+    Win & SetBgColor     (char const * Name="white");
+    Win & SetBgColor     (double BgRed, double BgGreen, double BgBlue);
 
 private:
-    Vec3_t                      _bg_clr;
     vtkCamera                 * _camera;
     vtkRenderer               * _renderer;
     vtkRenderWindow           * _ren_win;
@@ -78,42 +78,40 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Win::Win (int Width, int Height)
+inline Win::Win (int Width, int Height, double BgRed, double BgGreen, double BgBlue)
 {
     _camera = vtkCamera::New();
     SetViewDefault();
 
     _renderer = vtkRenderer::New();
     _ren_win  = vtkRenderWindow::New();
-    _ren_win->AddRenderer(_renderer);
-    _ren_win->SetSize(Width,Height);
+    _ren_win  -> AddRenderer   (_renderer);
+    _ren_win  -> SetSize       (Width, Height);
+    _renderer -> SetBackground (BgRed, BgGreen, BgBlue);
 
     _interactor = vtkRenderWindowInteractor::New();
     _int_switch = vtkInteractorStyleSwitch::New();
-    _interactor -> SetRenderWindow(_ren_win);
-    _interactor -> SetInteractorStyle(_int_switch);
+    _interactor -> SetRenderWindow    (_ren_win);
+    _interactor -> SetInteractorStyle (_int_switch);
     _int_switch -> SetCurrentStyleToTrackballCamera();
-
-    SetBgColor ();
 }
 
-inline Win::Win (vtkRenderWindowInteractor * vtkRWI, int Width, int Height)
+inline Win::Win (vtkRenderWindowInteractor * vtkRWI, int Width, int Height, double BgRed, double BgGreen, double BgBlue)
 {
     _camera = vtkCamera::New();
     SetViewDefault();
 
     _renderer = vtkRenderer::New();
     _ren_win  = vtkRenderWindow::New();
-    _ren_win->AddRenderer(_renderer);
-    _ren_win->SetSize(Width,Height);
+    _ren_win  -> AddRenderer   (_renderer);
+    _ren_win  -> SetSize       (Width, Height);
+    _renderer -> SetBackground (BgRed, BgGreen, BgBlue);
 
     _interactor = vtkRWI;
     _int_switch = vtkInteractorStyleSwitch::New();
-    _interactor -> SetRenderWindow(_ren_win);
-    _interactor -> SetInteractorStyle(_int_switch);
+    _interactor -> SetRenderWindow    (_ren_win);
+    _interactor -> SetInteractorStyle (_int_switch);
     _int_switch -> SetCurrentStyleToTrackballCamera();
-
-    SetBgColor ();
 }
 
 inline Win::~Win ()
@@ -135,19 +133,13 @@ inline void Win::AddActor (vtkActor * TheActor, bool RstCam)
     }
 }
 
-inline void Win::Render ()
-{
-    _renderer -> SetBackground (_bg_clr(0), _bg_clr(1), _bg_clr(2));
-    _ren_win  -> Render        ();
-}
-
 inline void Win::Show ()
 {
     Render ();
     _interactor->Start ();
 }
 
-inline void Win::WritePNG (char const * Filename)
+inline void Win::WritePNG (char const * Filekey)
 {
     // Window to image filter
     vtkWindowToImageFilter * win_to_img = vtkWindowToImageFilter::New();
@@ -155,14 +147,18 @@ inline void Win::WritePNG (char const * Filename)
     win_to_img -> Update();
 
     // PNG writer
+    String fname(Filekey);  fname += ".png";
     vtkPNGWriter * writer = vtkPNGWriter::New();
     writer -> SetInput(win_to_img->GetOutput());
-    writer -> SetFileName(Filename);
+    writer -> SetFileName(fname.CStr());
     writer -> Write();
 
     // Clean up
     win_to_img -> Delete();
     writer     -> Delete();
+
+    // Notification
+    printf("File <%s%s.png%s> written\n", TERM_CLR_BLUE_H, Filekey, TERM_RST);
 }
 
 inline void Win::Camera (double xUp, double yUp, double zUp, double xFoc, double yFoc, double zFoc, double xPos, double yPos, double zPos)
@@ -188,6 +184,19 @@ inline Win & Win::SetViewPIplane (bool RevCam)
     _camera->SetViewUp     (0,0,c);
     _camera->SetPosition   (c,c,c);
     _camera->SetFocalPoint (0,0,0);
+    return (*this);
+}
+
+inline Win & Win::SetBgColor (char const * Name)
+{
+    Vec3_t bgclr = Colors::Get(Name);
+    _renderer -> SetBackground (bgclr(0), bgclr(1), bgclr(2));
+    return (*this);
+}
+
+inline Win & Win::SetBgColor (double BgRed, double BgGreen, double BgBlue)
+{
+    _renderer -> SetBackground (BgRed, BgGreen, BgBlue);
     return (*this);
 }
 
