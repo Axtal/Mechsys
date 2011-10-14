@@ -47,7 +47,7 @@ public:
     ~Axes ();
 
     // Alternative constructor
-    Axes (double Scale, bool DrawHydroLine=false, bool Reverse=false, bool Full=false);
+    Axes (double Scale, bool DrawHydroLine=false, bool Reverse=false, bool Full=false, bool Labels=true);
 
     // Set Methods
     void SetLabels    (char const * X= "x", char const * Y= "y", char const * Z= "z", char const * Color="blue", int SizePt=22, bool Shadow=true);
@@ -69,12 +69,12 @@ private:
     vtkTextActor3D      * _x_label_actor;
     vtkTextActor3D      * _y_label_actor;
     vtkTextActor3D      * _z_label_actor;
+    vtkTextProperty     * _text_prop;
     vtkTextActor3D      * _negx_label_actor;
     vtkTextActor3D      * _negy_label_actor;
     vtkTextActor3D      * _negz_label_actor;
-    vtkTextProperty     * _text_prop;
     vtkTextProperty     * _neg_text_prop;
-    void _create (double Scale=1.0, bool DrawHydroLine=false, bool Reverse=false, bool Full=false);
+    void _create (double Scale=1.0, bool DrawHydroLine=false, bool Reverse=false, bool Full=false, bool Labels=true);
 };
 
 
@@ -82,15 +82,17 @@ private:
 
 
 inline Axes::Axes ()
-    : _negx_label_actor(NULL), _negy_label_actor(NULL), _negz_label_actor(NULL), _neg_text_prop(NULL)
+    :    _x_label_actor(NULL),    _y_label_actor(NULL),    _z_label_actor(NULL),     _text_prop(NULL),
+      _negx_label_actor(NULL), _negy_label_actor(NULL), _negz_label_actor(NULL), _neg_text_prop(NULL)
 {
     _create ();
 }
 
-inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse, bool Full)
-    : _negx_label_actor(NULL), _negy_label_actor(NULL), _negz_label_actor(NULL), _neg_text_prop(NULL)
+inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse, bool Full, bool Labels)
+    :    _x_label_actor(NULL),    _y_label_actor(NULL),    _z_label_actor(NULL),     _text_prop(NULL),
+      _negx_label_actor(NULL), _negy_label_actor(NULL), _negz_label_actor(NULL), _neg_text_prop(NULL)
 {
-    _create (Scale, DrawHydroLine, Reverse, Full);
+    _create (Scale, DrawHydroLine, Reverse, Full, Labels);
 }
 
 inline Axes::~Axes ()
@@ -98,22 +100,22 @@ inline Axes::~Axes ()
     _axes          -> Delete();
     _axes_mapper   -> Delete();
     _axes_actor    -> Delete();
-    _x_label_actor -> Delete();
-    _y_label_actor -> Delete();
-    _z_label_actor -> Delete();
-    _text_prop     -> Delete();
+    if (   _x_label_actor!=NULL)    _x_label_actor -> Delete();
+    if (   _y_label_actor!=NULL)    _y_label_actor -> Delete();
+    if (   _z_label_actor!=NULL)    _z_label_actor -> Delete();
     if (_negx_label_actor!=NULL) _negx_label_actor -> Delete();
     if (_negy_label_actor!=NULL) _negy_label_actor -> Delete();
     if (_negz_label_actor!=NULL) _negz_label_actor -> Delete();
+    if (    _text_prop   !=NULL)     _text_prop    -> Delete();
     if (_neg_text_prop   !=NULL) _neg_text_prop    -> Delete();
 }
 
 inline void Axes::AddTo (VTK::Win & win)
 {
     win.AddActor(_axes_actor);
-    win.AddActor(reinterpret_cast<vtkActor*>(_x_label_actor));
-    win.AddActor(reinterpret_cast<vtkActor*>(_y_label_actor));
-    win.AddActor(reinterpret_cast<vtkActor*>(_z_label_actor));
+    if (   _x_label_actor!=NULL) win.AddActor(reinterpret_cast<vtkActor*>(   _x_label_actor));
+    if (   _y_label_actor!=NULL) win.AddActor(reinterpret_cast<vtkActor*>(   _y_label_actor));
+    if (   _z_label_actor!=NULL) win.AddActor(reinterpret_cast<vtkActor*>(   _z_label_actor));
     if (_negx_label_actor!=NULL) win.AddActor(reinterpret_cast<vtkActor*>(_negx_label_actor));
     if (_negy_label_actor!=NULL) win.AddActor(reinterpret_cast<vtkActor*>(_negy_label_actor));
     if (_negz_label_actor!=NULL) win.AddActor(reinterpret_cast<vtkActor*>(_negz_label_actor));
@@ -121,6 +123,10 @@ inline void Axes::AddTo (VTK::Win & win)
 
 inline void Axes::SetLabels (char const * X, char const * Y, char const * Z, char const * Color, int SizePt, bool Shadow)
 {
+    if (_x_label_actor==NULL) return;
+    if (_y_label_actor==NULL) return;
+    if (_z_label_actor==NULL) return;
+    if (    _text_prop==NULL) return;
     Vec3_t c = Colors::Get(Color);
     _x_label_actor -> SetInput    (X);
     _y_label_actor -> SetInput    (Y);
@@ -133,6 +139,10 @@ inline void Axes::SetLabels (char const * X, char const * Y, char const * Z, cha
 
 inline void Axes::SetNegLabels (char const * X, char const * Y, char const * Z, char const * Color, int SizePt, bool Shadow)
 {
+    if (_negx_label_actor==NULL) return;
+    if (_negy_label_actor==NULL) return;
+    if (_negz_label_actor==NULL) return;
+    if (_neg_text_prop   ==NULL) return;
     Vec3_t c = Colors::Get(Color);
     _negx_label_actor -> SetInput    (X);
     _negy_label_actor -> SetInput    (Y);
@@ -143,7 +153,7 @@ inline void Axes::SetNegLabels (char const * X, char const * Y, char const * Z, 
     else        _neg_text_prop -> ShadowOff();
 }
 
-inline void Axes::_create (double Scale, bool DrawHydroLine, bool Reverse, bool Full)
+inline void Axes::_create (double Scale, bool DrawHydroLine, bool Reverse, bool Full, bool Labels)
 {
     // points
     double cte = ((Reverse && (!Full)) ? -Scale : Scale);
@@ -198,6 +208,7 @@ inline void Axes::_create (double Scale, bool DrawHydroLine, bool Reverse, bool 
     line_H -> Delete();
 
     // text
+    if (!Labels) return;
     _text_prop     = vtkTextProperty ::New();
     _x_label_actor = vtkTextActor3D  ::New();
     _y_label_actor = vtkTextActor3D  ::New();
