@@ -105,20 +105,23 @@ int main(int argc, char **argv) try
     DEM::Domain dom((vtk ? &dat : NULL));
 
     // generate particles
-    double R        = 0.01;
+    double R        = 0.1;
     double L        = 22.0;//1.0;
     size_t seed     = 123;
     double fraction = 1.0;
     //if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction);
     //if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,4*num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction, Vec3_t(0.8,0.8,0.8));
     //if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,10*num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction, Vec3_t(1.,1.,1.));
-    if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,10*num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction, Vec3_t(.8,1.,1.));
+    if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,4.0*num, /*rho*/1.0, /*cohesion*/false,/*periodic*/false, seed, fraction);
     else
     {
         if (HCP) dom.GenSpheres  (-10, L, num, /*rho*/1.0, "HCP",    /*seed*/1000, /*fraction*/1.0);
         else     dom.GenSpheres  (-10, L, num, /*rho*/1.0, "Normal", /*seed*/1000, /*fraction*/1.0);
     }
 
+    Vec3_t Xmin,Xmax;
+    dom.BoundingBox(Xmin,Xmax);
+    std::cout << Xmin << Xmax << std::endl;
     // run simulation
     if (sim)
     {

@@ -118,7 +118,7 @@ public:
     void AddDrill    (int Tag, Vec3_t const & X, double R, double Lt, double Ll, double rho);                                    ///< A drill made as a combination of a cube and a pyramid.
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
-    void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode);                                     ///< Add a single voronoi cell, it should be built before tough
+    void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode, iVec3_t nv = iVec3_t(1,1,1));                  ///< Add a single voronoi cell, it should be built before tough
     void AddTorus    (int Tag, Vec3_t const & X, Vec3_t const & N, double Rmax, double R, double rho);                           ///< Add a single torus at position X with a normal N, circunference Rmax and spheroradius R
     void AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t const & X1, double R1, double R, double rho);                ///< Add a cylinder formed by the connection of two circles at positions X0 and X1 and radii R0 and R1
 
@@ -636,9 +636,9 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
     printf("\n%s--- Adding Voronoi particles packing --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
 
     srand(Randomseed);
-    const double x_min=-Lx/2.0, x_max=Lx/2.0;
-    const double y_min=-Ly/2.0, y_max=Ly/2.0;
-    const double z_min=-Lz/2.0, z_max=Lz/2.0;
+    const double x_min=-(nx*Lx/2.0), x_max=nx*Lx/2.0;
+    const double y_min=-(ny*Ly/2.0), y_max=ny*Ly/2.0;
+    const double z_min=-(nz*Lz/2.0), z_max=nz*Lz/2.0;
     container con(x_min,x_max,y_min,y_max,z_min,z_max,nx,ny,nz, Periodic,Periodic,Periodic,8);
     int n = 0;
     for (size_t i=0; i<nx; i++)
@@ -677,11 +677,10 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
 
                     if (rand()<fraction*RAND_MAX)
                     {
-                        AddVoroCell(Tag,c,R,rho,true);
-                        Vec3_t trans(x,y,z);
+                        AddVoroCell(Tag,c,R,rho,true,iVec3_t(nx,ny,nz));
+                        Vec3_t trans(x/nx,y/ny,z/nz);
                         Particle * P = Particles[Particles.Size()-1];
                         P->Translate(trans);
-                        P->Props.V = c.volume();
                     }
                 }
             }
@@ -1099,14 +1098,14 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
     if (!ThereisanAxis) delete Axis;
 }
 
-inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho,bool Erode)
+inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode, iVec3_t nv)
 {
     Array<Vec3_t> V(VC.p);
     Array<Array <int> > E;
     Array<int> Eaux(2);
     for(int i=0;i<VC.p;i++) 
     {
-        V[i] = Vec3_t(0.5*VC.pts[3*i],0.5*VC.pts[3*i+1],0.5*VC.pts[3*i+2]);
+        V[i] = Vec3_t(0.5*VC.pts[3*i]/nv(0),0.5*VC.pts[3*i+1]/nv(1),0.5*VC.pts[3*i+2]/nv(2));
         for(int j=0;j<VC.nu[i];j++) 
         {
             int k=VC.ed[i][j];
