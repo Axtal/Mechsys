@@ -55,6 +55,7 @@ public:
     void    SetPoint     (int Id, double X, double Y, double Z) { _pnts->SetPoint (Id, X,Y,Z); }
     void    Modified     () { _grid->Modified(); }
     void    SetWire      (bool WithWireframe=true);
+    void    SetMaterial  (double Ambient, double Diffuse, double Specular, double SpecularPower);
 
 private:
     vtkPoints           * _pnts;
@@ -121,6 +122,14 @@ inline void UGrid::SetWire (bool WithWireframe)
         Vec3_t c(Colors::Get("black"));
         _wire_actor->GetProperty()->SetColor (c.data());
     }
+}
+
+inline void UGrid::SetMaterial (double Ambient, double Diffuse, double Specular, double SpecularPower)
+{
+    _grid_actor->GetProperty()->SetAmbient       (Ambient);
+    _grid_actor->GetProperty()->SetDiffuse       (Diffuse);
+    _grid_actor->GetProperty()->SetSpecular      (Specular);
+    _grid_actor->GetProperty()->SetSpecularPower (SpecularPower);
 }
 
 #endif // MECHSYS_POLYGON_H

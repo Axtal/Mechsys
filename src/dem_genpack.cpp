@@ -22,6 +22,7 @@
 
 // VTK
 #include <vtkPolygon.h>
+#include <vtkLightKit.h>
 
 // MechSys
 #include <mechsys/dem/visualise.h>
@@ -36,20 +37,34 @@ using Util::PI;
 struct Data
 {
      Data () : Vis(NULL) {}
-    ~Data () { if (Vis!=NULL) delete Vis; }
+    ~Data () { if (Vis!=NULL) delete Vis;  if (Lgt!=NULL) Lgt->Delete(); }
     void Init (DEM::Domain const & Dom)
     {
         Vis = new Visualise(Dom, /*parts*/Array<int>(-10,true), /*walls*/Array<int>(-1,-2,-3,-4,-5,-6));
-        VTK::Axes axe(1.0, /*hline*/false, /*reverse*/false, /*full*/true);
+        //VTK::Axes axe(1.0, /*hline*/false, /*reverse*/false, /*full*/true);
         Vis->AddTo  (Win);
-        axe .AddTo  (Win);
+        //axe .AddTo  (Win);
+
+        //Vis->PartFaces.SetMaterial (0.2, 0.1, 1.0, 200.0);
+        //Vis->PartFaces.SetColor    ("cobalt", 1.0);
+        
         Win .Render ();
         Win .Render ();
+        
+        Lgt = vtkLightKit::New();
+        Lgt->AddLightsToRenderer (Win.GetRen());
+
+
+        //Lgt->SetKeyLightAngle (/*elevation*/60., /*azimuth*/-45.0);
+        //Lgt->SetKeyToHeadRatio (0.01);
+        Lgt->SetKeyToFillRatio (1.2);
+
         IdxOut = 0;
     }
-    Visualise * Vis;
-    VTK::Win    Win;
-    int         IdxOut;
+    Visualise   * Vis;
+    VTK::Win      Win;
+    int           IdxOut;
+    vtkLightKit * Lgt;
 };
 
 void Report (DEM::Domain & dom, void * UserData)
@@ -91,10 +106,13 @@ int main(int argc, char **argv) try
 
     // generate particles
     double R        = 0.01;
-    double L        = 1.0;
+    double L        = 22.0;//1.0;
     size_t seed     = 123;
     double fraction = 1.0;
-    if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction);
+    //if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction);
+    //if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,4*num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction, Vec3_t(0.8,0.8,0.8));
+    //if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,10*num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction, Vec3_t(1.,1.,1.));
+    if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,10*num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction, Vec3_t(.8,1.,1.));
     else
     {
         if (HCP) dom.GenSpheres  (-10, L, num, /*rho*/1.0, "HCP",    /*seed*/1000, /*fraction*/1.0);
@@ -189,11 +207,18 @@ int main(int argc, char **argv) try
 
         // visualise
         if (vtk) dat.Win.Show ();
+
+        // delete walls
+        dom.DelParticles (Array<int>(-1,-2,-3,-4,-5,-6));
     }
+
+    // only particles
     else
     {
         dom.Initialize(dt);
 
+        // TODO: delete this
+        /*
         for (size_t i=0; i<dom.Particles.Size(); ++i)
         {
             double vx = 0.05*static_cast<double>(1.0*rand()/RAND_MAX);
@@ -201,11 +226,13 @@ int main(int argc, char **argv) try
             double vz = 0.05*static_cast<double>(1.0*rand()/RAND_MAX);
             dom.Particles[i]->v = vx, vy, vz;
         }
+        */
 
         if (vtk)
         {
-            dat.Init (dom);
-            dat.Win.Show ();
+            dat.Init         (dom);
+            dat.Win.Show     ();
+            dat.Win.WritePNG ("dem_genpack");
         }
     }
 
@@ -244,9 +271,6 @@ int main(int argc, char **argv) try
     }
     else
     {
-        // delete walls
-        dom.DelParticles (Array<int>(-1,-2,-3,-4,-5,-6));
-
         // save HDF5
         dom.Save("xpack-voro");
         cout << "file [1;34m<xpack-voro.hdf5>[0m written" << endl;
