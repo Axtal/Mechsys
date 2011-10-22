@@ -55,10 +55,10 @@ class Plotter:
     # Plot results
     # ============
     def plot(self, filename, clr='red', lwd=2, label=None, zorder=None,
-             marker='None', markevery=None, ms=rcParams['lines.markersize']):
+             marker='None', markevery=None, ms=rcParams['lines.markersize'], ignore_first=0):
 
         # load data
-        Sig, Eps = self.load_data (filename)
+        Sig, Eps = self.load_data (filename, ignore_first)
 
         # calculate additional variables
         np         = len(Sig) # number of points
@@ -297,7 +297,7 @@ class Plotter:
 
     # Load Data
     # =========
-    def load_data(self, filename):
+    def load_data(self, filename, ignore_first=0):
         dat = read_table(filename)
         Sig = []
         Eps = []
@@ -309,7 +309,7 @@ class Plotter:
             pct = res[2]=='pct'         # strains in percentage ?
             mul = 98.0  if kgf else 1.0 # multiplier for stresses
             div = 100.0 if pct else 1.0 # divider for strains
-            for i in range(len(dat['Sx'])):
+            for i in range(ignore_first,len(dat['Sx'])):
                 Sig.append(mul*matrix([[-float( dat['Sx' ][i] )],
                                        [-float( dat['Sy' ][i] )],
                                        [-float( dat['Sz' ][i] )],
@@ -319,7 +319,7 @@ class Plotter:
                                        [-float( dat['Ez' ][i] )/div],
                                        [-float( dat['Exy'][i] )*sq2/div]]))
         elif dat.has_key('Sa'): # old data file
-            for i in range(len(dat['Sa'])):
+            for i in range(ignore_first,len(dat['Sa'])):
                 Sig.append(matrix([[-float( dat['Sr' ][i] )],
                                    [-float( dat['St' ][i] )],
                                    [-float( dat['Sa' ][i] )],
@@ -333,8 +333,23 @@ class Plotter:
                 Ed *= 100.0
                 if self.maxed>0 and Ed>self.maxed: break
                 if self.maxev>0 and Ev>self.maxev: break
-        else:
-            for i in range(len(dat['sx'])):
+        elif dat.has_key('s11'): # s11 s22 s33  e11 e22 e33
+            for i in range(ignore_first,len(dat['s11'])):
+                Sig.append(matrix([[-float( dat['s11'][i] )],
+                                   [-float( dat['s22'][i] )],
+                                   [-float( dat['s33'][i] )],
+                                   [0.0]]))
+                Eps.append(matrix([[-float( dat['e11'][i] )],
+                                   [-float( dat['e22'][i] )],
+                                   [-float( dat['e33'][i] )],
+                                   [0.0]]))
+                Ev, Ed = eps_calc_ev_ed (Eps[len(Eps)-1])
+                Ev *= 100.0 # convert strains to percentage
+                Ed *= 100.0
+                if self.maxed>0 and Ed>self.maxed: break
+                if self.maxev>0 and Ev>self.maxev: break
+        else: # new data file
+            for i in range(ignore_first,len(dat['sx'])):
                 Sig.append(matrix([[float( dat['sx' ][i] )],
                                    [float( dat['sy' ][i] )],
                                    [float( dat['sz' ][i] )],
