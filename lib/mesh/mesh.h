@@ -1156,7 +1156,7 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
 
     // nodes: coordinates
     oss << "      <Points>\n";
-    oss << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+    oss << "        <DataArray type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">\n";
     size_t k = 0; oss << "        ";
     for (size_t i=0; i<nn; ++i)
     {
