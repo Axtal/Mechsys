@@ -31,40 +31,54 @@
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/vtk/win.h>
 #include <mechsys/vtk/axes.h>
+#include <mechsys/vtk/cube.h>
 
 using Util::PI;
 
 struct Data
 {
-     Data () : Vis(NULL) {}
-    ~Data () { if (Vis!=NULL) delete Vis;  if (Lgt!=NULL) Lgt->Delete(); }
+     Data () : Vis(NULL), SideCam(false), Amb(0.0), Dif(0.1), Spec(0.0), Spow(1.0) {}
+    ~Data () { if (Vis!=NULL) delete Vis;   if (Lgt!=NULL) Lgt->Delete();   if (Cub!=NULL) delete Cub;  if (Win!=NULL) delete Win; }
     void Init (DEM::Domain const & Dom)
     {
+        Win = new VTK::Win(640,640);
+
         Vis = new Visualise(Dom, /*parts*/Array<int>(-10,true), /*walls*/Array<int>(-1,-2,-3,-4,-5,-6));
         //VTK::Axes axe(1.0, /*hline*/false, /*reverse*/false, /*full*/true);
-        Vis->AddTo  (Win);
-        //axe .AddTo  (Win);
+        Vis->AddTo  (*Win);
+        //axe .AddTo  (*Win);
 
-        //Vis->PartFaces.SetMaterial (0.2, 0.1, 1.0, 200.0);
+        Vis->PartFaces.SetMaterial (Amb, Dif, Spec, Spow);
         //Vis->PartFaces.SetColor    ("cobalt", 1.0);
         
-        Win .Render ();
-        Win .Render ();
-        
-        Lgt = vtkLightKit::New();
-        Lgt->AddLightsToRenderer (Win.GetRen());
 
+        Win->Render ();
+        Win->Render ();
+
+
+        Lgt = vtkLightKit::New();
+        Lgt->AddLightsToRenderer (Win->GetRen());
+
+        Cub = new VTK::Cube(Vec3_t(0,0,0));
+        Cub->SetColor("white",0.0);
+        Cub->SetWireWidth(2.0);
+        Cub->AddTo(*Win);
 
         //Lgt->SetKeyLightAngle (/*elevation*/60., /*azimuth*/-45.0);
         //Lgt->SetKeyToHeadRatio (0.01);
         Lgt->SetKeyToFillRatio (1.2);
 
+        if (SideCam) Win->Camera (0,0,1, 1,0,0, 0,0,0);
+
         IdxOut = 0;
     }
     Visualise   * Vis;
-    VTK::Win      Win;
+    VTK::Win    * Win;
     int           IdxOut;
     vtkLightKit * Lgt;
+    VTK::Cube   * Cub;
+    bool          SideCam;
+    double        Amb, Dif, Spec, Spow; // ambience, diffuse, specular, specular_power
 };
 
 void Report (DEM::Domain & dom, void * UserData)
@@ -73,46 +87,60 @@ void Report (DEM::Domain & dom, void * UserData)
     String buf;
     buf.Printf ("genpack_%08d.png", dat.IdxOut);
     dat.Vis->Update();
-    dat.Win.WritePNG (buf.CStr());
+    dat.Win->WritePNG (buf.CStr());
     dat.IdxOut++;
 }
 
 int main(int argc, char **argv) try
 {
     // input
-    int    num   = 4;      // n per side (with 5 spheres, there is overlapping)
-    bool   voro  = false;  // Voronoi particles
-    bool   vtk   = true;   // show VTK window
-    bool   ascii = true;   // write ASCII file instead of HDF5 (spheres only)
-    bool   sim   = true;   // run simulation
-    double tf    = 20.0;   // final time
-    double dt    = 1.0e-4; // time step
-    double dtOut = 1.0;    // output time step
-    bool   HCP   = true;   // HCP packing
-    if (argc>1) num   = atoi(argv[1]);
-    if (argc>2) voro  = atoi(argv[2]);
-    if (argc>3) vtk   = atoi(argv[3]);
-    if (argc>4) ascii = atoi(argv[4]);
-    if (argc>5) sim   = atoi(argv[5]);
-    if (argc>6) tf    = atof(argv[6]);
-    if (argc>7) dt    = atof(argv[7]);
-    if (argc>8) dtOut = atof(argv[8]);
-    if (argc>9) HCP   = atoi(argv[9]);
+    int    num     = 4;      // n per side (with 5 spheres, there is overlapping)
+    int    aratio  = 4;      // aspect ratio for the anisotropic packing
+    bool   sidecam = false;  // side camera?
+    bool   show    = true;   // show view?
+    bool   voro    = true;   // Voronoi particles
+    bool   vtk     = true;   // show VTK window
+    bool   ascii   = false;  // write ASCII file instead of HDF5 (spheres only)
+    bool   sim     = false;  // run simulation
+    double tf      = 20.0;   // final time
+    double dt      = 1.0e-4; // time step
+    double dtOut   = 1.0;    // output time step
+    bool   HCP     = true;   // HCP packing
+    double amb     = 0.0;    // material: ambience
+    double dif     = 10.0;   // material: diffuse
+    double spec    = 2.0;    // material: specular
+    double spow    = 8.0;    // material: specular power
+    if (argc> 1) num     = atoi(argv[ 1]);
+    if (argc> 2) aratio  = atoi(argv[ 2]);
+    if (argc> 3) sidecam = atoi(argv[ 3]);
+    if (argc> 4) show    = atoi(argv[ 4]);
+    if (argc> 5) voro    = atoi(argv[ 5]);
+    if (argc> 6) vtk     = atoi(argv[ 6]);
+    if (argc> 7) ascii   = atoi(argv[ 7]);
+    if (argc> 8) sim     = atoi(argv[ 8]);
+    if (argc> 9) tf      = atof(argv[ 9]);
+    if (argc>10) dt      = atof(argv[10]);
+    if (argc>11) dtOut   = atof(argv[11]);
+    if (argc>12) HCP     = atoi(argv[12]);
+    if (argc>13) amb     = atof(argv[13]);
+    if (argc>14) dif     = atof(argv[14]);
+    if (argc>15) spec    = atof(argv[15]);
+    if (argc>16) spow    = atof(argv[16]);
     if (ascii && voro) throw new Fatal("ASCII file works only with spheres");
 
     // user data and domain
-    Data dat;
+    Data dat;  dat.SideCam=sidecam;  dat.Amb=amb;  dat.Dif=dif;  dat.Spec=spec;  dat.Spow=spow;
     DEM::Domain dom((vtk ? &dat : NULL));
 
     // generate particles
-    double R        = 0.1;
+    double R        = 0.01;
     double L        = 22.0;//1.0;
     size_t seed     = 123;
     double fraction = 1.0;
     //if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction);
     //if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,4*num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction, Vec3_t(0.8,0.8,0.8));
     //if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,10*num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction, Vec3_t(1.,1.,1.));
-    if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,4.0*num, /*rho*/1.0, /*cohesion*/false,/*periodic*/false, seed, fraction);
+    if (voro) dom.AddVoroPack (-10, R, L,L,L, num,num,aratio*num, /*rho*/1.0, /*cohesion*/false,/*periodic*/true, seed, fraction);
     else
     {
         if (HCP) dom.GenSpheres  (-10, L, num, /*rho*/1.0, "HCP",    /*seed*/1000, /*fraction*/1.0);
@@ -160,7 +188,7 @@ int main(int argc, char **argv) try
         if (vtk)
         {
             dat.Init (dom);
-            dat.Win.Show ();
+            dat.Win->Show ();
         }
 
         // set random velocity to particles
@@ -186,7 +214,7 @@ int main(int argc, char **argv) try
         dom.Solve (tf, dt, dtOut, /*setup*/NULL, (vtk ? &Report : NULL));
 
         // visualise
-        if (vtk) dat.Win.Show ();
+        if (vtk) dat.Win->Show ();
 
         // move walls
         double v = 0.001;
@@ -209,7 +237,7 @@ int main(int argc, char **argv) try
         }
 
         // visualise
-        if (vtk) dat.Win.Show ();
+        if (vtk) dat.Win->Show ();
 
         // delete walls
         dom.DelParticles (Array<int>(-1,-2,-3,-4,-5,-6));
@@ -233,9 +261,13 @@ int main(int argc, char **argv) try
 
         if (vtk)
         {
+            double c=1.05;
             dat.Init         (dom);
-            dat.Win.Show     ();
-            dat.Win.WritePNG ("dem_genpack");
+            dat.Cub->SetLengths(c*L,c*L,c*L);
+            if (show) dat.Win->Show ();
+            String fkey;
+            fkey.Printf("A%d_N%d_P%d_C%d", aratio, num, dom.Particles.Size(), sidecam);
+            dat.Win->WritePNG (fkey.CStr(), /*large*/true, /*magnif*/4);
         }
     }
 
@@ -275,8 +307,8 @@ int main(int argc, char **argv) try
     else
     {
         // save HDF5
-        dom.Save("xpack-voro");
-        cout << "file [1;34m<xpack-voro.hdf5>[0m written" << endl;
+        //dom.Save("xpack-voro");
+        //cout << "file [1;34m<xpack-voro.hdf5>[0m written" << endl;
     }
 
     // end
