@@ -65,6 +65,7 @@ VER_PROC=3.2.8
 VER_SPHASH=1.8.1
 VER_IGRAPH=0.5.4
 VER_SOPLEX=1.5.0
+VER_PARMETIS=4.0.2
 
 INC_OPENMPI=/usr/lib/openmpi/include/  # $MECHSYS_ROOT/pkg/openmpi-1.4.2
 LIB_LAPACK=/usr/lib/liblapack.so
@@ -89,6 +90,12 @@ proc_links() {
     ln -s $LDIR/libproc-$VER_PROC.so $LDIR/libproc.so
 }
 
+parmetis_links() {
+    LDIR=$MECHSYS_ROOT/pkg/parmetis-$VER_PARMETIS
+    ln -s $LDIR/build/Linux-i686/libmetis/libmetis.a $LDIR/
+    ln -s $LDIR/build/Linux-i686/libparmetis/libparmetis.a $LDIR/
+}
+
 error_message() {
     echo
     echo
@@ -102,6 +109,7 @@ download_and_compile() {
     PKG_DIR=""
     EXT=tar.gz
     LOCATION=""
+    EXTRA_CONF=""
     EXTRA_CMD=""
     CONF_PRMS=""
     IS_SVN=0
@@ -171,6 +179,12 @@ download_and_compile() {
             PKG=soplex-$VER_SOPLEX
             EXT=tgz
             LOCATION=http://soplex.zib.de/download/$PKG.$EXT
+            ;;
+        parmetis)
+            PKG=parmetis-$VER_PARMETIS
+            EXTRA_CONF="make config"
+            EXTRA_CMD=parmetis_links
+            LOCATION=http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/$PKG.$EXT
             ;;
         *)
             error_message "download_and_compile: __Internal_error__"
@@ -262,6 +276,12 @@ download_and_compile() {
         ./configure $CONF_PRMS 2> /dev/null
     fi
 
+    # extra configuration
+    if [ ! -z "$EXTRA_CONF" ]; then
+        echo "        . . . extra configuration . . . . . ."
+        $EXTRA_CONF
+    fi
+
     # compilation
     if [ "$DO_MAKE" -eq 1 ]; then
         echo "        . . . compiling . . ."
@@ -273,6 +293,8 @@ download_and_compile() {
         echo "        . . . command . . . . . ."
         $EXTRA_CMD
     fi
+
+    # finished
     echo "        . . . finished . . . . . "
 }
 
@@ -287,6 +309,7 @@ download_and_compile proc
 download_and_compile sphash
 download_and_compile igraph
 download_and_compile soplex
+download_and_compile parmetis
 
 echo
 echo "Finished ###################################################################"
