@@ -463,6 +463,15 @@ inline void EquilibElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & 
     // coefficient used during integration
     Coef = h*detJ*IP.w;
 
+
+
+    std::cout << "J = \n" << PrintMatrix(J);
+    std::cout << "dNdR = \n" << PrintMatrix(GE->dNdR);
+    std::cout << "C = \n" << PrintMatrix(C);
+    std::cout << "dNdX = \n" << PrintMatrix(dNdX);
+    printf("detJ = %g\n", detJ);
+
+
     // B matrix
     B.change_dim (NCo, NDu);
     set_to_zero  (B);

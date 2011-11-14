@@ -312,11 +312,16 @@ inline void Triplet<Value_T,Index_T>::WriteSMAT (char const * FileKey, double To
 
     // output
     std::ostringstream oss;
-    oss << Rows() << "  " << Cols() << "  " << nz << std::endl;
+    char buf[256];
+    sprintf(buf, "%d  %d  %d\n", Rows(), Cols(), nz);
+    oss << buf;
     for (int k=0; k<Top(); ++k)
     {
         if (fabs(Ax(k))>Tol)
-           oss << Ai(k) << "  " << Aj(k) << "  " << Ax(k) << std::endl;
+        {
+            sprintf(buf, "  %d  %d  %g\n", Ai(k), Aj(k), Ax(k));
+            oss << buf;
+        }
     }
 
     // write to file

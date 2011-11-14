@@ -115,6 +115,8 @@ public:
     Vec_t Us, Vs;       ///< starred variables (for GN22)
     Vec_t TmpVec;       ///< Temporary vector (for parallel Allreduce)
 
+    void DebugPrintMatrices (bool Stop=true); ///< Debug method
+
 private:
     void   _aug_and_set_A ();                          ///< Augment A matrix and set Lagrange multipliers if any
     void   _wrn_resid     ();                          ///< Warning message for large residuals (debugging)
@@ -130,7 +132,6 @@ private:
     void   _Y_to_VUIV     (double const Y[]);
     int    _RK_func       (double t, double const Y[], double dYdt[]);
     void   _RK_update     (double tf, double dt);      ///< Runge-Kutta update
-    void   _debug_print_matrices (bool Stop=true);     ///< Debug method
 };
 
 
@@ -1527,7 +1528,7 @@ inline int STDSolver::_RK_func (double t, double const Y[], double dYdt[])
     return GSL_SUCCESS;
 }
 
-inline void STDSolver::_debug_print_matrices (bool Stop)
+inline void STDSolver::DebugPrintMatrices (bool Stop)
 {
     Sparse::Matrix<double,int> MM11(M11), MM12(M12), MM21(M21), MM22(M22);
     Sparse::Matrix<double,int> KK11(K11), KK12(K12), KK21(K21), KK22(K22);
@@ -1557,7 +1558,7 @@ inline void STDSolver::_debug_print_matrices (bool Stop)
     printf("Matrix <%sM.smat%s> written\n",TERM_CLR_BLUE_H,TERM_RST);
     printf("Matrix <%sK.smat%s> written\n",TERM_CLR_BLUE_H,TERM_RST);
     std::cout << std::endl;
-    if (Stop) throw new Fatal("STDSolver::_debug_print_matrices   STOP");
+    if (Stop) throw new Fatal("STDSolver::DebugPrintMatrices   STOP");
 }
 
 

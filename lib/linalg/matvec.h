@@ -172,11 +172,17 @@ inline void WriteSMAT (Mat_t const & M, char const * FileKey, double Tol=1.0e-14
 
     // output
     std::ostringstream oss;
-    oss << m << "  " << n << "  " << nz << std::endl;
+    char buf[256];
+    sprintf(buf, "%d  %d  %d\n", m, n, nz);
+    oss << buf;
     for (size_t i=0; i<m; ++i)
     for (size_t j=0; j<n; ++j)
     {
-        if (fabs(M(i,j))>Tol) oss << i << "  " << j << "  " << M(i,j) << std::endl;
+        if (fabs(M(i,j))>Tol)
+        {
+            sprintf(buf, "  %d  %d  %.17g\n", i, j, M(i,j));
+            oss << buf;
+        }
     }
 
     // write to file
