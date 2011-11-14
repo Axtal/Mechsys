@@ -5,6 +5,7 @@ tf       = 0.01
 dt       = 1e-4
 dtout    = 1e-4
 vtufile  = 0
+dyn      = 1
 
 ############### Elements Properties
 nelemprps = 1

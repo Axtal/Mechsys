@@ -67,42 +67,25 @@
     inp.SetSolFlags (flags);                             \
     FEM::Solver * PTSOL = AllocSolver (name, dom, flags);
 
-/*
-#define FEM_ALLOC_SOLVER(inp, dom,  NAME, FLAGS, PTSOL)  \
-    String NAME;                                         \
-    SDPair FLAGS;                                        \
-    if (inp.uwp) NAME = "UWPSolver";                     \
-    else         NAME = "STDSolver";                     \
-    inp.SetSolFlags (FLAGS);                             \
-    FEM::Solver * PTSOL = AllocSolver(NAME, dom, flags);
-*/
-
-/*
-#define FEM_SOLVE(verbose, inp, dom)                                                 \
+#define FEM_SOLVE(verbose, inp, ptsol, dom)                                                 \
     for (FEM::Domain::Models_t::const_iterator it=dom.Mdls.begin(); it!=dom.Mdls.end(); ++it) inp.SetSUp (it->second); \
-    if (inp.ninc<1) inp.ninc = 1;                                                    \
-    {
-        String name;
-        if (inp.uwp) name = "UWPSolver";                     \
-        else         name = "STDSolver";                     \
-        inp.SetSolFlags (flags);                             \
-        FEM::Solver * ptsol = AllocSolver(name, dom, flags);
-        for (size_t i=0; i<inp.Stages.Size(); ++i)                                       \
-        {                                                                                \
-            dom.SetBCs ((*inp.Stages[i]));                                               \
-            if (verbose) dom.PrintBCs (std::cout);                                            \
-            if (inp.vtufile)                                                             \
-            {                                                                            \
-                if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout, inp.fnkey.CStr()); \
-                else         sol.Solve    (inp.ninc, inp.fnkey.CStr());                  \
-            }                                                                            \
-            else                                                                         \
-            {                                                                            \
-                if (inp.dyn) sol.DynSolve (inp.tf, inp.dt, inp.dtout);                   \
-                else         sol.Solve    (inp.ninc);                                    \
-            }                                                                            \
-        }
+    if (inp.ninc<1) inp.ninc = 1;                                                           \
+    {                                                                                       \
+        for (size_t i=0; i<inp.Stages.Size(); ++i)                                          \
+        {                                                                                   \
+            dom.SetBCs ((*inp.Stages[i]));                                                  \
+            if (verbose) dom.PrintBCs (std::cout);                                          \
+            if (inp.vtufile)                                                                \
+            {                                                                               \
+                if (inp.dyn) ptsol->DynSolve (inp.tf, inp.dt, inp.dtout, inp.fnkey.CStr()); \
+                else         ptsol->Solve    (inp.ninc, inp.fnkey.CStr());                  \
+            }                                                                               \
+            else                                                                            \
+            {                                                                               \
+                if (inp.dyn) ptsol->DynSolve (inp.tf, inp.dt, inp.dtout);                   \
+                else         ptsol->Solve    (inp.ninc);                                    \
+            }                                                                               \
+        }                                                                                   \
     }
-    */
 
 #endif

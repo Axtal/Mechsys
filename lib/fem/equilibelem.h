@@ -94,7 +94,7 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
 
     // parameters/properties
     h   = (Prp.HasKey("h")   ? Prp("h")   : 1.0);
-    rho = (Prp.HasKey("rho") ? Prp("rho") : 1.0);
+    rho = Mdl->Rho;//(Prp.HasKey("rho") ? Prp("rho") : 1.0);
     if (h<1.0e-8)   throw new Fatal("EquilibElem::EquilibElem: The thickness of the element must be greater than 1.0e-8. h=%g is invalid",h);
     if (rho<1.0e-8) throw new Fatal("EquilibElem::EquilibElem: 'rho' must be greater than zero (rho=%g is invalid)",rho);
 

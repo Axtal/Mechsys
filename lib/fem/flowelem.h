@@ -96,7 +96,7 @@ inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
 inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF)
 {
     bool has_s    = BCs.HasKey("s");    // source term
-    bool has_H    = BCs.HasKey("h");    // potential
+    bool has_H    = BCs.HasKey("hh");   // potential
     bool has_flux = BCs.HasKey("flux"); // flux
     bool has_conv = BCs.HasKey("conv"); // convection
     bool has_per  = BCs.HasKey("per");  // perimeter (length) in which convection is applied (line element only)
@@ -115,7 +115,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs 
                 CalcShape (C, GE->IPs[i], detJ, coef);
                 for (size_t j=0; j<GE->NN; ++j)
                 {
-                    Con[j]->AddToPF("Q", s*coef*GE->N(j), BCF);
+                    Con[j]->AddToPF("qq", s*coef*GE->N(j), BCF);
                 }
             }
         }
@@ -133,7 +133,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs 
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    Con[k]->AddToPF("Q", coef*GE->FN(j)*qn, BCF);
+                    Con[k]->AddToPF("qq", coef*GE->FN(j)*qn, BCF);
                 }
             }
         }
@@ -154,8 +154,8 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs 
                 {
                     Vec3_t dl(Con[1]->Vert.C - Con[0]->Vert.C);
                     double l = norm(dl);
-                    Con[0]->AddToPF("Q", hPer*l*Tinf/2.0, BCF);
-                    Con[1]->AddToPF("Q", hPer*l*Tinf/2.0, BCF);
+                    Con[0]->AddToPF("qq", hPer*l*Tinf/2.0, BCF);
+                    Con[1]->AddToPF("qq", hPer*l*Tinf/2.0, BCF);
                 }
                 else throw new Fatal("FlowElem::SetBCs: per (perimiter) must be used for convection in Line elments only");
             }
@@ -177,7 +177,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs 
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    Con[k]->AddToPF("Q", coef*GE->FN(j)*h*Tinf, BCF);
+                    Con[k]->AddToPF("qq", coef*GE->FN(j)*h*Tinf, BCF);
                 }
             }
         }
@@ -186,11 +186,11 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs 
     // potential
     else if (has_H)
     {
-        double H = BCs("H");
+        double H = BCs("hh");
         for (size_t j=0; j<GE->NFN; ++j)
         {
             size_t k = GE->FNode(IdxEdgeOrFace,j);
-            Con[k]->SetPU("H", H, BCF);
+            Con[k]->SetPU("hh", H, BCF);
         }
     }
 }
@@ -204,7 +204,7 @@ inline void FlowElem::ClrBCs ()
 inline void FlowElem::GetLoc (Array<size_t> & Loc) const
 {
     Loc.Resize (GE->NN);
-    for (size_t i=0; i<GE->NN; ++i) Loc[i] = Con[i]->Eq("H");
+    for (size_t i=0; i<GE->NN; ++i) Loc[i] = Con[i]->Eq("hh");
 }
 
 inline void FlowElem::CalcK (Mat_t & K) const

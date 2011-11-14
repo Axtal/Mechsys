@@ -53,7 +53,7 @@ int main(int argc, char **argv) try
     Dict bcs;
 
     bool   dead_load  = false;
-    double sf         = 1.0;
+    //double sf         = 1.0;
     double L          = 1.0;
     bool   with_error = false;
     for (size_t tst=1; tst<=7; ++tst)
@@ -150,7 +150,7 @@ int main(int argc, char **argv) try
                 prps.Set (-3, "prob fra  rho E A Izz", PROB("Beam"), 1.,  rho, E, A, Izz);
                 //prps.Set (-3, "prob fra E A",         PROB("Rod"),  1.0, 1.0, 1.0);
 
-                sf = 0.005;
+                //sf = 0.005;
                 break;
             }
             case 6:
@@ -178,7 +178,7 @@ int main(int argc, char **argv) try
 
                 prps.Set (-2, "prob fra  rho E A Izz", PROB("Beam"), 1.,  rho, E, A, Izz);
 
-                sf = 0.5;
+                //sf = 0.5;
                 break;
             }
             case 7:

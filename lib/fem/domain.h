@@ -685,6 +685,17 @@ inline void Domain::SetBCs (Dict const & BCs)
             String key = bcs.Keys[k].ToLowerCpy();
             SDPair bc;
             bc.Set (key.CStr(), bcs(bcs.Keys[k]));
+            
+            // TODO: extra arguments need to be passed onto some elements => fix this
+            if (bcs.HasKey("h")) // convection transmissivity coefficient
+            {
+                bc.Set("h", bcs("h"));
+            }
+            if (bcs.HasKey("Tinf")) // environment temperature
+            {
+                bc.Set("Tinf", bcs("Tinf"));
+            }
+
             if (AllFKeysBCF.Has(bcs.Keys[k]) || AllExtraKeysBCF.Has(bcs.Keys[k])) // callback specified
             {
                 String mfkey;
@@ -1444,12 +1455,12 @@ inline void Domain::SaveState (char const * FileKey) const
     size_t ncols    = AllUKeys.Size() + AllFKeys.Size();
     size_t row_size = sizeof(double) * ncols;
     size_t col_offsets[ncols];
-    size_t col_sizes  [ncols];
+    //size_t col_sizes  [ncols];
     hid_t  col_types  [ncols];
     for (size_t i=0; i<ncols; ++i)
     {
         col_offsets[i] = i * sizeof(double);
-        col_sizes  [i] =     sizeof(double);
+        //col_sizes  [i] =     sizeof(double);
         col_types  [i] = H5T_NATIVE_DOUBLE;
     }
     char const * col_labels[ncols];
@@ -1545,7 +1556,7 @@ inline void Domain::LoadState (char const * FileKey)
 
     // read elements' states
     String  buf;
-    hsize_t sta_size[1];
+    //hsize_t sta_size[1];
     hid_t eles = H5Gopen (hdf, "/Eles", H5P_DEFAULT);
     for (size_t i=0; i<Eles.Size(); ++i)
     {
@@ -1555,7 +1566,7 @@ inline void Domain::LoadState (char const * FileKey)
         {
             buf.Printf ("sta_%d",j);
             Array<double> pck(Eles[i]->Sta[j]->PckSize());
-            sta_size[0] = pck.Size();
+            //sta_size[0] = pck.Size();
             H5LTread_dataset_double (ele, buf.CStr(), pck.GetPtr());
             Eles[i]->Sta[j]->Unpack (pck);
         }

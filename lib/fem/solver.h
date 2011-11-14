@@ -60,7 +60,9 @@ public:
     virtual ~Solver () {}
 
     // Methods
-    virtual String Name () const =0;
+    virtual void   Solve    (size_t NInc=1, char const * FileKey=NULL)                      { throw new Fatal("FEM::Solver.Solve: method not available for '%s' solver",   Name().CStr()); } ///< Solve quasi-static problem
+    virtual void   DynSolve (double tf, double dt, double dtOut, char const * FileKey=NULL) { throw new Fatal("FEM::Solver.DynSolve: method not available for '%s' solver",Name().CStr()); } ///< Solve dynamic problem
+    virtual String Name     () const =0;
 
     // Auxiliary methods
     double Timestep (int i, int a=7, double L=100.0, int sch=0, double m=2.0) const; ///< Calculate nonlinear steps

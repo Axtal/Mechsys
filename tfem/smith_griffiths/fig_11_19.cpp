@@ -64,15 +64,10 @@ int main(int argc, char **argv) try
     }
     mesh.WriteMPY (inp.fnkey.CStr());
     
-    // domain
-    FEM_ALLOC_DOMAIN (mesh, mat, inp,  dom);
-
-    // solve
-    SDPair flags;
-    inp.SetSolFlags (flags);
-    FEM::STDSolver sol(dom, flags);
-    dom.SetBCs   ((*inp.Stages[0]));
-    sol.DynSolve (inp.tf, inp.dt, inp.dtout);
+    // allocate and solve
+    FEM_ALLOC_DOMAIN(mesh, mat, inp, dom);
+    FEM_ALLOC_SOLVER(inp, dom, sol);
+    FEM_SOLVE(verbose, inp, sol, dom);
 
     // end
     return 0.0;
