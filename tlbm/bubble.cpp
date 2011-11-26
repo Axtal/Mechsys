@@ -41,7 +41,7 @@ int main(int argc, char **argv) try
     //Dom.Lat[0].Rhoref =  2.0;
     //Dom.Lat[0].G      = -4.0;
     //Dom.Lat[0].Gs     =  0.0;
-    Dom.Lat[0].G      = -200.0;
+    Dom.Lat[0].G      = -150.0;
     Dom.Lat[0].Gs     =  0.0;
     
     //for (size_t i=0;i<nx;i++)

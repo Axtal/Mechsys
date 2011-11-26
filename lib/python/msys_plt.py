@@ -37,6 +37,7 @@ class Plotter:
         self.mark_lst   = False     # mark residual (failure) point ?
         self.edmin_ave  = 10.0      # minimum Ed for calculating the average values when marking ave
         self.mark_symb  = '^'       # symbol to mark point
+        self.mark_lbl   = None      # symbol to mark point
         self.oct_norm   = False     # normalize plot in octahedral plane by p ?
         self.oct_sxyz   = True      # use Sx,Sy,Sz in oct plane instead of S1,S2,S3
         self.isxyz      = (1,0)     # indices for sxyz plot, use negative numbers for principal components
@@ -206,13 +207,13 @@ class Plotter:
             pcoef = self.fc_poct if self.oct_norm else 1.0
             if self.one<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot (Sa/pcoef, Sb/pcoef, color=clr, lw=lwd, label=label, marker=marker, markevery=markevery, ms=ms, zorder=zorder)
-            if self.mark_max: plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, self.mark_symb, color=clr)
-            if self.mark_lst: plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, self.mark_symb, color=clr)
+            if self.mark_max: plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, self.mark_symb, color=clr, label=self.mark_lbl)
+            if self.mark_lst: plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, self.mark_symb, color=clr, label=self.mark_lbl)
             if self.mark_ave:
                 #print 'p=%f, qave=%f, edmin=%f, edmax=%f' % (P[0], qave, self.edmin_ave, self.maxed) # TODO:
                 normab = sqrt(Sa[-1]**2.0 + Sb[-1]**2.0)
                 radius = qave*sqrt(2.0/3.0)
-                plot (radius*Sa[-1]/pcoef/normab,  radius*Sb[-1]/pcoef/normab, self.mark_symb, color=clr)
+                plot (radius*Sa[-1]/pcoef/normab,  radius*Sb[-1]/pcoef/normab, self.mark_symb, color=clr, label=self.mark_lbl)
             #Grid ()
             axis ('equal')
             #axis ('off')

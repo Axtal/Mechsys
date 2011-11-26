@@ -344,10 +344,16 @@ def phi_calc_M(phi,Type='oct'):
 # =============
 # M:   max q_cam/p_cam at compression
 # phi: friction angle at compression (degrees)
-def M_calc_phi(M,Type='oct'):
-    if   Type=='oct': sphi = 3.0*M/(M+2.0*sqrt(2.0))
-    elif Type=='cam': sphi = 3.0*M/(M+6.0)
-    else: raise Exception('M_calc_phi: Method not available for invariant Type==%s'%Type)
+def M_calc_phi(M,Type='oct',Mode='comp'):
+    if Mode=='comp':
+        if   Type=='oct': sphi = 3.0*M/(M+2.0*sqrt(2.0))
+        elif Type=='cam': sphi = 3.0*M/(M+6.0)
+        else: raise Exception('M_calc_phi: Method not available for invariant Type==%s'%Type)
+    elif Mode=='ext':
+        if   Type=='oct': sphi = 3.0*M/(-M+2.0*sqrt(2.0))
+        elif Type=='cam': sphi = 3.0*M/(-M+6.0)
+        else: raise Exception('M_calc_phi: Method not available for invariant Type==%s'%Type)
+    else: raise Exception('M_calc_phi: Mode %s not available, use either Mode=comp or Mode=ext')
     return arcsin(sphi)*180.0/pi
 
 

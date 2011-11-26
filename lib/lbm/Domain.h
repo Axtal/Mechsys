@@ -272,7 +272,7 @@ inline void Domain::ApplyForce()
                 psi   = 1.0;
                 solid = true;
             }
-            else psi = Lat[j].Psi(c->Rho);
+            else fabs(Lat[j].G)>1.0e-12 ? psi = Lat[j].Psi(c->Rho) : psi = c->Rho;
             for (size_t k=0;k<Lat.Size();k++)
             {
                 Cell * nb = Lat[k].Cells[ind2];
@@ -282,7 +282,7 @@ inline void Domain::ApplyForce()
                     nb_psi = 1.0;
                     solid  = true;
                 }
-                else nb_psi = Lat[k].Psi(nb->Rho);
+                else fabs(Lat[j].G)>1.0e-12 ? nb_psi = Lat[k].Psi(nb->Rho) : nb_psi = nb->Rho;
                 double G;
                 solid ? G = Lat[j].Gs*2.0*ReducedValue(nb->Gs,c->Gs) : G = Lat[j].G; 
                 Vec3_t BF(OrthoSys::O);
@@ -299,49 +299,6 @@ inline void Domain::ApplyForce()
             }
         }
     }
-
-
-    //for (size_t i=0;i<Lat.Size();i++)
-    //{
-        //for (size_t j=0;j<Lat[i].Cells.Size();j++)
-        //{
-            //Cell * c = Lat[i].Cells[j];
-            //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
-            //double rho = c->Rho;
-            //double psi = Lat[i].Psi(rho);
-            //for (size_t k=1;k<c->Nneigh;k++)
-            //{
-                //for (size_t l=0;l<Lat.Size();l++)
-                //{   
-                    //Cell * nb     = Lat[l].Cells[c->Neighs[k]];
-                    //double nb_rho = nb->Rho;
-                    //double nb_psi = Lat[l].Psi(nb_rho);
-                    //if (i==l)
-                    //{
-                        //if (nb->Gamma>0.0||nb->IsSolid)
-                        //{
-                            //c ->BForce    += -Lat[i].Gs*psi*c->W[k]*c->C[k];
-                        //}
-                        //else
-                        //{
-                            //c ->BForce    += -Lat[i].G*psi*c->W[k]*nb_psi*c->C[k];
-                        //}
-                    //}
-                    //else
-                    //{
-                        //if (nb->Gamma>0.0||nb->IsSolid)
-                        //{
-                            //continue;
-                        //}
-                        //else 
-                        //{
-                            //c ->BForce    += -Gmix*rho*c->W[k]*nb_rho*c->C[k];
-                        //}
-                    //}
-                //}
-            //}
-        //}
-    //}
 }
 
 void Domain::Collide ()
