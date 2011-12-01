@@ -59,24 +59,18 @@ VER_TRIANGLE=1.6
 VER_TETGEN=1.4.3
 VER_VORO=0.3.1
 VER_OPENMPI=1.5.4
-VER_SCALAPACK=0.96
+#VER_PARMETIS=4.0.2 # MUMPS does not work with this one
+VER_PARMETIS=3.2.0
 VER_MUMPS=4.10.0
-VER_PROC=3.2.8
-VER_SPHASH=1.8.1
 VER_IGRAPH=0.5.4
 VER_SOPLEX=1.5.0
-VER_PARMETIS=4.0.2
-
-INC_OPENMPI=/usr/lib/openmpi/include/  # $MECHSYS_ROOT/pkg/openmpi-1.4.2
-LIB_LAPACK=/usr/lib/liblapack.so
-LIB_BLAS=/usr/lib/libblas.so
 
 compile_scalapack() {
-    LDIR=$MECHSYS_ROOT/pkg/scalapack_installer_$VER_SCALAPACK/lib
+    INC_OPENMPI=/usr/local/lib/openmpi/include
+    LIB_LAPACK=/usr/lib/liblapack.so
+    LIB_BLAS=/usr/lib/libblas.so
+    LDIR=$MECHSYS_ROOT/pkg/scalapack_installer/lib
     python setup.py --notesting --mpiincdir=$INC_OPENMPI --lapacklib=$LIB_LAPACK --blaslib=$LIB_BLAS
-    ln -s $LDIR/blacs.a    $LDIR/libblacs.a
-    ln -s $LDIR/blacsC.a   $LDIR/libblacsC.a
-    ln -s $LDIR/blacsF77.a $LDIR/libblacsF77.a
 }
 
 compile_mumps() {
@@ -85,15 +79,11 @@ compile_mumps() {
     make
 }
 
-proc_links() {
-    LDIR=$MECHSYS_ROOT/pkg/procps-$VER_PROC/proc
-    ln -s $LDIR/libproc-$VER_PROC.so $LDIR/libproc.so
-}
-
 parmetis_links() {
     LDIR=$MECHSYS_ROOT/pkg/parmetis-$VER_PARMETIS
-    ln -s $LDIR/build/Linux-i686/libmetis/libmetis.a $LDIR/
-    ln -s $LDIR/build/Linux-i686/libparmetis/libparmetis.a $LDIR/
+    MACH=`uname -m`
+    ln -s $LDIR/build/Linux-$MACH/libmetis/libmetis.a $LDIR/
+    ln -s $LDIR/build/Linux-$MACH/libparmetis/libparmetis.a $LDIR/
 }
 
 error_message() {
@@ -116,6 +106,7 @@ download_and_compile() {
     DO_PATCH=0
     DO_CONF=0
     DO_MAKE=1
+    DO_MAKE_INST=0
     case "$1" in
         triangle)
             PKG=triangle$VER_TRIANGLE
@@ -133,21 +124,24 @@ download_and_compile() {
             DO_PATCH=1
             DO_MAKE=0
             ;;
-        mtl4)
-            PKG=mtl4
-            LOCATION=https://svn.osl.iu.edu/tlc/trunk/mtl4/trunk
-            IS_SVN=1
-            DO_MAKE=0
-            ;;
         openmpi)
             PKG=openmpi-$VER_OPENMPI
             EXT=tar.bz2
             LOCATION=http://www.open-mpi.org/software/ompi/v1.5/downloads/$PKG.$EXT
             DO_CONF=1
+            DO_MAKE_INST=1
+            ;;
+        parmetis)
+            #PKG=parmetis-$VER_PARMETIS  # for 4.0.2
+            #EXTRA_CONF="make config"    # for 4.0.2
+            #EXTRA_CMD=parmetis_links    # for 4.0.2
+            PKG=ParMetis-$VER_PARMETIS
+            LOCATION=http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/$PKG.$EXT
+            LOCATION=http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/OLD/$PKG.$EXT
             ;;
         scalapack)
             PKG=scalapack_installer
-            PKG_DIR=scalapack_installer_$VER_SCALAPACK
+            PKG_DIR=scalapack_installer
             EXT=tgz
             LOCATION=http://www.netlib.org/scalapack/$PKG.$EXT
             DO_MAKE=0
@@ -160,16 +154,6 @@ download_and_compile() {
             DO_MAKE=0
             EXTRA_CMD=compile_mumps
             ;;
-        proc)
-            PKG=procps-$VER_PROC
-            LOCATION=http://procps.sourceforge.net/$PKG.$EXT
-            EXTRA_CMD=proc_links
-            ;;
-        sphash)
-            PKG=sparsehash-$VER_SPHASH
-            LOCATION=http://google-sparsehash.googlecode.com/files/$PKG.$EXT
-            DO_CONF=1
-            ;;
         igraph)
             PKG=igraph-$VER_IGRAPH
             LOCATION=http://sourceforge.net/projects/igraph/files/C%20library/$VER_IGRAPH/$PKG.$EXT
@@ -179,12 +163,6 @@ download_and_compile() {
             PKG=soplex-$VER_SOPLEX
             EXT=tgz
             LOCATION=http://soplex.zib.de/download/$PKG.$EXT
-            ;;
-        parmetis)
-            PKG=parmetis-$VER_PARMETIS
-            EXTRA_CONF="make config"
-            EXTRA_CMD=parmetis_links
-            LOCATION=http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/$PKG.$EXT
             ;;
         *)
             error_message "download_and_compile: __Internal_error__"
@@ -288,6 +266,14 @@ download_and_compile() {
         make > /dev/null 2> /dev/null
     fi
 
+    # make install
+    if [ "$DO_MAKE_INST" -eq 1 ]; then
+        echo "        . . . installing . . ."
+        sudo make install > /dev/null 2> /dev/null
+        echo "           . . ldconfig . ."
+        sudo ldconfig
+    fi
+
     # execute specific command
     if [ ! -z "$EXTRA_CMD" ]; then
         echo "        . . . command . . . . . ."
@@ -301,15 +287,12 @@ download_and_compile() {
 download_and_compile triangle
 download_and_compile tetgen
 download_and_compile voro
-download_and_compile mtl4
 download_and_compile openmpi
+download_and_compile parmetis
 download_and_compile scalapack
 download_and_compile mumps
-download_and_compile proc
-download_and_compile sphash
 download_and_compile igraph
 download_and_compile soplex
-download_and_compile parmetis
 
 echo
 echo "Finished ###################################################################"

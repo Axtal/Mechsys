@@ -34,8 +34,20 @@ LPORDDIR = $(topdir)/PORD/lib/
 IPORD    = -I$(topdir)/PORD/include/
 LPORD    = -L$(LPORDDIR) -lpord
 
-LMETISDIR = /usr/lib
-IMETIS    = /usr/include/parmetis # Should be provided if you use parmetis
+ifdef MECHSYS_ROOT
+else
+    MECHSYS_ROOT = $(HOME)
+endif
+
+#PMETISNAME=parmetis-4.0.2 # MUMPS doesn't work with this
+#METISINC=metis/include
+#PMETISINC=include
+PMETISNAME=ParMetis-3.2.0
+METISINC=METISLib
+PMETISINC=
+
+LMETISDIR = $(MECHSYS_ROOT)/pkg/$(PMETISNAME)
+IMETIS    = -I $(MECHSYS_ROOT)/pkg/$(PMETISNAME)/$(METISINC) -I $(MECHSYS_ROOT)/pkg/$(PMETISNAME)/$(PMETISINC)
 
 # You have to choose one among the following two lines depending on
 # the type of analysis you want to perform. If you want to perform only
@@ -60,11 +72,6 @@ IORDERINGSC = $(IMETIS) $(IPORD) $(ISCOTCH)
 ########################################################################
 ################################################################################
 
-ifdef MECHSYS_ROOT
-else
-    MECHSYS_ROOT = $(HOME)
-endif
-
 PLAT    =
 LIBEXT  = .a
 OUTC    = -o 
@@ -77,7 +84,7 @@ AR = ar vr
 #RANLIB = ranlib
 RANLIB  = echo
 #SCALAP  = /local/SCALAPACK/libscalapack.a /local/BLACS/LIB/blacs_MPI-LINUX-0.a   /local/BLACS/LIB/blacsF77init_MPI-LINUX-0.a  /local/BLACS/LIB/blacs_MPI-LINUX-0.a
-SCALAP  = $(MECHSYS_ROOT)/pkg/scalapack_installer_0.96/lib/libscalapack.a $(MECHSYS_ROOT)/pkg/scalapack_installer_0.96/lib/blacs.a $(MECHSYS_ROOT)/pkg/scalapack_installer_0.96/lib/blacsC.a $(MECHSYS_ROOT)/pkg/scalapack_installer_0.96/lib/blacsF77.a $(MECHSYS_ROOT)/pkg/scalapack_installer_0.96/lib/blacs.a
+SCALAP  = $(MECHSYS_ROOT)/pkg/scalapack_installer/install/lib/libscalapack.a
 #INCPAR = -I/usr/local/include
 INCPAR = -I/usr/lib/openmpi/include
 # LIBPAR = $(SCALAP)  -L/usr/local/lib/ -llammpio -llamf77mpi -lmpi -llam -lutil -ldl -lpthread

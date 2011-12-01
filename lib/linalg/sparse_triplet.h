@@ -313,7 +313,7 @@ inline void Triplet<Value_T,Index_T>::WriteSMAT (char const * FileKey, double To
     // output
     std::ostringstream oss;
     char buf[256];
-    sprintf(buf, "%d  %d  %d\n", Rows(), Cols(), nz);
+    sprintf(buf, "%d  %d  %zd\n", Rows(), Cols(), nz);
     oss << buf;
     for (int k=0; k<Top(); ++k)
     {
