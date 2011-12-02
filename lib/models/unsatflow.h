@@ -173,7 +173,7 @@ inline UnsatFlow::UnsatFlow (int NDim, SDPair const & Prms, Model const * Equili
     Inv (kwsat, kwsatI);
 
     // compressibility of water
-    Cw = (Prms.HasKey("Cw") ? Prms("Cw") : 1.0e-7);
+    Cw = Prms("cw");
 
     // stress update
     HMSUp.SetModel (EquilibMdl, this);
@@ -516,8 +516,8 @@ int UnsatFlowRegister()
 {
     ModelFactory   ["UnsatFlow"] = UnsatFlowMaker;
     MODEL.Set      ("UnsatFlow", (double)MODEL.Keys.Size());
-    MODEL_PRM_NAMES["UnsatFlow"].Resize(26);
-    MODEL_PRM_NAMES["UnsatFlow"] = "kwsat",  "akw",
+    MODEL_PRM_NAMES["UnsatFlow"].Resize(27);
+    MODEL_PRM_NAMES["UnsatFlow"] = "kwsat",  "akw",    "cw",
                                    "bc_lam", "bc_sb",  "bc_wr",
                                    "zi_del", "zi_bet", "zi_gam", "zi_a", "zi_b", "zi_alp",
                                    "hz_a",   "hz_b",   "hz_A",   "hz_B",

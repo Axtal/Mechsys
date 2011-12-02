@@ -439,6 +439,8 @@ inline void UWPElem::ElemEqs (double Time, Vec_t const & V_g, Vec_t const & Ww_g
         // calc Cpw, Cvs and fwd
         FMdl->TgVars (FSta[i], ww,  Cpw, Cvs, fwd);
 
+        //printf("Cpw=%20.10e  Cvs=%20.10e\n", Cpw, Cvs);
+
         // values at IP
         double n    = FSta[i]->n;          // porosity
         double Sw   = FSta[i]->Sw;         // water saturation
@@ -476,6 +478,9 @@ inline void UWPElem::ElemEqs (double Time, Vec_t const & V_g, Vec_t const & Ww_g
         Mw += (Coef * rhow) * trans(N)  * N;
         Hw += (Coef * Cpw)  * trans(Np) * Np;
     }
+
+    printf("t = %5.3e\n", Time);
+    std::cout << "Hw =\n" << PrintMatrix(Hw, "%20.10e");
 }
 
 inline void UWPElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
