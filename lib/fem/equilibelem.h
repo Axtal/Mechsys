@@ -465,11 +465,11 @@ inline void EquilibElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & 
 
 
 
-    std::cout << "J = \n" << PrintMatrix(J);
-    std::cout << "dNdR = \n" << PrintMatrix(GE->dNdR);
-    std::cout << "C = \n" << PrintMatrix(C);
-    std::cout << "dNdX = \n" << PrintMatrix(dNdX);
-    printf("detJ = %g\n", detJ);
+    //std::cout << "J = \n" << PrintMatrix(J);
+    //std::cout << "dNdR = \n" << PrintMatrix(GE->dNdR);
+    //std::cout << "C = \n" << PrintMatrix(C);
+    //std::cout << "dNdX = \n" << PrintMatrix(dNdX);
+    //printf("detJ = %g\n", detJ);
 
 
     // B matrix

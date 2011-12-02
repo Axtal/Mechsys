@@ -447,14 +447,19 @@ inline void Matrix<Value_T,Index_T>::WriteSMAT (char const * FileKey, double Tol
 
     // output
     std::ostringstream oss;
-    oss << _nrows << "  " << _ncols << "  " << nz << std::endl;
+    char buf[256];
+    sprintf(buf, "%d  %d  %zd\n", _nrows, _ncols, nz);
+    oss << buf;
     for (Index_T j=0; j<_ncols; ++j)
     {
         Index_T start = _Ap[j];
         Index_T endpo = _Ap[j+1]; // == end+1
         for (Index_T p=start; p<endpo; ++p)
         {
-            if (fabs(_Ax[p])>Tol) oss << _Ai[p] << "  " << j << "  " << _Ax[p] << std::endl;
+            if (fabs(_Ax[p])>Tol)
+            {
+                sprintf(buf, "  %d  %d  %g\n", _Ai[p], j, _Ax[p]);
+            }
         }
     }
 
