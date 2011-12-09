@@ -72,7 +72,7 @@ int main(int argc, char **argv) try
     mesh.SetBryTag ( 4, 2, -10);
     mesh.SetBryTag ( 5, 1, -20);
     mesh.SetBryTag ( 5, 2, -10);
-    //mesh.WriteMPY  ("fig_05_11");
+    mesh.WriteMPY  ("fig_05_11");
     
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -96,11 +96,20 @@ int main(int argc, char **argv) try
     FEM::STDSolver sol(dom, flags);
 
     // stage # 1 -----------------------------------------------------------
+    const bool _ = true; // just one
+    FEM::BCfunc f0 = {"zero", "cte", Array<String>("c",_), Array<double>(0.0,_),     Array<String>("m",_)};
+    FEM::BCfunc f1 = {"disp", "cte", Array<String>("c",_), Array<double>(-1.0e-5,_), Array<String>("m",_)};
+    FEM::FaceBc b0 = {-10, Array<String>("ux", _),    Array<String>("zero", _)     };
+    FEM::FaceBc b1 = {-20, Array<String>("ux", "uy"), Array<String>("zero", "zero")};
+    FEM::FaceBc b2 = {-30, Array<String>("uy", _),    Array<String>("disp", _)     };
+    Array<FEM::BCfunc> func(f0,f1);
+    Array<FEM::FaceBc> fbcs(b0,b1,b2);
     Dict bcs;
     bcs.Set( -10, "ux",     0.0);
-    bcs.Set( -20, "ux uy",  0.0);
+    bcs.Set( -20, "ux uy",  0.0, 0.0);
     bcs.Set( -30, "uy",    -1.0e-5);
     dom.SetBCs (bcs);
+    dom.PrintBCs(cout);
     //cout << dom << endl;
     sol.Solve ();
 

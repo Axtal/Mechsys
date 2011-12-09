@@ -48,6 +48,31 @@
 namespace FEM
 {
 
+// boundary condition function
+struct BCfunc {
+    String        Name;  // ex: zero, load, myfunction1, etc.
+    String        Type;  // ex: cte, rmp
+    Array<String> Prms;  // ex: c, m, ta, tb, tc, A, om
+    Array<double> Vals;  // ex: 1, 2, 3,  4,  5,  6, 7
+    Array<String> Units; // ex: m kPa -   s   s   -  -
+};
+
+// face boundary condition
+struct FaceBc {
+    int           Tag;   // ex: -11
+    Array<String> Keys;  // ex: qn, pw, ux, uy, uz, wwx, wwy, wwz
+    Array<String> Funcs; // ex: zero, load, myfunction1, etc.
+};
+
+// node boundary condition
+struct NodeBc {
+    int           Tag;   // ex: -100
+    Array<String> Keys;  // ex: pw, ux, uy, uz, wwx, wwy, wwz
+    Array<String> Funcs; // ex: zero, load, myfunction1, etc.
+};
+
+//void AddFaceBc(Array<FaceBc> & Fbcs, int tag, 
+
 typedef std::map<Node*,Array<double> >  Res_t;      ///< Maps node to results at nodes
 typedef std::map<int, Array<Element*> > Tag2Eles_t; ///< Maps tag to elements
 
@@ -80,6 +105,7 @@ public:
     ~Domain ();
 
     // Methods
+    void SetBCsNew      (Array<BCfunc> const & Bfuns, Array<FaceBc> const & Fbcs, Array<NodeBc> const & Nbcs);
     void SetBCs         (Dict const & BCs);                                                                                ///< Set boundary conditions
     void NewNodsClearU  ();                                                                                                ///< Clear U values of StgNewNods (new nodes just activated by SetBCs)
     void PrintResults   (char const * NF="%15.6e", bool OnlySummary=false, bool WithElems=true, double Tol=1.0e-10) const; ///< Print results (Tol:tolerance to ignore zeros)
@@ -500,6 +526,10 @@ inline Domain::~Domain()
 
 // Methods
 
+inline void Domain::SetBCsNew (Array<BCfunc> const & Bfuns, Array<FaceBc> const & Fbcs, Array<NodeBc> const & Nbcs)
+{
+}
+
 inline void Domain::SetBCs (Dict const & BCs)
 {
     // info
@@ -551,9 +581,64 @@ inline void Domain::SetBCs (Dict const & BCs)
                 if (AllUKeys.Has(bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the Element", bcs.Keys[k].CStr(), btag);
                 if (AllFKeys.Has(bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the Element", bcs.Keys[k].CStr(), btag);
 
+
+                printf("\n\n");
+                for (size_t ib=0; ib<bcs.Keys.Size(); ++ib)
+                {
+                    printf("[1;35m%s  =>  %g[0m\n", bcs.Keys[ib].CStr(), bcs(bcs.Keys[ib]));
+                }
+                printf("\n\n");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                // TODO: 'deactivate' and 'gravity' must be together
+                //       currently this code is splitting them => major rewrite needed
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 // set BCs: ex: 'activate', 's', 'qn', etc.
                 SDPair bc;
                 bc.Set (bcs.Keys[k].ToLowerCpy().CStr(), bcs(bcs.Keys[k]));
+
+                // TODO: extra arguments need to be passed onto some elements => fix this
+                //if (bcs.HasKey("activate"))
+                //{
+                    //bc.Set("activate", bcs("activate"));
+                    //bc.Set("gravity",  bcs("gravity"));
+                //}
+                //if (bcs.HasKey("deactivate")) // environment temperature
+                //{
+                    //bc.Set("deactivate", bcs("deactivate"));
+                    //bc.Set("gravity",  bcs("gravity"));
+                //}
+
                 for (size_t i=0; i<it->second.Size(); ++i) // for each element
                 {
                     Element * ele = it->second[i];

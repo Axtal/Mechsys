@@ -189,6 +189,22 @@ struct Cell
     int            PartID;  ///< Partition (domain) ID
 };
 
+inline int CellGetBryTag(int iSide, Cell const *c)
+{
+    BryTag_t::const_iterator p = c->BryTags.find(iSide);
+    if (p==c->BryTags.end()) return 0;
+    else                     return p->second;
+}
+
+inline int CellGetNeigh(int iSide, Cell const *c)
+{
+    for (Neighs_t::const_iterator p=c->Neighs.begin(); p!=c->Neighs.end(); ++p)
+    {
+        if (iSide==p->second.first) return p->second.second->ID;
+    }
+    return -1; // no neighbour
+}
+
 class Generic
 {
 public:
@@ -229,6 +245,7 @@ public:
     void WriteVTU (char const * FileKey, int VolSurfOrBoth=0) const; ///< (.vtu) Write output file for ParaView. Vol=0, Surf=1, Both=2
     void WriteMPY (char const * FileKey, bool WithTags=true, bool WithIDs=true, bool WithShares=false,
                    char const * Extra=NULL) const;                   ///< (.mpy) Write Python script that calls mesh_drawing.py
+    void WriteJSON(char const * FileKey) const;
 
     // Auxiliar methods
     int  FindVert    (int Tag)                                                 const; ///< Find ID of first vertex with Tag. Returns -1 if not found
@@ -1380,6 +1397,91 @@ inline void Generic::WriteMPY (char const * FileKey, bool WithTags, bool WithIDs
     std::ofstream of(fn.CStr(), std::ios::out);
     of << oss.str();
     of.close();
+}
+
+inline void Generic::WriteJSON (char const * FileKey) const
+{
+    // open stream
+    String fn(FileKey); fn.append(".msh");
+    std::ostringstream oss;
+    oss << "{\n";
+
+    // verts
+    oss << "    \"verts\" : [\n";
+    for (size_t i=0; i<Verts.Size(); ++i)
+    {
+        if (Verts[i]==NULL) throw new Fatal("Generic::WriteJSON: Vertex %d is not defined",i);
+        oss << "        { ";
+        oss << "\"id\":"  << Verts[i]->ID  << ", ";
+        oss << "\"tag\":" << Verts[i]->Tag << ", ";
+        oss << "\"c\":[";
+        if (NDim==3)
+        {
+            oss << Verts[i]->C(0) << ", ";
+            oss << Verts[i]->C(1) << ", ";
+            oss << Verts[i]->C(2);
+        }
+        else
+        {
+            oss << Verts[i]->C(0) << ", ";
+            oss << Verts[i]->C(1);
+        }
+        oss << "], \"shares\":[";
+        for (size_t j=0; j<Verts[i]->Shares.Size(); ++j)
+        {
+            oss << Verts[i]->Shares[j].C->ID;
+            if (j!=Verts[i]->Shares.Size()-1) oss << ", ";
+        }
+        oss << "], \"parts\":[";
+        for (size_t j=0; j<Verts[i]->PartIDs.Size(); ++j)
+        {
+            oss << Verts[i]->PartIDs[j];
+            if (j!=Verts[i]->PartIDs.Size()-1) oss << ", ";
+        }
+        if (i==Verts.Size()-1) oss << "] }\n";
+        else                   oss << "] },\n";
+    }
+    oss << "    ],\n";
+
+    // cells
+    oss << "    \"cells\" : [\n";
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        if (Cells[i]==NULL) throw new Fatal("Generic::WriteJSON: Cell %d is not defined",i);
+        oss << "        { ";
+        oss << "\"id\":"   << Cells[i]->ID     << ", ";
+        oss << "\"tag\":"  << Cells[i]->Tag    << ", ";
+        oss << "\"part\":" << Cells[i]->PartID << ", ";
+        oss << "\"verts\":[";
+        for (size_t j=0; j<Cells[i]->V.Size(); ++j)
+        {
+            oss << Cells[i]->V[j]->ID;
+            if (j!=Cells[i]->V.Size()-1) oss << ", ";
+        }
+        oss << "], \"ftags\":[";
+        size_t nbrys = (NDim==2 ? NVertsToNEdges2D[Cells[i]->V.Size()] : NVertsToNFaces3D[Cells[i]->V.Size()]);
+        for (size_t j=0; j<nbrys; ++j)
+        {
+            oss << CellGetBryTag(j, Cells[i]);
+            if (j!=nbrys-1) oss << ", ";
+        }
+        oss << "], \"neigh\":[";
+        for (size_t j=0; j<nbrys; ++j)
+        {
+            oss << CellGetNeigh(j, Cells[i]);
+            if (j!=nbrys-1) oss << ", ";
+        }
+        if (i==Cells.Size()-1) oss << "] }\n";
+        else                   oss << "] },\n";
+    }
+    oss << "    ]\n";
+
+    // write file
+    oss << "}\n";
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
+    std::cout << "File <" << TERM_CLR_BLUE_H << fn << TERM_RST << "> written\n";
 }
 
 inline void Generic::GenGroundSG (Array<double> const & X, Array<double> const & Y, double FootingLx)

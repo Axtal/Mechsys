@@ -46,10 +46,12 @@ public:
     void   NatCoords  (Mat_t & C)                       const;
 };
 
-const int Tet10::Face2Node[4][6] = {{ 0, 4, 7, 3 },
-                                    { 1, 2, 6, 5 },
-                                    { 0, 3, 2, 1 }, 
-                                    { 4, 5, 6, 7 }};
+/* TODO: check this
+const int Tet10::Face2Node[4][6] = {{  },
+                                    {  },
+                                    {  }, 
+                                    {  }};
+                                    */
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 

@@ -44,7 +44,7 @@ int main(int argc, char **argv) try
     Mesh::Generic mesh(/*NDim*/2);
     mesh.SetSize   (6/*verts*/, 4/*cells*/);
     mesh.SetVert   (0, -100, 0.0, 0.0, 0);
-    mesh.SetVert   (1, -100, 0.0, 2.0, 0);
+    mesh.SetVert   (1, -101, 0.0, 2.0, 0);
     mesh.SetVert   (2,    0, 2.0, 0.0, 0);
     mesh.SetVert   (3,    0, 2.0, 1.5, 0);
     mesh.SetVert   (4,    0, 4.0, 0.0, 0);
@@ -56,7 +56,7 @@ int main(int argc, char **argv) try
     mesh.SetBryTag (1, 0, -10);
     mesh.SetBryTag (3, 0, -10);
     //mesh.WriteVTU  ("ex16_mesh");
-    //mesh.WriteMPY  ("ex16_mesh");
+    mesh.WriteMPY  ("ex16_mesh");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -71,6 +71,8 @@ int main(int argc, char **argv) try
     // initial values
     Dict inis;
     inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
+
+    FEM::Domain::WithInfo = false;
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
@@ -126,13 +128,39 @@ int main(int argc, char **argv) try
     SDPair flags;
     flags.Set("calcwork", 1.0);
     FEM::STDSolver sol(dom, flags);
+    sol.WithInfo = false;
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
     bcs.Set( -10, "qn",   -20.0);
-    bcs.Set(-100, "ux uy", 0.0,0.0);
+    bcs.Set(-100, "ux uy", 0.0,0.1);
+    bcs.Set(-101, "ux uy", 0.33,0.0);
     dom.SetBCs (bcs);
     sol.Solve  (/*NDiv*/1);
+
+    printf("%20s\n", "u");
+    for (int i=0; i<sol.U.Size(); i++) {
+        printf("%20.10e\n", sol.U(i));
+    }
+
+    //sol.Initialize(true);
+    //sol.AssembleKMA(0,1);
+    //Sparse::Matrix<double,int> A11(sol.A11);  Mat_t a11;
+    //A11.GetDense(a11);
+    //std::cout << "A11 =\n" << PrintMatrix(a11, "%20.10e");
+    //Vec_t u(12), f;
+    //for (size_t i=0; i<12; ++i) u(i) = 666;
+    //f = a11 * u;
+    //Vec_t f;
+    //f = a11 * sol.U;
+    //printf("\na11 * u\n");
+    //for (int i=0; i<f.Size(); i++) {
+        //printf("%20.10e\n", f(i));
+    //}
+    //std::cout << PrintVector(f, "%20.10e");
+    //sol.DebugPrintMatrices(true);
+    return 0;
+
 
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////

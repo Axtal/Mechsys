@@ -40,7 +40,7 @@
 #include <mechsys/fem/elems/quad8.h>
 #include <mechsys/fem/elems/hex8.h>
 #include <mechsys/fem/elems/hex20.h>
-#include <mechsys/fem/elems/tet10.h>
+//#include <mechsys/fem/elems/tet10.h>
 #include <mechsys/fem/domain.h>
 #include <mechsys/fem/solvers/stdsolver.h>
 #include <mechsys/fem/solvers/uwpsolver.h>

@@ -2,7 +2,7 @@
 
 make clean > /dev/null 2>&1
 
-FILES="CMakeCache.txt cmake_install.cmake Makefile CTestTestfile.cmake"
+FILES="CMakeCache.txt cmake_install.cmake CTestTestfile.cmake"
 SFILES="install_manifest.txt"
 DIRS="CMakeFiles build Testing"
 

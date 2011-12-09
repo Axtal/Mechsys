@@ -75,6 +75,8 @@ int main(int argc, char **argv) try
     mesh.SetBryTag  ( 5, 2, -10);
     mesh.GenO2Verts ();
     //mesh.WriteMPY   ("fig_05_15");
+    //cout << mesh << endl;
+    mesh.WriteJSON  ("fig_05_15");
     
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -105,6 +107,7 @@ int main(int argc, char **argv) try
     dom.SetBCs (bcs);
     //cout << dom << endl;
     sol.Solve ();
+    dom.WriteVTU("fig_05_15");
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
     
