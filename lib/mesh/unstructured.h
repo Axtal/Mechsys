@@ -486,6 +486,7 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool Quiet, d
             Cells[i]      = new Cell;
             Cells[i]->ID  = i;
             Cells[i]->Tag = tou.triangleattributelist[i*tou.numberoftriangleattributes];
+            Cells[i]->PartID = 0; // partition id (domain decomposition)
             Cells[i]->V.Resize (tou.numberofcorners);
             for (size_t j=0; j<Cells[i]->V.Size(); ++j)
             {

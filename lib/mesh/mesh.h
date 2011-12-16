@@ -1397,6 +1397,7 @@ inline void Generic::WriteMPY (char const * FileKey, bool WithTags, bool WithIDs
     std::ofstream of(fn.CStr(), std::ios::out);
     of << oss.str();
     of.close();
+    std::cout << "File <" << TERM_CLR_BLUE_H << fn << TERM_RST << "> written\n";
 }
 
 inline void Generic::WriteJSON (char const * FileKey) const

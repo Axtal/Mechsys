@@ -32,6 +32,8 @@ from matplotlib.patches      import Arc  as MPLArc
 from matplotlib.path         import Path as MPLPath
 from matplotlib.font_manager import FontProperties
 from matplotlib.ticker       import FuncFormatter
+import mpl_toolkits.mplot3d.axes3d as A3D
+from matplotlib.ticker import MaxNLocator
 
 def SetForEps (proport=0.75, fig_width_pt=455.24):
     # fig_width_pt = 455.24411                  # Get this from LaTeX using \showthe\columnwidth
@@ -59,6 +61,9 @@ def Save (filename, extra_artists=[]):
 # below code will work.
 # t1 = ax.text(-0.2,0.5,'text',transform=ax.transAxes)
 # fig.savefig('test.png', bbox_inches='tight', bbox_extra_artists=[t1])
+
+# ex.: ax = subplot(2,2,1); SetXnticks(ax, 4)
+def SetXnticks(subplot_fig, num):  subplot_fig.xaxis.set_major_locator(MaxNLocator(num))
 
 def Leg (fsz=8, ncol=1): legend (loc='best',prop={'size':fsz},ncol=ncol)
 
@@ -88,12 +93,12 @@ def Arrow (xi,yi, xf,yf, scale=20, fc='#a2e3a2', ec='black', zorder=0):
 def Tetragon (x0,y0, x1,y1, x2,y2, x3,y3, fc='#a2e3a2', ec='black', zorder=0, alpha=1.0):
     gca().add_patch(Polygon(array([[x0,y0],[x1,y1],[x2,y2],[x3,y3]]), ec=ec, fc=fc, zorder=zorder, alpha=alpha))
 
-def Contour (X,Y,Z, label, nlevels=16, cmap=None, fmt='%g'):
+def Contour (X,Y,Z, label, nlevels=16, cmap=None, fmt='%g', wire=True):
     c1 = contourf (X,Y,Z, cmap=cmap)
-    c2 = contour  (X,Y,Z, nlevels=nlevels, colors=('k'))
+    if wire: c2 = contour (X,Y,Z, nlevels=nlevels, colors=('k'))
     cb = colorbar (c1, format=fmt)
     cb.ax.set_ylabel (label)
-    clabel (c2, inline=0)
+    if wire: clabel (c2, inline=0)
 
 def GetClr (idx=0, scheme=1): # color
     if scheme==1:
@@ -155,7 +160,10 @@ def read_tables(filenames, num_int_columns=0):
 # ==================
 def read_tdata (fnkey, ids, arc_lens):
     r0  = read_table ('%s_%d.res'%(fnkey,ids[0]))
-    nt  = len(r0['Time']) if r0.has_key('Time') else len(r0['t'])
+    str_time = 'Time'
+    if r0.has_key('time'): str_time = 'time'
+    if r0.has_key('t'):    str_time = 't'
+    nt  = len(r0[str_time])
     np  = len(ids)
     dat = {'arc_len':zeros((np,nt))}
     for k, v in r0.iteritems(): dat[k] = zeros((np,nt))
@@ -229,3 +237,22 @@ if __name__=='__main__':
     ylabel  (r'$y$')
     #show    ()
     Save    ('test_msys_fig.eps')
+
+
+# Column nodes
+# ============
+# nc: number of cells along y
+def column_nodes (nc=10, o2=True):
+    ny = nc + 1 # number of rows along y
+    l  = arange(ny) * 2
+    r  = arange(ny) * 2 + 1
+    if o2:
+        c = 2 * ny + arange(ny)
+        m = 3 * ny + arange(nc) * 2
+        L = zeros(ny + nc, dtype=int)
+        i = arange(ny + nc)
+        L[i%2==0] = l
+        L[i%2==1] = m
+        R = L + 1
+        return l, c, r, L, R
+    return l, r

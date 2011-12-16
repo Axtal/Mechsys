@@ -704,6 +704,7 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2)
                         Cell * e    = new Cell;
                         e->ID       = Cells.Size();
                         e->Tag      = Blks[b].Tag;
+                        e->PartID   = 0; // partition id (domain decomposition)
                         int nvonbry = 0; // number of vertices of this element on boundary
                         size_t  pnv = verts.Size()-1; // previous number of vertices
                         Cells.Push (e);
