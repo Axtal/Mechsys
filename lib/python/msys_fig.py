@@ -120,10 +120,13 @@ def read_table(filename, num_int_columns=0):
     if not os.path.isfile(filename): raise Exception("[1;31mread_table: could not find file <[1;34m%s[0m[1;31m>[0m"%filename)
     file   = open(filename,'r')
     header = file.readline().split()
-    dat    = {}
+    while len(header) == 0:
+        header = file.readline().split()
+    dat = {}
     for key in header: dat[key] = []
     for lin in file:
         res = lin.split()
+        if len(res) == 0: continue
         for i, key in enumerate(header):
             if i<num_int_columns: dat[key].append(int  (res[i]))
             else:                 dat[key].append(float(res[i]))

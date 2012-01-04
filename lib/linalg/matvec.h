@@ -190,6 +190,7 @@ inline void WriteSMAT (Mat_t const & M, char const * FileKey, double Tol=1.0e-14
     std::ofstream of(fn.CStr(), std::ios::out);
     of << oss.str();
     of.close();
+    printf("File <%s%s%s> written\n",TERM_CLR_BLUE_H, fn.CStr(), TERM_RST);
 }
 
 /** Compare two vectors. */
