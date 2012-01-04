@@ -258,7 +258,8 @@ public:
     void GenGroundSG (Array<double> const & X, Array<double> const & Y, double FootingLx=-1); ///< Generate ground square/box according to Smith and Griffiths' numbering
     void GenGroundSG (size_t Nx, size_t Ny, double Dx=1.0, double Dy=1.0);                    ///< Smith-Griffiths' ground
     void GenSector   (size_t Nr, size_t Nth, double r, double R, double ThetaRad);            ///< Generate a Circular sector
-    void Quad8ToTri6 ();                                    ///< Convert Quad8 mesh to Tri6 mesh
+    void Quad4ToTri3 (bool BackDiagonal=true);              ///< Convert Quad4 mesh to Tri3 mesh
+    void Quad8ToTri6 (bool BackDiagonal=true);              ///< Convert Quad8 mesh to Tri6 mesh
     void Tri6ToTri15 ();                                    ///< Convert Tri6 mesh to Tri15 mesh
     void Tri3ToTri6  ();                                    ///< Convert Tri3 mesh to Tri6 mesh
     void Refine      ();                                    ///< Refine frames: split Lin2 cells into two
@@ -1665,7 +1666,81 @@ inline void Generic::GenSector (size_t Nr, size_t Nth, double r, double R, doubl
     }
 }
 
-inline void Generic::Quad8ToTri6 ()
+inline void Generic::Quad4ToTri3 (bool BackDiagonal)
+{
+    // copy pointers of old mesh
+    Array<Cell*> old_cells(Cells.Size());
+    for (size_t i=0; i<old_cells.Size(); ++i) old_cells[i] = Cells[i];
+    Cells   .Resize (old_cells.Size()*2);
+    TgdCells.Resize (0);
+    Cells.SetValues (NULL);
+
+    // erase shares information
+    for (size_t i=0; i<Verts.Size(); ++i) Verts[i]->Shares.Resize(0);
+
+    // new mesh
+    int icell = 0;
+    for (size_t i=0; i<old_cells.Size(); ++i)
+    {
+        // check
+        if (old_cells[i]->V.Size()!=4) throw new Fatal("Mesh::Quad4ToTri3: This method only works for Quad4s (NVerts=%d is invalid)",old_cells[i]->V.Size());
+
+        // indices of vertices of Quad4
+        size_t i0 = old_cells[i]->V[0]->ID;
+        size_t i1 = old_cells[i]->V[1]->ID;
+        size_t i2 = old_cells[i]->V[2]->ID;
+        size_t i3 = old_cells[i]->V[3]->ID;
+
+        // new connectivities
+        Array<int> con0(3), con1(3);
+        if (BackDiagonal)
+        {
+            con0 = i0, i1, i3;
+            con1 = i3, i1, i2;
+        }
+        else
+        {
+            con0 = i0, i1, i2;
+            con1 = i0, i2, i3;
+        }
+
+        // new cells
+        SetCell (icell++, old_cells[i]->Tag, con0);
+        SetCell (icell++, old_cells[i]->Tag, con1);
+
+        // boundary tags
+        if (BackDiagonal)
+        {
+            for (BryTag_t::const_iterator p=old_cells[i]->BryTags.begin(); p!=old_cells[i]->BryTags.end(); ++p)
+            {
+                if (p->first==0) SetBryTag (icell-2, /*side*/0, /*tag*/p->second);
+                if (p->first==1) SetBryTag (icell-1, /*side*/1, /*tag*/p->second);
+                if (p->first==2) SetBryTag (icell-1, /*side*/2, /*tag*/p->second);
+                if (p->first==3) SetBryTag (icell-2, /*side*/2, /*tag*/p->second);
+            }
+        }
+        else
+        {
+            for (BryTag_t::const_iterator p=old_cells[i]->BryTags.begin(); p!=old_cells[i]->BryTags.end(); ++p)
+            {
+                if (p->first==0) SetBryTag (icell-2, /*side*/0, /*tag*/p->second);
+                if (p->first==1) SetBryTag (icell-2, /*side*/1, /*tag*/p->second);
+                if (p->first==2) SetBryTag (icell-1, /*side*/1, /*tag*/p->second);
+                if (p->first==3) SetBryTag (icell-1, /*side*/2, /*tag*/p->second);
+            }
+        }
+    }
+
+    // delete old mesh
+    for (size_t i=0; i<old_cells.Size(); ++i) delete old_cells[i];
+
+    // info
+    printf("%s  ------- After Quad4ToTri3 -------%s\n", TERM_GREEN, TERM_RST);
+    printf("%s  Num of cells       = %zd%s\n", TERM_CLR2, Cells.Size(), TERM_RST);
+    printf("%s  Num of vertices    = %zd%s\n", TERM_CLR2, Verts.Size(), TERM_RST);
+}
+
+inline void Generic::Quad8ToTri6 (bool BackDiagonal)
 {
     // copy pointers of old mesh
     Array<Cell*> old_cells(Cells.Size());
@@ -1700,20 +1775,41 @@ inline void Generic::Quad8ToTri6 ()
 
         // new connectivities
         Array<int> con0(6), con1(6);
-        con0 = i0, i1, i2,  i4, i5, iv;
-        con1 = i0, i2, i3,  iv, i6, i7;
+        if (BackDiagonal)
+        {
+            con0 = i0, i1, i3,  i4, iv, i7;
+            con1 = i3, i1, i2,  iv, i5, i6;
+        }
+        else
+        {
+            con0 = i0, i1, i2,  i4, i5, iv;
+            con1 = i0, i2, i3,  iv, i6, i7;
+        }
 
         // new cells
         SetCell (icell++, old_cells[i]->Tag, con0);
         SetCell (icell++, old_cells[i]->Tag, con1);
 
         // boundary tags
-        for (BryTag_t::const_iterator p=old_cells[i]->BryTags.begin(); p!=old_cells[i]->BryTags.end(); ++p)
+        if (BackDiagonal)
         {
-            if (p->first==0) SetBryTag (icell-2, /*side*/0, /*tag*/p->second);
-            if (p->first==1) SetBryTag (icell-2, /*side*/1, /*tag*/p->second);
-            if (p->first==2) SetBryTag (icell-1, /*side*/1, /*tag*/p->second);
-            if (p->first==3) SetBryTag (icell-1, /*side*/2, /*tag*/p->second);
+            for (BryTag_t::const_iterator p=old_cells[i]->BryTags.begin(); p!=old_cells[i]->BryTags.end(); ++p)
+            {
+                if (p->first==0) SetBryTag (icell-2, /*side*/0, /*tag*/p->second);
+                if (p->first==1) SetBryTag (icell-1, /*side*/1, /*tag*/p->second);
+                if (p->first==2) SetBryTag (icell-1, /*side*/2, /*tag*/p->second);
+                if (p->first==3) SetBryTag (icell-2, /*side*/2, /*tag*/p->second);
+            }
+        }
+        else
+        {
+            for (BryTag_t::const_iterator p=old_cells[i]->BryTags.begin(); p!=old_cells[i]->BryTags.end(); ++p)
+            {
+                if (p->first==0) SetBryTag (icell-2, /*side*/0, /*tag*/p->second);
+                if (p->first==1) SetBryTag (icell-2, /*side*/1, /*tag*/p->second);
+                if (p->first==2) SetBryTag (icell-1, /*side*/1, /*tag*/p->second);
+                if (p->first==3) SetBryTag (icell-1, /*side*/2, /*tag*/p->second);
+            }
         }
     }
 
