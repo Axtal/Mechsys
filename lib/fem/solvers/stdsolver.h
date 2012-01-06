@@ -48,7 +48,7 @@ public:
     void   AssembleKMA    (double Coef1, double Coef2);                                    ///< A = Coef1*M + Coef2*K
     void   AssembleKCMA   (double Coef1, double Coef2, double Coef3);                      ///< A = Coef1*M + Coef2*C + Coef3*K
     void   TgIncs         (double dT, Vec_t & dU, Vec_t & dF);                             ///< Tangent increments: dU = inv(K)*dF
-    void   UpdateNodes    ();                                                              ///< Copy U and F values into Nodes' U and F structures
+    void   UpdateNodes    (bool Transient=false);                                          ///< Copy U, V and F values into Nodes' U, V and F structures
     void   UpdateElements (Vec_t const & dU, bool CalcFint);                               ///< Update elements
     void   Initialize     (bool Transient=false);                                          ///< Initialize global matrices and vectors
     void   SetIncsW       (size_t NInc, bool NonLinWei=false);                             ///< Set weights for quasi-static problem (If Weights.Size()==0: generate weights)
@@ -312,7 +312,7 @@ inline void STDSolver::TransSolve (double tf, double dt, double DtOut, char cons
             _TH_update (tout,dt);
 
             // update nodes to tout
-            UpdateNodes ();
+            UpdateNodes (true);
 
             // output
             if (WithInfo) _time_print ();
@@ -400,7 +400,7 @@ inline void STDSolver::DynSolve (double tf, double dt, double DtOut, char const 
             _GN22_update (tout,dt);
 
             // update nodes to tout
-            UpdateNodes ();
+            UpdateNodes (true);
 
             // output
             if (WithInfo) _time_print ();
@@ -467,7 +467,7 @@ inline void STDSolver::DynSolve (double tf, double dt, double DtOut, char const 
             }
 
             // update nodes to tout
-            UpdateNodes ();
+            UpdateNodes (true);
 
             // new time
             Dom.Time = ode.t;
@@ -658,9 +658,16 @@ inline void STDSolver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 #endif
 }
 
-inline void STDSolver::UpdateNodes ()
+inline void STDSolver::UpdateNodes (bool Transient)
 {
-    for (size_t i=0; i<Dom.ActNods.Size(); ++i) Dom.ActNods[i]->SetUF (U,F);
+    if (Transient)
+    {
+        for (size_t i=0; i<Dom.ActNods.Size(); ++i) Dom.ActNods[i]->SetUVF (U,V,F);
+    }
+    else
+    {
+        for (size_t i=0; i<Dom.ActNods.Size(); ++i) Dom.ActNods[i]->SetUF (U,F);
+    }
 }
 
 inline void STDSolver::UpdateElements (Vec_t const & dU, bool CalcFint)

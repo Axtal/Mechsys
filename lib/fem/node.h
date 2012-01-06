@@ -65,6 +65,7 @@ public:
     double       & U       (size_t         IdxDOF)       { return _U(UKey(IdxDOF));   } ///< Get/Set U value given IdxDOF
     double       & F       (size_t         IdxDOF)       { return _F(FKey(IdxDOF));   } ///< Get/Set F value given IdxDOF
     double         UOrZero (String const & UKey  ) const { return _U.ValOrZero(UKey); } ///< U value or zero if U key does not exist
+    double         VOrZero (String const & UKey  ) const { return _V.ValOrZero(UKey); } ///< V value or zero if U key does not exist
     double         FOrZero (String const & FKey  ) const { return _F.ValOrZero(FKey); } ///< F value or zero if F key does not exist
     void           TrySetU (String const & UKey, double Val) { if (_U.HasKey(UKey)) _U(UKey)=Val; } ///< Try to set U if key exists
     void           TrySetF (String const & FKey, double Val) { if (_F.HasKey(FKey)) _F(FKey)=Val; } ///< Try to set F if key exists
@@ -76,6 +77,7 @@ public:
     String const & FKey    (size_t         IdxDOF) const { return _F.Keys[IdxDOF];    } ///< Get F key
     bool           pU      (size_t         IdxDOF) const { return _pU[IdxDOF];        } ///< Prescribed U ?
     void           SetUF   (Vec_t const & UVec, Vec_t const & FVec);                    ///< Set internal U and F values given global vectors
+    void           SetUVF  (Vec_t const & UVec, Vec_t const & VVec, Vec_t const & FVec);///< Set internal U, V and F values given global vectors
     void           GetUF   (Vec_t       & UVec, Vec_t       & FVec);                    ///< Get U and F values and store into UVec and FVec vectors
     void           Clear   ();                                                          ///< Clear all values but keep structure of DOFs
     void           ClearU  () { _U.SetValues (0.0); }                                   ///< Clear U values only
@@ -180,6 +182,7 @@ inline void Node::AddDOF (char const * StrU, char const * StrF)
 inline void Node::Clear ()
 {
     _U .SetValues (0.0);
+    _V .SetValues (0.0);
     _F .SetValues (0.0);
     _eq.SetValues (-1);
     _pU.SetValues (false);
@@ -194,6 +197,17 @@ inline void Node::SetUF (Vec_t const & UVec, Vec_t const & FVec)
     {
         int eq = Eq(idof);
         _U(UKey(idof)) = UVec(eq);
+        _F(FKey(idof)) = FVec(eq);
+    }
+}
+
+inline void Node::SetUVF (Vec_t const & UVec, Vec_t const & VVec, Vec_t const & FVec)
+{
+    for (size_t idof=0; idof<NDOF(); ++idof)
+    {
+        int eq = Eq(idof);
+        _U(UKey(idof)) = UVec(eq);
+        _V(UKey(idof)) = VVec(eq);
         _F(FKey(idof)) = FVec(eq);
     }
 }
