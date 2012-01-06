@@ -393,6 +393,7 @@ inline void STDSolver::DynSolve (double tf, double dt, double DtOut, char const 
     // solve
     if (DScheme==GN22_t)
     {
+        double small = 1.0e-10;
         while (Dom.Time<tf)
         {
             // update U, F, Time and elements to tout
@@ -422,6 +423,11 @@ inline void STDSolver::DynSolve (double tf, double dt, double DtOut, char const 
                     dtOut = (dtOut<dt ? dt : dtOut);
                 }
             }
+
+            // last dt and tout
+            if (Dom.Time + dt > tf) dt = tf - Dom.Time;
+            if (tout>tf) tout = tf;
+            if (dt<small) break; // finished
         }
     }
     else if (DScheme==RK_t)
@@ -1297,7 +1303,7 @@ inline void STDSolver::_TH_update (double tf, double Dt)
 inline void STDSolver::_GN22_update (double tf, double Dt)
 {
     // timestep
-    double dt = (Dom.Time+Dt>tf ? tf-Dom.Time : Dt);
+    double dt = Dt;
 
     // constants
     const double c1 = dt*dt*(1.0-DynTh2)/2.0;
@@ -1407,7 +1413,7 @@ inline void STDSolver::_GN22_update (double tf, double Dt)
 #endif
             if (ResidOK()) break;
         }
-        if (It>=MaxIt) throw new Fatal("STDSolver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations (TolR=%g). TolR*NormR=%g, NormR=%g",It,TolR,TolR*NormR,NormR);
+        if (It>=MaxIt) throw new Fatal("STDSolver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations (TolR=%g).\nTolR*NormR=%g, NormR=%g, Time=%g, Dt=%g, dt=%g",It,TolR,TolR*NormR,NormR,Dom.Time,Dt,dt);
 
         // next time step
         dt = (Dom.Time+dt>tf ? tf-Dom.Time : dt);

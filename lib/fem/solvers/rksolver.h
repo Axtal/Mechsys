@@ -62,6 +62,8 @@ public:
     void DynSolve    (double tf, double dt, double dtOut, char const * FKey=NULL);
     void VWPSolve    (double tf, double dt, double dtOut, char const * FKey=NULL);
 
+    void DebugPrintMatrices (bool Stop=true); ///< Debug method
+
     // Data (read/write)
     bool          WithInfo; ///< Print information ?
     bool          LinProb;  ///< Linear problems => constant matrices
@@ -911,6 +913,31 @@ inline void RKSolver::AugMatrix (Sparse::Triplet<double,int> & A11)
     for (size_t i=0; i<Dom.NodsIncSup.Size(); ++i) Dom.NodsIncSup[i]->SetLagIncSup (eqlag, A11);
 }
 
+inline void RKSolver::DebugPrintMatrices (bool Stop)
+{
+    K11.AllocSpace (NEq,NEq,K11_size);
+    K12.AllocSpace (NEq,NEq,K12_size);
+    K21.AllocSpace (NEq,NEq,K21_size);
+    K22.AllocSpace (NEq,NEq,K22_size);
+    AssembleKM();
+    Sparse::Matrix<double,int> MM11(M11), MM12(M12), MM21(M21), MM22(M22);
+    Sparse::Matrix<double,int> KK11(K11), KK12(K12), KK21(K21), KK22(K22);
+    Mat_t mm11, mm12, mm21, mm22, mm;
+    Mat_t kk11, kk12, kk21, kk22, kk;
+    MM11.GetDense(mm11); MM12.GetDense(mm12); MM21.GetDense(mm21); MM22.GetDense(mm22);
+    KK11.GetDense(kk11); KK12.GetDense(kk12); KK21.GetDense(kk21); KK22.GetDense(kk22);
+    mm = mm11 + mm12 + mm21 + mm22;
+    kk = kk11 + kk12 + kk21 + kk22;
+    WriteSMAT (mm,"M");
+    WriteSMAT (kk,"K");
+    std::cout << std::endl << std::endl;
+    printf("det(M) = %g\n", Det(mm));
+    printf("det(K) = %g\n", Det(kk));
+    printf("Matrix <%sM.smat%s> written\n",TERM_CLR_BLUE_H,TERM_RST);
+    printf("Matrix <%sK.smat%s> written\n",TERM_CLR_BLUE_H,TERM_RST);
+    std::cout << std::endl;
+    if (Stop) throw new Fatal("STDSolver::DebugPrintMatrices   STOP");
+}
 
 }; // namespace FEM
 
