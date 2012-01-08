@@ -184,19 +184,21 @@ def read_tables(filenames, num_int_columns=0):
 
 # Read temporal data
 # ==================
-def read_tdata (fnkey, ids, arc_lens):
+def read_tdata (fnkey, ids, arc_lens=[]):
     r0  = read_table ('%s_%d.res'%(fnkey,ids[0]))
     str_time = 'Time'
     if r0.has_key('time'): str_time = 'time'
     if r0.has_key('t'):    str_time = 't'
     nt  = len(r0[str_time])
     np  = len(ids)
-    dat = {'arc_len':zeros((np,nt))}
+    if len(arc_lens)>0: dat = {'arc_len':zeros((np,nt))}
+    else:               dat = {}
     for k, v in r0.iteritems(): dat[k] = zeros((np,nt))
     for i, n in enumerate(ids):
         r = read_table ('%s_%d.res'%(fnkey,n), make_maps=False)
         for k, v in r.iteritems(): dat[k][i,:] = v
-        dat['arc_len'][i,:] = arc_lens[i]
+        if len(arc_lens)>0:
+            dat['arc_len'][i,:] = arc_lens[i]
     return dat
 
 
