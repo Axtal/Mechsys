@@ -116,23 +116,44 @@ def GetLst (idx=0): # linestyle
 # ====================
 # dat: dictionary with the following content:
 #   dat = {'sx':[1,2,3],'ex':[0,1,2]}
-def read_table(filename, num_int_columns=0):
+#   int_cols = ['idx','num']
+def read_table(filename, int_cols=[]):
     if not os.path.isfile(filename): raise Exception("[1;31mread_table: could not find file <[1;34m%s[0m[1;31m>[0m"%filename)
     file   = open(filename,'r')
     header = file.readline().split()
     while len(header) == 0:
         header = file.readline().split()
     dat = {}
-    for key in header: dat[key] = []
+    im  = ['id','Id','tag','Tag'] # int keys to be mapped
+    fm  = ['time','Time']         # float keys to be mapped
+    k2m = []                      # all keys to be mapped
+    k2m.extend(im)
+    k2m.extend(fm)
+    int_cols.extend(im)
+    for key in header:
+        dat[key] = []
+        if key in k2m: dat['%s2row'%key] = {}
+    row = 0
     for lin in file:
         res = lin.split()
         if len(res) == 0: continue
         for i, key in enumerate(header):
-            if i<num_int_columns: dat[key].append(int  (res[i]))
-            else:                 dat[key].append(float(res[i]))
+            if key in int_cols: dat[key].append(int  (res[i]))
+            else:               dat[key].append(float(res[i]))
+            if key in k2m:
+                if dat[key][row] in dat['%s2row'%key]:
+                    if type(dat['%s2row'%key][dat[key][row]]) == int:
+                        dat['%s2row'%key][dat[key][row]] = [dat['%s2row'%key][dat[key][row]], row]
+                    else:
+                        dat['%s2row'%key][dat[key][row]].append(row)
+                else:
+                    dat['%s2row'%key][dat[key][row]] = row
+        row += 1
     file.close()
-    for k, v in dat.iteritems():
-        dat[k] = array(v)
+    mkeys = ['%s2row'%k for k in k2m]
+    for key, val in dat.iteritems(): # convert lists to arrays (floats only)
+        if key in int_cols or key in mkeys: continue
+        dat[key] = array(val)
     return dat
 
 
