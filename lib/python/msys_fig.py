@@ -117,7 +117,7 @@ def GetLst (idx=0): # linestyle
 # dat: dictionary with the following content:
 #   dat = {'sx':[1,2,3],'ex':[0,1,2]}
 #   int_cols = ['idx','num']
-def read_table(filename, int_cols=[]):
+def read_table(filename, int_cols=[], make_maps=True):
     if not os.path.isfile(filename): raise Exception("[1;31mread_table: could not find file <[1;34m%s[0m[1;31m>[0m"%filename)
     file   = open(filename,'r')
     header = file.readline().split()
@@ -132,7 +132,8 @@ def read_table(filename, int_cols=[]):
     int_cols.extend(im)
     for key in header:
         dat[key] = []
-        if key in k2m: dat['%s2row'%key] = {}
+        if make_maps:
+            if key in k2m: dat['%s2row'%key] = {}
     row = 0
     for lin in file:
         res = lin.split()
@@ -140,14 +141,15 @@ def read_table(filename, int_cols=[]):
         for i, key in enumerate(header):
             if key in int_cols: dat[key].append(int  (res[i]))
             else:               dat[key].append(float(res[i]))
-            if key in k2m:
-                if dat[key][row] in dat['%s2row'%key]:
-                    if type(dat['%s2row'%key][dat[key][row]]) == int:
-                        dat['%s2row'%key][dat[key][row]] = [dat['%s2row'%key][dat[key][row]], row]
+            if make_maps:
+                if key in k2m:
+                    if dat[key][row] in dat['%s2row'%key]:
+                        if type(dat['%s2row'%key][dat[key][row]]) == int:
+                            dat['%s2row'%key][dat[key][row]] = [dat['%s2row'%key][dat[key][row]], row]
+                        else:
+                            dat['%s2row'%key][dat[key][row]].append(row)
                     else:
-                        dat['%s2row'%key][dat[key][row]].append(row)
-                else:
-                    dat['%s2row'%key][dat[key][row]] = row
+                        dat['%s2row'%key][dat[key][row]] = row
         row += 1
     file.close()
     mkeys = ['%s2row'%k for k in k2m]
@@ -192,7 +194,7 @@ def read_tdata (fnkey, ids, arc_lens):
     dat = {'arc_len':zeros((np,nt))}
     for k, v in r0.iteritems(): dat[k] = zeros((np,nt))
     for i, n in enumerate(ids):
-        r = read_table ('%s_%d.res'%(fnkey,n))
+        r = read_table ('%s_%d.res'%(fnkey,n), make_maps=False)
         for k, v in r.iteritems(): dat[k][i,:] = v
         dat['arc_len'][i,:] = arc_lens[i]
     return dat
