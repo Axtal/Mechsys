@@ -69,6 +69,16 @@ def Leg (fsz=8, ncol=1): legend (loc='best',prop={'size':fsz},ncol=ncol)
 
 def Grid (color='grey', zorder=-100): grid (color=color, zorder=zorder)
 
+def Lbl (xl, yl, leg=True, grd=True):
+    xlabel(xl)
+    ylabel(yl)
+    if leg: Leg()
+    if grd: Grid()
+
+def Cross (x0=0.0, y0=0.0, clr='black', ls='dashed', lw=1):
+    axvline(x0, color=clr, linestyle=ls, linewidth=lw)
+    axhline(y0, color=clr, linestyle=ls, linewidth=lw)
+
 def Text (x, y, txt, x_offset=0, y_offset=0, units='points', va='bottom', ha='left', color='black', fontsize=10):
     trans = offset_copy(gca().transData, fig=gcf(), x=x_offset, y=y_offset, units=units)
     text(x, y, txt, transform=trans, va=va, ha=ha, color=color, fontsize=fontsize)
