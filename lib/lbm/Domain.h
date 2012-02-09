@@ -77,6 +77,7 @@ public:
 
 
     //Data
+    bool                                    PrtVec;         ///< Print Vector data into the xdmf-h5 files
     Array<Lattice>                             Lat;         ///< Fluid Lattices
     Array <Particle *>                   Particles;         ///< Array of Disks
     Array <Interacton *>               Interactons;         ///< Array of insteractons
@@ -101,9 +102,10 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     {
         Lat.Push(Lattice(Method,nu[i],Ndim,dx,Thedt));
     }
-    Time = 0.0;
-    dt   = Thedt;
-    Alpha= 10.0;
+    Time   = 0.0;
+    dt     = Thedt;
+    Alpha  = 10.0;
+    PrtVec = false;
 }
 
 inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, double Thedt)
@@ -111,9 +113,10 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     Lat.Push(Lattice(Method,nu,Ndim,dx,Thedt));
     if (Ndim(2) >1&&Method==D2Q9)  throw new Fatal("LBM::Domain: D2Q9 scheme does not allow for a third dimension, please set Ndim(2)=1 or change to D3Q15");
     if (Ndim(2)==1&&Method==D3Q15) throw new Fatal("LBM::Domain: Ndim(2) is greater than 1. Either change the method to D2Q9 or increse the z-dimension");
-    Time = 0.0;
-    dt   = Thedt;
-    Alpha= 10.0;
+    Time   = 0.0;
+    dt     = Thedt;
+    Alpha  = 10.0;
+    PrtVec = false;
 }
 
 #ifdef USE_HDF5
@@ -128,16 +131,20 @@ inline void Domain::WriteXDMF(char const * FileKey)
         // Creating data sets
         float * Density   = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
         float * Gamma     = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
-        float * Velocity  = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
-        float * MassFlux  = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
+        //float * Velocity  = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
+        //float * MassFlux  = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
+        float * Vvec = new float[3*Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
         for (size_t i=0;i<Lat[j].Cells.Size();i++)
         {
             double rho = Lat[j].Cells[i]->Rho;
             Vec3_t vel = Lat[j].Cells[i]->Vel;
             Density  [i] = (float) rho;
             Gamma    [i] = (float) Lat[j].Cells[i]->IsSolid? 1.0:Lat[j].Cells[i]->Gamma;
-            Velocity [i] = (float) norm(vel);
-            MassFlux [i] = (float) rho*norm(vel);
+            //Velocity [i] = (float) norm(vel);
+            //MassFlux [i] = (float) rho*norm(vel);
+            Vvec[3*i  ]  = (float) vel(0);
+            Vvec[3*i+1]  = (float) vel(1);
+            Vvec[3*i+2]  = (float) vel(2);
         }
 
         //Write the data
@@ -148,15 +155,19 @@ inline void Domain::WriteXDMF(char const * FileKey)
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Density );
         dsname.Printf("Gamma_%d",j);
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Gamma   );
+        //dsname.Printf("Velocity_%d",j);
+        //H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Velocity);
+        //dsname.Printf("MassFlux_%d",j);
+        //H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,MassFlux);
+        dims[0] = 3*Lat[0].Ndim(0)*Lat[0].Ndim(1)*Lat[0].Ndim(2);
         dsname.Printf("Velocity_%d",j);
-        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Velocity);
-        dsname.Printf("MassFlux_%d",j);
-        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,MassFlux);
+        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vvec    );
 
         delete [] Density ;
         delete [] Gamma   ;
-        delete [] Velocity;
-        delete [] MassFlux;
+        //delete [] Velocity;
+        //delete [] MassFlux;
+        delete [] Vvec    ;
     }
 
     //Closing the file
@@ -191,14 +202,19 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "        " << fn.CStr() <<":/Gamma_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
-        oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        //oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        //oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        //oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
+        //oss << "       </DataItem>\n";
+        //oss << "     </Attribute>\n";
+        //oss << "     <Attribute Name=\"MassFlux_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        //oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        //oss << "        " << fn.CStr() <<":/MassFlux_" << j << "\n";
+        //oss << "       </DataItem>\n";
+        //oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
-        oss << "       </DataItem>\n";
-        oss << "     </Attribute>\n";
-        oss << "     <Attribute Name=\"MassFlux_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-        oss << "        " << fn.CStr() <<":/MassFlux_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         }
@@ -232,14 +248,19 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "        " << fn.CStr() <<":/Gamma_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
-        oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        //oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        //oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        //oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
+        //oss << "       </DataItem>\n";
+        //oss << "     </Attribute>\n";
+        //oss << "     <Attribute Name=\"MassFlux_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        //oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        //oss << "        " << fn.CStr() <<":/MassFlux_" << j << "\n";
+        //oss << "       </DataItem>\n";
+        //oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
-        oss << "       </DataItem>\n";
-        oss << "     </Attribute>\n";
-        oss << "     <Attribute Name=\"MassFlux_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-        oss << "        " << fn.CStr() <<":/MassFlux_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         }

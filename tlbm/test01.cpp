@@ -67,12 +67,13 @@ void Setup (LBM::Domain & dom, void * UD)
 
 int main(int argc, char **argv) try
 {
-    double u_max  = 0.1;                 // Poiseuille's maximum velocity
-    double Re     = 100;                 // Reynold's number
+    double u_max  = 0.1;                // Poiseuille's maximum velocity
+    double Re     = 10;                  // Reynold's number
     size_t nx = 400;
     size_t ny = 100;
     int radius = ny/10 + 1;           // radius of inner circle (obstacle)
-    double nu     = u_max*(2*radius)/Re; // viscocity
+    //double nu     = u_max*(2*radius)/Re; // viscocity
+    double nu     = 1.0/6.0; // viscocity
     LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
     UserData dat;
     Dom.UserData = &dat;
@@ -102,8 +103,18 @@ int main(int argc, char **argv) try
 	// set inner obstacle
 	int obsX   = ny/2;   // x position
 	int obsY   = ny/2+3; // y position
-    Dom.AddDisk(0,Vec3_t(obsX,obsY,0),Vec3_t(0.0,0.0,0.0),Vec3_t(0.0,0.0,0.0),   3.0,radius,1.0);
-    Dom.AddDisk(0,Vec3_t(nx/2.0,obsY,0),Vec3_t(0.0,0.0,0.0),Vec3_t(0.0,0.0,0.0),30.0,2*radius,1.0);
+    for (size_t i=0;i<nx;i++)
+    for (size_t j=0;j<ny;j++)
+    {
+        if ((i-obsX)*(i-obsX)+(j-obsY)*(j-obsY)<radius*radius)
+        {
+            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->IsSolid = true;
+        }
+    }
+
+    //Dom.AddDisk(0,Vec3_t(obsX,obsY,0),Vec3_t(0.0,0.0,0.0),Vec3_t(0.0,0.0,0.0),   3.0,radius,1.0);
+    //Dom.Particles[0]->FixVelocity();
+    //Dom.AddDisk(0,Vec3_t(nx/2.0,obsY,0),Vec3_t(0.0,0.0,0.0),Vec3_t(0.0,0.0,0.0),30.0,2*radius,1.0);
 
 
 

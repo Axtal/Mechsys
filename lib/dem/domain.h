@@ -287,7 +287,6 @@ inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char con
                 }
             }
         }
-
     }
     else throw new Fatal ("Right now there are only two possible packings available the Normal and the HCP, packing %s is not implemented yet",Type);
     printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
