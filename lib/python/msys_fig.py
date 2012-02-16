@@ -24,7 +24,7 @@ from numpy import array, linspace, insert, repeat, zeros, matrix, ones, arange, 
 from numpy import logical_or, logical_and
 from pylab import rcParams, gca, gcf, clf, savefig
 from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline, title, xticks
-from pylab import contour, contourf, colorbar, clabel
+from pylab import contour, contourf, colorbar, clabel, xlim
 from pylab import cm as MPLcm
 from matplotlib.transforms   import offset_copy
 from matplotlib.patches      import FancyArrowPatch, PathPatch, Polygon
