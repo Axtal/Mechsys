@@ -52,6 +52,15 @@ class Matrix(matrix):
     # ===========
     def det(self): return linalg.det(self)
 
+    # Access item
+    # ===========
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            if self.shape[1] == 1: # column matrix
+                return matrix.__getitem__(self, (key,0))
+            else: return matrix.__getitem__(self, key)
+        else: return matrix.__getitem__(self, key)
+
     # Nice Print
     # ==========
     def write(self, nf='%10g', Tol=1.0e-13):
@@ -82,8 +91,16 @@ if __name__=="__main__":
 
     v = Vector([1., 2., 3., 4.])
 
+    C = Matrix([[1.],
+                [2.],
+                [3.]])
+
     vdyv = Dyad(v,v)
 
     print 'K ='; K.write()
     print 'v ='; v.write()
     print 'v dyad v ='; vdyv.write()
+    print 'C ='; C.write()
+    print 'C[0] =', C[0]
+    print 'C[1] =', C[1]
+    print 'C[2,0] =', C[2,0]

@@ -35,6 +35,11 @@ from matplotlib.ticker       import FuncFormatter
 import mpl_toolkits.mplot3d.axes3d as A3D
 from matplotlib.ticker import MaxNLocator
 
+
+# to stop clipping:
+# plot(..., clip_on=0)
+
+
 def SetForEps (proport=0.75, fig_width_pt=455.24):
     # fig_width_pt = 455.24411                  # Get this from LaTeX using \showthe\columnwidth
     inches_per_pt = 1.0/72.27                   # Convert pt to inch
