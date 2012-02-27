@@ -133,7 +133,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
         float * Gamma     = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
         //float * Velocity  = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
         //float * MassFlux  = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
-        float * Vvec = new float[3*Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
+        float * Vvec      = new float[3*Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
         for (size_t i=0;i<Lat[j].Cells.Size();i++)
         {
             double rho = Lat[j].Cells[i]->Rho;
