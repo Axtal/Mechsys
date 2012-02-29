@@ -38,14 +38,14 @@ class Vector(matrix):
 
     # Nice Print
     # ==========
-    def write(self, nf='%10g', Tol=1.0e-13):
+    def write(self, nf='%10g', Tol=1.0e-14):
         m = self.shape[0] # number of rows
         lin = ''          # empty string
         for i in range(m):
             if abs(self[i])<Tol: lin += nf % 0
             else:                lin += nf % self[i]
             lin += '\n'
-        print lin
+        print lin,
 
 class Matrix(matrix):
     # Determinant
@@ -63,7 +63,7 @@ class Matrix(matrix):
 
     # Nice Print
     # ==========
-    def write(self, nf='%10g', Tol=1.0e-13):
+    def write(self, nf='%10g', Tol=1.0e-14):
         m = self.shape[0] # number of rows
         n = self.shape[1] # number of columns
         lin = ''          # empty string
@@ -72,7 +72,23 @@ class Matrix(matrix):
                 if abs(self[i,j])<Tol: lin += nf % 0
                 else:                  lin += nf % self[i,j]
             lin += '\n'
-        print lin
+        print lin,
+
+    # Nice Print (complex numbers)
+    # ============================
+    def writec(self, nf='%10g', Tol=1.0e-14):
+        m = self.shape[0] # number of rows
+        n = self.shape[1] # number of columns
+        lin = ''          # empty string
+        nf = '('+nf+' + '+nf+'j) '
+        for i in range(m):
+            for j in range(n):
+                if abs(self[i,j].real)<Tol and abs(self[i,j].imag)<Tol:
+                    lin += nf % (0,0)
+                else:
+                    lin += nf % (self[i,j].real,self[i,j].imag)
+            lin += '\n'
+        print lin,
 
 def Dot (U,V): return (U.T*V)[0]
 def Dyad(U,V):
