@@ -67,6 +67,8 @@ void Setup (LBM::Domain & dom, void * UD)
 
 int main(int argc, char **argv) try
 {
+    size_t Nproc = 1; 
+    if (argc==2) Nproc=atoi(argv[1]);
     double u_max  = 0.1;                // Poiseuille's maximum velocity
     double Re     = 10;                  // Reynold's number
     size_t nx = 400;
@@ -136,7 +138,7 @@ int main(int argc, char **argv) try
 
     //Solving
     Dom.Time = 0.0;
-    Dom.Solve(10000.0,20.0,Setup,NULL,"test01");
+    Dom.Solve(10000.0,20.0,Setup,NULL,"test01",true,Nproc);
  
 }
 MECHSYS_CATCH

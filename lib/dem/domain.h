@@ -26,6 +26,7 @@
 #include <iostream>
 #include <fstream>
 #include <set>
+#include <list>
 
 // Hdf5
 #ifdef USE_HDF5
@@ -53,35 +54,31 @@ namespace DEM
 void GlobalForce(Array<Interacton *> * I, double dt, size_t n, size_t Np)
 {
 	size_t Ni = I->Size()/Np;
-	for (size_t i=n*Ni;i<(n+1)*Ni;i++)
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = I->Size() : Fn = (n+1)*Ni;
+	for (size_t i=In;i<Fn;i++)
 	{
 		(*I)[i]->CalcForce(dt);
 	}
-	if (n==Np-1)
-	{
-		for (size_t i=I->Size()-1;i>I->Size()-1-I->Size()%Np;i--)
-		{
-			(*I)[i]->CalcForce(dt);
-		}
-	}
 }
 
-void GlobalMove(Array<Particle *> * P, double dt, size_t n, size_t Np)
+void GlobalMove(Array<Particle *> * P, double dt, double & MaxD, size_t n, size_t Np)
 {
 	size_t Ni = P->Size()/Np;
-	for (size_t i=n*Ni;i<(n+1)*Ni;i++)
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = P->Size() : Fn = (n+1)*Ni;
+    MaxD      = 0.0;
+	for (size_t i=In;i<Fn;i++)
 	{
 		(*P)[i]->Translate(dt);
 		(*P)[i]->Rotate(dt);
+		//double temp = (*P)[i]->MaxDisplacement();
+        //if (temp > MaxD) MaxD = temp;
+
 	}
-	if (n==Np-1)
-	{
-		for (size_t i=P->Size()-1;i>P->Size()-1-P->Size()%Np;i--)
-		{
-		    (*P)[i]->Translate(dt);
-		    (*P)[i]->Rotate(dt);
-		}
-	}
+    //std::cout << MaxD << " mu  " << n << std::endl;
 }
 
 #endif
@@ -207,22 +204,6 @@ public:
     }
 #endif
 
-    // MPI Data and methods
-#ifdef USE_MPI
-    //Data
-    int My_Id;                            ///< Id of the processor
-    Array<Particle*> TheirBdryParticles;  ///< Array of particles in the boundary belonging to a different domain
-    Array<Particle*> MyBdryParticles;     ///< Array of particles in the boundary belonging to this domain
-    map<size_t,size_t> Global2LocalID;    ///< Map that register the relation between local and global ID
-
-
-    //Methods
-    void UpdateBoundaries ();             ///< Method to update boundaries for parallel computing
-    double GeneralMaxDisplacement ();     ///< Maxdisplacement among all domains
-    void CommunicateForce ();             ///< Communicate the force variables
-    void CommunicateDynamic ();           ///< Communicate dynamic variables
-#endif
-    
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -234,9 +215,6 @@ inline Domain::Domain (void * UD)
     :  Initialized(false), Time(0.0), Alpha(0.05), UserData(UD)
 {
     CamPos = 1.0, 2.0, 3.0;
-#ifdef USE_MPI
-    My_Id  = MPI::COMM_WORLD.Get_rank(); // processor ID
-#endif
 }
 
 inline Domain::~Domain ()
@@ -1416,11 +1394,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     // build the map of possible contacts (for the Halo)
     ResetContacts();
 
-    // Define boundary and domain particles
-#ifdef USE_MPI
-     UpdateBoundaries();
-#endif
-
     // calc the total volume of particles (solids)
     Vs = 0.0;
     Ms = 0.0;
@@ -1474,13 +1447,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             // external work added to the system by the fixed forces Ff
             Wext += dot(Particles[i]->Ff,Particles[i]->v)*dt;
         }
-#ifdef USE_MPI
-        for (size_t i=0;i<TheirBdryParticles.Size();i++)
-        {
-            TheirBdryParticles[i]->F = TheirBdryParticles[i]->Ff;
-            TheirBdryParticles[i]->T = TheirBdryParticles[i]->Tf;
-        }
-#endif
 
         // calc contact forces: collision and bonding (cohesion)
 #ifdef USE_THREAD
@@ -1510,20 +1476,18 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
         // tell the user function to update its data
         if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
-#ifdef USE_MPI
-        //Communicate all the relevant variables between different domains
-        CommunicateForce();
-#endif
 
 
         // move particles
 #ifdef USE_THREAD
         // declare a thread array for the particles
 		vector<std::thread> MT;
+        Array<double>   TMD;
+        TMD.Resize(Nproc);
 		for (size_t n=0;n<Nproc;n++)
 		{
              //call the function move for each thread
-			MT.push_back(std::thread(std::bind(GlobalMove,&Particles,dt,n,Nproc)));
+			MT.push_back(std::thread(std::bind(GlobalMove,&Particles,dt,TMD[n],n,Nproc)));
 		}
 		for (size_t n=0;n<Nproc;n++)
 		{
@@ -1554,26 +1518,21 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             tout += dtOut;
         }
 
-#ifdef USE_MPI
-        //Communicate all the relevant variables between different domains
-        CommunicateDynamic();
-#endif
 
         // next time position
         Time += dt;
 
 
-#ifdef USE_MPI
-        double maxdis = GeneralMaxDisplacement();
+#ifdef USE_THREAD
+        double maxdis = TMD.TheMax();
+        //std::cout << TMD.TheMax() << std::endl;
+        maxdis = MaxDisplacement();
 #else 
         double maxdis = MaxDisplacement();
 #endif
         // update the Halos
         if (maxdis>Alpha)
         {
-#ifdef USE_MPI
-            UpdateBoundaries();
-#endif
             ResetDisplacements();
             ResetContacts();
         }
@@ -1605,38 +1564,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
 inline void Domain::WritePOV (char const * FileKey)
 {
-#ifdef USE_MPI
-    int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
-    int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
-    String fn(FileKey);
-    fn.append(".pov");
-    std::ofstream of;
-    if (my_id==0)
-    {
-        of.open(fn.CStr(), std::ios::out);
-        POVHeader (of);
-        POVSetCam (of, CamPos, OrthoSys::O);
-    }
-    else
-    {
-        int command;
-        MPI::COMM_WORLD.Recv (&command, /*number*/1, MPI::INT, /*destination*/my_id-1, 1);
-        of.open(fn.CStr(), std::ios::out | std::ios::app);
-    }
-    for (size_t i=0; i<Particles.Size(); i++)
-    {
-        if (Particles[i]->IsFree())
-        {
-            if(Particles[i]->IsBroken) Particles[i]->Draw(of,"Black");
-            else                       Particles[i]->Draw(of,"Red");
-        }
-        else Particles[i]->Draw(of,"Col_Glass_Bluish");
-    }
-    of.close();
-    int command = 0;
-    if (my_id < nprocs-1) MPI::COMM_WORLD.Send (&command, /*number*/1, MPI::INT, /*destination*/my_id+1, 1);
-    
-#else
     String fn(FileKey);
     fn.append(".pov");
     std::ofstream of(fn.CStr(), std::ios::out);
@@ -1663,69 +1590,16 @@ inline void Domain::WritePOV (char const * FileKey)
         }
     }
 
-
-    //if (BInteractons.Size()==0)
-    //{ 
-        //for (size_t i=0; i<Particles.Size(); i++)
-        //{
-            //if (Particles[i]->IsFree())
-            //{
-                //Particles[i]->Draw(of,"Red");
-            //}
-            //else Particles[i]->Draw(of,"Col_Glass_Bluish");
-        //}
-        //of.close();
-    //}
-    //else
-    //{
-        //Clusters();
-        //Array <String> Colors(7);
-        //Colors = "Red","Blue","Yellow","Gold","Green","Blue","Orange";
-        //for (size_t i=0;i<Listofclusters.Size();i++)
-        //{
-            //for (size_t j=0;j<Listofclusters[i].Size();j++)
-            //{
-                //Particles[Listofclusters[i][j]]->Draw(of,Colors[i%7].CStr());
-            //}
-        //}
-        //for (size_t i=0;i<Particles.Size();i++)
-        //{
-        //}
-    //}
-#endif
 }
 
 inline void Domain::WriteBPY (char const * FileKey)
 {
-#ifdef USE_MPI
-    int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
-    int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
-    String fn(FileKey);
-    fn.append(".bpy");
-    std::ofstream of;
-    if (my_id==0)
-    {
-        of.open(fn.CStr(), std::ios::out);
-        BPYHeader(of);
-    }
-    else
-    {
-        int command;
-        MPI::COMM_WORLD.Recv (&command, /*number*/1, MPI::INT, /*destination*/my_id-1, 1);
-        of.open(fn.CStr(), std::ios::out | std::ios::app);
-    }
-    for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Draw (of,"",true);
-    of.close();
-    int command = 0;
-    if (my_id < nprocs-1) MPI::COMM_WORLD.Send (&command, /*number*/1, MPI::INT, /*destination*/my_id+1, 1);
-#else
     String fn(FileKey);
     fn.append(".bpy");
     std::ofstream of(fn.CStr(), std::ios::out);
     BPYHeader(of);
     for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Draw (of,"",true);
     of.close();
-#endif
 }
 
 #ifdef USE_HDF5
@@ -1890,10 +1764,6 @@ inline void Domain::Save (char const * FileKey)
 
 inline void Domain::Load (char const * FileKey)
 {
-#ifdef USE_MPI
-    int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
-    int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
-#endif
 
     // Opening the file for reading
     String fn(FileKey);
@@ -1919,14 +1789,6 @@ inline void Domain::Load (char const * FileKey)
         // Finding the particle's position for the domain decomposition
         double X[3];
         H5LTread_dataset_double(group_id,"x",X);
-
-#ifdef USE_MPI
-        //Domain decomposition by the yz plane crossing the origin
-        if (nprocs>1) if((my_id==0&&X[0]>0)||(my_id==1&&X[0]<0)) continue;
-#endif
-        //std::cout << "hi" << std::endl;
-
-
 
 
         // Loading the Vertices
@@ -2103,33 +1965,6 @@ inline void Domain::ResetInteractons()
             }
         }
     }
-#ifdef USE_MPI
-    for (size_t i=0; i<Particles.Size(); i++)
-    {
-        bool pi_has_vf = !Particles[i]->IsFree();
-        for (size_t j=0; j<TheirBdryParticles.Size(); j++)
-        {
-            bool pj_has_vf = !TheirBdryParticles[j]->IsFree();
-
-            bool close = (Distance(Particles[i]->x,TheirBdryParticles[j]->x)<=Particles[i]->Dmax+TheirBdryParticles[j]->Dmax+2*Alpha);
-
-            // if both particles have any component specified or they are far away, don't create any intereactor
-            if ((pi_has_vf && pj_has_vf) || !close ) continue;
-
-            // if both particles are spheres (just one vertex)
-            if (Particles[i]->Verts.Size()==1 && TheirBdryParticles[j]->Verts.Size()==1)
-            {
-                CInteractons.Push (new CInteractonSphere(Particles[i],TheirBdryParticles[j]));
-            }
-
-            // normal particles
-            else
-            {
-                CInteractons.Push (new CInteracton(Particles[i],TheirBdryParticles[j]));
-            }
-        }
-    }
-#endif
 }
 
 inline void Domain::ResetDisplacements()
@@ -2184,52 +2019,6 @@ inline void Domain::ResetContacts()
             }
         }
     }
-
-#ifdef USE_MPI
-    for (size_t i=0; i<Particles.Size(); i++)
-    {
-        bool pi_has_vf = !Particles[i]->IsFree();
-        //std::cout << Time << " " << TheirBdryParticles.Size()<<std::endl;
-        for (size_t j=0; j<TheirBdryParticles.Size(); j++)
-        {
-            bool pj_has_vf = !TheirBdryParticles[j]->IsFree();
-
-            bool close = (Distance(Particles[i]->x,TheirBdryParticles[j]->x)<=Particles[i]->Dmax+TheirBdryParticles[j]->Dmax+2*Alpha);
-            //std::cout << Time<< " " << std::endl;
-            if ((pi_has_vf && pj_has_vf) || !close) continue;
-            
-            // checking if the interacton exist for that pair of particles
-            bool exist = false;
-            for (size_t k=0; k<CInteractons.Size(); k++)
-            {
-                bool index_i = CInteractons[k]->P1->Index==Particles[i]->Index;
-                bool index_j = CInteractons[k]->P2->Index==TheirBdryParticles[j]->Index;
-                if (index_i&&index_j)
-                {
-                    exist = true;
-                    break;
-                }
-            }
-
-            // If it doesn't add it to the CInteracton array
-            if (!exist&&My_Id==1)
-            {
-                // if both particles are spheres (just one vertex)
-                if (Particles[i]->Verts.Size()==1 && TheirBdryParticles[j]->Verts.Size()==1)
-                {
-                    CInteractons.Push (new CInteractonSphere(Particles[i],TheirBdryParticles[j]));
-                }
-
-                // normal particles
-                else
-                {
-                    CInteractons.Push (new CInteracton(Particles[i],TheirBdryParticles[j]));
-                    std::cout << "Interacton created between "<<Particles[i]->Index<<" and: "<<TheirBdryParticles[j]->Index<< " at time:" << Time <<std::endl;
-                }
-            }
-        }
-    }
-#endif
 
     Interactons.Resize(0);
     for (size_t i=0; i<CInteractons.Size(); i++)
@@ -2401,152 +2190,6 @@ inline void Domain::GetParticles (int Tag, Array<Particle*> & P)
     }
     if (P.Size()==0) throw new Fatal("Domain::GetParticles: Could not find any Particle with Tag==%d",Tag);
 }
-
-#ifdef USE_MPI
-// Methods needed for parallelization
-inline void Domain::UpdateBoundaries ()
-{
-    int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
-    //int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
-    size_t number_new = 0;
-    for (size_t i=0; i<Particles.Size(); i++)
-    {
-        if ((Particles[i]->MaxX()+Alpha>0.0&&my_id==0)||(Particles[i]->MinX()-Alpha<0.0&&my_id==1))
-        {
-            bool exist = false;
-            for (size_t j=0; j<MyBdryParticles.Size();j++)
-            {
-                if (MyBdryParticles[j]->Index==Particles[i]->Index)
-                {
-                    exist = true;
-                    break;
-                }
-            }
-            if (!exist)
-            {
-                MyBdryParticles.Push(Particles[i]);
-                number_new++;
-            }
-        }
-    }
-
-    // Communicating the new boundary particles
-    if (my_id==0)
-    {
-        MPI::COMM_WORLD.Send (&number_new, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/1, 1);
-        for (size_t i=0;i<number_new;i++)
-        {
-            //std::cout << "im" << my_id << " " <<std::endl;
-            MyBdryParticles[MyBdryParticles.Size()-number_new+i]->SendParticle(1,2);
-            //std::cout << "im" << my_id << std::endl;
-        }
-
-        size_t number_new_other;
-        MPI::COMM_WORLD.Recv (&number_new_other, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/1, 3);
-        for (size_t i=0;i<number_new_other;i++)
-        {
-            // Dummy particle
-            Particle  *p = new Particle();
-            p->ReceiveParticle(4);
-            TheirBdryParticles.Push(p);
-            Global2LocalID[TheirBdryParticles[TheirBdryParticles.Size()-1]->Index] = TheirBdryParticles.Size()-1;
-            std::cout << "hi im "<<my_id<<" and i receive particle"<<TheirBdryParticles[0]->Index<< "at time " << Time <<std::endl;
-        }
-    }
-
-    
-    if (my_id==1)
-    {
-        size_t number_new_other;
-        MPI::COMM_WORLD.Recv (&number_new_other, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/0, 1);
-        for (size_t i=0;i<number_new_other;i++)
-        {
-            // Dummy particle
-            Particle  *p = new Particle();
-            p->ReceiveParticle(2);
-            TheirBdryParticles.Push(p);
-            Global2LocalID[TheirBdryParticles[TheirBdryParticles.Size()-1]->Index] = TheirBdryParticles.Size()-1;
-            std::cout << "hi im "<<my_id<<" and i receive particle"<<TheirBdryParticles[0]->Index<< "at time " << Time <<std::endl;
-            //std::cout << "im" << my_id << std::endl;
-        }
-
-        MPI::COMM_WORLD.Send (&number_new, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/0, 3);
-        for (size_t i=0;i<number_new;i++)
-        {
-            MyBdryParticles[MyBdryParticles.Size()-number_new+i]->SendParticle(0,4);
-        }
-    }
-
-}
-
-inline double Domain::GeneralMaxDisplacement ()
-{
-    int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
-    //int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
-    double localmaxdis = MaxDisplacement();
-    MPI::Request req_send = MPI::COMM_WORLD.Isend(&localmaxdis,/*number*/1,MPI::DOUBLE,/*destination*/(my_id==0?1:0),my_id);
-    double othermaxdis;
-    MPI::Request req_recv = MPI::COMM_WORLD.Irecv(&othermaxdis,/*number*/1,MPI::DOUBLE,/*destination*/MPI::ANY_SOURCE,(my_id==0?1:0));
-    req_send.Wait();
-    req_recv.Wait();
-    return (localmaxdis>othermaxdis?localmaxdis:othermaxdis);
-}
-
-inline void Domain::CommunicateForce()
-{
-    int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
-    //int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
-    if (my_id==0)
-    {
-        for (size_t i=0;i<MyBdryParticles.Size();i++)
-        {
-             MyBdryParticles[i]->ReceiveForce(2);
-        }
-        for (size_t i=0;i<TheirBdryParticles.Size();i++)
-        {
-            TheirBdryParticles[i]->SendForce(1,2);
-        }
-    }
-    if (my_id==1)
-    {
-        for (size_t i=0;i<TheirBdryParticles.Size();i++)
-        {
-            TheirBdryParticles[i]->SendForce(0,2);
-        }
-        for (size_t i=0;i<MyBdryParticles.Size();i++)
-        {
-             MyBdryParticles[i]->ReceiveForce(2);
-        }
-    }
-}
-
-inline void Domain::CommunicateDynamic()
-{
-    int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
-    if (my_id==0)
-    {
-        for (size_t i=0;i<MyBdryParticles.Size();i++)
-        {
-             MyBdryParticles[i]->SendDynamicParticle(1,2);
-        }
-        for (size_t i=0;i<TheirBdryParticles.Size();i++)
-        {
-             TheirBdryParticles[i]->ReceiveDynamicParticle(2);
-        }
-    }
-    if (my_id==1)
-    {
-        for (size_t i=0;i<TheirBdryParticles.Size();i++)
-        {
-            TheirBdryParticles[i]->ReceiveDynamicParticle(2);
-        }
-        for (size_t i=0;i<MyBdryParticles.Size();i++)
-        {
-            MyBdryParticles[i]->SendDynamicParticle(0,2);
-        }
-    }
-}
-#endif
 
 }; // namespace DEM
 

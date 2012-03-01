@@ -37,6 +37,7 @@ using std::make_pair;
 
 namespace LBM
 {
+
 class Domain
 {
 public:
@@ -62,8 +63,8 @@ public:
 #ifdef USE_HDF5
     void WriteXDMF (char const * FileKey);           ///< Write the domain data in xdmf file
 #endif
-    void ApplyForce ();                              ///< Apply the interaction forces and the collision operator
-    void Collide ();                                 ///< Apply the interaction forces and the collision operator
+    void ApplyForce (size_t n = 0, size_t Np = 1);   ///< Apply the interaction forces and the collision operator
+    void Collide    (size_t n = 0, size_t Np = 1);   ///< Apply the interaction forces and the collision operator
     void ImprintLattice ();                          ///< Imprint the DEM particles into the lattices
     void Solve(double Tf, double dtOut, ptDFun_t ptSetup=NULL, ptDFun_t ptReport=NULL,
                char const * FileKey=NULL, bool RenderVideo=true, size_t Nproc=1);                                                          ///< Solve the Domain dynamics
@@ -92,6 +93,73 @@ public:
     size_t                                 idx_out;         ///< The discrete time step
     
 };
+
+#ifdef USE_THREAD
+struct MtData
+{
+    size_t   ProcRank; ///< Rank of the thread
+    size_t     N_Proc; ///< Total number of threads
+    LBM::Domain * Dom; ///< Pointer to the lbm domain
+};
+
+void * GlobalSetZeroGamma(void * Data)
+{
+    MtData & dat = (*static_cast<MtData *>(Data));
+    for (size_t i=0;i<dat.Dom->Lat.Size();i++)
+    {
+        dat.Dom->Lat[i].SetZeroGamma(dat.ProcRank, dat.N_Proc);
+    }
+}
+
+void * GlobalApplyForce (void * Data)
+{
+    MtData & dat = (*static_cast<MtData *>(Data));
+    dat.Dom->ApplyForce(dat.ProcRank, dat.N_Proc);
+}
+
+void * GlobalCollide (void * Data)
+{
+    MtData & dat = (*static_cast<MtData *>(Data));
+    dat.Dom->Collide(dat.ProcRank, dat.N_Proc);
+}
+
+void * GlobalBounceBack (void * Data)
+{
+    MtData & dat = (*static_cast<MtData *>(Data));
+    for (size_t i=0;i<dat.Dom->Lat.Size();i++)
+    {
+        dat.Dom->Lat[i].BounceBack(dat.ProcRank, dat.N_Proc);
+    }
+}
+
+void * GlobalStream (void * Data)
+{
+    MtData & dat = (*static_cast<MtData *>(Data));
+    for (size_t i=0;i<dat.Dom->Lat.Size();i++)
+    {
+        dat.Dom->Lat[i].Stream(dat.ProcRank, dat.N_Proc);
+    }
+}
+
+void * GlobalStream1 (void * Data)
+{
+    MtData & dat = (*static_cast<MtData *>(Data));
+    for (size_t i=0;i<dat.Dom->Lat.Size();i++)
+    {
+        dat.Dom->Lat[i].Stream1(dat.ProcRank, dat.N_Proc);
+    }
+}
+
+void * GlobalStream2 (void * Data)
+{
+    MtData & dat = (*static_cast<MtData *>(Data));
+    for (size_t i=0;i<dat.Dom->Lat.Size();i++)
+    {
+        dat.Dom->Lat[i].Stream2(dat.ProcRank, dat.N_Proc);
+    }
+}
+
+#endif
 
 inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx, double Thedt)
 {
@@ -276,9 +344,14 @@ inline void Domain::WriteXDMF(char const * FileKey)
 }
 #endif
 
-inline void Domain::ApplyForce()
+inline void Domain::ApplyForce(size_t n, size_t Np)
 {
-    for (size_t i=0;i<CellPairs.Size();i++)
+    size_t Ni = CellPairs.Size()/Np;
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = CellPairs.Size() : Fn = (n+1)*Ni;
+
+    for (size_t i=In;i<Fn;i++)
     {
         size_t ind1 = CellPairs[i](0);
         size_t ind2 = CellPairs[i](1);
@@ -315,16 +388,28 @@ inline void Domain::ApplyForce()
                 {
                     BF += -Gmix*c->Rho*nb->Rho*c->W[vec]*c->C[vec];
                 }
+#ifdef USE_THREAD
+                pthread_mutex_lock(&c ->lck);
+                pthread_mutex_lock(&nb->lck);
+#endif
                 c ->BForce += BF;
                 nb->BForce -= BF;
+#ifdef USE_THREAD
+                pthread_mutex_unlock(&c ->lck);
+                pthread_mutex_unlock(&nb->lck);
+#endif
             }
         }
     }
 }
 
-void Domain::Collide ()
+void Domain::Collide (size_t n, size_t Np)
 {
-    for (size_t i=0;i<Lat[0].Cells.Size()    ;i++)
+	size_t Ni = Lat[0].Cells.Size()/Np;
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = Lat[0].Cells.Size() : Fn = (n+1)*Ni;
+    for (size_t i=In;i<Fn;i++)
     {
         Vec3_t num(0.0,0.0,0.0);
         double den = 0.0;
@@ -369,7 +454,7 @@ void Domain::Collide ()
                 num++;
                 if (num>2) 
                 {
-                    throw new Fatal("Lattice::Collide: Redefine your time step, the current value ensures unstability");
+                    throw new Fatal("Domain::Collide: Redefine your time step, the current value ensures unstability");
                 }
             }
             for (size_t k=0;k<c->Nneigh;k++)
@@ -381,7 +466,7 @@ void Domain::Collide ()
                     WriteXDMF("error");
                     #endif
                     std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << std::endl;
-                    throw new Fatal("Lattice::Collide: Body force gives nan value, check parameters");
+                    throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
                 }
                 c->F[k] = fabs(c->Ftemp[k]);
             }
@@ -669,7 +754,16 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             }
         }
     }
-
+#ifdef USE_THREAD
+    MtData MTD[Nproc];
+    for (size_t i=0;i<Nproc;i++)
+    {
+        MTD[i].N_Proc   = Nproc;
+        MTD[i].ProcRank = i;
+        MTD[i].Dom      = this;
+    }
+    pthread_t thrs[Nproc];   
+#endif
     double tout = Time;
     while (Time < Tf)
     {
@@ -701,14 +795,23 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             Particles[i]->T = Particles[i]->Tf;
         }
 
+#ifdef USE_THREAD
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_create(&thrs[i], NULL, GlobalSetZeroGamma, &MTD[i]);
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_join(thrs[i], NULL);
+        }
+#else 
         //Set Gamma values of the lattice cell to zero
         for(size_t j=0;j<Lat.Size();j++)
         {
             Lat[j].SetZeroGamma();
         }
-        
+#endif
         //Connect particles and lattice
-        //for(size_t i=0;i<Particles.Size();i++) Particles[i]->ImprintDisk(Lat[0]);
         ImprintLattice();
 
         //Move Particles
@@ -716,6 +819,52 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         for(size_t i=0;i<Particles.Size()  ;i++) Particles[i]->Translate(dt);
 
         //Move fluid
+#ifdef USE_THREAD
+        if (Lat.Size()>1||fabs(Lat[0].G)>1.0e-12)
+        {
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_create(&thrs[i], NULL, GlobalApplyForce, &MTD[i]);
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
+            }
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_create(&thrs[i], NULL, GlobalCollide, &MTD[i]);
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_join(thrs[i], NULL);
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_create(&thrs[i], NULL, GlobalBounceBack, &MTD[i]);
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_join(thrs[i], NULL);
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_create(&thrs[i], NULL, GlobalStream1, &MTD[i]);
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_join(thrs[i], NULL);
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_create(&thrs[i], NULL, GlobalStream2, &MTD[i]);
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_join(thrs[i], NULL);
+        }
+
+#else 
         if (Lat.Size()>1||fabs(Lat[0].G)>1.0e-12) ApplyForce();
         Collide();
         for(size_t j=0;j<Lat.Size();j++)
@@ -723,7 +872,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             Lat[j].BounceBack();
             Lat[j].Stream();
         }
-        
+#endif
 
         if (MaxDisplacement()>Alpha)
         {
@@ -736,5 +885,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     printf("%s  Final CPU time       = %s\n",TERM_CLR2, TERM_RST);
 }
 }
+
+
 #endif
 

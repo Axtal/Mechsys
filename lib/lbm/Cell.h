@@ -20,6 +20,11 @@
 #ifndef MECHSYS_LBM_CELL_H
 #define MECHSYS_LBM_CELL_H
 
+// Std lib
+#ifdef USE_THREAD
+    #include <pthread.h>
+#endif
+
 // MechSys
 #include <mechsys/util/array.h>
 #include <mechsys/util/fatal.h>
@@ -38,8 +43,8 @@ public:
 	static const double   WEIGHTSD2Q9   [ 9]; ///< Weights for the equilibrium distribution functions (D2Q9)
 	static const double   WEIGHTSD3Q15  [15]; ///< Weights for the equilibrium distribution functions (D3Q15)
 	//static const double   WEIGHTSD3Q27  [27]; ///< Weights for the equilibrium distribution functions (D3Q27)
-	static Vec3_t   LVELOCD2Q9    [ 9]; ///< Local velocities (D2Q9) 
-	static Vec3_t   LVELOCD3Q15   [15]; ///< Local velocities (D3Q15)
+	static Vec3_t         LVELOCD2Q9    [ 9]; ///< Local velocities (D2Q9) 
+	static Vec3_t         LVELOCD3Q15   [15]; ///< Local velocities (D3Q15)
 	//static const Vec3_t   LVELOCD3Q27   [27]; ///< Local velocities (D3Q27)
 	static const size_t   OPPOSITED2Q9  [ 9]; ///< Opposite directions (D2Q9) 
 	static const size_t   OPPOSITED3Q15 [15]; ///< Opposite directions (D3Q15)
@@ -56,6 +61,11 @@ public:
     void         Initialize(double Rho, Vec3_t const & V);         ///< Initialize cell with a given velocity and density
     void         BounceBack();                                     ///< Apply the bounceback rule to this cell
 
+#ifdef USE_THREAD
+    pthread_mutex_t lck;
+    //std::mutex mtex;       ///< to protect variables in multithreading
+#endif
+
     // Data
     LBMethod     Method;   ///< Is 2D, 3D and how many velocities it has
     bool         IsSolid;  ///< It is a solid node
@@ -63,7 +73,7 @@ public:
     double       Gamma;    ///< Solid/Fluid ratio
     double       Gs;       ///< Interaction constant between solid and fluid
     size_t       Nneigh;   ///< Number of neighbors
-    size_t       ID;      ///< Tag for the particle
+    size_t       ID;       ///< Tag for the particle
     double       Cs;       ///< Velocity of the grid
     double       Rho;      ///< Density of the Cell
     iVec3_t      Index;    ///< Vector of indexes
@@ -126,6 +136,9 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
 
         Neighs[k] =  nindex[0] + nindex[1]*TheNdim[0] + nindex[2]*TheNdim[0]*TheNdim[1];
     }
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
 }
 
 inline double Cell::Density()

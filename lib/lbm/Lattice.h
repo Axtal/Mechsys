@@ -44,15 +44,17 @@ public:
     //Methods
     void Solve(double Tf, double dtOut, ptFun_t ptSetup=NULL, ptFun_t ptReport=NULL,
                char const * FileKey=NULL, bool RenderVideo=true, size_t Nproc=1);   ///< Solve the LBM equation in time
-    void Stream();                                                                  ///< Stream the velocity distributions
+    void Stream(size_t n = 0, size_t Np = 1);                                       ///< Stream the velocity distributions
+    void Stream1(size_t n = 0, size_t Np = 1);                                      ///< Stream the velocity distributions
+    void Stream2(size_t n = 0, size_t Np = 1);                                      ///< Stream the velocity distributions
     void SolidDisk(Vec3_t const & X, double R);                                     ///< Add a solid fixed disk in space
-    void SetZeroGamma();                                                            ///< Set an initial value for the fluid/solid ratio of each cell
+    void SetZeroGamma(size_t n=0, size_t Np = 1);                                   ///< Set an initial value for the fluid/solid ratio of each cell
     double Psi(double);                                                             ///< Interaction potential
     double SolidFraction();                                                         ///< Solid fraction
     void ApplyForce();                                                              ///< Apply molecular forces
     void Collide();                                                                 ///< apply the collision operator
     void CollideAlt();                                                              ///< apply the collision operator
-    void BounceBack();                                                              ///< apply interaction with solids
+    void BounceBack(size_t n = 0, size_t Np = 1);                                   ///< apply interaction with solids
     void WriteVTK(char const * FileKey);                                            ///< Write the state in a VTK file
 #ifdef USE_HDF5
     void WriteXDMF(char const * FileKey);                                           ///< Write the state in a XDMF file
@@ -115,18 +117,52 @@ inline Lattice::Lattice(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, doubl
     }
 }
 
-inline void Lattice::Stream()
+inline void Lattice::Stream(size_t n, size_t Np)
 {
-    
+	size_t Ni = Cells.Size()/Np;
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = Cells.Size() : Fn = (n+1)*Ni;
     // Assign temporal distributions
-    for (size_t i=1;i<Cells.Size()    ;i++)
+    for (size_t i=In;i<Fn;i++)
     for (size_t j=1;j<Cells[i]->Nneigh;j++)
     {
         Cells[Cells[i]->Neighs[j]]->Ftemp[j] = Cells[i]->F[j];
     }
 
     //Swap the distribution values
-    for (size_t i=0;i<Cells.Size()    ;i++)
+    for (size_t i=In;i<Fn;i++)
+    {
+        for (size_t j=1;j<Cells[i]->Nneigh;j++)
+        {
+            Cells[i]->F[j] = Cells[i]->Ftemp[j];
+        }
+        Cells[i]->Rho = Cells[i]->VelDen(Cells[i]->Vel);
+    }
+}
+
+inline void Lattice::Stream1(size_t n, size_t Np)
+{
+	size_t Ni = Cells.Size()/Np;
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = Cells.Size() : Fn = (n+1)*Ni;
+    // Assign temporal distributions
+    for (size_t i=In;i<Fn;i++)
+    for (size_t j=1;j<Cells[i]->Nneigh;j++)
+    {
+        Cells[Cells[i]->Neighs[j]]->Ftemp[j] = Cells[i]->F[j];
+    }
+}
+
+inline void Lattice::Stream2(size_t n, size_t Np)
+{
+	size_t Ni = Cells.Size()/Np;
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = Cells.Size() : Fn = (n+1)*Ni;
+    //Swap the distribution values
+    for (size_t i=In;i<Fn;i++)
     {
         for (size_t j=1;j<Cells[i]->Nneigh;j++)
         {
@@ -151,9 +187,13 @@ inline void Lattice::SolidDisk(Vec3_t const & X, double R)
     }
 }
 
-inline void Lattice::SetZeroGamma()
+inline void Lattice::SetZeroGamma(size_t n, size_t Np)
 {
-    for (size_t i=0;i<Cells.Size();i++)
+	size_t Ni = Cells.Size()/Np;
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = Cells.Size() : Fn = (n+1)*Ni;
+    for (size_t i=In;i<Fn;i++)
     {
         Cells[i]->Gamma  = 0.0;
         Cells[i]->BForce = Cells[i]->BForcef;
@@ -302,9 +342,13 @@ inline void Lattice::CollideAlt()
     }
 }
 
-inline void Lattice::BounceBack()
+inline void Lattice::BounceBack(size_t n, size_t Np)
 {
-    for (size_t i=0;i<Cells.Size()    ;i++)
+	size_t Ni = Cells.Size()/Np;
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = Cells.Size() : Fn = (n+1)*Ni;
+    for (size_t i=In;i<Fn;i++)
     {
         if (!Cells[i]->IsSolid) continue;
         for (size_t j = 0;j<Cells[i]->Nneigh;j++) Cells[i]->Ftemp[j] = Cells[i]->F[j];

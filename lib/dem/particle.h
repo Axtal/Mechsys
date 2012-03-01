@@ -33,11 +33,6 @@
 #include <mechsys/numerical/montecarlo.h>
 #include <mechsys/mesh/mesh.h>
 
-// MPI
-#ifdef USE_MPI
-  #include <mpi.h>
-#endif
-
 struct ParticleProps
 {
     double  Kn;   ///< Normal stiffness
@@ -56,38 +51,6 @@ struct ParticleProps
     double  V;    ///< Volume
     double  m;    ///< Mass
 };
-
-#ifdef USE_MPI
-
-MPI::Datatype MPI_Part_Props_Type;
-
-void BuildParticlePropsDataType (MPI::Datatype & MPIType)
-{
-    // dummy properties
-    ParticleProps p;
-
-    // blocks
-    MPI::Datatype types [] = {MPI::DOUBLE};
-    int           blklen[] = {15};
-
-    // addresses
-    const int nblks = 1;
-    MPI::Aint origin, addr[nblks];
-
-    origin  = MPI::Get_address (&p);
-    addr[0] = MPI::Get_address (&(p.Kn));
-
-    // displacements
-    MPI::Aint disps[nblks];
-    for (int i=0; i<nblks; ++i) disps[i] = addr[i] - origin;
-
-    // create type
-    MPIType = MPI::Datatype::Create_struct (nblks, blklen, disps, types); 
-    MPIType.Commit();
-}
-
-#endif
-
 
 class Particle
 {
@@ -122,21 +85,10 @@ public:
     void   FixVeloc           (double vx=0.0, double vy=0.0, double vz=0.0);                  ///< Fix all velocities
     bool   IsFree             () {return !vxf&&!vyf&&!vzf&&!wxf&&!wyf&&!wzf;};                ///< Ask if the particle has any constrain in its movement
 
-// Methods to be used when MPI is used
-#ifdef USE_MPI
-    void SendParticle               (int n, int MsgID); ///< Send particle to process n
-    void ReceiveParticle            (int MsgID);        ///< Receives a particle from any process
-    void SendDynamicParticle        (int n, int MsgID); ///< Send just relevant data for force calculation
-    void ReceiveDynamicParticle     (int MsgID);        ///< Receive just the dynamic relevant data
-    void SendForce                  (int n, int MsgID); ///< Send force
-    void ReceiveForce               (int MsgID);        ///< Receive force
-#endif
-
 #ifdef USE_THREAD
     std::mutex mtex;                 ///< to protect variables in multithreading
 #endif
 
-    // Data -- in MPI data type
     int             Tag;             ///< Tag of the particle
     size_t          Index;           ///< index of the particle in the domain
     bool            PropsReady;      ///< Are the properties calculated ready ?
@@ -162,10 +114,7 @@ public:
     double          Diam;            ///< Diameter of the parallelogram containing the particle
     double          Cn;              ///< Coordination number (number of contacts)
 
-    // Data -- not in MPI data type
     Array<Vec3_t*> Verts;            ///< Vertices
-
-    // Data -- not needed during communications
     ParticleProps       Props;       ///< Properties
     Array<Vec3_t*>      Vertso;      ///< Original postion of the Vertices
     Array<Array <int> > EdgeCon;     ///< Conectivity of Edges 
@@ -267,41 +216,6 @@ std::ostream & operator<< (std::ostream & os, Particle const & P)
     os << "Cn            = "  << P.Cn   << std::endl;
     return os;
 }
-
-
-#ifdef USE_MPI
-
-MPI::Datatype MPI_Particle_Type;
-
-void BuildParticleDataType (MPI::Datatype & MPIType)
-{
-    // dummy particle
-    Particle p;
-
-    // blocks
-    MPI::Datatype types [] = {MPI::INT, MPI::UNSIGNED_LONG, MPI::BOOL, MPI::DOUBLE};
-    int           blklen[] = {1,1,8,57};
-
-    // addresses
-    const int nblks = 4;
-    MPI::Aint origin, addr[nblks];
-
-    origin  = MPI::Get_address (&p);
-    addr[0] = MPI::Get_address (&(p.Tag));
-    addr[1] = MPI::Get_address (&(p.Index));
-    addr[2] = MPI::Get_address (&(p.PropsReady));
-    addr[3] = MPI::Get_address (p.x.data());
-
-    // displacements
-    MPI::Aint disps[nblks];
-    for (int i=0; i<nblks; ++i) disps[i] = addr[i] - origin;
-
-    // create type
-    MPIType = MPI::Datatype::Create_struct (nblks, blklen, disps, types); 
-    MPIType.Commit();
-}
-
-#endif
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -607,147 +521,6 @@ inline void Particle::FixVeloc (double vx, double vy, double vz)
     vxf = true; vyf = true; vzf = true; 
     wxf = true; wyf = true; wzf = true;
 }
-
-// MPI exclusive methods
-#ifdef USE_MPI
-
-inline void Particle::SendParticle(int n, int MsgID)
-{
-    // Sending properties
-    MPI::COMM_WORLD.Send (&this->Props,  /*number of props.*/1, MPI_Part_Props_Type,  /*destination*/n, MsgID);
-    MPI::COMM_WORLD.Send (this,  /*number of part.*/1, MPI_Particle_Type,  /*destination*/n, MsgID);
-
-    // Sending vertices
-    size_t verts_size = Verts.Size();
-    MPI::COMM_WORLD.Send (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID);
-    for (size_t i=0; i<verts_size; ++i)
-    {
-        MPI::COMM_WORLD.Send (Verts[i]->data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
-    }
-
-    // Sending edges
-    size_t edge_size = Edges.Size();
-    MPI::COMM_WORLD.Send (&edge_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID);
-    for (size_t i=0; i<edge_size; ++i)
-    {
-        MPI::COMM_WORLD.Send (&EdgeCon[i][0], /*number*/2, MPI::INT, /*destination*/n, MsgID);
-    }
-
-    // Sending faces
-    size_t face_size = Faces.Size();
-    MPI::COMM_WORLD.Send (&face_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID);
-    for (size_t i=0; i<face_size; ++i)
-    {
-        size_t verts_face = FaceCon[i].Size();
-        MPI::COMM_WORLD.Send (&verts_face, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID);
-        MPI::COMM_WORLD.Send (&FaceCon[i][0], /*number*/verts_face, MPI::INT, /*destination*/n, MsgID);
-    }
-}
-
-inline void Particle::ReceiveParticle(int MsgID)
-{
-    // Receiving properties
-    MPI::COMM_WORLD.Recv (&this->Props, /*number of part.*/1, MPI_Part_Props_Type, MPI::ANY_SOURCE, MsgID);
-    MPI::COMM_WORLD.Recv (this, /*number of part.*/1, MPI_Particle_Type, MPI::ANY_SOURCE, MsgID);
-
-    // Receiving vertices
-    size_t verts_size;
-    MPI::COMM_WORLD.Recv (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID);
-    for (size_t i=0; i<verts_size; ++i)
-    {
-        Verts.Push (new Vec3_t(0,0,0));
-        MPI::COMM_WORLD.Recv (Verts[i]->data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
-    }
-
-    // Receiving edges
-    size_t edge_size;
-    MPI::COMM_WORLD.Recv (&edge_size, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID);
-    for (size_t i=0; i<edge_size; ++i)
-    {
-        Array<int> D(2);
-        EdgeCon.Push(D);
-        MPI::COMM_WORLD.Recv (&EdgeCon[i][0], /*number*/2, MPI::INT, MPI::ANY_SOURCE, MsgID);
-    }
-    for (size_t i=0; i<EdgeCon.Size(); i++) Edges.Push (new Edge((*Verts[EdgeCon[i][0]]), (*Verts[EdgeCon[i][1]])));
-
-    // Receiving faces
-    size_t face_size;
-    MPI::COMM_WORLD.Recv (&face_size, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID);
-    for (size_t i=0; i<face_size; ++i)
-    {
-        size_t verts_face;
-        MPI::COMM_WORLD.Recv (&verts_face, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID);
-        Array<int> D(verts_face);
-        FaceCon.Push(D);
-        MPI::COMM_WORLD.Recv (&FaceCon[i][0], /*number*/verts_face, MPI::INT, MPI::ANY_SOURCE, MsgID);
-    }
-    for (size_t i=0; i<FaceCon.Size(); i++)
-    {
-        Array<Vec3_t*> verts(FaceCon[i].Size());
-        for (size_t j=0; j<FaceCon[i].Size(); ++j) verts[j] = Verts[FaceCon[i][j]];
-        Faces.Push (new Face(verts));
-    }
-}
-
-inline void Particle::SendDynamicParticle(int n, int MsgID)
-{
-    // Sending vertices
-    size_t verts_size = Verts.Size();
-    MPI::COMM_WORLD.Send (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID);
-    for (size_t i=0; i<verts_size; ++i)
-    {
-        MPI::COMM_WORLD.Send (Verts[i]->data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
-    }
-
-    // Sending vectorial properties
-    MPI::COMM_WORLD.Send (x.data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
-    MPI::COMM_WORLD.Send (v.data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
-    MPI::COMM_WORLD.Send (w.data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
-    MPI::COMM_WORLD.Send (Q.data(), /*number*/4, MPI::DOUBLE, /*destination*/n, MsgID);
-
-    //std::cout << Index << " " << x << std::endl;
-}
-
-inline void Particle::ReceiveDynamicParticle(int MsgID)
-{
-    // Sending vertices
-    size_t verts_size;
-    MPI::COMM_WORLD.Recv (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID);
-    for (size_t i=0; i<verts_size; ++i)
-    {
-        MPI::COMM_WORLD.Recv (Verts[i]->data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
-    }
-
-    // Sending vectorial properties
-    MPI::COMM_WORLD.Recv (x.data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
-    MPI::COMM_WORLD.Recv (v.data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
-    MPI::COMM_WORLD.Recv (w.data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
-    MPI::COMM_WORLD.Recv (Q.data(), /*number*/4, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
-
-
-    //std::cout << Index << " " << v << std::endl;
-}
-
-inline void Particle::SendForce(int n, int MsgID)
-{
-    MPI::COMM_WORLD.Send (F.data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
-    MPI::COMM_WORLD.Send (T.data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
-}
-
-inline void Particle::ReceiveForce(int MsgID)
-{
-    // Temporal force and torque
-    Vec3_t Ft,Tt;
-    MPI::COMM_WORLD.Recv (Ft.data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
-    MPI::COMM_WORLD.Recv (Tt.data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
-
-    //if(norm(Ft)>0.0) std::cout << Index << " " << Ft << std::endl;
-
-    //Add this quantities to my force and torque
-    F += Ft;
-    T += Tt;
-}
-#endif
 
 // Auxiliar methods
 
