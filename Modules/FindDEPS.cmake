@@ -97,7 +97,7 @@ ENABLE_LANGUAGE (Fortran)
 
 FIND_PACKAGE (wxWidgets COMPONENTS ${WXW_COMPONENTS})       #  1
 INCLUDE      (FindMPI)                                      #  2
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindVTK.cmake      ) #  3
+INCLUDE      (FindVTK)                                      #  3
 FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
 INCLUDE      (FindBoost)                                    #  5
 INCLUDE      (FindLAPACK)                                   #  6
@@ -148,7 +148,7 @@ endif(MPI_FOUND AND A_USE_MPI OR A_USE_MUMPS)
 # 3
 if(VTK_FOUND AND A_USE_VTK)
     INCLUDE_DIRECTORIES (${VTK_INCLUDE_DIRS})
-    SET (LIBS  ${LIBS} ${VTK_LIBRARIES})
+    SET (LIBS  ${LIBS} vtkRendering vtkHybrid)
     SET (FLAGS "${FLAGS} -DVTK_EXCLUDE_STRSTREAM_HEADERS")
 else(VTK_FOUND AND A_USE_VTK)
     if(A_USE_VTK)

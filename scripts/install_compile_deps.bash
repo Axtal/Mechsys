@@ -15,8 +15,14 @@ echo "*                                                          |     |        
 echo "* Example:                                                 V     V         *"
 echo "*   sh $MECHSYS_ROOT/mechsys/scripts/do_compile_deps.sh {0,1} {0,1}        *"
 echo "*                                                                          *"
-echo "* By default, the code will not be compiled if this was done before.       *"
+echo "* By default, the code will not be re-compiled if this was already done.   *"
+echo "*                                                                          *"
+echo "* By default, -j4 (4 processors) is given to make. This can be changed by  *"
+echo "* modifying the variable NPROCS in this script.                            *"
+echo "*                                                                          *"
 echo "****************************************************************************"
+
+NPROCS=4
 
 if [ -d "$MECHSYS_ROOT/mechsys" ]; then
     echo
@@ -64,6 +70,7 @@ VER_MUMPS=4.10.0
 VER_IGRAPH=0.5.4
 VER_SOPLEX=1.5.0
 VER_VTK=5.8.0
+VER_VTK_MAJOR=5.8
 
 compile_scalapack() {
     INC_OPENMPI=/usr/local/lib/openmpi/include
@@ -76,7 +83,7 @@ compile_scalapack() {
 compile_mumps() {
     cp $MECHSYS_ROOT/mechsys/patches/mumps/Makefile.inc .
     make clean
-    make
+    make -j$NPROCS
 }
 
 parmetis_links() {
@@ -105,6 +112,7 @@ download_and_compile() {
     IS_SVN=0
     DO_PATCH=0
     DO_CONF=0
+    DO_CMAKECONF=0
     DO_MAKE=1
     DO_MAKE_INST=0
     case "$1" in
@@ -163,6 +171,13 @@ download_and_compile() {
             PKG=soplex-$VER_SOPLEX
             EXT=tgz
             LOCATION=http://soplex.zib.de/download/$PKG.$EXT
+            ;;
+        vtk)
+            PKG=vtk-$VER_VTK
+            PKG_DIR=VTK
+            LOCATION=http://www.vtk.org/files/release/$VER_VTK_MAJOR/$PKG.$EXT
+            DO_CMAKECONF=1
+            DO_MAKE_INST=1
             ;;
         *)
             error_message "download_and_compile: __Internal_error__"
@@ -260,10 +275,16 @@ download_and_compile() {
         $EXTRA_CONF
     fi
 
+    # cmake configuration
+    if [ "$DO_CMAKECONF" -eq 1 ]; then
+        echo "        . . . configuring using cmake . . ."
+        cmake . 2> /dev/null
+    fi
+
     # compilation
     if [ "$DO_MAKE" -eq 1 ]; then
         echo "        . . . compiling . . ."
-        make > /dev/null 2> /dev/null
+        make -j$NPROCS > /dev/null 2> /dev/null
     fi
 
     # make install
@@ -293,6 +314,7 @@ download_and_compile scalapack
 download_and_compile mumps
 download_and_compile igraph
 download_and_compile soplex
+download_and_compile vtk
 
 echo
 echo "Finished ###################################################################"
