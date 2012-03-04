@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 # input
 if [ "$#" -ne 2 ]; then

@@ -80,6 +80,7 @@ VER_SOPLEX=1.5.0
 VER_VTK=5.8.0
 VER_VTK_MAJOR=5.8
 VER_SCALAPACK=1.0.1
+VER_WXWIDGETS=2.9.3
 
 compile_scalapack() {
     INC_OPENMPI=/usr/local/lib/openmpi/include
@@ -188,6 +189,14 @@ download_and_compile() {
             LOCATION=http://www.vtk.org/files/release/$VER_VTK_MAJOR/$PKG.$EXT
             DO_CMAKECONF=1
             DO_MAKE_INST=1
+            ;;
+        wxwidgets)
+            PKG=wxWidgets-$VER_WXWIDGETS
+            EXT=tar.bz2
+            LOCATION=http://downloads.sourceforge.net/project/wxwindows/$VER_WXWIDGETS/wxWidgets-$VER_WXWIDGETS.$EXT
+            DO_CONF=1
+            DO_MAKE_INST=1
+            CONF_PRMS="-enable-monolithic --disable-compat26 --disable-compat28 --with-opengl"
             ;;
         *)
             error_message "download_and_compile: __Internal_error__"
@@ -325,6 +334,7 @@ download_and_compile mumps
 download_and_compile igraph
 download_and_compile soplex
 download_and_compile vtk
+download_and_compile wxwidgets
 
 echo
 echo "Finished ###################################################################"
