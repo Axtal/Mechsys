@@ -17,14 +17,14 @@
 ########################################################################
 
 SET(PROGS
-  driver
+  #driver
   eigenbases
   test_wrcs)
 
 SET(VTK_PROGS
   smp
   fcrit
-  ysurf
+  #ysurf
   invariants04)
 
 SET(TESTS
