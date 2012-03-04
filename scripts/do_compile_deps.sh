@@ -59,11 +59,11 @@ VER_TRIANGLE=1.6
 VER_TETGEN=1.4.3
 VER_VORO=0.3.1
 VER_OPENMPI=1.5.4
-#VER_PARMETIS=4.0.2 # MUMPS does not work with this one
-VER_PARMETIS=3.2.0
+VER_PARMETIS=3.2.0 # 4.0.2 # MUMPS does not work with this one
 VER_MUMPS=4.10.0
 VER_IGRAPH=0.5.4
 VER_SOPLEX=1.5.0
+VER_VTK=5.8.0
 
 compile_scalapack() {
     INC_OPENMPI=/usr/local/lib/openmpi/include

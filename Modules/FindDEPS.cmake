@@ -32,7 +32,7 @@ OPTION(A_USE_THREAD         "Use (p)Threads ?"                                  
 OPTION(A_USE_MPI            "Use OpenMPI ?"                                        OFF)
 OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
 OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
-OPTION(A_USE_VTK            "Use VTK ?"                                            OFF)
+OPTION(A_USE_VTK            "Use VTK ?"                                            ON )
 OPTION(A_USE_HDF5           "Use HDF5 ?"                                           OFF)
 OPTION(A_USE_SUPERLU        "Use SueperLU"                                         OFF)
 OPTION(A_USE_SUPERLUD       "Use SuperLUd"                                         OFF)
@@ -97,7 +97,7 @@ ENABLE_LANGUAGE (Fortran)
 
 FIND_PACKAGE (wxWidgets COMPONENTS ${WXW_COMPONENTS})       #  1
 INCLUDE      (FindMPI)                                      #  2
-INCLUDE      (FindVTK)                                      #  3
+INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindVTK.cmake      ) #  3
 FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
 INCLUDE      (FindBoost)                                    #  5
 INCLUDE      (FindLAPACK)                                   #  6
@@ -148,7 +148,7 @@ endif(MPI_FOUND AND A_USE_MPI OR A_USE_MUMPS)
 # 3
 if(VTK_FOUND AND A_USE_VTK)
     INCLUDE_DIRECTORIES (${VTK_INCLUDE_DIRS})
-    SET (LIBS  ${LIBS} vtkRendering vtkHybrid)
+    SET (LIBS  ${LIBS} ${VTK_LIBRARIES})
     SET (FLAGS "${FLAGS} -DVTK_EXCLUDE_STRSTREAM_HEADERS")
 else(VTK_FOUND AND A_USE_VTK)
     if(A_USE_VTK)
