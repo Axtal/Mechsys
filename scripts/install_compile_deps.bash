@@ -7,22 +7,23 @@ if [ ! -n "$MECHSYS_ROOT" ]; then
 fi
 
 echo
-echo "****************************************************************************"
-echo "* You can call this script with an option to force recompiling everything  *"
-echo "* and/or an option to also download packages                               *"
-echo "*                                                  recompile     download  *"
-echo "*                                                          |     |         *"
-echo "* Example:                                                 V     V         *"
-echo "*   sh $MECHSYS_ROOT/mechsys/scripts/do_compile_deps.sh {0,1} {0,1}        *"
-echo "*                                                                          *"
-echo "* By default, the code will not be re-compiled if this was already done.   *"
-echo "*                                                                          *"
-echo "* By default, -j4 (4 processors) is given to make. This can be changed by  *"
-echo "* modifying the variable NPROCS in this script.                            *"
-echo "*                                                                          *"
-echo "****************************************************************************"
-
-NPROCS=4
+echo "*************************************************************************"
+echo "*                                                                       *"
+echo "* You can call this script with options to force recompiling all        *"
+echo "* dependencies and/or download their code again:                        *"
+echo "*                                                                       *"
+echo "*                                             recompile     download    *"
+echo "* Example:                                            |     |           *"
+echo "*                                                     V     V           *"
+echo "*   bash ~/mechsys/scripts/install_compile_deps.sh {0,1} {0,1} {NPROCS} *"
+echo "*                                                                       *"
+echo "* By default, a dependency will not be re-compiled if the corresponding *"
+echo "* directory exists under the MECHSYS_ROOT/pkg directory.                *"
+echo "*                                                                       *"
+echo "* By default, -j4 (4 processors) is given to make. This can be changed  *"
+echo "* with a new value of NPROCS.                                           *"
+echo "*                                                                       *"
+echo "*************************************************************************"
 
 if [ -d "$MECHSYS_ROOT/mechsys" ]; then
     echo
@@ -42,7 +43,8 @@ if [ "$#" -gt 0 ]; then
     RECOMPILE=$1
     if [ "$RECOMPILE" -lt 0 -o "$RECOMPILE" -gt 1 ]; then
         echo
-        echo "The option for re-compilation must be either 1 or 0. ($1 is invalid)"
+        echo "The option for re-compilation must be either 0 or 1"
+        echo "  $1 is invalid"
         echo
         exit 1
     fi
@@ -53,10 +55,16 @@ if [ "$#" -gt 1 ]; then
     FORCEDOWNLOAD=$2
     if [ "$FORCEDOWNLOAD" -lt 0 -o "$FORCEDOWNLOAD" -gt 1 ]; then
         echo
-        echo "The option for downloading and compilation of additional packages must be either 1 or 0. ($2 is invalid)"
+        echo "The option for downloading and compilation of additional packages must be either 0 or 1"
+        echo "  $2 is invalid"
         echo
         exit 1
     fi
+fi
+
+NPROCS=4
+if [ "$#" -gt 2 ]; then
+    NPROCS=$3
 fi
 
 test -d $MECHSYS_ROOT/pkg || mkdir $MECHSYS_ROOT/pkg
@@ -71,6 +79,7 @@ VER_IGRAPH=0.5.4
 VER_SOPLEX=1.5.0
 VER_VTK=5.8.0
 VER_VTK_MAJOR=5.8
+VER_SCALAPACK=1.0.1
 
 compile_scalapack() {
     INC_OPENMPI=/usr/local/lib/openmpi/include
@@ -149,7 +158,7 @@ download_and_compile() {
             ;;
         scalapack)
             PKG=scalapack_installer
-            PKG_DIR=scalapack_installer
+            PKG_DIR=scalapack_installer_$VER_SCALAPACK
             EXT=tgz
             LOCATION=http://www.netlib.org/scalapack/$PKG.$EXT
             DO_MAKE=0
@@ -171,6 +180,7 @@ download_and_compile() {
             PKG=soplex-$VER_SOPLEX
             EXT=tgz
             LOCATION=http://soplex.zib.de/download/$PKG.$EXT
+            NPROCS=1 # it seems soples cannot be compiled in parallel...
             ;;
         vtk)
             PKG=vtk-$VER_VTK

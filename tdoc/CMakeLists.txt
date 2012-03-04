@@ -18,7 +18,9 @@
 
 SET(PROGS
   doc_vtk1
-  doc_msh1)
+  doc_msh1
+  doc_msh2
+  doc_msh3)
 
 FOREACH(var ${PROGS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
