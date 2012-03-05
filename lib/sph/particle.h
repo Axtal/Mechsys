@@ -27,12 +27,14 @@
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/dem/special_functions.h>
 
-class SPHParticle
+namespace SPH {
+
+class Particle
 {
 public:
 
     // Constructor
-    SPHParticle(Vec3_t const & x0, Vec3_t const & v0, double density0, double h0, bool Fixed=false);
+    Particle(Vec3_t const & x0, Vec3_t const & v0, double density0, double h0, bool Fixed=false);
 
 
     // Data
@@ -59,7 +61,7 @@ public:
 
 };
 
-inline SPHParticle::SPHParticle(Vec3_t const & x0, Vec3_t const & v0, double density0, double h0,bool Fixed)
+inline Particle::Particle(Vec3_t const & x0, Vec3_t const & v0, double density0, double h0,bool Fixed)
 {
     x = x0;
     xb = x;
@@ -71,7 +73,7 @@ inline SPHParticle::SPHParticle(Vec3_t const & x0, Vec3_t const & v0, double den
     h = h0;
 }
 
-inline void SPHParticle::Move (double dt)
+inline void Particle::Move (double dt)
 {
     if (IsFree)
     {
@@ -90,15 +92,16 @@ inline void SPHParticle::Move (double dt)
     }
 }
 
-inline void SPHParticle::ResetDisplacements ()
+inline void Particle::ResetDisplacements ()
 {
     xo = x;
 }
 
-inline double SPHParticle::MaxDisplacement ()
+inline double Particle::MaxDisplacement ()
 {
     return Distance(x,xo);
 }
 
+}; // namespace SPH
 
 #endif // MECHSYS_SPH_PARTICLE_H

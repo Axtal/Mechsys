@@ -17,6 +17,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+/** @file fem/domain.h .*/
+
 #ifndef MECHSYS_DOMAIN_H
 #define MECHSYS_DOMAIN_H
 

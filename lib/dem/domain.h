@@ -17,6 +17,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+/** @file dem/domain.h .*/
+
 #ifndef MECHSYS_DEM_DOMAIN_H
 #define MECHSYS_DEM_DOMAIN_H
 

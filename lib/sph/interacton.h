@@ -25,11 +25,13 @@
 #include <mechsys/sph/special_functions.h>
 #include <mechsys/dem/special_functions.h>
 
-class SPHInteracton
+namespace SPH {
+
+class Interacton
 {   
 public:
     // Constructor and destructor
-    SPHInteracton (SPHParticle * Pt1, SPHParticle * Pt2); ///< Default constructor
+    Interacton (SPHParticle * Pt1, SPHParticle * Pt2); ///< Default constructor
 
     // Methods
     bool UpdateContacts (double alpha);          ///< Update contacts by verlet algorithm
@@ -46,7 +48,7 @@ public:
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
-inline SPHInteracton::SPHInteracton (SPHParticle * Pt1, SPHParticle * Pt2)
+inline Interacton::Interacton (SPHParticle * Pt1, SPHParticle * Pt2)
 {
     P1 = Pt1;
     P2 = Pt2;
@@ -55,7 +57,7 @@ inline SPHInteracton::SPHInteracton (SPHParticle * Pt1, SPHParticle * Pt2)
     beta = 0.25;
 }
 
-inline void SPHInteracton::CalcForce(double dt)
+inline void Interacton::CalcForce(double dt)
 {
     double di = P1->Density;
     double dj = P2->Density;
@@ -75,12 +77,12 @@ inline void SPHInteracton::CalcForce(double dt)
     P2->dDensity += d0i*dot(vij,rij)*GradSPHKernel(norm(rij),h)/norm(rij);
 }
 
-inline bool SPHInteracton::UpdateContacts (double alpha)
+inline bool Interacton::UpdateContacts (double alpha)
 {
     if (Distance(P1->x,P2->x)<=P1->h+P2->h+2*alpha) return true;
     else return false;
 }
 
-
+}; // namespace SPH
 
 #endif // MECHSYS_SPH_INTERACTON_H

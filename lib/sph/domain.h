@@ -17,6 +17,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+/** @file sph/domain.h .*/
+
 #ifndef MECHSYS_SPH_DOMAIN_H
 #define MECHSYS_SPH_DOMAIN_H
 
@@ -25,15 +27,17 @@
 #include <mechsys/dem/graph.h>
 #include <mechsys/util/stopwatch.h>
 
-class SPHDomain
+namespace SPH {
+
+class Domain
 {
 public:
 
     // Constructor
-    SPHDomain(iVec3_t n, Vec3_t Xmin, Vec3_t Xmax);  ///< Constructor with a vector containing the number of divisions per length, and Xmin Xmax defining the limits of the rectangular domain to be plotted
+    Domain(iVec3_t n, Vec3_t Xmin, Vec3_t Xmax);  ///< Constructor with a vector containing the number of divisions per length, and Xmin Xmax defining the limits of the rectangular domain to be plotted
 
     // Destructor
-    ~SPHDomain ();
+    ~Domain ();
 
     // Methods
     void AddBox(Vec3_t const & x, size_t nx, size_t ny, size_t nz, double h, double s,  double rho0, bool Fixed);      ///< Add a box of SPHparticles
@@ -68,7 +72,7 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 // Constructor
-inline SPHDomain::SPHDomain (iVec3_t n, Vec3_t Xmin, Vec3_t Xmax)
+inline Domain::Domain (iVec3_t n, Vec3_t Xmin, Vec3_t Xmax)
 {
     CamPos  = 1.0,2.0,3.0;
     Time    = 0.0;
@@ -79,7 +83,7 @@ inline SPHDomain::SPHDomain (iVec3_t n, Vec3_t Xmin, Vec3_t Xmax)
     DXmax   = Xmax;
 }
 
-inline SPHDomain::~SPHDomain ()
+inline Domain::~Domain ()
 {
     for (size_t i=0; i<Particles.Size();   ++i) if (Particles  [i]!=NULL) delete Particles  [i];
     for (size_t i=0; i<Interactons.Size(); ++i) if (Interactons[i]!=NULL) delete Interactons[i];
@@ -87,7 +91,7 @@ inline SPHDomain::~SPHDomain ()
 
 
 // Methods
-inline void SPHDomain::AddBox(Vec3_t const & V, size_t nx, size_t ny, size_t nz, double R, double s, double rho0, bool Fixed)
+inline void Domain::AddBox(Vec3_t const & V, size_t nx, size_t ny, size_t nz, double R, double s, double rho0, bool Fixed)
 {
     Vec3_t C(V);
     C -= Vec3_t((nx-1)*R,(ny-1)*R,(nz-1)*R);
@@ -101,7 +105,7 @@ inline void SPHDomain::AddBox(Vec3_t const & V, size_t nx, size_t ny, size_t nz,
     }
 }
 
-inline void SPHDomain::AddRandomBox(Vec3_t const & V, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho0, double R, size_t RandomSeed)
+inline void Domain::AddRandomBox(Vec3_t const & V, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho0, double R, size_t RandomSeed)
 {
     Util::Stopwatch stopwatch;
     printf("\n%s--- Generating random packing of spheres ----------------------------------------%s\n",TERM_CLR1,TERM_RST);
@@ -126,7 +130,7 @@ inline void SPHDomain::AddRandomBox(Vec3_t const & V, double Lx, double Ly, doub
     printf("%s  Num of particles   = %d%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
-inline void SPHDomain::StartAcceleration (Vec3_t const & a)
+inline void Domain::StartAcceleration (Vec3_t const & a)
 {
     for (size_t i=0; i<Particles.Size(); i++)
     {
@@ -135,17 +139,17 @@ inline void SPHDomain::StartAcceleration (Vec3_t const & a)
     }
 }
 
-inline void SPHDomain::ComputeAcceleration (double dt)
+inline void Domain::ComputeAcceleration (double dt)
 {
     for (size_t i=0; i<PInteractons.Size(); i++) PInteractons[i]->CalcForce(dt);
 }
 
-inline void SPHDomain::Move (double dt)
+inline void Domain::Move (double dt)
 {
     for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Move(dt);
 }
 
-inline void SPHDomain::WritePOV (char const * FileKey)
+inline void Domain::WritePOV (char const * FileKey)
 {
     String fn(FileKey);
     fn.append(".pov");
@@ -160,7 +164,7 @@ inline void SPHDomain::WritePOV (char const * FileKey)
     of.close();
 }
 
-inline void SPHDomain::WriteBPY (char const * FileKey)
+inline void Domain::WriteBPY (char const * FileKey)
 {
     String fn(FileKey);
     fn.append(".bpy");
@@ -170,7 +174,7 @@ inline void SPHDomain::WriteBPY (char const * FileKey)
     of.close();
 }
 
-inline void SPHDomain::WriteVTK (char const * FileKey)
+inline void Domain::WriteVTK (char const * FileKey)
 {
 	// Header
 	std::ostringstream oss;
@@ -241,7 +245,7 @@ inline void SPHDomain::WriteVTK (char const * FileKey)
 	of.close();
 }
 
-inline void SPHDomain::ResetInteractons()
+inline void Domain::ResetInteractons()
 {
     // delete old interactors
     for (size_t i=0; i<Interactons.Size(); ++i)
@@ -268,7 +272,7 @@ inline void SPHDomain::ResetInteractons()
     }
 }
 
-inline void SPHDomain::ResetDisplacements()
+inline void Domain::ResetDisplacements()
 {
     for (size_t i=0; i<Particles.Size(); i++)
     {
@@ -276,7 +280,7 @@ inline void SPHDomain::ResetDisplacements()
     }
 }
 
-inline void SPHDomain::ResetContacts()
+inline void Domain::ResetContacts()
 {
     PInteractons.Resize(0);
     for (size_t i=0; i<Interactons.Size(); i++)
@@ -285,7 +289,7 @@ inline void SPHDomain::ResetContacts()
     }
 }
 
-inline double SPHDomain::MaxDisplacement()
+inline double Domain::MaxDisplacement()
 {
     double md = 0.0;
     for (size_t i=0; i<Particles.Size(); i++)
@@ -296,7 +300,7 @@ inline double SPHDomain::MaxDisplacement()
     return md;
 }
 
-inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * TheFileKey, bool RenderVideo)
+inline void Domain::Solve (double tf, double dt, double dtOut, char const * TheFileKey, bool RenderVideo)
 {
     Util::Stopwatch stopwatch;
     printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
@@ -346,5 +350,7 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
         
     }
 }
+
+}; // namespace SPH
 
 #endif // MECHSYS_SPH_DOMAIN_H

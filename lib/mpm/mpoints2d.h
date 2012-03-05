@@ -35,6 +35,7 @@
 #include <mechsys/mpm/grid2d.h>
 #include <mechsys/mpm/tensors.h>
 
+/** MPM: Material Point Method. */
 namespace MPM {
 
 class MPoints2D

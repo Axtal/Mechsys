@@ -19,6 +19,8 @@
 #ifndef MECHSYS_CYLINDER_H
 #define MECHSYS_CYLINDER_H
 
+/** @file vtk/cylinder.h .*/
+
 // Std Lib
 #include <cmath>
 

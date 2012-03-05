@@ -26,7 +26,9 @@
 // MechSys
 #include <mechsys/linalg/matvec.h>
 
-inline double SPHKernel(double r,double h)
+namespace SPH {
+
+inline double Kernel(double r,double h)
 {
     double C = 1.0/(h*h*h*M_PI);
     double q = r/h;
@@ -35,7 +37,7 @@ inline double SPHKernel(double r,double h)
     else                 return 0.0;
 }
 
-inline double GradSPHKernel(double r, double h)
+inline double GradKernel(double r, double h)
 {
     double C = 1.0/(h*h*h*M_PI);
     double q = r/h;
@@ -44,10 +46,10 @@ inline double GradSPHKernel(double r, double h)
     else                 return 0.0;
 }
 
-inline double SPHKernel(Vec3_t & x, Vec3_t & xp, double h)
+inline double Kernel(Vec3_t & x, Vec3_t & xp, double h)
 {
     double r = norm(xp-x);
-    return SPHKernel(r,h);
+    return Kernel(r,h);
 }
 
 inline double Pressure(double rho)
@@ -64,5 +66,6 @@ inline double SoundSpeed(double rho)
     return sqrt(7*P0*(pow(rho/rho0,6)/rho0));
 }
 
+}; // namespace SPH
 
 #endif // MECHSYS_SPH_SPECIAL_H

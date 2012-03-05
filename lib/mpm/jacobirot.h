@@ -18,6 +18,8 @@
 
 /* JacobiRot - Copyright (C) 2007 Dorival de Moraes Pedroso */
 
+/** @file mpm/jacobirot.h .*/
+
 #ifndef MPM_JACOBIROT_H
 #define MPM_JACOBIROT_H
 
