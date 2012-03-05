@@ -23,7 +23,7 @@ from   Blender import BGL, Draw, Window
 from   Blender.Mathutils import Vector
 import bpy
 import math
-import msys_dict as di
+import msys_blender_dict as di
 
 def sgn(val):
     if val<0.0: return -1.0

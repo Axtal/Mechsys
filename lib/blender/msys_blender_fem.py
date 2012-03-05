@@ -21,8 +21,8 @@ import subprocess, math
 import Blender, bpy
 from   Blender.Mathutils import Vector
 import mechsys   as ms
-import msys_dict as di
-import msys_mesh as me
+import msys_blender_dict as di
+import msys_blender_mesh as me
 
 
 def get_act_deact(obj, stg):

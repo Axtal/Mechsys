@@ -20,7 +20,7 @@ import math
 import Blender
 from   Blender.Mathutils import Vector
 import bpy
-import msys_dict as di
+import msys_blender_dict as di
 
 
 def export_points(filename):

@@ -20,7 +20,7 @@ import math, subprocess
 import time
 import Blender
 import bpy
-import msys_dict as di
+import msys_blender_dict as di
 import mechsys as ms
 
 
