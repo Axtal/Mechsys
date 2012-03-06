@@ -56,7 +56,6 @@ void Interacton::CalcForce(double dt)
 {
     double dist  = norm(D2->X - D1->X);
     double delta = D1->R + D2->R - dist;
-    //std::cout << delta << std::endl;
     if (delta>0)
     {
         Vec3_t n    = (D2->X - D1->X)/dist;

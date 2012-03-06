@@ -23,7 +23,7 @@
 // Std lib
 #include <iostream>
 #ifdef USE_THREAD
-    #include <thread>
+    #include <pthread.h>
 #endif
 
 // MechSys
@@ -32,6 +32,9 @@
 #include <mechsys/util/array.h>
 #include <mechsys/numerical/montecarlo.h>
 #include <mechsys/mesh/mesh.h>
+
+namespace DEM
+{
 
 struct ParticleProps
 {
@@ -73,7 +76,7 @@ public:
     ~Particle ();
 
     // Methods
-    void   Initialize         (size_t i=0, size_t NCalls=5000);                                           ///< Initialize this particle
+    void   Initialize         (size_t i=0, size_t NCalls=5000);                               ///< Initialize this particle
     void   InitializeVelocity (double dt = 1.0);                                              ///< Initialize this particle
     void   Rotate             (double dt);                                                    ///< Apply rotation on the particle once the total torque is found
     void   Rotate             (Quaternion_t & Q, Vec3_t & V);                                 ///< Apply rotation given by Quaternion Q at point v
@@ -86,7 +89,8 @@ public:
     bool   IsFree             () {return !vxf&&!vyf&&!vzf&&!wxf&&!wyf&&!wzf;};                ///< Ask if the particle has any constrain in its movement
 
 #ifdef USE_THREAD
-    std::mutex mtex;                 ///< to protect variables in multithreading
+    pthread_mutex_t lck;              ///< to protect variables in multithreading
+    //std::mutex mtex;                 ///< to protect variables in multithreading
 #endif
 
     int             Tag;             ///< Tag of the particle
@@ -268,6 +272,10 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
         Faces.Push (new Face(verts));
     }
     for (size_t i=0; i<E.Size(); i++) Edges.Push (new Edge((*Verts[E[i][0]]), (*Verts[E[i][1]])));
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
+    
 }
 
 inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, double TheRho)
@@ -340,6 +348,9 @@ inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, dou
         }
         Faces.Push (new Face(verts));
     }
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
 }
 
 inline Particle::~Particle()
@@ -814,5 +825,5 @@ inline double Particle::Iyz (double * X)
 {
     return -(X[1]-x(1))*(X[2]-x(2))*IsInside(X);
 }
-
+}
 #endif // MECHSYS_DEM_PARTICLE_H

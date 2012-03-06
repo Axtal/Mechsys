@@ -26,6 +26,9 @@
 // MechSys
 #include <mechsys/dem/quaternion.h>
 
+namespace DEM
+{
+
 class Edge
 {
 public:
@@ -93,4 +96,5 @@ inline void Edge::Draw (std::ostream & os, double Radius, char const * Color, bo
     }
 }
 
+}
 #endif // MECHSYS_DEM_EDGE_H

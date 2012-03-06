@@ -26,6 +26,9 @@
 #include <mechsys/vtk/ugrid.h>
 #include <mechsys/vtk/win.h>
 
+namespace DEM
+{
+
 class Visualise
 {
 public:
@@ -301,6 +304,7 @@ inline Visualise::~Visualise ()
 
 inline void Visualise::AddTo (VTK::Win & win)
 {
+
     PartFaces.AddTo (win);
     WallFaces.AddTo (win);
     for (size_t i=0; i<SphParts .Size(); ++i) SphParts [i]->AddTo (win);
@@ -308,4 +312,6 @@ inline void Visualise::AddTo (VTK::Win & win)
     for (size_t i=0; i<PartEdges.Size(); ++i) PartEdges[i]->AddTo (win);
     for (size_t i=0; i<WallVerts.Size(); ++i) WallVerts[i]->AddTo (win);
     for (size_t i=0; i<WallEdges.Size(); ++i) WallEdges[i]->AddTo (win);
+}
+
 }

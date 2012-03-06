@@ -26,6 +26,9 @@
 #include <mechsys/dem/basic_functions.h>
 #include <mechsys/util/array.h>
 
+namespace DEM
+{
+
 class Face
 {
 public:
@@ -147,5 +150,5 @@ inline void Face::Draw (std::ostream & os, double Radius, char const * Color, bo
         POVDrawPolygon (vs,os,Color);
     }
 }
-
+}
 #endif // MECHSYS_DEM_FACE_H

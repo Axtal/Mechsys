@@ -26,6 +26,9 @@
 // MechSys
 #include <mechsys/dem/torus.h>
 
+namespace DEM
+{
+
 class Cylinder
 {
 public:
@@ -98,4 +101,5 @@ inline void Cylinder::Draw (std::ostream & os, double Radius, char const * Color
     }
 }
 
+}
 #endif // MECHSYS_DEM_CYLINDER_H

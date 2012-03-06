@@ -52,41 +52,6 @@
 namespace DEM
 {
 
-#ifdef USE_THREAD
-void GlobalForce(Array<Interacton *> * I, double dt, size_t n, size_t Np)
-{
-	size_t Ni = I->Size()/Np;
-    size_t In = n*Ni;
-    size_t Fn;
-    n == Np-1 ? Fn = I->Size() : Fn = (n+1)*Ni;
-	for (size_t i=In;i<Fn;i++)
-	{
-		(*I)[i]->CalcForce(dt);
-	}
-}
-
-void GlobalMove(Array<Particle *> * P, double dt, double & MaxD, size_t n, size_t Np)
-{
-	size_t Ni = P->Size()/Np;
-    size_t In = n*Ni;
-    size_t Fn;
-    n == Np-1 ? Fn = P->Size() : Fn = (n+1)*Ni;
-    MaxD      = 0.0;
-	for (size_t i=In;i<Fn;i++)
-	{
-		(*P)[i]->Translate(dt);
-		(*P)[i]->Rotate(dt);
-		//double temp = (*P)[i]->MaxDisplacement();
-        //if (temp > MaxD) MaxD = temp;
-
-	}
-    //std::cout << MaxD << " mu  " << n << std::endl;
-}
-
-#endif
-
-
-    
 class Domain
 {
 public:
@@ -153,6 +118,11 @@ public:
     void   AngularMomentum (Vec3_t & L);                    ///< Return total angular momentum of the system
     double CalcEnergy      (double & Ekin, double & Epot);  ///< Return total energy of the system
 
+#ifdef USE_THREAD
+    pthread_mutex_t lck;              ///< to protect variables in multithreading
+    Array<pair<size_t, size_t> >                      ListPosPairs;                ///< List of all possible particles pairs
+#endif
+
     // Data
     bool                                              Initialized;                 ///< System (particles and interactons) initialized ?
     bool                                              Finished;                    ///< Has the simulation finished
@@ -210,6 +180,149 @@ public:
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
+#ifdef USE_THREAD
+
+struct MtData
+{
+    size_t                  ProcRank; ///< Rank of the thread
+    size_t                    N_Proc; ///< Total number of threads
+    DEM::Domain *                Dom; ///< Pointer to the lbm domain
+    double                       Dmx; ///< Maximun displacement
+    double                        dt; ///< Time step
+    Array<pair<size_t,size_t> >   LC; ///< A temporal list of new contacts
+    Array<size_t>                LCI; ///< A temporal array of posible Cinteractions
+    Array<size_t>                LCB; ///< A temporal array of posible Binteractions
+};
+
+void * GlobalIni(void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+    Array<Particle * > * P = &dat.Dom->Particles;
+	size_t Ni = P->Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
+	for (size_t i=In;i<Fn;i++)
+	{
+        // set the force and torque to the fixed values
+        (*P)[i]->F = (*P)[i]->Ff;
+        (*P)[i]->T = (*P)[i]->Tf;
+        for (size_t n=0;n<3;n++)
+        {
+            for (size_t m=0;m<3;m++)  
+            {
+                (*P)[i]->M(n,m)=0.0;
+                (*P)[i]->B(n,m)=0.0;
+            }
+        }
+
+        // initialize the coordination (number of contacts per particle) number
+        (*P)[i]->Cn = 0.0;
+    }
+}
+
+void * GlobalForce(void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+    Array<Interacton * > * I = &dat.Dom->Interactons;
+	size_t Ni = I->Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = I->Size() : Fn = (dat.ProcRank+1)*Ni;
+	for (size_t i=In;i<Fn;i++)
+	{
+		(*I)[i]->CalcForce(dat.dt);
+	}
+}
+
+void * GlobalMove(void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+    Array<Particle * > * P = &dat.Dom->Particles;
+	size_t Ni = P->Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.Dmx = 0.0;
+	for (size_t i=In;i<Fn;i++)
+	{
+		(*P)[i]->Translate(dat.dt);
+		(*P)[i]->Rotate(dat.dt);
+        if ((*P)[i]->MaxDisplacement()>dat.Dmx) dat.Dmx = (*P)[i]->MaxDisplacement();
+	}
+}
+
+void * GlobalResetDisplacement(void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+    Array<Particle * > * P = &dat.Dom->Particles;
+	size_t Ni = P->Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.Dmx = 0.0;
+	for (size_t i=In;i<Fn;i++)
+    {
+        (*P)[i]->ResetDisplacements();
+    }
+
+}
+
+void * GlobalResetContacts1 (void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+	size_t Ni = dat.Dom->ListPosPairs.Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->ListPosPairs.Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.LC.Resize(0);
+
+    for (size_t n=In;n<Fn;n++)
+    {
+        size_t i = dat.Dom->ListPosPairs[n].first;
+        size_t j = dat.Dom->ListPosPairs[n].second;
+        bool pi_has_vf = !dat.Dom->Particles[i]->IsFree();
+        bool pj_has_vf = !dat.Dom->Particles[j]->IsFree();
+
+        bool close = (Distance(dat.Dom->Particles[i]->x,dat.Dom->Particles[j]->x)<=dat.Dom->Particles[i]->Dmax+dat.Dom->Particles[j]->Dmax+2*dat.Dom->Alpha);
+        if ((pi_has_vf && pj_has_vf) || !close) continue;
+        
+        // checking if the interacton exist for that pair of particles
+        set<pair<Particle *, Particle *> >::iterator it = dat.Dom->Listofpairs.find(make_pair(dat.Dom->Particles[i],dat.Dom->Particles[j]));
+        if (it != dat.Dom->Listofpairs.end())
+        {
+            continue;
+        }
+        dat.LC.Push(make_pair(i,j));
+    }
+}
+
+void * GlobalResetContacts2 (void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+	size_t Ni = dat.Dom->CInteractons.Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->CInteractons.Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.LCI.Resize(0);
+    for (size_t n=In;n<Fn;n++)
+    {
+        if(dat.Dom->CInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LCI.Push(n);
+    }
+	Ni = dat.Dom->BInteractons.Size()/dat.N_Proc;
+    In = dat.ProcRank*Ni;
+    Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->BInteractons.Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.LCB.Resize(0);
+    for (size_t n=In;n<Fn;n++)
+    {
+        if(dat.Dom->CInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LCB.Push(n);
+    }
+}
+
+
+
+#endif
 
 // Constructor & Destructor
 
@@ -217,6 +330,9 @@ inline Domain::Domain (void * UD)
     :  Initialized(false), Time(0.0), Alpha(0.05), UserData(UD)
 {
     CamPos = 1.0, 2.0, 3.0;
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
 }
 
 inline Domain::~Domain ()
@@ -1414,19 +1530,141 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
     // solve
     double t0   = Time;     // initial time
-    double tout = t0+dtOut; // time position for output
+    double tout = t0; // time position for output
 
-    // report
     Finished = false;
-    if (ptReport!=NULL) (*ptReport) ((*this), UserData);
 
     // string to output energy data, if user gives the FileKey
     std::ostringstream oss_energy; 
     EnergyOutput (idx_out, oss_energy);
 
+#ifdef USE_THREAD
+    DEM::MtData MTD[Nproc];
+    for (size_t i=0;i<Nproc;i++)
+    {
+        MTD[i].N_Proc   = Nproc;
+        MTD[i].ProcRank = i;
+        MTD[i].Dom      = this;
+        MTD[i].Dmx      = 0.0;
+        MTD[i].dt       = dt;
+    }
+    pthread_t thrs[Nproc];
+     
+    for (size_t i=0; i<Particles.Size()-1; i++)
+    for (size_t j=i+1; j<Particles.Size(); j++)
+    {
+        ListPosPairs.Push(make_pair(i,j));
+    }
+#endif
     // run
     while (Time<tf)
     {
+
+        // output
+        if (Time>=tout)
+        {
+            if (BInteractons.Size()>0) Clusters();
+            if (ptReport!=NULL) (*ptReport) ((*this), UserData);
+            if (TheFileKey!=NULL)
+            {
+                String fn;
+                fn.Printf    ("%s_%04d", TheFileKey, idx_out);
+                if(RenderVideo) WritePOV     (fn.CStr());
+                EnergyOutput (idx_out, oss_energy);
+            }
+            idx_out++;
+            tout += dtOut;
+        }
+#ifdef USE_THREAD
+        //Initialize particles
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_create(&thrs[i], NULL, GlobalIni, &MTD[i]);
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_join(thrs[i], NULL);
+        }
+
+        //Calculate forces
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_create(&thrs[i], NULL, GlobalForce, &MTD[i]);
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_join(thrs[i], NULL);
+        }
+
+        // tell the user function to update its data
+        if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
+
+        //Calculate forces
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_create(&thrs[i], NULL, GlobalMove, &MTD[i]);
+        }
+        double maxdis = 0.0;
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_join(thrs[i], NULL);
+            if (maxdis<MTD[i].Dmx) maxdis = MTD[i].Dmx;
+        }
+        if (maxdis>Alpha)
+        {
+            //std::cout << "1" << std::endl;
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_create(&thrs[i], NULL, GlobalResetDisplacement, &MTD[i]);
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
+                for (size_t j=0;j<MTD[i].LC.Size();j++)
+                {
+                    size_t n = MTD[i].LC[j].first;
+                    size_t m = MTD[i].LC[j].second;
+                    Listofpairs.insert(make_pair(Particles[n],Particles[m]));
+                    if (Particles[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
+                    {
+                        CInteractons.Push (new CInteractonSphere(Particles[n],Particles[m]));
+                    }
+                    else
+                    {
+                        CInteractons.Push (new CInteracton(Particles[n],Particles[m]));
+                    }
+                }
+            }
+            //std::cout << "2 " << CInteractons.Size() << std::endl;
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_create(&thrs[i], NULL, GlobalResetContacts2, &MTD[i]);
+            }
+            Interactons.Resize(0);
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
+                for (size_t j=0;j<MTD[i].LCI.Size();j++)
+                {
+                    Interactons.Push(CInteractons[MTD[i].LCI[j]]);
+                }
+                for (size_t j=0;j<MTD[i].LCB.Size();j++)
+                {
+                    Interactons.Push(BInteractons[MTD[i].LCI[j]]);
+                }
+            }
+            //std::cout << "2 " << Interactons.Size() << std::endl;
+        }
+#else 
+
 
         // initialize forces and torques
         for (size_t i=0; i<Particles.Size(); i++)
@@ -1451,23 +1689,10 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         }
 
         // calc contact forces: collision and bonding (cohesion)
-#ifdef USE_THREAD
-        // declare a thread array for the interactons
-		vector<std::thread> IT;
-		for (size_t n=0;n<Nproc;n++)
-		{
-			IT.push_back(std::thread(std::bind(GlobalForce,&Interactons,dt,n,Nproc)));
-		}
-		for (size_t n=0;n<Nproc;n++)
-		{
-			IT[n].join();
-		}
-#else
         for (size_t i=0; i<Interactons.Size(); i++)
         {
             Interactons[i]->CalcForce (dt);
         }
-#endif
 
         // calculate the collision energy
         for (size_t i=0; i<CInteractons.Size(); i++)
@@ -1479,67 +1704,26 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         // tell the user function to update its data
         if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
 
-
         // move particles
-#ifdef USE_THREAD
-        // declare a thread array for the particles
-		vector<std::thread> MT;
-        Array<double>   TMD;
-        TMD.Resize(Nproc);
-		for (size_t n=0;n<Nproc;n++)
-		{
-             //call the function move for each thread
-			MT.push_back(std::thread(std::bind(GlobalMove,&Particles,dt,TMD[n],n,Nproc)));
-		}
-		for (size_t n=0;n<Nproc;n++)
-		{
-            // wait for all the threads to finish
-			MT[n].join();
-		}
-#else 
         for (size_t i=0; i<Particles.Size(); i++)
         {
             Particles[i]->Translate (dt);
             Particles[i]->Rotate    (dt);
         }
-#endif
 
-        // output
-        if (Time>=tout)
-        {
-            idx_out++;
-            if (BInteractons.Size()>0) Clusters();
-            if (ptReport!=NULL) (*ptReport) ((*this), UserData);
-            if (TheFileKey!=NULL)
-            {
-                String fn;
-                fn.Printf    ("%s_%04d", TheFileKey, idx_out);
-                if(RenderVideo) WritePOV     (fn.CStr());
-                EnergyOutput (idx_out, oss_energy);
-            }
-            tout += dtOut;
-        }
-
-
-        // next time position
-        Time += dt;
-
-
-#ifdef USE_THREAD
-        double maxdis = TMD.TheMax();
-        //std::cout << TMD.TheMax() << std::endl;
-        maxdis = MaxDisplacement();
-#else 
         double maxdis = MaxDisplacement();
-#endif
+
         // update the Halos
         if (maxdis>Alpha)
         {
             ResetDisplacements();
             ResetContacts();
         }
+#endif
+        
 
-        //if (fabs(Time-7.15013)<1.0e-5) WriteBPY("test");
+        // next time position
+        Time += dt;
     }
 
     // last output
@@ -1989,7 +2173,7 @@ inline double Domain::MaxDisplacement()
 }
 
 inline void Domain::ResetContacts()
-{
+{   
     for (size_t i=0; i<Particles.Size()-1; i++)
     {
         bool pi_has_vf = !Particles[i]->IsFree();
@@ -2021,7 +2205,6 @@ inline void Domain::ResetContacts()
             }
         }
     }
-
     Interactons.Resize(0);
     for (size_t i=0; i<CInteractons.Size(); i++)
     {
@@ -2062,7 +2245,10 @@ inline double Domain::CalcEnergy (double & Ekin, double & Epot)
     Ekin = 0.0;
     for (size_t i=0; i<Particles.Size(); i++)
     {
-        Ekin += Particles[i]->Ekin + Particles[i]->Erot;
+        Ekin += 0.5*Particles[i]->Props.m*dot(Particles[i]->v,Particles[i]->v)
+                + 0.5*(Particles[i]->I(0)*Particles[i]->w(0)*Particles[i]->w(0)
+                      +Particles[i]->I(1)*Particles[i]->w(1)*Particles[i]->w(1)
+                      +Particles[i]->I(2)*Particles[i]->w(2)*Particles[i]->w(2));
     }
 
     // potential energy

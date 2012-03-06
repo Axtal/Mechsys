@@ -26,6 +26,9 @@
 // MechSys
 #include <mechsys/dem/face.h>
 
+namespace DEM
+{
+
 class Torus
 {
 public:
@@ -90,5 +93,5 @@ inline void Torus::Draw (std::ostream & os, double Radius, char const * Color, b
            <<"\n pigment { color "<<Color<<" } }\n";
     }
 }
-
+}
 #endif // MECHSYS_DEM_TORUS_H

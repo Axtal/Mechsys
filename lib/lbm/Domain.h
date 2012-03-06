@@ -104,7 +104,7 @@ struct MtData
 
 void * GlobalSetZeroGamma(void * Data)
 {
-    MtData & dat = (*static_cast<MtData *>(Data));
+    LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
     for (size_t i=0;i<dat.Dom->Lat.Size();i++)
     {
         dat.Dom->Lat[i].SetZeroGamma(dat.ProcRank, dat.N_Proc);
@@ -113,19 +113,19 @@ void * GlobalSetZeroGamma(void * Data)
 
 void * GlobalApplyForce (void * Data)
 {
-    MtData & dat = (*static_cast<MtData *>(Data));
+    LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
     dat.Dom->ApplyForce(dat.ProcRank, dat.N_Proc);
 }
 
 void * GlobalCollide (void * Data)
 {
-    MtData & dat = (*static_cast<MtData *>(Data));
+    LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
     dat.Dom->Collide(dat.ProcRank, dat.N_Proc);
 }
 
 void * GlobalBounceBack (void * Data)
 {
-    MtData & dat = (*static_cast<MtData *>(Data));
+    LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
     for (size_t i=0;i<dat.Dom->Lat.Size();i++)
     {
         dat.Dom->Lat[i].BounceBack(dat.ProcRank, dat.N_Proc);
@@ -134,7 +134,7 @@ void * GlobalBounceBack (void * Data)
 
 void * GlobalStream (void * Data)
 {
-    MtData & dat = (*static_cast<MtData *>(Data));
+    LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
     for (size_t i=0;i<dat.Dom->Lat.Size();i++)
     {
         dat.Dom->Lat[i].Stream(dat.ProcRank, dat.N_Proc);
@@ -143,7 +143,7 @@ void * GlobalStream (void * Data)
 
 void * GlobalStream1 (void * Data)
 {
-    MtData & dat = (*static_cast<MtData *>(Data));
+    LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
     for (size_t i=0;i<dat.Dom->Lat.Size();i++)
     {
         dat.Dom->Lat[i].Stream1(dat.ProcRank, dat.N_Proc);
@@ -152,7 +152,7 @@ void * GlobalStream1 (void * Data)
 
 void * GlobalStream2 (void * Data)
 {
-    MtData & dat = (*static_cast<MtData *>(Data));
+    LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
     for (size_t i=0;i<dat.Dom->Lat.Size();i++)
     {
         dat.Dom->Lat[i].Stream2(dat.ProcRank, dat.N_Proc);
@@ -755,7 +755,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         }
     }
 #ifdef USE_THREAD
-    MtData MTD[Nproc];
+    LBM::MtData MTD[Nproc];
     for (size_t i=0;i<Nproc;i++)
     {
         MTD[i].N_Proc   = Nproc;

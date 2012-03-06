@@ -17,33 +17,18 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-// Std lib
-#include <math.h>
-
-// GSL
-#include <gsl/gsl_linalg.h>
-
 // MechSys
 #include <mechsys/dem/domain.h>
-#include <mechsys/dem/distance.h>
-#include <mechsys/util/fatal.h>
-
-using std::cout;
-using std::endl;
-using std::map;
-using std::pair;
-using DEM::Domain;
 
 int main(int argc, char **argv) try
 {
     // domain
-	Domain d;
-    d.Alpha = 0.1;
+    DEM::Domain d;
 
     // add cube
-	Vec3_t x(-10,0,0);     // position
+	Vec3_t x(-10,0,0);    // position
     Vec3_t w(0,M_PI/5,0); //  rot veloc
-    Vec3_t v(1.,0,0);      // veloc
+    Vec3_t v(1.,0,0);     // veloc
 	d.AddCube (-1, x,0.3,3.,1.);
     d.Particles[0]->v = v;
     d.Particles[0]->w = w;
@@ -55,14 +40,11 @@ int main(int argc, char **argv) try
     d.AddTetra (-1, x,0.5,5.,1.);
     d.Particles[1]->v = v;
     d.Particles[1]->w = w;
-
+    
+    // Particle parameters
     Dict B;
     B.Set(-1,"Gn Gt Mu",0.0,0.0,0.0);
     d.SetProps(B);
-
-    // initialize
-    double dt = 1.0e-5;
-    d.Initialize(dt);
 
     // initial constants
     Vec3_t l0(0,0,0);  // initial linear momentum
@@ -71,12 +53,10 @@ int main(int argc, char **argv) try
     d.LinearMomentum  (p0);
     d.AngularMomentum (l0);
     E0 = d.CalcEnergy (Ek0,Ep0); 
-    d.Save("test_dynamics");
 
     // solve
     d.CamPos = 0.0,30.0,0.0;
-    d.Solve(/*tf*/30.0, dt, /*dtOut*/0.5, NULL, NULL, "test_dynamics");
-    d.Save("test_dynamics");
+    d.Solve(/*tf*/30.0, 1.0e-4, /*dtOut*/0.3, NULL, NULL, "test_dynamics");
 
     // final constants
     Vec3_t l1(0,0,0);  // initial linear momentum
@@ -87,11 +67,12 @@ int main(int argc, char **argv) try
     E1 = d.CalcEnergy (Ek1,Ep1); 
 
     // check
-    double tol   = 0.1;
+    double tol   = 1.0e-3;
     double err_l = norm(l1-l0);
     double err_p = norm(p1-p0);
     double err_E = fabs(E1-E0);
     double error = err_l + err_p + err_E;
+    cout << "Error in energy           = " << err_E <<endl;
     cout << "Error in angular momentum = " << err_l <<endl;
     cout << "Error in linear  momentum = " << err_p <<endl;
 

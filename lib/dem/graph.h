@@ -27,6 +27,8 @@
 #include <mechsys/util/array.h>
 #include <mechsys/linalg/matvec.h>
 
+namespace DEM
+{
 
 /////////////////////////////////////////////////////////////////////////////////////////// PovRay /////
 
@@ -106,4 +108,5 @@ inline void BPYDrawPolygon (Array<Vec3_t> const & V, std::ostream & os)
     }
 }
 
+}
 #endif // MECHSYS_DEM_GRAPH_H

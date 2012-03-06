@@ -25,6 +25,9 @@
 #include <mechsys/dem/face.h>
 #include <mechsys/dem/cylinder.h>
 
+namespace DEM
+{
+
 inline void Distance (Vec3_t const & V, Edge const & E, Vec3_t & Xi, Vec3_t & Xf)
 {
     double t = (dot(V,E.dL)-dot((*E.X0),E.dL))/(dot(E.dL,E.dL));
@@ -270,5 +273,7 @@ inline double Distance (Cylinder const & C1, Vec3_t const & V0)
     Vec3_t Xi,Xf;
     Distance (C1,V0,Xi,Xf);
     return norm(Xf-Xi);
+}
+
 }
 #endif // MECHSYS_DEM_DISTANCE_H

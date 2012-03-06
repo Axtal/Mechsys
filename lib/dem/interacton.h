@@ -29,6 +29,9 @@
 // MechSys
 #include <mechsys/dem/particle.h>
 
+namespace DEM
+{
+
 // typedefs
 typedef std::map<std::pair<int,int>,Vec3_t> FrictionMap_t;
 typedef Array<pair<int,int> > ListContacts_t;
@@ -247,7 +250,6 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
         if (delta>0)
         {
             if (delta > 0.8*(P1->Props.R+P2->Props.R)) throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
-
             // Count a contact
             Nc++;
 
@@ -282,8 +284,10 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             Vec3_t F = Fn + Kt*FMap[p] + Gn*dot(n,vrel)*n + Gt*vt;
             if (dot(F,n)<0) F-=dot(F,n)*n;
 #ifdef USE_THREAD
-            std::lock_guard<std::mutex> lk1(P1->mtex);
-            std::lock_guard<std::mutex> lk2(P2->mtex);
+            pthread_mutex_lock(&P1->lck);
+            pthread_mutex_lock(&P2->lck);
+            //std::lock_guard<std::mutex> lk1(P1->mtex);
+            //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
             P1->F += -F;
             P2->F +=  F;
@@ -312,6 +316,10 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
                     this->B(m,n) = nor(m)*nor(n);
                 }
             }
+#ifdef USE_THREAD
+            pthread_mutex_unlock(&P1->lck);
+            pthread_mutex_unlock(&P2->lck);
+#endif
 
             // potential energy
             Epot += 0.5*Kn*delta*delta+0.5*Kt*dot(FMap[p],FMap[p]);
@@ -382,8 +390,10 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
     Vec3_t Tt = P1->Props.R*cross(Normal,Ft);
     Vec3_t T;
 #ifdef USE_THREAD
-    std::lock_guard<std::mutex> lk1(P1->mtex);
-    std::lock_guard<std::mutex> lk2(P2->mtex);
+    pthread_mutex_lock(&P1->lck);
+    pthread_mutex_lock(&P2->lck);
+    //std::lock_guard<std::mutex> lk1(P1->mtex);
+    //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
     Quaternion_t q;
     Conjugate (P1->Q,q);
@@ -394,6 +404,10 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
     Conjugate (P2->Q,q);
     Rotation  (Tt,q,T);
     P2->T -= T;
+#ifdef USE_THREAD
+    pthread_mutex_unlock(&P1->lck);
+    pthread_mutex_unlock(&P2->lck);
+#endif
 }
 
 inline void CInteractonSphere::CalcForce(double dt)
@@ -544,8 +558,10 @@ inline void BInteracton::CalcForce(double dt)
         Vec3_t Ft   = -Bt*td/L0 - Gt*vt;
 
 #ifdef USE_THREAD
-        std::lock_guard<std::mutex> lk1(P1->mtex);
-        std::lock_guard<std::mutex> lk2(P2->mtex);
+        pthread_mutex_lock(&P1->lck);
+        pthread_mutex_lock(&P2->lck);
+        //std::lock_guard<std::mutex> lk1(P1->mtex);
+        //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
         //Adding forces and torques
         Fnet   = Fn+Ft;
@@ -574,6 +590,10 @@ inline void BInteracton::CalcForce(double dt)
         P1->T -= T;
         Rotation  (Tt,q2,T);
         P2->T += T;
+#ifdef USE_THREAD
+        pthread_mutex_unlock(&P1->lck);
+        pthread_mutex_unlock(&P2->lck);
+#endif
 
         //Breaking point
         if ((L0*fabs(delta)+norm(td)+0.0*fabs(Ant-An)*L0>L0*eps)&&(eps>=0.0))
@@ -591,5 +611,7 @@ inline void BInteracton::UpdateParameters ()
     Gn              = 2*ReducedValue(P1->Props.Gn,P2->Props.Gn)*ReducedValue(P1->Props.m,P2->Props.m);
     Gt              = 2*ReducedValue(P1->Props.Gt,P2->Props.Gt)*ReducedValue(P1->Props.m,P2->Props.m);
     eps             = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
+}
+
 }
 #endif //  MECHSYS_DEM_INTERACTON_H

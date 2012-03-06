@@ -30,8 +30,8 @@ using DEM::Domain;
 
 struct UserData
 {
-    Particle         * p1;  // Upper plane
-    Particle         * p2;  // Lower plane
+    DEM::Particle         * p1;  // Upper plane
+    DEM::Particle         * p2;  // Lower plane
     Vec3_t          force;  // Force on planes
     double              S;  // Vertical separation of the planes
     std::ofstream  oss_ss;  // File to store the forces
@@ -147,8 +147,8 @@ int main(int argc, char **argv) try
 
     Vec3_t velocity(0.0,strf*radius/Tf,0.0);
 
-    Particle * p1 = d.GetParticle(-2);
-    Particle * p2 = d.GetParticle(-3);
+    DEM::Particle * p1 = d.GetParticle(-2);
+    DEM::Particle * p2 = d.GetParticle(-3);
     p1->FixVeloc();
     p1->v =  velocity;
     p2->FixVeloc();

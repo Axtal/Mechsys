@@ -28,32 +28,34 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
+    size_t Nproc = 1; 
+    if (argc==2) Nproc=atoi(argv[1]);
     size_t nx = 200;
     size_t ny = 200;
-    //size_t nz = 100;
-    size_t nz = 1;
+    size_t nz = 200;
+    //size_t nz = 1;
     double nu = 1.0/6.0;
     double dx = 1.0;
     double dt = 1.0;
     double Tf = 10000.0;
-    //LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
-    LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,nz), dx, dt);
+    LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
+    //LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,nz), dx, dt);
     //Dom.Lat[0].Rhoref =  2.0;
     //Dom.Lat[0].G      = -4.0;
     //Dom.Lat[0].Gs     =  0.0;
-    Dom.Lat[0].G      = -150.0;
+    Dom.Lat[0].G      = -200.0;
     Dom.Lat[0].Gs     =  0.0;
     
-    //for (size_t i=0;i<nx;i++)
-    //for (size_t j=0;j<ny;j++)
-    //{
-        //Dom.Lat[0].GetCell(iVec3_t(i,0   ,j))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(i,ny-1,j))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(i,j,ny-1))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(0   ,i,j))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(ny-1,i,j))->IsSolid = true;
-    //}
+    for (size_t i=0;i<nx;i++)
+    for (size_t j=0;j<ny;j++)
+    {
+        Dom.Lat[0].GetCell(iVec3_t(i,0   ,j))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,ny-1,j))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,j,ny-1))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(0   ,i,j))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(ny-1,i,j))->IsSolid = true;
+    }
 
 
 	for (size_t i=0; i<nx; ++i)
@@ -68,6 +70,6 @@ int main(int argc, char **argv) try
 	}
 
 	// Solve
-    Dom.Solve(Tf,50.0,NULL,NULL,"bubble");
+    Dom.Solve(Tf,50.0,NULL,NULL,"bubble",true,Nproc);
 }
 MECHSYS_CATCH

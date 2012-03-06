@@ -26,6 +26,8 @@
 // Stl
 #include <algorithm>
 
+namespace DEM
+{
 
 inline void PolyhedraMP(Array<Vec3_t> & V, Array<Array <int> > & F, double & vol, Vec3_t & CM, Mat3_t & It) // Calculate mass properties of general polyhedra
 {
@@ -292,6 +294,6 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
     }
     F = Ftemp;
 }
-
+}
 #endif //MECHSYS_DEM_SPECIAL_H
 
