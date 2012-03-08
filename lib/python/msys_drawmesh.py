@@ -33,7 +33,7 @@ class DrawMesh:
     #    [ 2, -4,   0.0,  1.0],
     #    [ 3, -3,   1.0,  1.0]]
     #
-    # C=[[ 0, -1, [0,1,3,2], {0:-10,1:-20,2:-30,3:-40}]]
+    # C=[[ 0, -1, [0,1,3,2], {0:-10,1:-20,2:-30,3:-40}, {}]]
     #
     # pct: percentage of drawing limits to use for icons
     def __init__(self, V,C, Pins={}, Shares={}, pct=0.001, fsz1=8, fsz2=6):
@@ -64,9 +64,13 @@ class DrawMesh:
         allx      = [v[2] for v in self.V]
         ally      = [v[3] for v in self.V]
         self.lims = array([min(allx),max(allx),min(ally),max(ally)])
+        self.diag = sqrt((self.lims[1]-self.lims[0])**2.0+(self.lims[3]-self.lims[2])**2.0)
+
+        # noise to move tags and ids
+        self.yidnoise = 0.005*self.diag
 
         # icon's length
-        self.l = self.pct*sqrt((self.lims[1]-self.lims[0])**2.0+(self.lims[3]-self.lims[2])**2.0)
+        self.l = self.pct*self.diag
 
         # matplotlib's structures
         self.PH = MPL.path.Path
@@ -266,11 +270,11 @@ class DrawMesh:
                     text(v[2], v[3], s, va='bottom', ha='right', color='black', backgroundcolor='white', fontsize=self.fsz2)
                 # ids
                 s = '%d' % v[0]
-                text(v[2], v[3], s, va='bottom', ha='left', color='black', backgroundcolor=self.lyellow, fontsize=self.fsz1)
+                text(v[2], v[3]+self.yidnoise, s, va='bottom', ha='right', color='black', backgroundcolor=self.lyellow, fontsize=self.fsz1)
                 tag = v[1]
                 # tag
                 if tag<0 and with_tags:
-                    text(v[2], v[3], '%d'%tag, va='top', color='black', backgroundcolor=self.orange, fontsize=self.fsz2)
+                    text(v[2], v[3]-self.yidnoise, '%d'%tag, va='top', ha='left', color='black', backgroundcolor=self.orange, fontsize=self.fsz2)
 
         # pins
         for key, val in self.Pins.iteritems():

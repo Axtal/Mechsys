@@ -18,8 +18,6 @@
 
 /**
   @mainpage MechSys: Reference Manual
-  @author Dorival Pedroso
-  @date March, 2012
 
   @section s_convlibs Convenience Libraries
   @subsection ss_util Utilities
