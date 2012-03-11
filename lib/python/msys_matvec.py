@@ -18,6 +18,8 @@
 
 from numpy import matrix, linalg, sqrt, zeros
 
+# Vector
+# ======
 class Vector(matrix):
     # Constructor
     # ===========
@@ -47,6 +49,9 @@ class Vector(matrix):
             lin += '\n'
         print lin,
 
+
+# Matrix
+# ======
 class Matrix(matrix):
     # Determinant
     # ===========
@@ -90,7 +95,24 @@ class Matrix(matrix):
             lin += '\n'
         print lin,
 
+
+# Create vector with zeros
+# ========================
+def ZeroVec(m): return Vector(zeros((m,1)))
+
+
+# Create matrix with zeros
+# ========================
+def ZeroMat(m,n): return Matrix(zeros((m,n)))
+
+
+# Vector dot product
+# ==================
 def Dot (U,V): return (U.T*V)[0]
+
+
+# Vector dyadic product
+# =====================
 def Dyad(U,V):
     m = U.shape[0]
     n = V.shape[0]
@@ -100,6 +122,9 @@ def Dyad(U,V):
             M[i,j] = U[i]*V[j]
     return M
 
+
+# test
+# ====
 if __name__=="__main__":
 
     K = Matrix([[1., 2., 3., 4.],

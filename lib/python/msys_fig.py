@@ -35,11 +35,12 @@ from matplotlib.ticker       import FuncFormatter
 import mpl_toolkits.mplot3d.axes3d as A3D
 from matplotlib.ticker import MaxNLocator
 
-
 # to stop clipping:
 # plot(..., clip_on=0)
 
 
+# Set figure proportions
+# ======================
 def SetForEps (proport=0.75, fig_width_pt=455.24):
     # fig_width_pt = 455.24411                  # Get this from LaTeX using \showthe\columnwidth
     inches_per_pt = 1.0/72.27                   # Convert pt to inch
@@ -57,6 +58,9 @@ def SetForEps (proport=0.75, fig_width_pt=455.24):
               'figure.figsize': fig_size}
     rcParams.update(params)
 
+
+# Save fig with extra artists
+# ===========================
 def Save (filename, extra_artists=[]):
     savefig (filename, bbox_inches='tight', bbox_extra_artists=extra_artists)
     print 'File <[1;34m%s[0m> written'%filename
@@ -67,27 +71,48 @@ def Save (filename, extra_artists=[]):
 # t1 = ax.text(-0.2,0.5,'text',transform=ax.transAxes)
 # fig.savefig('test.png', bbox_inches='tight', bbox_extra_artists=[t1])
 
+
+# Set number of x ticks
+# =====================
 # ex.: ax = subplot(2,2,1); SetXnticks(ax, 4)
 def SetXnticks(subplot_fig, num):  subplot_fig.xaxis.set_major_locator(MaxNLocator(num))
 
+
+# Legend
+# ======
 def Leg (fsz=8, ncol=1): legend (loc='best',prop={'size':fsz},ncol=ncol)
 
+
+# Grid
+# ====
 def Grid (color='grey', zorder=-100): grid (color=color, zorder=zorder)
 
-def Lbl (xl, yl, leg=True, grd=True):
+
+# Grid, labels and legend
+# =======================
+def Gll (xl, yl, leg=True, grd=True):
     xlabel(xl)
     ylabel(yl)
     if leg: Leg()
     if grd: Grid()
 
+
+# Draw cross through zero
+# =======================
 def Cross (x0=0.0, y0=0.0, clr='black', ls='dashed', lw=1):
     axvline(x0, color=clr, linestyle=ls, linewidth=lw)
     axhline(y0, color=clr, linestyle=ls, linewidth=lw)
 
+
+# Add text
+# ========
 def Text (x, y, txt, x_offset=0, y_offset=0, units='points', va='bottom', ha='left', color='black', fontsize=10):
     trans = offset_copy(gca().transData, fig=gcf(), x=x_offset, y=y_offset, units=units)
     text(x, y, txt, transform=trans, va=va, ha=ha, color=color, fontsize=fontsize)
 
+
+# Draw arc
+# ========
 def Arc (xc,yc,R, alp_min=0.0, alp_max=pi, ec='red', fc='None', lw=2, ls='solid', label=None, useArc=True, res=200, zorder=0):
     if useArc:
         gca().add_patch(MPLArc([xc,yc], 2.*R,2.*R, clip_on=False, angle=0, theta1=alp_min*180.0/pi, theta2=alp_max*180.0/pi, ls=ls, color=ec, lw=lw, label=label, zorder=zorder))
@@ -102,12 +127,21 @@ def Arc (xc,yc,R, alp_min=0.0, alp_max=pi, ec='red', fc='None', lw=2, ls='solid'
         ph = MPLPath (vert, cmd)
         gca().add_patch(PathPatch(ph, fc=fc, ec=ec, linewidth=lw, linestyle=ls, label=label, zorder=zorder))
 
+
+# Draw arrow
+# ==========
 def Arrow (xi,yi, xf,yf, scale=20, fc='#a2e3a2', ec='black', zorder=0):
     gca().add_patch(FancyArrowPatch((xi,yi), (xf,yf), arrowstyle='simple', mutation_scale=scale, ec=ec, fc=fc, zorder=zorder))
 
-def Tetragon (x0,y0, x1,y1, x2,y2, x3,y3, fc='#a2e3a2', ec='black', zorder=0, alpha=1.0):
+
+# Draw quad = tetragon
+# ====================
+def Quad (x0,y0, x1,y1, x2,y2, x3,y3, fc='#a2e3a2', ec='black', zorder=0, alpha=1.0):
     gca().add_patch(Polygon(array([[x0,y0],[x1,y1],[x2,y2],[x3,y3]]), ec=ec, fc=fc, zorder=zorder, alpha=alpha))
 
+
+# Plot contour
+# ============
 def Contour (X,Y,Z, label, nlevels=16, cmap=None, fmt='%g', wire=True):
     c1 = contourf (X,Y,Z, cmap=cmap)
     if wire: c2 = contour (X,Y,Z, nlevels=nlevels, colors=('k'))
@@ -115,6 +149,9 @@ def Contour (X,Y,Z, label, nlevels=16, cmap=None, fmt='%g', wire=True):
     cb.ax.set_ylabel (label)
     if wire: clabel (c2, inline=0)
 
+
+# Get ordered color
+# =================
 def GetClr (idx=0, scheme=1): # color
     if scheme==1:
         C = ['blue', 'green', 'cyan', 'black', 'magenta', 'orange', 'red', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8', 'yellow']
@@ -122,10 +159,14 @@ def GetClr (idx=0, scheme=1): # color
         C = ['blue', 'green', 'red', 'cyan', 'magenta', 'orange', 'black', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8', 'yellow']
     return C[idx % len(C)]
 
+
+# Get ordered line style
+# ======================
 def GetLst (idx=0): # linestyle
     L = ['solid', 'dashed', 'dotted']
     #L = ['solid', 'dashed', 'dash_dot', 'dotted']
     return L[idx % len(L)]
+
 
 # Read file with table
 # ====================
