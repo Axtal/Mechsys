@@ -21,7 +21,7 @@ from os.path import basename
 from numpy.linalg import norm, eig
 from numpy import pi, sin, cos, tan, arcsin, arccos, arctan2, log, log10, exp, sqrt
 from numpy import array, linspace, insert, repeat, zeros, matrix, ones, eye, arange, diag, dot
-from numpy import logical_or, logical_and
+from numpy import logical_or, logical_and, delete
 from pylab import rcParams, gca, gcf, clf, savefig
 from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline, title, xticks
 from pylab import contour, contourf, colorbar, clabel, xlim
@@ -90,10 +90,10 @@ def Grid (color='grey', zorder=-100): grid (color=color, zorder=zorder)
 
 # Grid, labels and legend
 # =======================
-def Gll (xl, yl, leg=True, grd=True):
+def Gll (xl, yl, leg=True, grd=True, leg_ncol=1):
     xlabel(xl)
     ylabel(yl)
-    if leg: Leg()
+    if leg: Leg(ncol=leg_ncol)
     if grd: Grid()
 
 
@@ -109,6 +109,12 @@ def Cross (x0=0.0, y0=0.0, clr='black', ls='dashed', lw=1):
 def Text (x, y, txt, x_offset=0, y_offset=0, units='points', va='bottom', ha='left', color='black', fontsize=10):
     trans = offset_copy(gca().transData, fig=gcf(), x=x_offset, y=y_offset, units=units)
     text(x, y, txt, transform=trans, va=va, ha=ha, color=color, fontsize=fontsize)
+
+
+# Add text inside box
+# ===================
+def TextBox (x, y, txt, fsz=10):
+    text(x, y, txt, bbox={'facecolor':'white'}, fontsize=fsz)
 
 
 # Draw arc
