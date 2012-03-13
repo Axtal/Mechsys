@@ -37,11 +37,18 @@ public:
     void CalcForce      (double dt);
     bool UpdateContacts (double Alpha);
 
+#ifdef USE_THREAD
+    pthread_mutex_t lck;   ///< Lock to protect variables from race conditions.
+#endif
+
     //Data
     Particle * D1;       ///< Pointer to first particle
     Particle * D2;       ///< Pointer to second particle
-    double     Kn;       ///< Spring constant 
+    double     Kn;       ///< Normal Spring constant 
+    double     Kt;       ///< Tangential Spring constant 
     double     Gn;       ///< dissipation constant
+    double     Mu;       ///< Friction coefficient
+    Vec3_t    SFr;       ///< Vector of static friction
 };
 
 Interacton::Interacton(Particle * Dp1, Particle * Dp2)
@@ -49,7 +56,13 @@ Interacton::Interacton(Particle * Dp1, Particle * Dp2)
     D1 = Dp1;
     D2 = Dp2;
     Kn = 2.0*ReducedValue(D1->Kn,D2->Kn);
+    Kt = 2.0*ReducedValue(D1->Kt,D2->Kt);
     Gn = 2.0*ReducedValue(D1->Gn,D2->Gn)*ReducedValue(D1->M,D2->M);
+    Mu = 2.0*ReducedValue(D1->Mu,D2->Mu);
+    SFr= 0.0;
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
 }
 
 void Interacton::CalcForce(double dt)
@@ -59,10 +72,30 @@ void Interacton::CalcForce(double dt)
     if (delta>0)
     {
         Vec3_t n    = (D2->X - D1->X)/dist;
+        Vec3_t Fn   = Kn*delta*n;
         Vec3_t Vrel = D1->V - D2->V;
-        Vec3_t F    = (Kn*delta + Gn*dot(n,Vrel))*n;
+        Vec3_t vt = Vrel - dot(n,Vrel)*n;
+        SFr      += dt*vt;
+        SFr      -= dot(SFr,n)*n;
+        Vec3_t tan= SFr;
+        if(norm(tan)>0.0) tan/=norm(tan);
+        if(norm(SFr)>Mu*norm(Fn)/Kt)
+        {
+            SFr = Mu*norm(Fn)/Kt*tan;
+        }
+        Vec3_t F    = Fn + Gn*dot(n,Vrel)*n + Kt*SFr;
+#ifdef USE_THREAD
+        //pthread_mutex_lock(&D1->lck);
+        //pthread_mutex_lock(&D2->lck);
+        pthread_mutex_lock(&lck);
+#endif
         D1->F      -= Kn*delta*n;
         D2->F      += Kn*delta*n;
+#ifdef USE_THREAD
+        //pthread_mutex_unlock(&D1->lck);
+        //pthread_mutex_unlock(&D2->lck);
+        pthread_mutex_unlock(&lck);
+#endif
     }
 }
 

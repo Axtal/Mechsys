@@ -71,7 +71,7 @@ int main(int argc, char **argv) try
     F[1] = 0, 3, 1;
     F[2] = 0, 2, 3;
     F[3] = 1, 3, 2;
-    d.Particles.Push (new Particle(-1,V,E,F,OrthoSys::O,OrthoSys::O,0.1,1.0));
+    d.Particles.Push (new DEM::Particle(-1,V,E,F,OrthoSys::O,OrthoSys::O,0.1,1.0));
 
 
     Mesh::Generic mesh(/*NDim*/3);

@@ -29,6 +29,7 @@
 
 namespace LBM
 {
+
 class Particle
 {
 public:
@@ -40,6 +41,9 @@ public:
     bool IsFree () {return !vf(0)&&!vf(1)&&!vf(2)&&!wf(0)&&!wf(1)&&!wf(2);}; ///< Ask if the particle has any constrain in its movement
     void ImprintDisk (Lattice & Lat);
 
+#ifdef USE_THREAD
+    pthread_mutex_t lck;   ///< Lock to protect variables from race conditions.
+#endif
     // Data
     int  Tag;              ///< Id of the particle
     Vec3_t X0;             ///< initial position of the particle
@@ -58,6 +62,8 @@ public:
     double GT;             ///< dissipation constant for the torque
     double Gn;             ///< dissipation constant for collision
     double Kn;             ///< Stiffness constant
+    double Kt;             ///< Tangential stiffness constant
+    double Mu;             ///< Friction coefficient
     bVec3_t vf;            ///< prescribed velocities
     bVec3_t wf;            ///< prescribed angular velocities
     
@@ -102,8 +108,6 @@ inline void Particle::Translate(double dt)
     //std::cout << T(2) << " " << W(2) << " " << Wb(2) << std::endl;
 }
 
-
-
 inline Disk::Disk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
 {
     Tag = TheTag;
@@ -121,16 +125,19 @@ inline Disk::Disk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t c
     wf  = false,false,false;
     GT  = 1.0e5;
     Kn  = 1.0e3;
+    Kt  = 5.0e2;
+    Mu  = 0.4;
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
 }
 
 inline void Particle::ImprintDisk(Lattice & Lat)
 {
     for (size_t n=std::max(0.0,double(X(0)-R-Lat.dx)/Lat.dx);n<=std::min(double(Lat.Ndim(0)-1),double(X(0)+R+Lat.dx)/Lat.dx);n++)
     for (size_t m=std::max(0.0,double(X(1)-R-Lat.dx)/Lat.dx);m<=std::min(double(Lat.Ndim(1)-1),double(X(1)+R+Lat.dx)/Lat.dx);m++)
-    //for (size_t i=0;i<Lat.Cells.Size();i++)
     {
         Cell  * cell = Lat.GetCell(iVec3_t(n,m,0));
-        //Cell  * cell = Lat.Cells[i];
         double x     = Lat.dx*cell->Index(0);
         double y     = Lat.dx*cell->Index(1);
         double z     = Lat.dx*cell->Index(2);
@@ -204,6 +211,11 @@ inline Sphere::Sphere(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3
     GT  = 1.0e5;
     Gn  = 8.0;
     Kn  = 1.0e3;
+    Kt  = 5.0e2;
+    Mu  = 0.4;
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
 }
 
 }

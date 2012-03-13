@@ -23,8 +23,6 @@
 // Stl
 #include <algorithm>
 
-namespace DEM
-{
 // Some functions for the mass properties integration
 inline double f1(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
 {
@@ -84,7 +82,6 @@ inline double ReducedValue(double A, double B) //Reduced Value for two quantitie
     double result = A*B;
     if (result>0.0) result/=(A+B);
     return result;
-}
 }
 #endif //MECHSYS_DEM_BASIC_H
 

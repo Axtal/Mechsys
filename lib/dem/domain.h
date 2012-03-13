@@ -119,7 +119,7 @@ public:
     double CalcEnergy      (double & Ekin, double & Epot);  ///< Return total energy of the system
 
 #ifdef USE_THREAD
-    pthread_mutex_t lck;              ///< to protect variables in multithreading
+    pthread_mutex_t lck;                                                           ///< to protect variables in multithreading
     Array<pair<size_t, size_t> >                      ListPosPairs;                ///< List of all possible particles pairs
 #endif
 
@@ -265,7 +265,6 @@ void * GlobalResetDisplacement(void * Data)
     {
         (*P)[i]->ResetDisplacements();
     }
-
 }
 
 void * GlobalResetContacts1 (void * Data)
@@ -319,8 +318,6 @@ void * GlobalResetContacts2 (void * Data)
         if(dat.Dom->CInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LCB.Push(n);
     }
 }
-
-
 
 #endif
 

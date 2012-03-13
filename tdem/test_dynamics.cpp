@@ -56,7 +56,7 @@ int main(int argc, char **argv) try
 
     // solve
     d.CamPos = 0.0,30.0,0.0;
-    d.Solve(/*tf*/30.0, 1.0e-4, /*dtOut*/0.3, NULL, NULL, "test_dynamics");
+    d.Solve(/*tf*/30.0, 1.0e-4, /*dtOut*/0.3, NULL, NULL, "test_dynamics", true, 1);
 
     // final constants
     Vec3_t l1(0,0,0);  // initial linear momentum
