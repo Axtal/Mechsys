@@ -21,7 +21,7 @@ from os.path import basename
 from numpy.linalg import norm, eig
 from numpy import pi, sin, cos, tan, arcsin, arccos, arctan2, log, log10, exp, sqrt
 from numpy import array, linspace, insert, repeat, zeros, matrix, ones, eye, arange, diag, dot
-from numpy import logical_or, logical_and, delete
+from numpy import logical_or, logical_and, delete, hstack, vstack
 from pylab import rcParams, gca, gcf, clf, savefig
 from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline, title, xticks
 from pylab import contour, contourf, colorbar, clabel, xlim
