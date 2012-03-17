@@ -199,7 +199,7 @@ inline void Distance (Vec3_t const & V0, Cylinder const & C1, Vec3_t & Xi, Vec3_
     if (s2<0.0) s2 = 0.0;
     Vec3_t P1,P2;
     P1 = C1.X0 + s1*DX + (C1.T0->R + s1*DR)*(cos(theta1)*xn+sin(theta1)*yn);
-    P2 = C1.X0 + s1*DX + (C1.T0->R + s2*DR)*(cos(theta2)*xn+sin(theta2)*yn);
+    P2 = C1.X0 + s2*DX + (C1.T0->R + s2*DR)*(cos(theta2)*xn+sin(theta2)*yn);
     double dist1 = norm(Xi-P1);
     double dist2 = norm(Xi-P2);
     if (dist1<dist2) Xf = P1;
