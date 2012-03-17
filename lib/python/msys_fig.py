@@ -18,10 +18,10 @@
 
 import os.path
 from os.path import basename
-from numpy.linalg import norm, eig
+from numpy.linalg import norm, eig, solve
 from numpy import pi, sin, cos, tan, arcsin, arccos, arctan2, log, log10, exp, sqrt
 from numpy import array, linspace, insert, repeat, zeros, matrix, ones, eye, arange, diag, dot
-from numpy import logical_or, logical_and, delete, hstack, vstack
+from numpy import logical_or, logical_and, delete, hstack, vstack, meshgrid, vectorize, transpose
 from pylab import rcParams, gca, gcf, clf, savefig
 from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline, title, xticks
 from pylab import contour, contourf, colorbar, clabel, xlim
@@ -32,11 +32,30 @@ from matplotlib.patches      import Arc  as MPLArc
 from matplotlib.path         import Path as MPLPath
 from matplotlib.font_manager import FontProperties
 from matplotlib.ticker       import FuncFormatter
-import mpl_toolkits.mplot3d.axes3d as A3D
+from mpl_toolkits.mplot3d    import Axes3D
 from matplotlib.ticker import MaxNLocator
 
 # to stop clipping:
 # plot(..., clip_on=0)
+
+# Plot 3D surface
+# ===============
+def PlotSurf(X,Y,Z,xlbl='X',ylbl='Y',zlbl='Z',zmin=None,zmax=None,cmapidx=0):
+    ax = gcf().gca(projection='3d')
+    ax.set_xlabel(xlbl)
+    ax.set_ylabel(ylbl)
+    ax.set_zlabel(zlbl)
+    ax.plot_surface(X,Y,Z,rstride=1,cstride=1,cmap=Cmap(cmapidx))
+    if zmin!=None and zmax!=None:
+        ax.set_zlim(zmin,zmax)
+    return ax
+
+
+# Get colormap
+# ============
+def Cmap(idx):
+    cmaps = [MPLcm.bwr, MPLcm.RdBu, MPLcm.hsv, MPLcm.jet, MPLcm.terrain]
+    return cmaps[idx % len(cmaps)]
 
 
 # Set figure proportions
