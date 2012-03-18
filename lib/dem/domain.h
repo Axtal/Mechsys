@@ -310,12 +310,11 @@ void * GlobalResetContacts2 (void * Data)
     }
 	Ni = dat.Dom->BInteractons.Size()/dat.N_Proc;
     In = dat.ProcRank*Ni;
-    Fn;
     dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->BInteractons.Size() : Fn = (dat.ProcRank+1)*Ni;
     dat.LCB.Resize(0);
     for (size_t n=In;n<Fn;n++)
     {
-        if(dat.Dom->CInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LCB.Push(n);
+        if(dat.Dom->BInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LCB.Push(n);
     }
 }
 
@@ -1655,7 +1654,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
                 }
                 for (size_t j=0;j<MTD[i].LCB.Size();j++)
                 {
-                    Interactons.Push(BInteractons[MTD[i].LCI[j]]);
+                    Interactons.Push(BInteractons[MTD[i].LCB[j]]);
                 }
             }
             //std::cout << "2 " << Interactons.Size() << std::endl;

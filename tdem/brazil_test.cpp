@@ -42,6 +42,7 @@ void Setup (DEM::Domain & dom, void *UD)
     UserData & dat = (*static_cast<UserData *>(UD));
     dat.force = 0.5*(dat.p2->F-dat.p1->F);
     dat.S     = dat.p2->x(1)-dat.p1->x(1);
+    //std::cout << (*dat.p2->Verts[0]) << std::endl;
 }
 
 void Report (DEM::Domain & dom, void *UD)
@@ -67,12 +68,57 @@ void Report (DEM::Domain & dom, void *UD)
     }
 }
 
+void CreateContact(DEM::Domain & dom, int Tag,  double angle, double angle0,size_t Ndiv, double R, double SR, double thick)
+{
+    Array<Vec3_t>       V(2*Ndiv+2);
+    Array<Array <int> > E(3*Ndiv+1);
+    Array<Array <int> > F(Ndiv);
+
+    for (size_t i=0; i<=Ndiv;i++) 
+    {
+        V[i       ] = Vec3_t((R+1.0*SR)*sin(i*angle*M_PI/(180.0*Ndiv)-0.5*angle*M_PI/180.0+angle0*M_PI/180.0),(R+1.0*SR)*cos(i*angle*M_PI/(180.0*Ndiv)-0.5*angle*M_PI/180.0+angle0*M_PI/180.0),-0.5*thick);
+        V[i+Ndiv+1] = Vec3_t((R+1.0*SR)*sin(i*angle*M_PI/(180.0*Ndiv)-0.5*angle*M_PI/180.0+angle0*M_PI/180.0),(R+1.0*SR)*cos(i*angle*M_PI/(180.0*Ndiv)-0.5*angle*M_PI/180.0+angle0*M_PI/180.0), 0.5*thick);
+        E[i+2*Ndiv].Resize(2);
+        E[i+2*Ndiv] = i,i+Ndiv+1;
+    }
+    for (size_t i=0; i<Ndiv;i++) 
+    {
+        E[i     ].Resize(2);
+        E[i     ] = i  ,i+1;
+        E[i+Ndiv].Resize(2);
+        E[i+Ndiv] = i+Ndiv+1,i+Ndiv+2;
+        F[i].Resize(4);
+        F[i]      = i,i+Ndiv+1,i+Ndiv+2,i+1;
+    }
+    Vec3_t centr(OrthoSys::O);
+    for (size_t i=0; i<V.Size();i++) 
+    {
+        centr += V[i];
+    }
+    centr/=V.Size();
+
+    dom.Particles.Push (new DEM::Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,SR,1.0));
+    dom.Particles[dom.Particles.Size()-1]->Q           = 1.0,0.0,0.0,0.0;
+    dom.Particles[dom.Particles.Size()-1]->Props.V     = thick*R*angle*M_PI/180.0;
+    dom.Particles[dom.Particles.Size()-1]->Props.m     = 10.0;
+    dom.Particles[dom.Particles.Size()-1]->I           = 1.0,1.0,1.0;
+    dom.Particles[dom.Particles.Size()-1]->x           = centr;
+    dom.Particles[dom.Particles.Size()-1]->Ekin        = 0.0;
+    dom.Particles[dom.Particles.Size()-1]->Erot        = 0.0;
+    dom.Particles[dom.Particles.Size()-1]->Dmax        = (R+SR)*angle*M_PI/180.0;
+    dom.Particles[dom.Particles.Size()-1]->PropsReady  = true;
+    dom.Particles[dom.Particles.Size()-1]->Index       = dom.Particles.Size()-1;
+}
+
 int main(int argc, char **argv) try
 {
-    if (argc!=2) throw new Fatal("This program must be called with one argument: the name of the data input file without the '.inp' suffix.\nExample:\t %s filekey\n",argv[0]);
+    if (argc<2) throw new Fatal("This program must be called with one argument: the name of the data input file without the '.inp' suffix.\nExample:\t %s filekey\n",argv[0]);
     String filekey  (argv[1]);
     String filename (filekey+".inp");
     ifstream infile(filename.CStr());
+    size_t Nproc = 1;
+    if (argc>2) Nproc = atoi(argv[2]);
+
     // set the simulation domain ////////////////////////////////////////////////////////////////////////////
     UserData dat; 
     Domain d(&dat);
@@ -91,6 +137,9 @@ int main(int argc, char **argv) try
     double eps         = 0.01;
     double Amax        = 10.0;
     double width       = 0.5;
+    double SR          = 0.1;
+    double angle0      = 0.1;
+    double angle       = 0.1;
     double dt          = 0.0001;
     double dtOut       = 0.1;
     double Tf          = 10.0;
@@ -111,6 +160,9 @@ int main(int argc, char **argv) try
     infile >> eps;                infile.ignore(200,'\n');
     infile >> Amax;               infile.ignore(200,'\n');
     infile >> width;              infile.ignore(200,'\n');
+    infile >> SR;                 infile.ignore(200,'\n');
+    infile >> angle0;             infile.ignore(200,'\n');
+    infile >> angle;              infile.ignore(200,'\n');
     infile >> dt;                 infile.ignore(200,'\n');
     infile >> dtOut;              infile.ignore(200,'\n');
     infile >> Tf;                 infile.ignore(200,'\n');
@@ -135,18 +187,19 @@ int main(int argc, char **argv) try
     d.Center();
     Vec3_t Xmin,Xmax;
     d.BoundingBox(Xmin,Xmax);
-    d.AddPlane(-2, Vec3_t(0.0,Xmin(1)-0.5*sqrt(Amax/10),0.0), 0.5*sqrt(Amax/10), width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
-    d.AddPlane(-3, Vec3_t(0.0,Xmax(1)+0.5*sqrt(Amax/10),0.0), 0.5*sqrt(Amax/10), width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
-    
-    // properties of particles prior the brazilian test
-    Dict B;
-    B.Set(-1,"Bn Bt Bm Gn Gt Eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
-    B.Set(-2,"Bn Bt Bm Gn Gt Eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
-    B.Set(-3,"Bn Bt Bm Gn Gt Eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
-    d.SetProps(B);
-
-    Vec3_t velocity(0.0,strf*radius/Tf,0.0);
-
+    Vec3_t velocity;
+    if (angle<1.0e-3)
+    {
+        d.AddPlane(-2, Vec3_t(0.0,Xmin(1)-0.5*sqrt(Amax/10),0.0), 0.5*sqrt(Amax/10), width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
+        d.AddPlane(-3, Vec3_t(0.0,Xmax(1)+0.5*sqrt(Amax/10),0.0), 0.5*sqrt(Amax/10), width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
+        velocity = Vec3_t(0.0,strf*radius/Tf,0.0);
+    }
+    else
+    {
+        CreateContact(d,-2,angle,angle0      ,10,radius,SR,thickness);
+        CreateContact(d,-3,angle,angle0+180.0,10,radius,SR,thickness);
+        velocity = -strf*radius/Tf*Vec3_t(sin(angle0),cos(angle0),0.0);
+    }
     DEM::Particle * p1 = d.GetParticle(-2);
     DEM::Particle * p2 = d.GetParticle(-3);
     p1->FixVeloc();
@@ -155,8 +208,17 @@ int main(int argc, char **argv) try
     p2->v = -velocity;
     dat.p1=p1;
     dat.p2=p2;
+    
+    // properties of particles prior the brazilian test
+    Dict B;
+    B.Set(-1,"Bn Bt Bm Gn Gt Eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
+    B.Set(-2,"Bn Bt Bm Gn Gt Eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
+    B.Set(-3,"Bn Bt Bm Gn Gt Eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
+    d.SetProps(B);
 
-    d.Solve(Tf, dt, dtOut, &Setup, &Report, filekey.CStr(),Render);
+    d.WriteBPY("test");
+
+    d.Solve(Tf, dt, dtOut, &Setup, &Report, filekey.CStr(),Render,Nproc);
 
 
     return 0;

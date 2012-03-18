@@ -118,7 +118,7 @@ public:
     double          Diam;            ///< Diameter of the parallelogram containing the particle
     double          Cn;              ///< Coordination number (number of contacts)
 
-    Array<Vec3_t*> Verts;            ///< Vertices
+    Array<Vec3_t*>      Verts;       ///< Vertices
     ParticleProps       Props;       ///< Properties
     Array<Vec3_t*>      Vertso;      ///< Original postion of the Vertices
     Array<Array <int> > EdgeCon;     ///< Conectivity of Edges 

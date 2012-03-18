@@ -54,6 +54,9 @@ public:
     Particle     * P2;        ///< Second particle
     size_t         I1;        ///< Index of the first particle
     size_t         I2;        ///< Index of the second particle
+#ifdef USE_THREAD
+    pthread_mutex_t lck;              ///< to protect variables in multithreading
+#endif
 };
 
 class CInteracton: public Interacton // Interacton for collision
@@ -173,6 +176,9 @@ inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
     Gt              = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
     Mu              = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
     CalcForce(0.0);
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
 }
 
 inline bool CInteracton::UpdateContacts (double alpha)
@@ -249,7 +255,11 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
         double delta = P1->Props.R + P2->Props.R - dist;
         if (delta>0)
         {
-            if (delta > 0.8*(P1->Props.R+P2->Props.R)) throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
+            if (delta > 0.8*(P1->Props.R+P2->Props.R))
+            {
+                std::cout << "mu" << std::endl; 
+                throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
+            }
             // Count a contact
             Nc++;
 
@@ -284,8 +294,9 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             Vec3_t F = Fn + Kt*FMap[p] + Gn*dot(n,vrel)*n + Gt*vt;
             if (dot(F,n)<0) F-=dot(F,n)*n;
 #ifdef USE_THREAD
-            pthread_mutex_lock(&P1->lck);
-            pthread_mutex_lock(&P2->lck);
+            pthread_mutex_lock(&lck);
+            //pthread_mutex_lock(&P1->lck);
+            //pthread_mutex_lock(&P2->lck);
             //std::lock_guard<std::mutex> lk1(P1->mtex);
             //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
@@ -317,8 +328,9 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
                 }
             }
 #ifdef USE_THREAD
-            pthread_mutex_unlock(&P1->lck);
-            pthread_mutex_unlock(&P2->lck);
+            pthread_mutex_unlock(&lck);
+            //pthread_mutex_unlock(&P1->lck);
+            //pthread_mutex_unlock(&P2->lck);
 #endif
 
             // potential energy
@@ -366,6 +378,9 @@ inline CInteractonSphere::CInteractonSphere (Particle * Pt1, Particle * Pt2)
     Lvv.Push(make_pair(0,0));
 
     CalcForce(0.0);
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
 }
 
 inline void CInteractonSphere::_update_rolling_resistance(double dt)
@@ -390,8 +405,9 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
     Vec3_t Tt = P1->Props.R*cross(Normal,Ft);
     Vec3_t T;
 #ifdef USE_THREAD
-    pthread_mutex_lock(&P1->lck);
-    pthread_mutex_lock(&P2->lck);
+    pthread_mutex_lock(&lck);
+    //pthread_mutex_lock(&P1->lck);
+    //pthread_mutex_lock(&P2->lck);
     //std::lock_guard<std::mutex> lk1(P1->mtex);
     //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
@@ -405,8 +421,9 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
     Rotation  (Tt,q,T);
     P2->T -= T;
 #ifdef USE_THREAD
-    pthread_mutex_unlock(&P1->lck);
-    pthread_mutex_unlock(&P2->lck);
+    pthread_mutex_unlock(&lck);
+    //pthread_mutex_unlock(&P1->lck);
+    //pthread_mutex_unlock(&P2->lck);
 #endif
 }
 
@@ -515,6 +532,9 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     if (arg<-1.0) arg=-1.0;
     An         = acos(arg);
     if (dot(cross(p1,p2),n1)<0) An = -An;
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
 }
 
 inline bool BInteracton::UpdateContacts (double alpha)
@@ -558,8 +578,9 @@ inline void BInteracton::CalcForce(double dt)
         Vec3_t Ft   = -Bt*td/L0 - Gt*vt;
 
 #ifdef USE_THREAD
-        pthread_mutex_lock(&P1->lck);
-        pthread_mutex_lock(&P2->lck);
+        pthread_mutex_lock(&lck);
+        //pthread_mutex_lock(&P1->lck);
+        //pthread_mutex_lock(&P2->lck);
         //std::lock_guard<std::mutex> lk1(P1->mtex);
         //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
@@ -591,8 +612,9 @@ inline void BInteracton::CalcForce(double dt)
         Rotation  (Tt,q2,T);
         P2->T += T;
 #ifdef USE_THREAD
-        pthread_mutex_unlock(&P1->lck);
-        pthread_mutex_unlock(&P2->lck);
+        pthread_mutex_unlock(&lck);
+        //pthread_mutex_unlock(&P1->lck);
+        //pthread_mutex_unlock(&P2->lck);
 #endif
 
         //Breaking point
