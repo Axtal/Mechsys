@@ -18,7 +18,9 @@
 
 import os.path
 from os.path import basename
+from scipy.special import erfc
 from numpy.linalg import norm, eig, solve
+from numpy import cosh, sinh
 from numpy import pi, sin, cos, tan, arcsin, arccos, arctan2, log, log10, exp, sqrt
 from numpy import array, linspace, insert, repeat, zeros, matrix, ones, eye, arange, diag, dot
 from numpy import logical_or, logical_and, delete, hstack, vstack, meshgrid, vectorize, transpose
@@ -99,7 +101,7 @@ def SetXnticks(subplot_fig, num):  subplot_fig.xaxis.set_major_locator(MaxNLocat
 
 # Legend
 # ======
-def Leg (fsz=8, ncol=1): legend (loc='best',prop={'size':fsz},ncol=ncol)
+def Leg (fsz=8, ncol=1, loc='best'): legend (loc=loc,prop={'size':fsz},ncol=ncol)
 
 
 # Grid
@@ -109,10 +111,10 @@ def Grid (color='grey', zorder=-100): grid (color=color, zorder=zorder)
 
 # Grid, labels and legend
 # =======================
-def Gll (xl, yl, leg=True, grd=True, leg_ncol=1):
+def Gll (xl, yl, leg=True, grd=True, leg_ncol=1, leg_loc='best'):
     xlabel(xl)
     ylabel(yl)
-    if leg: Leg(ncol=leg_ncol)
+    if leg: Leg(ncol=leg_ncol, loc=leg_loc)
     if grd: Grid()
 
 
@@ -167,12 +169,16 @@ def Quad (x0,y0, x1,y1, x2,y2, x3,y3, fc='#a2e3a2', ec='black', zorder=0, alpha=
 
 # Plot contour
 # ============
-def Contour (X,Y,Z, label, nlevels=16, cmap=None, fmt='%g', wire=True):
-    c1 = contourf (X,Y,Z, cmap=cmap)
-    if wire: c2 = contour (X,Y,Z, nlevels=nlevels, colors=('k'))
-    cb = colorbar (c1, format=fmt)
-    cb.ax.set_ylabel (label)
-    if wire: clabel (c2, inline=0)
+def Contour (X,Y,Z, label, nlevels=None, cmapidx=0, fmt='%g', wire=True, cbar=True):
+    L = None
+    if nlevels!=None: L = linspace(Z.min(), Z.max(), nlevels)
+    c1 = contourf (X,Y,Z, cmap=Cmap(cmapidx), levels=L)
+    if wire:
+        c2 = contour (X,Y,Z, nlevels=nlevels, colors=('k'), levels=L)
+        clabel (c2, inline=0)
+    if cbar:
+        cb = colorbar (c1, format=fmt)
+        cb.ax.set_ylabel (label)
 
 
 # Get ordered color
