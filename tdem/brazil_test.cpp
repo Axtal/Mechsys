@@ -196,8 +196,8 @@ int main(int argc, char **argv) try
     }
     else
     {
-        CreateContact(d,-2,angle,angle0      ,10,radius,SR,thickness);
-        CreateContact(d,-3,angle,angle0+180.0,10,radius,SR,thickness);
+        CreateContact(d,-2,angle,angle0      ,20*angle/30.0,radius,SR,thickness);
+        CreateContact(d,-3,angle,angle0+180.0,20*angle/30.0,radius,SR,thickness);
         velocity = -strf*radius/Tf*Vec3_t(sin(angle0),cos(angle0),0.0);
     }
     DEM::Particle * p1 = d.GetParticle(-2);
@@ -211,9 +211,9 @@ int main(int argc, char **argv) try
     
     // properties of particles prior the brazilian test
     Dict B;
-    B.Set(-1,"Bn Bt Bm Gn Gt Eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
-    B.Set(-2,"Bn Bt Bm Gn Gt Eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
-    B.Set(-3,"Bn Bt Bm Gn Gt Eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
+    B.Set(-1,"Bn Bt Bm Gn Gt Eps Kn Kt"   ,Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt);
+    B.Set(-2,"Bn Bt Bm Gn Gt Eps Kn Kt Mu",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt,0.0);
+    B.Set(-3,"Bn Bt Bm Gn Gt Eps Kn Kt Mu",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt,0.0);
     d.SetProps(B);
 
     d.WriteBPY("test");

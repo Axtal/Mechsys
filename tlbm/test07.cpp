@@ -134,6 +134,8 @@ int main(int argc, char **argv) try
     for (size_t i=0;i<Dom.Particles.Size();i++)
     {
         Dom.Particles[i]->Kn = 1.0e5*rho/500.0;
+        Dom.Particles[i]->Kt = 0.5e5*rho/500.0;
+        Dom.Particles[i]->Eta= 0.0;
     }
 
     //Solving

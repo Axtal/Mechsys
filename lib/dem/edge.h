@@ -24,7 +24,7 @@
 #include <cmath>
 
 // MechSys
-#include <mechsys/dem/quaternion.h>
+#include <mechsys/linalg/quaternion.h>
 
 namespace DEM
 {

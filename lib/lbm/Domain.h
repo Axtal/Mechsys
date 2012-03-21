@@ -159,6 +159,7 @@ void * GlobalMove(void * Data)
 	for (size_t i=In;i<Fn;i++)
 	{
 		(*P)[i]->Translate(dat.dt);
+		(*P)[i]->Rotate   (dat.dt);
         if (norm((*P)[i]->X-(*P)[i]->X0)>dat.Dmx) dat.Dmx = norm((*P)[i]->X-(*P)[i]->X0);
 	}
 }
@@ -355,43 +356,55 @@ inline void Domain::WriteXDMF(char const * FileKey)
         delete [] Vvec    ;
     }
 
-    //Creating data sets
-    float * Radius = new float[  Particles.Size()];
-    float * Posvec = new float[3*Particles.Size()];
-    float * Velvec = new float[3*Particles.Size()];
-    int   * Tags   = new int  [  Particles.Size()];
 
     //Writing particle data
-    for (size_t i=0;i<Particles.Size();i++)
+    if (Particles.Size()>0)
     {
-        Radius[i]     = (float) Particles[i]->R;
-        Posvec[3*i  ] = (float) Particles[i]->X(0);
-        Posvec[3*i+1] = (float) Particles[i]->X(1);
-        Posvec[3*i+2] = (float) Particles[i]->X(2);
-        Velvec[3*i  ] = (float) Particles[i]->V(0);
-        Velvec[3*i+1] = (float) Particles[i]->V(1);
-        Velvec[3*i+2] = (float) Particles[i]->V(2);
-        Tags  [i]     = (int)   Particles[i]->Tag;
+        //Creating data sets
+        float * Radius = new float[  Particles.Size()];
+        float * Posvec = new float[3*Particles.Size()];
+        float * Velvec = new float[3*Particles.Size()];
+        float * Omevec = new float[3*Particles.Size()];
+        int   * Tags   = new int  [  Particles.Size()];
+        for (size_t i=0;i<Particles.Size();i++)
+        {
+            Vec3_t Ome;
+            Rotation(Particles[i]->W,Particles[i]->Q,Ome);
+            Radius[i]     = (float) Particles[i]->R;
+            Posvec[3*i  ] = (float) Particles[i]->X(0);
+            Posvec[3*i+1] = (float) Particles[i]->X(1);
+            Posvec[3*i+2] = (float) Particles[i]->X(2);
+            Velvec[3*i  ] = (float) Particles[i]->V(0);
+            Velvec[3*i+1] = (float) Particles[i]->V(1);
+            Velvec[3*i+2] = (float) Particles[i]->V(2);
+            Omevec[3*i  ] = (float)  Ome(0);
+            Omevec[3*i+1] = (float)  Ome(1);
+            Omevec[3*i+2] = (float)  Ome(2);
+            Tags  [i]     = (int)   Particles[i]->Tag;
+        }
+
+        hsize_t dims[1];
+        dims[0] = 3*Particles.Size();
+        String dsname;
+        dsname.Printf("Position");
+        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Posvec);
+        dsname.Printf("Velocity");
+        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Velvec);
+        dsname.Printf("AngVel");
+        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Omevec);
+        dims[0] = Particles.Size();
+        dsname.Printf("Radius");
+        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Radius);
+        dsname.Printf("Tag");
+        H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,Tags  );
+
+
+        delete [] Radius;
+        delete [] Posvec;
+        delete [] Velvec;
+        delete [] Omevec;
+        delete [] Tags  ;
     }
-
-    hsize_t dims[1];
-    dims[0] = 3*Particles.Size();
-    String dsname;
-    dsname.Printf("Position");
-    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Posvec);
-    dsname.Printf("Velocity");
-    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Velvec);
-    dims[0] = Particles.Size();
-    dsname.Printf("Radius");
-    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Radius);
-    dsname.Printf("Tag");
-    H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,Tags  );
-
-
-    delete [] Radius;
-    delete [] Posvec;
-    delete [] Velvec;
-    delete [] Tags  ;
     
     //Closing the file
     H5Fclose(file_id);
@@ -488,7 +501,8 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "     </Attribute>\n";
         }
         oss << "   </Grid>\n";
-
+        if(Particles.Size()>0)
+        {
         oss << "   <Grid Name=\"mesh2\" GridType=\"Uniform\">\n";
         oss << "     <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"" << Particles.Size() << "\"/>\n";
         oss << "     <Geometry GeometryType=\"XYZ\">\n";
@@ -511,8 +525,13 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "        " << fn.CStr() <<":/Velocity\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"AngVel\" AttributeType=\"Vector\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/AngVel\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
         oss << "   </Grid>\n";
-
+        }
         oss << " </Domain>\n";
         oss << "</Xdmf>\n";
     }
@@ -846,7 +865,9 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                         continue;
                     }
                     Vec3_t B      = C - Pa->X;
-                    Vec3_t VelP   = Pa->V + cross(Pa->W,B);
+                    Vec3_t tmp;
+                    Rotation(Pa->W,Pa->Q,tmp);
+                    Vec3_t VelP   = Pa->V + cross(tmp,B);
                     double rho = cell->Rho;
                     double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
                     for (size_t k=0;k<cell->Nneigh;k++)
@@ -856,7 +877,12 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                         cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
                         Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k];
                         Pa->F          += Flbm;
-                        Pa->T          += cross(B,Flbm);
+                        Vec3_t T,Tt;
+                        Tt =           cross(B,Flbm);
+                        Quaternion_t q;
+                        Conjugate    (Pa->Q,q);
+                        Rotation     (Tt,q,T);
+                        Pa->T          += T;
                     }
                 }
             }
@@ -1204,7 +1230,11 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
         //Move Particles
         for(size_t i=0;i<Interactons.Size();i++) Interactons[i]->CalcForce(dt);
-        for(size_t i=0;i<Particles.Size()  ;i++) Particles[i]->Translate(dt);
+        for(size_t i=0;i<Particles.Size()  ;i++) 
+        {
+            Particles[i]->Translate(dt);
+            Particles[i]->Rotate(dt);
+        }
 
         //Move fluid
         if (Lat.Size()>1||fabs(Lat[0].G)>1.0e-12) ApplyForce();

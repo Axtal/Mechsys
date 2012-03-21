@@ -26,6 +26,7 @@
 
 // Mechsys
 #include <mechsys/lbm/Lattice.h>
+#include <mechsys/linalg/quaternion.h>
 
 namespace LBM
 {
@@ -37,6 +38,7 @@ public:
 
     //Methods
     void Translate   (double dt);
+    void Rotate      (double dt);
     void FixVelocity () {vf=true,true,true; wf=true,true,true;};
     bool IsFree () {return !vf(0)&&!vf(1)&&!vf(2)&&!wf(0)&&!wf(1)&&!wf(2);}; ///< Ask if the particle has any constrain in its movement
     void ImprintDisk (Lattice & Lat);
@@ -56,14 +58,17 @@ public:
     Vec3_t Ff;             ///< fixed Force
     Vec3_t T;              ///< Torque
     Vec3_t Tf;             ///< fixed Torque
+    Quaternion_t Q;        ///< The quaternion representing the rotation
     double R;              ///< Disk radius
     double M;              ///< mass of the disk
     double I;              ///< inertia moment of the particle
-    double GT;             ///< dissipation constant for the torque
     double Gn;             ///< dissipation constant for collision
+    double Gt;             ///< dissipation constant for collision
     double Kn;             ///< Stiffness constant
     double Kt;             ///< Tangential stiffness constant
     double Mu;             ///< Friction coefficient
+    double Beta;           ///< Rolling stiffness coeffcient
+    double Eta;            ///< Plastic moment coefficient
     bVec3_t vf;            ///< prescribed velocities
     bVec3_t wf;            ///< prescribed angular velocities
     
@@ -74,9 +79,6 @@ class Disk: public Particle
 public:
     //Constructor
     Disk(int Tag, Vec3_t const & X, Vec3_t const & V, Vec3_t const & W, double rho, double R, double dt);
-
-    //Imprint method
-    void ImprintDisk(Lattice & Lat);
 };
 
 class Sphere: public Particle
@@ -97,15 +99,39 @@ inline void Particle::Translate(double dt)
     V         = 0.5*(Xa - Xb)/dt;
     Xb        = X;
     X         = Xa;
+}
 
-    //if (wf(0)) T(0) = 0.0;
-    //if (wf(1)) T(1) = 0.0;
-    //if (wf(2)) T(2) = 0.0;
-    //Vec3_t Wa = Wb + 2*dt*(T-GT*W)/I;
-    //Wb        = W;
-    //W         = Wa;
+inline void Particle::Rotate (double dt)
+{
+    double q0,q1,q2,q3,wx,wy,wz;
+    q0 = 0.5*Q(0);
+    q1 = 0.5*Q(1);
+    q2 = 0.5*Q(2);
+    q3 = 0.5*Q(3);
 
-    //std::cout << T(2) << " " << W(2) << " " << Wb(2) << std::endl;
+    if (wf(0)) T(0) = 0.0;
+    if (wf(1)) T(1) = 0.0;
+    if (wf(2)) T(2) = 0.0;
+
+    Vec3_t Td = T/I;
+    W = Wb+0.5*dt*Td;
+    wx = W(0);
+    wy = W(1);
+    wz = W(2);
+    Quaternion_t dq(-(q1*wx+q2*wy+q3*wz),q0*wx-q3*wy+q2*wz,q3*wx+q0*wy-q1*wz,-q2*wx+q1*wy+q0*wz),qm;
+
+    Wb  = Wb+Td*dt;
+    qm  = Q+dq*(0.5*dt);
+    q0  = 0.5*qm(0);
+    q1  = 0.5*qm(1);
+    q2  = 0.5*qm(2);
+    q3  = 0.5*qm(3);
+    wx  = Wb(0);
+    wy  = Wb(1);
+    wz  = Wb(2);
+    dq  = Quaternion_t(-(q1*wx+q2*wy+q3*wz),q0*wx-q3*wy+q2*wz,q3*wx+q0*wy-q1*wz,-q2*wx+q1*wy+q0*wz);
+    Quaternion_t Qd = (qm+dq*0.5*dt),temp;
+    Q  = Qd/norm(Qd);
 }
 
 inline Disk::Disk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
@@ -123,74 +149,18 @@ inline Disk::Disk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t c
     Tf  = 0.0,0.0,0.0;
     vf  = false,false,false;
     wf  = false,false,false;
-    GT  = 1.0e5;
+    Gn  = 8.0;
+    Gt  = 0.0;
     Kn  = 1.0e3;
     Kt  = 5.0e2;
     Mu  = 0.4;
+    Eta = 1.0;  
+    Beta = 0.12; 
+    Q    = 1.0,0.0,0.0,0.0;
+
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
 #endif
-}
-
-inline void Particle::ImprintDisk(Lattice & Lat)
-{
-    for (size_t n=std::max(0.0,double(X(0)-R-Lat.dx)/Lat.dx);n<=std::min(double(Lat.Ndim(0)-1),double(X(0)+R+Lat.dx)/Lat.dx);n++)
-    for (size_t m=std::max(0.0,double(X(1)-R-Lat.dx)/Lat.dx);m<=std::min(double(Lat.Ndim(1)-1),double(X(1)+R+Lat.dx)/Lat.dx);m++)
-    {
-        Cell  * cell = Lat.GetCell(iVec3_t(n,m,0));
-        double x     = Lat.dx*cell->Index(0);
-        double y     = Lat.dx*cell->Index(1);
-        double z     = Lat.dx*cell->Index(2);
-        Vec3_t  C(x,y,z);
-
-        Array<Vec3_t> P(4);
-
-        P[0] = C - 0.5*Lat.dx*OrthoSys::e0 - 0.5*Lat.dx*OrthoSys::e1;
-        P[1] = C + 0.5*Lat.dx*OrthoSys::e0 - 0.5*Lat.dx*OrthoSys::e1;
-        P[2] = C + 0.5*Lat.dx*OrthoSys::e0 + 0.5*Lat.dx*OrthoSys::e1;
-        P[3] = C - 0.5*Lat.dx*OrthoSys::e0 + 0.5*Lat.dx*OrthoSys::e1;
-
-        double len = 0.0;
-        for (size_t j=0;j<4;j++)
-        {
-            Vec3_t D = P[(j+1)%4] - P[j];
-            double a = dot(D,D);
-            double b = 2*dot(P[j]-X,D);
-            double c = dot(P[j]-X,P[j]-X) - R*R;
-            if (b*b-4*a*c>0.0)
-            {
-                double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
-                double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
-                if (ta>1.0&&tb>1.0) continue;
-                if (ta<0.0&&tb<0.0) continue;
-                if (ta<0.0) ta = 0.0;
-                if (tb>1.0) tb = 1.0;
-                len += norm((tb-ta)*D);
-            }
-        }
-
-        if (len>0.0)
-        {
-            cell->Gamma   = std::max(len/(4*Lat.dx),cell->Gamma);
-            if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat.G)>1.0e-12) continue;
-            Vec3_t B      = C - X;
-            Vec3_t VelP   = V + cross(W,B);
-            Vec3_t V   = cell->Vel;
-            double rho = cell->Rho;
-            double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
-            for (size_t j=0;j<cell->Nneigh;j++)
-            {
-                //double Feqn    = cell->Feq(j,                   V,rho);
-                double Fvpp    = cell->Feq(cell->Op[j],VelP,rho);
-                double Fvp     = cell->Feq(j          ,VelP,rho);
-                //cell->Omeis[j] = Fvp - cell->F[j] + (1.0 - 1.0/cell->Tau)*(cell->F[j] - Feqn);
-                cell->Omeis[j] = cell->F[cell->Op[j]] - Fvpp - (cell->F[j] - Fvp);
-                Vec3_t Flbm    = -Bn*cell->Omeis[j]*cell->C[j];
-                F             += Flbm;
-                T             += cross(B,Flbm);
-            }
-        }
-    }
 }
 
 inline Sphere::Sphere(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
@@ -208,11 +178,14 @@ inline Sphere::Sphere(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3
     Tf  = 0.0,0.0,0.0;
     vf  = false,false,false;
     wf  = false,false,false;
-    GT  = 1.0e5;
     Gn  = 8.0;
+    Gt  = 0.0;
     Kn  = 1.0e3;
     Kt  = 5.0e2;
     Mu  = 0.4;
+    Eta = 1.0;  
+    Beta = 0.12; 
+    Q    = 1.0,0.0,0.0,0.0;
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
 #endif

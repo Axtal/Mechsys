@@ -30,8 +30,6 @@
 // MechSys
 #include <mechsys/linalg/matvec.h>
 
-namespace DEM
-{
 
 typedef blitz::TinyVector<double,4> Quaternion_t;
 
@@ -85,7 +83,5 @@ inline void Rotation (Vec3_t const & A, Quaternion_t const & B, Vec3_t & C)
     Conjugate         (B,t3);
     QuaternionProduct (t2,t3,t1);
     GetVector         (t1,C);
-}
-
 }
 #endif // MECHSYS_DEM_QUATERNION_H
