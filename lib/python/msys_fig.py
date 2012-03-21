@@ -134,8 +134,8 @@ def Text (x, y, txt, x_offset=0, y_offset=0, units='points', va='bottom', ha='le
 
 # Add text inside box
 # ===================
-def TextBox (x, y, txt, fsz=10):
-    text(x, y, txt, bbox={'facecolor':'white'}, fontsize=fsz)
+def TextBox (x, y, txt, fsz=10, ha='left'):
+    text(x, y, txt, bbox={'facecolor':'white'}, fontsize=fsz, ha=ha)
 
 
 # Draw arc
