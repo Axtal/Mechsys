@@ -17,12 +17,37 @@
 ########################################################################
 
 from   os.path import abspath, basename, exists, isfile, isdir, expanduser, join, normpath, split, splitext
-from   os import listdir, environ, chdir, getcwd, mkdir, rmdir, rename
+from   os import listdir, environ, chdir, getcwd, mkdir, rmdir, rename, remove
 from   glob import glob, iglob
 from   shutil import copy, rmtree, move, copytree, make_archive
-from   subprocess import check_output, check_call
+from   subprocess import check_output, check_call, Popen
 import subprocess
 from   datetime import datetime
+from   StringIO import StringIO
+import sys
+
+
+# Exec script
+# ===========
+# return: results, witherror
+def ExecFile(filename):
+    if exists(filename):
+        buffer = StringIO()
+        sys.stdout = buffer
+        execfile(filename)
+        sys.stdout = sys.__stdout__
+        return buffer.getvalue(), False
+    else: return '', True
+
+
+# Exec script
+# ===========
+def ExecScript(script):
+    buffer = StringIO()
+    sys.stdout = buffer
+    exec(script)
+    sys.stdout = sys.__stdout__
+    return buffer.getvalue()
 
 
 # BaseExt
@@ -70,6 +95,13 @@ def RmDirOrNot(path):
         RmDir(path, force=True)
 
 
+# Remove file or not
+# ==================
+def RmOrNot(path):
+    if exists(path):
+        remove(path)
+
+
 # Run command
 # ===========
 def Cmd(command, arguments, verbose=True, debug=False):
@@ -83,7 +115,8 @@ def Cmd(command, arguments, verbose=True, debug=False):
         res = check_output(cmd, stderr=subprocess.STDOUT)
         print res
     else:
-        check_call(cmd, stderr=subprocess.STDOUT)
+        #check_call(cmd, stderr=subprocess.STDOUT)
+        check_call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
 # Archive

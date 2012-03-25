@@ -82,9 +82,10 @@ def SetForEps (proport=0.75, fig_width_pt=455.24):
 
 # Save fig with extra artists
 # ===========================
-def Save (filename, extra_artists=[]):
+def Save (filename, extra_artists=[], verbose=True):
     savefig (filename, bbox_inches='tight', bbox_extra_artists=extra_artists)
-    print 'File <[1;34m%s[0m> written'%filename
+    if verbose:
+        print 'File <[1;34m%s[0m> written'%filename
 # As a workaround, savefig can take bbox_extra_artists keyword (this may
 # only be in the svn version though), which is a list artist that needs
 # to be accounted for the bounding box calculation. So in your case, the
