@@ -34,7 +34,10 @@ def ExecFile(filename):
     if exists(filename):
         buffer = StringIO()
         sys.stdout = buffer
-        execfile(filename)
+        try: execfile(filename)
+        except:
+            sys.stdout = sys.__stdout__
+            raise
         sys.stdout = sys.__stdout__
         return buffer.getvalue(), False
     else: return '', True
@@ -45,7 +48,10 @@ def ExecFile(filename):
 def ExecScript(script):
     buffer = StringIO()
     sys.stdout = buffer
-    exec(script)
+    try: exec(script)
+    except:
+        sys.stdout = sys.__stdout__
+        raise
     sys.stdout = sys.__stdout__
     return buffer.getvalue()
 
