@@ -18,16 +18,11 @@
 
 from   os.path import abspath, basename, exists, isfile, isdir, expanduser, join, normpath, split, splitext
 from   os import listdir, environ, chdir, getcwd, mkdir, rmdir, rename
+from   glob import glob, iglob
 from   shutil import copy, rmtree, move, copytree, make_archive
 from   subprocess import check_output, check_call
 import subprocess
-#import os
-#from   datetime import datetime
-#import optparse
-#import subprocess
-#import shutil
-#import os.path
-#import sys
+from   datetime import datetime
 
 
 # BaseExt
@@ -39,6 +34,11 @@ def BaseExt(fullpath): return splitext(basename(normpath(fullpath)))
 # List current dir
 # ================
 def Ls(where='.'): print listdir(where)
+
+
+# List with filter
+# ================
+def Lsf(where='.', filt='*.txt'): print glob(where+'/'+filt)
 
 
 # Print where we are
@@ -88,21 +88,35 @@ def Cmd(command, arguments, verbose=True, debug=False):
 
 # Archive
 # =======
-# basename  = filekey   ==>  Ex.: basename  = myzippedfile
+# filekey   = basename  ==>  Ex.: filekey   = myzippedfile
 # extension = format    ==>  Ex.: extension = gztar        [zip, bztar]
 # whatdir   = rootdir   ==>  Ex.: whatdir   = somedirtobezipped
-# ex, to list content: tar -tzvf basename.extension
-def Archive(basename, whatdir, extension='bztar', verbose=True, Verbose=True):
-    make_archive(basename, extension, root_dir=whatdir)
+# ex, to list content: tar -tzvf filekey.extension
+def Archive(filekey, whatdir, extension='bztar', verbose=True, Verbose=False):
+    make_archive(filekey, extension, root_dir=whatdir)
     if verbose:
         ext = {'gztar':'.tar.gz', 'bztar':'.tar.bz2', 'zip':'.zip'}
         cmd = {'gztar':'tar',     'bztar':'tar',      'zip':'unzip'}
         arg = {'gztar':'-tzvf',   'bztar':'-tjvf',    'zip':'-l'}
-        fn  = basename + ext[extension]
+        fn  = filekey + ext[extension]
         print 'file <[1;34m%s[0m> created' % fn
         if Verbose:
             print '[1;33mcontent: ------------------------------------[0m'
             Cmd(cmd[extension], [arg[extension], fn], debug=True)
+
+
+# Archive with date filename
+# ==========================
+def DoPack(whatdir):
+    fnkey = basename(whatdir) + '-' + datetime.now().strftime('%Y-%m-%d')
+    Archive(fnkey, whatdir, 'bztar')
+
+
+# Now: Year Month Day Seconds
+# ===========================
+def NowYMDS(): return datetime.now().strftime('%Y-%m-%d-%s')
+def NowYMD (): return datetime.now().strftime('%Y-%m-%d')
+def NowMD  (): return datetime.now().strftime('%m-%d')
 
 
 # Test
@@ -113,6 +127,11 @@ if __name__=="__main__":
         print p, 'isfile =', isfile(p)
         print p, 'isdir  =', isdir(p)
         print
+
+    print
+    Lsf('.','*.py')
+    for fn in iglob('*.py'):
+        print fn
 
     print
     print 'expanduser (~/)          =', expanduser('~/')
@@ -213,6 +232,15 @@ if __name__=="__main__":
     chdir('..')
     Pwd()
     Ls()
-    Archive('myzippedfile', 'test_msys_pyshell')
-    Archive('myzippedfile', 'test_msys_pyshell', 'gztar')
-    Archive('myzippedfile', 'test_msys_pyshell', 'zip')
+    Archive('myzippedfile', 'test_msys_pyshell',          verbose=True, Verbose=True)
+    Archive('myzippedfile', 'test_msys_pyshell', 'gztar', verbose=True, Verbose=True)
+    Archive('myzippedfile', 'test_msys_pyshell', 'zip',   verbose=True, Verbose=True)
+
+    print
+    print 'datetime.now()                         = ', datetime.now()
+    print 'datetime.now().strftime(\'%m-%d\')       = ', NowMD()
+    print 'datetime.now().strftime(\'%Y-%m-%d\')    = ', NowYMD()
+    print 'datetime.now().strftime(\'%Y-%m-%d-%s\') = ', NowYMDS()
+
+    print
+    DoPack('/tmp/test_msys_pyshell')
