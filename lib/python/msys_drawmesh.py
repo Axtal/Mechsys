@@ -43,7 +43,7 @@ class DrawMesh:
         self.Pins   = Pins
         self.Shares = Shares
         self.ndim   = len(V[0])-2
-        if not self.ndim==2: raise Exception("Drawing: NDim=%d is invalid"%self.ndim)
+        if self.ndim>2: raise Exception("Drawing: NDim=%d is invalid"%self.ndim)
 
         # constants
         self.pct  = pct
@@ -62,7 +62,8 @@ class DrawMesh:
 
         # drawing limits (bounding box)
         allx      = [v[2] for v in self.V]
-        ally      = [v[3] for v in self.V]
+        if self.ndim==1: ally = [0.0, 1.0]
+        else:            ally = [v[3] for v in self.V]
         self.lims = array([min(allx),max(allx),min(ally),max(ally)])
         self.diag = sqrt((self.lims[1]-self.lims[0])**2.0+(self.lims[3]-self.lims[2])**2.0)
 
@@ -141,15 +142,26 @@ class DrawMesh:
                 ax.add_patch  (pc0)
 
         # draw linear cells
-        for c in self.C:
-            con = c[2] # connectivity
-            if len(con)==2:
-                x0 = self.V[con[0]][2]
-                y0 = self.V[con[0]][3]
-                x1 = self.V[con[1]][2]
-                y1 = self.V[con[1]][3]
-                XY = array([[x0,y0],[x1,y1]])
-                ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor='red', lw=4))
+        if self.ndim==1:
+            for c in self.C:
+                con = c[2] # connectivity
+                if len(con)==2:
+                    x0 = self.V[con[0]][2]
+                    y0 = 0.0
+                    x1 = self.V[con[1]][2]
+                    y1 = 0.0
+                    XY = array([[x0,y0],[x1,y1]])
+                    ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=self.dblue, lw=2))
+        else:
+            for c in self.C:
+                con = c[2] # connectivity
+                if len(con)==2:
+                    x0 = self.V[con[0]][2]
+                    y0 = self.V[con[0]][3]
+                    x1 = self.V[con[1]][2]
+                    y1 = self.V[con[1]][3]
+                    XY = array([[x0,y0],[x1,y1]])
+                    ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor='red', lw=4))
 
         # text
         if with_ids or with_tags:
@@ -159,12 +171,20 @@ class DrawMesh:
                 nnod = len(con)
                 if only_lin_cells and nnod>2: continue
                 if nnod==2:
-                    x0 = self.V[con[0]][2]
-                    y0 = self.V[con[0]][3]
-                    x1 = self.V[con[1]][2]
-                    y1 = self.V[con[1]][3]
-                    xc = x0 + 0.3*(x1-x0)
-                    yc = y0 + 0.3*(y1-y0)
+                    if self.ndim==1:
+                        x0 = self.V[con[0]][2]
+                        y0 = 0.0
+                        x1 = self.V[con[1]][2]
+                        y1 = 0.0
+                        xc = x0 + 0.5*(x1-x0)
+                        yc = y0 + 0.5*(y1-y0)
+                    else:
+                        x0 = self.V[con[0]][2]
+                        y0 = self.V[con[0]][3]
+                        x1 = self.V[con[1]][2]
+                        y1 = self.V[con[1]][3]
+                        xc = x0 + 0.3*(x1-x0)
+                        yc = y0 + 0.3*(y1-y0)
                 else:
                     xc = self.V[con[0]][2]
                     yc = self.V[con[0]][3]
@@ -176,16 +196,17 @@ class DrawMesh:
                 # text
                 txt = '   '
                 if with_tags: txt = '%s%d' % (txt,c[1])
-                if len(c[4])>0: txt += '\n   '
-                for brykey, side_id in c[4].iteritems():
-                    # neighbours
-                    side = side_id[0]
-                    eid  = side_id[1]
-                    txt  = '%s %d' % (txt,eid)
+                if len(c)>4:
+                    if len(c[4])>0: txt += '\n   '
+                    for brykey, side_id in c[4].iteritems():
+                        # neighbours
+                        side = side_id[0]
+                        eid  = side_id[1]
+                        txt  = '%s %d' % (txt,eid)
                 if len(txt)>0: ax.text(xc,yc, txt,  ha='left',  backgroundcolor=self.lgreen,fontsize=self.fsz2)
                 if with_ids:   ax.text(xc,yc, c[0], ha='right', backgroundcolor=self.purple,fontsize=self.fsz1)
                 # edge tags
-                if with_tags:
+                if with_tags and self.ndim>1:
                     nnod = len(con)
                     for side, tag in c[3].iteritems():
                         if tag<0: # has tag
@@ -270,11 +291,13 @@ class DrawMesh:
                     text(v[2], v[3], s, va='bottom', ha='right', color='black', backgroundcolor='white', fontsize=self.fsz2)
                 # ids
                 s = '%d' % v[0]
-                text(v[2], v[3]+self.yidnoise, s, va='bottom', ha='right', color='black', backgroundcolor=self.lyellow, fontsize=self.fsz1)
+                yval = v[3]+self.yidnoise if self.ndim>1 else self.yidnoise
+                text(v[2], yval, s, va='bottom', ha='right', color='black', backgroundcolor=self.lyellow, fontsize=self.fsz1)
                 tag = v[1]
                 # tag
                 if tag<0 and with_tags:
-                    text(v[2], v[3]-self.yidnoise, '%d'%tag, va='top', ha='left', color='black', backgroundcolor=self.orange, fontsize=self.fsz2)
+                    yval = v[3]-self.yidnoise if self.ndim>1 else -self.yidnoise
+                    text(v[2], yval, '%d'%tag, va='top', ha='left', color='black', backgroundcolor=self.orange, fontsize=self.fsz2)
 
         # pins
         for key, val in self.Pins.iteritems():
