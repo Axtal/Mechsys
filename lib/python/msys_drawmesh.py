@@ -59,6 +59,11 @@ class DrawMesh:
         self.lyellow = (234/255.0,228/255.0,179/255.0)
         #self.purple  = '#9b8de3'
         self.purple  = '#c5a9f3'
+        self.dred    = '#b30000'
+
+        # assign colors
+        self.celledgeclr = self.dblue
+        self.lineedgeclr = self.dred
 
         # drawing limits (bounding box)
         allx      = [v[2] for v in self.V]
@@ -138,7 +143,7 @@ class DrawMesh:
             if len(dat)>0:
                 cmd,vert = zip(*dat)
                 ph0 = self.PH (vert, cmd)
-                pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.dblue, linewidth=2)
+                pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.celledgeclr, linewidth=2)
                 ax.add_patch  (pc0)
 
         # draw linear cells
@@ -151,7 +156,7 @@ class DrawMesh:
                     x1 = self.V[con[1]][2]
                     y1 = 0.0
                     XY = array([[x0,y0],[x1,y1]])
-                    ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=self.dblue, lw=2))
+                    ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=self.celledgeclr, lw=2))
         else:
             for c in self.C:
                 con = c[2] # connectivity
@@ -161,7 +166,7 @@ class DrawMesh:
                     x1 = self.V[con[1]][2]
                     y1 = self.V[con[1]][3]
                     XY = array([[x0,y0],[x1,y1]])
-                    ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor='red', lw=4))
+                    ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=self.lineedgeclr, lw=4))
 
         # text
         if with_ids or with_tags:
@@ -183,8 +188,9 @@ class DrawMesh:
                         y0 = self.V[con[0]][3]
                         x1 = self.V[con[1]][2]
                         y1 = self.V[con[1]][3]
-                        xc = x0 + 0.3*(x1-x0)
-                        yc = y0 + 0.3*(y1-y0)
+                        cf = 0.5 if only_lin_cells else 0.3
+                        xc = x0 + cf*(x1-x0)
+                        yc = y0 + cf*(y1-y0)
                 else:
                     xc = self.V[con[0]][2]
                     yc = self.V[con[0]][3]
@@ -206,7 +212,7 @@ class DrawMesh:
                 if len(txt)>0: ax.text(xc,yc, txt,  ha='left',  backgroundcolor=self.lgreen,fontsize=self.fsz2)
                 if with_ids:   ax.text(xc,yc, c[0], ha='right', backgroundcolor=self.purple,fontsize=self.fsz1)
                 # edge tags
-                if with_tags and self.ndim>1:
+                if with_tags and self.ndim>1 and len(c)>3:
                     nnod = len(con)
                     for side, tag in c[3].iteritems():
                         if tag<0: # has tag
@@ -276,7 +282,7 @@ class DrawMesh:
                 #if not v[0] in prob: continue
 
                 # skip if not connected to lin cell
-                if only_lin_cells:
+                if only_lin_cells and with_shares:
                     con_lin_cell = False # connected to lin cell ?
                     for e in self.Shares[v[0]]:
                         if len(self.C[e][2])==2: con_lin_cell = True

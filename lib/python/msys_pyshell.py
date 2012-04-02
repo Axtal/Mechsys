@@ -24,7 +24,12 @@ from   subprocess import check_output, check_call, Popen
 import subprocess
 from   datetime import datetime
 from   StringIO import StringIO
+import optparse
 import sys
+
+# Read argv
+def ArgcArgv():
+    return len(sys.argv), sys.argv
 
 
 # Exec script
@@ -110,7 +115,7 @@ def RmOrNot(path):
 
 # Run command
 # ===========
-def Cmd(command, arguments, verbose=True, debug=False):
+def Cmd(command, arguments=[], verbose=True, debug=False):
     if isinstance(arguments,str): cmd = [command, arguments]
     else:                         cmd = [command] + arguments
     if debug:
@@ -118,11 +123,11 @@ def Cmd(command, arguments, verbose=True, debug=False):
         print cmd
         print '=================================================='
     if verbose:
-        res = check_output(cmd, stderr=subprocess.STDOUT)
+        res = check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         print res
     else:
         #check_call(cmd, stderr=subprocess.STDOUT)
-        check_call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        check_call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
 
 # Archive
