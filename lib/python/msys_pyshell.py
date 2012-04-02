@@ -115,19 +115,17 @@ def RmOrNot(path):
 
 # Run command
 # ===========
-def Cmd(command, arguments=[], verbose=True, debug=False):
-    if isinstance(arguments,str): cmd = [command, arguments]
-    else:                         cmd = [command] + arguments
+def Cmd(command, verbose=True, debug=False):
     if debug:
         print '=================================================='
         print cmd
         print '=================================================='
+    spr = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out = spr.stdout.read()
+    err = spr.stderr.read().strip()
     if verbose:
-        res = check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-        print res
-    else:
-        #check_call(cmd, stderr=subprocess.STDOUT)
-        check_call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        print out
+        print err
 
 
 # Archive
@@ -146,7 +144,8 @@ def Archive(filekey, whatdir, extension='bztar', verbose=True, Verbose=False):
         print 'file <[1;34m%s[0m> created' % fn
         if Verbose:
             print '[1;33mcontent: ------------------------------------[0m'
-            Cmd(cmd[extension], [arg[extension], fn], debug=True)
+            #Cmd(cmd[extension], [arg[extension], fn], debug=True)
+            Cmd(cmd[extension]+' '+arg[extension]+' '+fn, debug=True)
 
 
 # Archive with date filename
