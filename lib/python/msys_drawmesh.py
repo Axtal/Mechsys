@@ -284,6 +284,7 @@ class DrawMesh:
                 # skip if not connected to lin cell
                 if only_lin_cells and with_shares:
                     con_lin_cell = False # connected to lin cell ?
+                    if len(self.Shares)<1: continue
                     for e in self.Shares[v[0]]:
                         if len(self.C[e][2])==2: con_lin_cell = True
                     if not con_lin_cell: continue

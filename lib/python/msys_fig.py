@@ -82,7 +82,7 @@ def SetForEps (proport=0.75, fig_width_pt=455.24):
 
 # Save fig with extra artists
 # ===========================
-def Save (filename, extra_artists=[], verbose=True):
+def Save (filename, extra_artists=[], verbose=False):
     savefig (filename, bbox_inches='tight', bbox_extra_artists=extra_artists)
     if verbose:
         print 'File <[1;34m%s[0m> written'%filename
@@ -170,7 +170,7 @@ def Quad (x0,y0, x1,y1, x2,y2, x3,y3, fc='#a2e3a2', ec='black', zorder=0, alpha=
 
 # Plot contour
 # ============
-def Contour (X,Y,Z, label, nlevels=None, cmapidx=0, fmt='%g', wire=True, cbar=True):
+def Contour (X,Y,Z, label='', nlevels=None, cmapidx=0, fmt='%g', wire=True, cbar=True):
     L = None
     if nlevels!=None: L = linspace(Z.min(), Z.max(), nlevels)
     c1 = contourf (X,Y,Z, cmap=Cmap(cmapidx), levels=L)
