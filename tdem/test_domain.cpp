@@ -133,7 +133,7 @@ int main(int argc, char **argv) try
     cout << endl;
     
     // draw
-    d.WriteBPY ("test_domain");
+    d.WriteXDMF ("test_domain");
 
     // results
     if ((rice_err_vol>rice_tol_vol) || (rice_err_I>rice_tol_I) || (cube_err_vol>cube_tol_vol)) return 1;

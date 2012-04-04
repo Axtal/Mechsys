@@ -875,7 +875,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                         double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
                         double Fvp     = cell->Feq(k          ,VelP,rho);
                         cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
-                        Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k];
+                        Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k]*cell->Cs;
                         Pa->F          += Flbm;
                         Vec3_t T,Tt;
                         Tt =           cross(B,Flbm);

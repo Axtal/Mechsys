@@ -67,6 +67,8 @@ public:
     // Particle generation
     void GenSpheres      (int Tag, double L, size_t N, double rho, char const * Type,
     size_t Randomseed, double fraction, double RminFraction = 1.0);                                                              ///< General spheres
+    void GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1,                                                           ///< Generate spheres within a rectangular box defined by the vectors X0 and X1
+                        double R, double rho, size_t Randomseed, double fraction, double RminFraction);
     void GenRice         (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction);                ///< General rices
     void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, bool Cohesion=false);            ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenOpenBox      (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                                 ///< Generate five walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
@@ -94,6 +96,7 @@ public:
     void WritePOV          (char const * FileKey);                                                              ///< Write POV file
     void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
 #ifdef USE_HDF5    
+    void WriteXDMF         (char const * FileKey);                                                              ///< Save a xdmf file for visualization
     void Save              (char const * FileKey);                                                              ///< Save the current domain
     void Load              (char const * FileKey);                                                              ///< Load the domain form a file
 #endif
@@ -381,6 +384,36 @@ inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char con
         }
     }
     else throw new Fatal ("Right now there are only two possible packings available the Normal and the HCP, packing %s is not implemented yet",Type);
+    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
+}
+
+inline void Domain::GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1, double R, double rho, size_t Randomseed, double fraction, double RminFraction)
+{
+    // find radius from the edge's length
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Generating packing of spheres -----------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    srand(Randomseed);
+
+    size_t nx = 0.5*(X1(0)-X0(0))/R-1;
+    size_t ny = int((X1(1)-X0(1))/(sqrt(3.0)*R));
+    size_t nz = int((X1(2)-X0(2))/(sqrt(8.0/3.0)*R));
+    for (size_t k = 0; k < nz; k++)
+    {
+        for (size_t j = 0; j < ny; j++)
+        {
+            Vec3_t X;
+            if (k%2==0) X = Vec3_t(-R,R,2*R+k*sqrt(8.0/3.0)*R) + X0;
+            else X = Vec3_t(0.0,R+sqrt(1.0/3.0)*R,2*R+k*sqrt(8.0/3.0)*R) + X0;
+            if (j%2==0) X += Vec3_t(R,j*sqrt(3.0)*R,0.0);
+            else X += Vec3_t(0.0,j*sqrt(3.0)*R,0.0);
+            for (size_t i = 0; i < nx; i++)
+            {
+                X += Vec3_t(2*R,0.0,0.0);
+                if (rand()<fraction*RAND_MAX) AddSphere (Tag,X,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
+            }
+        }
+    }
+    
     printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
@@ -1565,7 +1598,14 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             {
                 String fn;
                 fn.Printf    ("%s_%04d", TheFileKey, idx_out);
-                if(RenderVideo) WritePOV     (fn.CStr());
+                if(RenderVideo)
+                {
+#ifdef USE_HDF5
+                    WriteXDMF    (fn.CStr());
+#else
+                    WritePOV     (fn.CStr());
+#endif
+                }
                 EnergyOutput (idx_out, oss_energy);
             }
             idx_out++;
@@ -1785,6 +1825,162 @@ inline void Domain::WriteBPY (char const * FileKey)
 }
 
 #ifdef USE_HDF5
+
+inline void Domain::WriteXDMF (char const * FileKey)
+{
+    size_t N_Faces = 0;
+    size_t N_Verts = 0;
+    for (size_t i=0; i<Particles.Size(); i++) 
+    { 
+        for (size_t j=0;j<Particles[i]->Faces.Size();j++)
+        {
+            N_Faces += Particles[i]->Faces[j]->Edges.Size();
+        }
+        N_Verts += Particles[i]->Verts.Size() + Particles[i]->Faces.Size();
+    }
+
+    String fn(FileKey);
+    fn.append(".h5");
+    hid_t     file_id;
+    file_id = H5Fcreate(fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+    //Geometric information
+    float  * Verts   = new float [3*N_Verts];
+    int    * FaceCon = new int   [3*N_Faces];
+    
+    //Atributes
+    int    * Tags    = new int   [  N_Faces];
+    float  * Vel     = new float [3*N_Faces];
+    float  * Stress  = new float [9*N_Faces];
+
+    size_t n_verts = 0;
+    size_t n_faces = 0;
+    size_t n_attrs = 0;
+    size_t n_attrv = 0;
+    size_t n_attrt = 0;
+    for (size_t i=0;i<Particles.Size();i++)
+    {
+        Particle * Pa = Particles[i];
+        size_t n_refv = n_verts/3;
+        for (size_t j=0;j<Pa->Verts.Size();j++)
+        {
+            Verts[n_verts++] = (float) (*Pa->Verts[j])(0);
+            Verts[n_verts++] = (float) (*Pa->Verts[j])(1);
+            Verts[n_verts++] = (float) (*Pa->Verts[j])(2);
+        }
+        size_t n_reff = n_verts/3;
+        for (size_t j=0;j<Pa->FaceCon.Size();j++)
+        {
+            Vec3_t C;
+            Pa->Faces[j]->Centroid(C);
+            Verts[n_verts++] = (float) C(0);
+            Verts[n_verts++] = (float) C(1);
+            Verts[n_verts++] = (float) C(2);
+            for (size_t k=0;k<Pa->FaceCon[j].Size();k++)
+            {
+                size_t nin = Pa->FaceCon[j][k];
+                size_t nen = Pa->FaceCon[j][(k+1)%Pa->FaceCon[j].Size()];
+                FaceCon[n_faces++] = (int) n_reff + j;  
+                FaceCon[n_faces++] = (int) n_refv + nin;
+                FaceCon[n_faces++] = (int) n_refv + nen;
+
+                //Writing the attributes
+                Tags[n_attrs] = (int)   Pa->Tag;
+                n_attrs++;
+
+                Vel [n_attrv  ] = (float) Pa->v(0);
+                Vel [n_attrv+1] = (float) Pa->v(1);
+                Vel [n_attrv+2] = (float) Pa->v(2);
+                n_attrv += 3;
+
+                Stress[n_attrt  ] = (float) Pa->M(0,0);
+                Stress[n_attrt+1] = (float) Pa->M(1,0);
+                Stress[n_attrt+2] = (float) Pa->M(2,0);
+                Stress[n_attrt+3] = (float) Pa->M(0,1);
+                Stress[n_attrt+4] = (float) Pa->M(1,1);
+                Stress[n_attrt+5] = (float) Pa->M(2,1);
+                Stress[n_attrt+6] = (float) Pa->M(0,2);
+                Stress[n_attrt+7] = (float) Pa->M(1,2);
+                Stress[n_attrt+8] = (float) Pa->M(2,2);
+                n_attrt += 9;
+            }
+        }
+    }
+
+    //Write the data
+    hsize_t dims[1];
+    String dsname;
+    dims[0] = 3*N_Verts;
+    dsname.Printf("Verts");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Verts);
+    dims[0] = 3*N_Faces;
+    dsname.Printf("FaceCon");
+    H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,FaceCon);
+    dims[0] = N_Faces;
+    dsname.Printf("Tag");
+    H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,Tags   );
+    dims[0] = 3*N_Faces;
+    dsname.Printf("Velocity");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vel);
+    dims[0] = 9*N_Faces;
+    dsname.Printf("Stress");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Stress);
+    
+    //Erasing the data
+    delete [] Verts;
+    delete [] FaceCon;
+    delete [] Tags;
+    delete [] Vel;
+    delete [] Stress;
+
+    //Closing the file
+    H5Fclose(file_id);
+    
+
+    //Writing xmf file
+    std::ostringstream oss;
+    oss << "<?xml version=\"1.0\" ?>\n";
+    oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
+    oss << "<Xdmf Version=\"2.0\">\n";
+    oss << " <Domain>\n";
+    oss << "   <Grid Name=\"DEM_Faces\">\n";
+    oss << "     <Topology TopologyType=\"Triangle\" NumberOfElements=\"" << N_Faces << "\">\n";
+    oss << "       <DataItem Format=\"HDF\" DataType=\"Int\" Dimensions=\"" << N_Faces << " 3\">\n";
+    oss << "        " << fn.CStr() <<":/FaceCon \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Topology>\n";
+    oss << "     <Geometry GeometryType=\"XYZ\">\n";
+    oss << "       <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"4\" Dimensions=\"" << N_Verts << " 3\" >\n";
+    oss << "        " << fn.CStr() <<":/Verts \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Geometry>\n";
+    oss << "     <Attribute Name=\"Tag\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+    oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Tag \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Cell\">\n";
+    oss << "       <DataItem Dimensions=\"" << N_Faces << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Velocity \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Stress\" AttributeType=\"Tensor\" Center=\"Cell\">\n";
+    oss << "       <DataItem Dimensions=\"" << N_Faces << " 3 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Stress \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "   </Grid>\n";
+    oss << " </Domain>\n";
+    oss << "</Xdmf>\n";
+
+
+    fn = FileKey;
+    fn.append(".xmf");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
+}
+
 inline void Domain::Save (char const * FileKey)
 {
 

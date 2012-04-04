@@ -37,13 +37,14 @@ int main(int argc, char **argv) try
     x =  10 , 0 , 0;
     w =   0 , 0 , M_PI/10.;
     v = -1. , 0 , 0;
-    d.AddTetra (-1, x,0.5,5.,1.);
+    d.AddTetra (-2, x,0.5,5.,1.);
     d.Particles[1]->v = v;
     d.Particles[1]->w = w;
     
     // Particle parameters
     Dict B;
     B.Set(-1,"Gn Gt Mu",0.0,0.0,0.0);
+    B.Set(-2,"Gn Gt Mu",0.0,0.0,0.0);
     d.SetProps(B);
 
     // initial constants
@@ -52,7 +53,8 @@ int main(int argc, char **argv) try
     double Ek0,Ep0,E0; // initial energy
     d.LinearMomentum  (p0);
     d.AngularMomentum (l0);
-    E0 = d.CalcEnergy (Ek0,Ep0); 
+    E0 = d.CalcEnergy (Ek0,Ep0);
+
 
     // solve
     d.CamPos = 0.0,30.0,0.0;
