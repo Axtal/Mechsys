@@ -105,18 +105,18 @@ def SetXnticks(subplot_fig, num):  subplot_fig.xaxis.set_major_locator(MaxNLocat
 def Leg (fsz=8, ncol=1, loc='best'): legend (loc=loc,prop={'size':fsz},ncol=ncol)
 
 
-# Grid
-# ====
-def Grid (color='grey', zorder=-100): grid (color=color, zorder=zorder)
+# Figure Grid
+# ===========
+def FigGrid (color='grey', zorder=-100): grid (color=color, zorder=zorder)
 
 
-# Grid, labels and legend
-# =======================
+# FigGrid, labels and legend
+# ==========================
 def Gll (xl, yl, leg=True, grd=True, leg_ncol=1, leg_loc='best'):
     xlabel(xl)
     ylabel(yl)
     if leg: Leg(ncol=leg_ncol, loc=leg_loc)
-    if grd: Grid()
+    if grd: FigGrid()
 
 
 # Draw cross through zero
@@ -346,7 +346,7 @@ if __name__=='__main__':
     Text    (-20,25,r'$\sigma$',y_offset=-10)
     axvline (0,color='black',zorder=-1)
     axhline (0,color='black',zorder=-1)
-    Grid    ()
+    FigGrid ()
     axis    ('equal')
     legend  (loc='upper left')
     xlabel  (r'$x$')
