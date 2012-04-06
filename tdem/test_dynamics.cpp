@@ -24,6 +24,9 @@ int main(int argc, char **argv) try
 {
     // domain
     DEM::Domain d;
+    d.Xmax =  15.0;
+    d.Xmin =  15.0;
+    d.Alpha=   1.0;
 
     // add cube
 	Vec3_t x(-10,0,0);    // position
@@ -40,6 +43,16 @@ int main(int argc, char **argv) try
     d.AddTetra (-2, x,0.5,5.,1.);
     d.Particles[1]->v = v;
     d.Particles[1]->w = w;
+    
+	//Vec3_t x(-10,0,0);    // position
+    //Vec3_t v(1.,0,0);     // veloc
+	//d.AddCube (-1, x,0.3,3.,1.,0.0,&OrthoSys::e1);
+    //d.Particles[0]->v = v;
+//
+    //x =  10 , 0 , 0;
+    //v = -1. , 0 , 0;
+	//d.AddCube (-2, x,0.3,3.,1.,0.0,&OrthoSys::e1);
+    //d.Particles[1]->v = v;
     
     // Particle parameters
     Dict B;
@@ -58,7 +71,7 @@ int main(int argc, char **argv) try
 
     // solve
     d.CamPos = 0.0,30.0,0.0;
-    d.Solve(/*tf*/30.0, 1.0e-4, /*dtOut*/0.3, NULL, NULL, "test_dynamics", true, 1);
+    d.Solve(/*tf*/100.0, 1.0e-5, /*dtOut*/0.3, NULL, NULL, "test_dynamics", true, 1);
 
     // final constants
     Vec3_t l1(0,0,0);  // initial linear momentum

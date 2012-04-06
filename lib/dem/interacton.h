@@ -257,7 +257,8 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
         {
             if (delta > 0.8*(P1->Props.R+P2->Props.R))
             {
-                std::cout << "mu" << std::endl; 
+                std::cout << "Maximun overlap between " << P1->Index << " and " << P2->Index <<  std::endl; 
+                std::cout << "Memory address          " << P1        << " and " << P2        <<   " " << (P1==P2) << std::endl; 
                 throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
             }
             // Count a contact

@@ -23,6 +23,7 @@ endif (NOT A_USE_HDF5)
 SET(EXES
   nonconvex
   ttt
+  test_periodic
   test_distances
   test_domain
   test_dynamics

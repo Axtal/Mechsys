@@ -106,6 +106,7 @@ public:
     void ResetDisplacements();                                                                                  ///< Reset the displacements
     double MaxDisplacement ();                                                                                  ///< Calculate maximun displacement
     void ResetContacts     ();                                                                                  ///< Reset the displacements
+    void ResetBoundaries   ();                                                                                  ///< Reset the Boundary particles
     void EnergyOutput      (size_t IdxOut, std::ostream & OutFile);                                             ///< Output of the energy variables
     void GetGSD            (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv=10) const;     ///< Get the Grain Size Distribution
     void Clusters          ();                                                                                  ///< Check the bounded particles in the domain and how many connected clusters are still present
@@ -130,9 +131,12 @@ public:
     bool                                              Initialized;                 ///< System (particles and interactons) initialized ?
     bool                                              Finished;                    ///< Has the simulation finished
     Array<Particle*>                                  Particles;                   ///< All particles in domain
+    Array<Particle*>                                  ParXmax;                     ///< Particles that are on the Xmax boundary for periodic boudary conditions
     Array<Interacton*>                                Interactons;                 ///< All interactons
     Array<CInteracton*>                               CInteractons;                ///< Contact interactons
     Array<BInteracton*>                               BInteractons;                ///< Cohesion interactons
+    Array<Interacton*>                                PInteractons;                ///< Interactons for periodic conditions
+    Array<CInteracton*>                               CPInteractons;               ///< Contact interacton for periodic conditions
     Vec3_t                                            CamPos;                      ///< Camera position for POV
     double                                            Time;                        ///< Current time
     double                                            Evis;                        ///< Energy dissipated by the viscosity of the grains
@@ -141,10 +145,14 @@ public:
     double                                            Vs;                          ///< Volume occupied by the grains
     double                                            Ms;                          ///< Total mass of the particles
     double                                            Alpha;                       ///< Verlet distance
+    double                                            Xmax;                        ///< Maximun distance along the X axis (Periodic Boundary)
+    double                                            Xmin;                        ///< Minimun distance along the X axis (Periodic Boundary)
+    double                                            MaxDmax;                     ///< Maximun value for the radious of the spheres surronding each particle
     void *                                            UserData;                    ///< Some user data
     String                                            FileKey;                     ///< File Key for output files
     size_t                                            idx_out;                     ///< Index of output
     set<pair<Particle *, Particle *> >                Listofpairs;                 ///< List of pair of particles associated per interacton for memory optimization
+    set<pair<Particle *, Particle *> >                PListofpairs;                ///< List of pair of particles associated per interacton for memory optimization under periodic boundary conditions
     Array<Array <int> >                               Listofclusters;              ///< List of particles belonging to bounded clusters (applies only for cohesion simulations)
 
 #ifdef USE_BOOST_PYTHON
@@ -195,6 +203,9 @@ struct MtData
     Array<pair<size_t,size_t> >   LC; ///< A temporal list of new contacts
     Array<size_t>                LCI; ///< A temporal array of posible Cinteractions
     Array<size_t>                LCB; ///< A temporal array of posible Binteractions
+    Array<pair<size_t,size_t> >  LPC; ///< A temporal list of new contacts for periodic boundary conditions
+    Array<size_t>               LPCI; ///< A temporal array of posible Cinteractions for periodic boundary conditions
+    Array<size_t>                LBP; ///< A temporal array of possible boundary particles
 };
 
 void * GlobalIni(void * Data)
@@ -321,6 +332,123 @@ void * GlobalResetContacts2 (void * Data)
     }
 }
 
+void * GlobalResetBoundaries1 (void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+    Array<Particle * > * P = &dat.Dom->Particles;
+	size_t Ni = P->Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.LBP.Resize(0);
+	for (size_t i=In;i<Fn;i++)
+    {
+        Particle * Pa = (*P)[i];
+        if ((Pa->MinX()>dat.Dom->Xmax)&&Pa->IsFree())
+        {
+            Vec3_t v(dat.Dom->Xmin-dat.Dom->Xmax,0.0,0.0);
+            Pa->Translate(v);
+        }
+        if ((Pa->MaxX()<dat.Dom->Xmin)&&Pa->IsFree())
+        {
+            Vec3_t v(dat.Dom->Xmax-dat.Dom->Xmin,0.0,0.0);
+            Pa->Translate(v);
+        }
+        if ((Pa->MaxX()>dat.Dom->Xmax-2.0*dat.Dom->Alpha-2.0*dat.Dom->MaxDmax)&&Pa->IsFree())
+        {
+            dat.LBP.Push(i);
+        }
+    }
+}
+
+void * GlobalResetBoundaries2 (void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+    Array<Particle * > * P = &dat.Dom->ParXmax;
+	size_t Ni = P->Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.LPC.Resize(0);
+    Vec3_t v(dat.Dom->Xmin-dat.Dom->Xmax,0.0,0.0);
+	for (size_t i=In;i<Fn;i++)
+    {
+        Particle * P1 = (*P)[i];
+        P1->Translate(v);
+        for (size_t j=0; j<dat.Dom->Particles.Size(); j++)
+        {
+            Particle * P2 = dat.Dom->Particles[j];
+            if (P1==P2||!P2->IsFree()) continue;
+            bool close = (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*dat.Dom->Alpha);
+            if (!close) continue;
+            set<pair<Particle *, Particle *> >::iterator it = dat.Dom->PListofpairs.find(make_pair(P1,P2));
+            if (it != dat.Dom->PListofpairs.end())
+            {
+                continue;
+            }
+            dat.LPC.Push(make_pair(i,j));
+        }
+    }
+}
+
+void * GlobalResetBoundaries3 (void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+	size_t Ni = dat.Dom->CPInteractons.Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->CPInteractons.Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.LPCI.Resize(0);
+    for (size_t n=In;n<Fn;n++)
+    {
+        if(dat.Dom->CPInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LPCI.Push(n);
+    }
+}
+
+void * GlobalPerTranslate(void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+    Array<Particle * > * P = &dat.Dom->ParXmax;
+	size_t Ni = P->Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
+    Vec3_t v(dat.Dom->Xmin-dat.Dom->Xmax,0.0,0.0);
+	for (size_t i=In;i<Fn;i++)
+    {
+        (*P)[i]->Translate(v);
+    }
+}
+
+void * GlobalPerTranslateBack(void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+    Array<Particle * > * P = &dat.Dom->ParXmax;
+	size_t Ni = P->Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
+    Vec3_t v(dat.Dom->Xmax-dat.Dom->Xmin,0.0,0.0);
+	for (size_t i=In;i<Fn;i++)
+    {
+        (*P)[i]->Translate(v);
+    }
+}
+
+void * GlobalPerForce(void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+    Array<Interacton * > * I = &dat.Dom->PInteractons;
+	size_t Ni = I->Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = I->Size() : Fn = (dat.ProcRank+1)*Ni;
+	for (size_t i=In;i<Fn;i++)
+	{
+		(*I)[i]->CalcForce(dat.dt);
+	}
+}
+
 #endif
 
 // Constructor & Destructor
@@ -328,6 +456,7 @@ void * GlobalResetContacts2 (void * Data)
 inline Domain::Domain (void * UD)
     :  Initialized(false), Time(0.0), Alpha(0.05), UserData(UD)
 {
+    Xmax = Xmin = 0.0;
     CamPos = 1.0, 2.0, 3.0;
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
@@ -1540,16 +1669,20 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
     // build the map of possible contacts (for the Halo)
     ResetContacts();
+    if (fabs(Xmax-Xmin)>Alpha) ResetBoundaries();
+    
 
     // calc the total volume of particles (solids)
     Vs = 0.0;
     Ms = 0.0;
+    MaxDmax = 0.0;
     for (size_t i=0; i<Particles.Size(); i++) 
     { 
         if (Particles[i]->IsFree())
         {
             Vs += Particles[i]->Props.V;
             Ms += Particles[i]->Props.m;
+            if (Particles[i]->Dmax>MaxDmax) MaxDmax = Particles[i]->Dmax;
         }
     }
 
@@ -1603,8 +1736,8 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 #ifdef USE_HDF5
                     WriteXDMF    (fn.CStr());
 #else
-                    WritePOV     (fn.CStr());
 #endif
+                    WritePOV     (fn.CStr());
                 }
                 EnergyOutput (idx_out, oss_energy);
             }
@@ -1630,6 +1763,34 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_join(thrs[i], NULL);
+        }
+
+        if (Xmax-Xmin>Alpha)
+        {
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_create(&thrs[i], NULL, GlobalPerTranslate, &MTD[i]);
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_create(&thrs[i], NULL, GlobalPerForce, &MTD[i]);
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_create(&thrs[i], NULL, GlobalPerTranslateBack, &MTD[i]);
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
+            }
         }
 
         // tell the user function to update its data
@@ -1697,7 +1858,68 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
                     Interactons.Push(BInteractons[MTD[i].LCB[j]]);
                 }
             }
-            //std::cout << "2 " << Interactons.Size() << std::endl;
+
+
+            ///////////////// Periodic Boundaries ////////////////////////
+            //std::cout << "1" << std::endl;
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_create(&thrs[i], NULL, GlobalResetBoundaries1, &MTD[i]);
+            }
+            ParXmax.Resize(0);
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
+                for (size_t j=0;j<MTD[i].LBP.Size();j++)
+                {
+                    ParXmax.Push(Particles[MTD[i].LBP[j]]);
+                }
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_create(&thrs[i], NULL, GlobalResetBoundaries2, &MTD[i]);
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
+                for (size_t j=0;j<MTD[i].LPC.Size();j++)
+                {
+                    size_t n = MTD[i].LPC[j].first;
+                    size_t m = MTD[i].LPC[j].second;
+                    PListofpairs.insert(make_pair(ParXmax[n],Particles[m]));
+                    if (ParXmax[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
+                    {
+                        CPInteractons.Push (new CInteractonSphere(ParXmax[n],Particles[m]));
+                    }
+                    else
+                    {
+                        CPInteractons.Push (new CInteracton(ParXmax[n],Particles[m]));
+                    }
+                }
+            }
+            //std::cout << "2 " << CPInteractons.Size() << std::endl;
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_create(&thrs[i], NULL, GlobalResetBoundaries3, &MTD[i]);
+            }
+            PInteractons.Resize(0);
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
+                for (size_t j=0;j<MTD[i].LPCI.Size();j++)
+                {
+                    PInteractons.Push(CPInteractons[MTD[i].LPCI[j]]);
+                }
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_create(&thrs[i], NULL, GlobalPerTranslateBack, &MTD[i]);
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
+            }
+            //std::cout << "3 " << PInteractons.Size() << std::endl;
         }
 #else 
 
@@ -1730,6 +1952,23 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             Interactons[i]->CalcForce (dt);
         }
 
+        if (fabs(Xmax-Xmin)>Alpha)
+        {
+            Vec3_t vmax(Xmin-Xmax,0.0,0.0);
+            Vec3_t vmin(Xmax-Xmin,0.0,0.0);
+            //for (size_t i=0;i<ParXmin.Size();i++) ParXmin[i]->Translate(vmin);
+            for (size_t i=0;i<ParXmax.Size();i++) ParXmax[i]->Translate(vmax);
+
+            for (size_t i=0; i<PInteractons.Size(); i++)
+            {   
+                Interacton * PI = PInteractons[i];
+                PI->CalcForce(dt);
+            }
+
+            //for (size_t i=0;i<ParXmin.Size();i++) ParXmin[i]->Translate(vmax);
+            for (size_t i=0;i<ParXmax.Size();i++) ParXmax[i]->Translate(vmin);
+        }
+
         // calculate the collision energy
         for (size_t i=0; i<CInteractons.Size(); i++)
         {
@@ -1754,6 +1993,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         {
             ResetDisplacements();
             ResetContacts();
+            if (fabs(Xmax-Xmin)>Alpha) ResetBoundaries();
         }
 #endif
         
@@ -2408,6 +2648,66 @@ inline void Domain::ResetContacts()
     }
 }
 
+inline void Domain::ResetBoundaries()
+{
+    ParXmax.Resize(0);
+    for (size_t i=0;i<Particles.Size();i++)
+    {
+        Particle * Pa = Particles[i];
+        if ((Pa->MinX()>Xmax)&&Pa->IsFree())
+        {
+            Vec3_t v(Xmin-Xmax,0.0,0.0);
+            Pa->Translate(v);
+        }
+        if ((Pa->MaxX()<Xmin)&&Pa->IsFree())
+        {
+            Vec3_t v(Xmax-Xmin,0.0,0.0);
+            Pa->Translate(v);
+        }
+        if ((Pa->MaxX()>Xmax-2.0*Alpha-2.0*MaxDmax)&&Pa->IsFree())
+        {
+            ParXmax.Push(Pa);
+        }
+    }
+    
+    for (size_t i=0;i<ParXmax.Size();i++) 
+    {
+        Particle * P1 = ParXmax[i];
+        Vec3_t v(Xmin-Xmax,0.0,0.0);
+        P1->Translate(v);
+        for (size_t j=0; j<Particles.Size(); j++)
+        {
+            Particle * P2 = Particles[j];
+            if (P1==P2||!P2->IsFree()) continue;
+            bool close = (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*Alpha);
+            if (!close) continue;
+            set<pair<Particle *, Particle *> >::iterator it = PListofpairs.find(make_pair(P1,P2));
+            if (it != PListofpairs.end())
+            {
+                continue;
+            }
+            PListofpairs.insert(make_pair(P1,P2));
+            // if both particles are spheres (just one vertex)
+            if (P1->Verts.Size()==1 && P2->Verts.Size()==1)
+            {
+                CPInteractons.Push (new CInteractonSphere(P1,P2));
+            }
+
+            // normal particles
+            else
+            {
+                CPInteractons.Push (new CInteracton(P1,P2));
+            }
+        }
+    }
+    PInteractons.Resize(0);
+    for (size_t i=0; i<CPInteractons.Size(); i++)
+    {
+        if(CPInteractons[i]->UpdateContacts(Alpha)) PInteractons.Push(CPInteractons[i]);
+    }
+    Vec3_t vmin(Xmax-Xmin,0.0,0.0);
+    for (size_t i=0;i<ParXmax.Size();i++) ParXmax[i]->Translate(vmin);
+}
 // Auxiliar methods
 
 inline void Domain::LinearMomentum (Vec3_t & L)
