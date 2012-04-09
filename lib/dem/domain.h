@@ -84,7 +84,7 @@ public:
     void AddDrill    (int Tag, Vec3_t const & X, double R, double Lt, double Ll, double rho);                                    ///< A drill made as a combination of a cube and a pyramid.
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
-    void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode, iVec3_t nv = iVec3_t(1,1,1));                  ///< Add a single voronoi cell, it should be built before tough
+    void AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode, Vec3_t nv = iVec3_t(1.0,1.0,1.0));   ///< Add a single voronoi cell, it should be built before tough
     void AddTorus    (int Tag, Vec3_t const & X, Vec3_t const & N, double Rmax, double R, double rho);                           ///< Add a single torus at position X with a normal N, circunference Rmax and spheroradius R
     void AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t const & X1, double R1, double R, double rho);                ///< Add a cylinder formed by the connection of two circles at positions X0 and X1 and radii R0 and R1
 
@@ -378,7 +378,7 @@ void * GlobalResetBoundaries2 (void * Data)
         for (size_t j=0; j<dat.Dom->Particles.Size(); j++)
         {
             Particle * P2 = dat.Dom->Particles[j];
-            if (P1==P2||!P2->IsFree()) continue;
+            if (P1==P2||!P2->IsFree()||P->Has(P2)) continue;
             bool close = (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*dat.Dom->Alpha);
             if (!close) continue;
             set<pair<Particle *, Particle *> >::iterator it = dat.Dom->PListofpairs.find(make_pair(P1,P2));
@@ -889,9 +889,12 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
     printf("\n%s--- Adding Voronoi particles packing --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
 
     srand(Randomseed);
-    const double x_min=-(nx*Lx/2.0), x_max=nx*Lx/2.0;
-    const double y_min=-(ny*Ly/2.0), y_max=ny*Ly/2.0;
-    const double z_min=-(nz*Lz/2.0), z_max=nz*Lz/2.0;
+    //const double x_min=-(nx*Lx/2.0), x_max=nx*Lx/2.0;
+    //const double y_min=-(ny*Ly/2.0), y_max=ny*Ly/2.0;
+    //const double z_min=-(nz*Lz/2.0), z_max=nz*Lz/2.0;
+    const double x_min=-(nx/2.0), x_max=nx/2.0;
+    const double y_min=-(ny/2.0), y_max=ny/2.0;
+    const double z_min=-(nz/2.0), z_max=nz/2.0;
     container con(x_min,x_max,y_min,y_max,z_min,z_max,nx,ny,nz, Periodic,Periodic,Periodic,8);
     int n = 0;
     for (size_t i=0; i<nx; i++)
@@ -930,8 +933,8 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
 
                     if (rand()<fraction*RAND_MAX)
                     {
-                        AddVoroCell(Tag,c,R,rho,true,iVec3_t(nx,ny,nz));
-                        Vec3_t trans(x/nx,y/ny,z/nz);
+                        AddVoroCell(Tag,c,R,rho,true,Vec3_t(Lx/nx,Ly/ny,Lz/nz));
+                        Vec3_t trans(Lx*x/nx,Ly*y/ny,Lz*z/nz);
                         Particle * P = Particles[Particles.Size()-1];
                         P->Translate(trans);
                     }
@@ -1351,14 +1354,14 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
     if (!ThereisanAxis) delete Axis;
 }
 
-inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode, iVec3_t nv)
+inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode, Vec3_t nv)
 {
     Array<Vec3_t> V(VC.p);
     Array<Array <int> > E;
     Array<int> Eaux(2);
     for(int i=0;i<VC.p;i++) 
     {
-        V[i] = Vec3_t(0.5*VC.pts[3*i]/nv(0),0.5*VC.pts[3*i+1]/nv(1),0.5*VC.pts[3*i+2]/nv(2));
+        V[i] = Vec3_t(0.5*VC.pts[3*i]*nv(0),0.5*VC.pts[3*i+1]*nv(1),0.5*VC.pts[3*i+2]*nv(2));
         for(int j=0;j<VC.nu[i];j++) 
         {
             int k=VC.ed[i][j];
@@ -1862,62 +1865,66 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
             ///////////////// Periodic Boundaries ////////////////////////
             //std::cout << "1" << std::endl;
-            for (size_t i=0;i<Nproc;i++)
+            if (Xmax-Xmin>Alpha)
             {
-                pthread_create(&thrs[i], NULL, GlobalResetBoundaries1, &MTD[i]);
-            }
-            ParXmax.Resize(0);
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_join(thrs[i], NULL);
-                for (size_t j=0;j<MTD[i].LBP.Size();j++)
+                for (size_t i=0;i<Nproc;i++)
                 {
-                    ParXmax.Push(Particles[MTD[i].LBP[j]]);
+                    pthread_create(&thrs[i], NULL, GlobalResetBoundaries1, &MTD[i]);
                 }
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_create(&thrs[i], NULL, GlobalResetBoundaries2, &MTD[i]);
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_join(thrs[i], NULL);
-                for (size_t j=0;j<MTD[i].LPC.Size();j++)
+                ParXmax.Resize(0);
+                for (size_t i=0;i<Nproc;i++)
                 {
-                    size_t n = MTD[i].LPC[j].first;
-                    size_t m = MTD[i].LPC[j].second;
-                    PListofpairs.insert(make_pair(ParXmax[n],Particles[m]));
-                    if (ParXmax[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
+                    pthread_join(thrs[i], NULL);
+                    for (size_t j=0;j<MTD[i].LBP.Size();j++)
                     {
-                        CPInteractons.Push (new CInteractonSphere(ParXmax[n],Particles[m]));
-                    }
-                    else
-                    {
-                        CPInteractons.Push (new CInteracton(ParXmax[n],Particles[m]));
+                        ParXmax.Push(Particles[MTD[i].LBP[j]]);
                     }
                 }
-            }
-            //std::cout << "2 " << CPInteractons.Size() << std::endl;
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_create(&thrs[i], NULL, GlobalResetBoundaries3, &MTD[i]);
-            }
-            PInteractons.Resize(0);
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_join(thrs[i], NULL);
-                for (size_t j=0;j<MTD[i].LPCI.Size();j++)
+                for (size_t i=0;i<Nproc;i++)
                 {
-                    PInteractons.Push(CPInteractons[MTD[i].LPCI[j]]);
+                    pthread_create(&thrs[i], NULL, GlobalResetBoundaries2, &MTD[i]);
                 }
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_create(&thrs[i], NULL, GlobalPerTranslateBack, &MTD[i]);
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_join(thrs[i], NULL);
+                for (size_t i=0;i<Nproc;i++)
+                {
+                    pthread_join(thrs[i], NULL);
+                    for (size_t j=0;j<MTD[i].LPC.Size();j++)
+                    {
+                        size_t n = MTD[i].LPC[j].first;
+                        size_t m = MTD[i].LPC[j].second;
+                        PListofpairs.insert(make_pair(ParXmax[n],Particles[m]));
+                        if (ParXmax[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
+                        {
+                            CPInteractons.Push (new CInteractonSphere(ParXmax[n],Particles[m]));
+                        }
+                        else
+                        {
+                            CPInteractons.Push (new CInteracton(ParXmax[n],Particles[m]));
+                        }
+                    }
+                }
+                //std::cout << "2 " << CPInteractons.Size() << std::endl;
+                for (size_t i=0;i<Nproc;i++)
+                {
+                    pthread_create(&thrs[i], NULL, GlobalResetBoundaries3, &MTD[i]);
+                }
+                PInteractons.Resize(0);
+                for (size_t i=0;i<Nproc;i++)
+                {
+                    pthread_join(thrs[i], NULL);
+                    for (size_t j=0;j<MTD[i].LPCI.Size();j++)
+                    {
+                        PInteractons.Push(CPInteractons[MTD[i].LPCI[j]]);
+                    }
+                }
+                for (size_t i=0;i<Nproc;i++)
+                {
+                    pthread_create(&thrs[i], NULL, GlobalPerTranslateBack, &MTD[i]);
+                }
+                for (size_t i=0;i<Nproc;i++)
+                {
+                    pthread_join(thrs[i], NULL);
+                }
+                //std::cout << ParXmax.Size() << std::endl;
             }
             //std::cout << "3 " << PInteractons.Size() << std::endl;
         }
@@ -2678,7 +2685,7 @@ inline void Domain::ResetBoundaries()
         for (size_t j=0; j<Particles.Size(); j++)
         {
             Particle * P2 = Particles[j];
-            if (P1==P2||!P2->IsFree()) continue;
+            if (P1==P2||!P2->IsFree()||ParXmax.Has(P2)) continue;
             bool close = (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*Alpha);
             if (!close) continue;
             set<pair<Particle *, Particle *> >::iterator it = PListofpairs.find(make_pair(P1,P2));
