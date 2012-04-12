@@ -73,7 +73,7 @@ class DrawMesh:
         self.diag = sqrt((self.lims[1]-self.lims[0])**2.0+(self.lims[3]-self.lims[2])**2.0)
 
         # noise to move tags and ids
-        self.yidnoise = 0.005*self.diag
+        self.yidnoise = 0.001*self.diag
 
         # icon's length
         self.l = self.pct*self.diag
