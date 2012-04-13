@@ -82,8 +82,18 @@ def SetForEps (proport=0.75, fig_width_pt=455.24):
 
 # Save fig with extra artists
 # ===========================
-def Save (filename, extra_artists=[], verbose=False):
-    savefig (filename, bbox_inches='tight', bbox_extra_artists=extra_artists)
+def Save (filename, ea=None, verbose=False):
+    """
+    INPUT:
+        ea : extra artists to adjust figure size.
+             it can be a list or a matplotlib object
+    """
+    if ea==None:
+        ea = []
+    else:
+        if not isinstance(ea, list):
+            ea = [ea]
+    savefig (filename, bbox_inches='tight', bbox_extra_artists=ea)
     if verbose:
         print 'File <[1;34m%s[0m> written'%filename
 # As a workaround, savefig can take bbox_extra_artists keyword (this may
@@ -102,7 +112,12 @@ def SetXnticks(subplot_fig, num):  subplot_fig.xaxis.set_major_locator(MaxNLocat
 
 # Legend
 # ======
-def Leg (fsz=8, ncol=1, loc='best'): legend (loc=loc,prop={'size':fsz},ncol=ncol)
+def Leg (fsz=8, ncol=1, loc='best', out=False):
+    if out:
+        return legend (bbox_to_anchor=(0.,1.02,1.,.102), loc=3, ncol=ncol, mode='expand',
+                       borderaxespad=0., handlelength=3, prop={'size':fsz})
+    else:
+        return legend (loc=loc,prop={'size':fsz},ncol=ncol)
 
 
 # Figure Grid
@@ -112,11 +127,11 @@ def FigGrid (color='grey', zorder=-100): grid (color=color, zorder=zorder)
 
 # FigGrid, labels and legend
 # ==========================
-def Gll (xl, yl, leg=True, grd=True, leg_ncol=1, leg_loc='best'):
+def Gll (xl, yl, leg=True, grd=True, leg_ncol=1, leg_loc='best', leg_out=False):
     xlabel(xl)
     ylabel(yl)
-    if leg: Leg(ncol=leg_ncol, loc=leg_loc)
     if grd: FigGrid()
+    if leg: return Leg(ncol=leg_ncol, loc=leg_loc, out=leg_out)
 
 
 # Draw cross through zero
