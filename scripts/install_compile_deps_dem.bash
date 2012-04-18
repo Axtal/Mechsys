@@ -72,6 +72,7 @@ test -d $MECHSYS_ROOT/pkg || mkdir $MECHSYS_ROOT/pkg
 VER_TRIANGLE=1.6
 VER_TETGEN=1.4.3
 VER_VORO=0.3.1
+VER_IGRAPH=0.5.4
 
 error_message() {
     echo
@@ -111,6 +112,11 @@ download_and_compile() {
             LOCATION=http://mechsys.nongnu.org/software/$PKG.$EXT
             DO_PATCH=1
             DO_MAKE=0
+            ;;
+        igraph)
+            PKG=igraph-$VER_IGRAPH
+            LOCATION=http://sourceforge.net/projects/igraph/files/C%20library/$VER_IGRAPH/$PKG.$EXT
+            DO_CONF=1
             ;;
         *)
             error_message "download_and_compile: __Internal_error__"
@@ -241,6 +247,7 @@ download_and_compile() {
 download_and_compile triangle
 download_and_compile tetgen
 download_and_compile voro
+download_and_compile igraph
 
 echo
 echo "Finished ###################################################################"
