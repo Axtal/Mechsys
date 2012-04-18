@@ -85,11 +85,11 @@ class DrawMesh:
 
     # Draw mesh
     #==========
-    def draw(self, with_tags=True, with_ids=True, with_shares=True, only_lin_cells=False):
+    def draw(self, with_tags=True, with_ids=True, with_shares=True, only_lin_cells=False, with_grid=True):
         # create figure
         fig = figure()
         ax  = fig.add_subplot(111)
-        ax.grid()
+        if with_grid: ax.grid()
 
         # draw points at bounding box
         dlim  = sqrt((self.lims[1]-self.lims[0])**2.0+(self.lims[3]-self.lims[2])**2.0)
