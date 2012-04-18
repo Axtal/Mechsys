@@ -333,7 +333,7 @@ download_and_compile scalapack
 download_and_compile mumps
 download_and_compile igraph
 download_and_compile soplex
-download_and_compile vtk
+#download_and_compile vtk
 download_and_compile wxwidgets
 
 echo
