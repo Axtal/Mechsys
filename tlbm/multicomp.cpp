@@ -45,6 +45,8 @@ void Setup(LBM::Domain & dom, void * UD)
 
 int main(int argc, char **argv) try
 {
+    size_t Nproc = 1; 
+    if (argc==2) Nproc=atoi(argv[1]);
     Array<double> nu(2);
     nu[0] = 1.0/6.0;
     nu[1] = 1.0/6.0;
@@ -73,7 +75,7 @@ int main(int argc, char **argv) try
 
     // Set inner drop
     int obsX = nx/2, obsY = ny/2;
-    int radius =  nx/10.0;
+    int radius =  nx/8.0;
 
 	for (size_t i=0; i<nx; ++i)
 	for (size_t j=0; j<ny; ++j)
@@ -104,7 +106,7 @@ int main(int argc, char **argv) try
     Dom.Lat[1].Gs=  0.0;
     Dom.Gmix     =  0.001;
 
-    Dom.Solve(5000,50.0,Setup,NULL,"multicomp");
+    Dom.Solve(5000,50.0,Setup,NULL,"multicomp",true,Nproc);
 
 
     return 0;

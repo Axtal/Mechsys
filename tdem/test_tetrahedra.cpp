@@ -45,18 +45,18 @@ int main(int argc, char **argv) try
     ///////////////////////////////////////////////////////////////////////////////////////// Domain /////
     
     Domain d;
-    d.GenFromMesh (-1, mesh,0.05,1.0);
+    d.GenFromMesh (mesh,0.05,1.0,false,false);
 
     ///////////////////////////////////////////////////////////////////////////////// First timestep /////
     
-    d.WriteBPY ("test_tet");
+    d.WriteXDMF ("test_tet");
 
     ////////////////////////////////////////////////////////////////////////////////////////// Solve /////
 
     double dt = 0.001;
     d.Particles[13]->w = Vec3_t(0,1.,1.);
     d.CamPos = 0.0,10.0,0.0;
-    d.Solve(/*tf*/1, dt, /*dtOut*/.1, "test_27cubes", true);
+    //d.Solve(/*tf*/1, dt, /*dtOut*/.1, "test_27cubes", true);
 
     return 0;    
 }

@@ -35,7 +35,7 @@ using std::endl;
 
 struct UserData
 {
-    Particle *         p;            // the array of particles at which the force is to be applied
+    DEM::Particle *    p;            // the array of particles at which the force is to be applied
     Array<Vec3_t  >    vm0;          // value of the vectors close to the middle section
     Array<Vec3_t *>    vm;           // pointers to the vectors close to the middle section
     String             test;         // Type of test vibraiton or tension
@@ -50,7 +50,7 @@ struct UserData
 
 void Setup (DEM::Domain & Dom, void * UD)
 {
-    // force at -3
+    // force at particle tagged -3
     UserData & dat = (*static_cast<UserData *>(UD));
     if (dat.test=="vibration")    dat.p->Ff=0.0,0.0,dat.Am*sin(dat.ome*Dom.Time);
     if (dat.test=="bending")
@@ -240,7 +240,7 @@ int main(int argc, char **argv) try
     dom.SetProps(B);
 
     // fix -2 particles at the left extreme of the beam
-    Particle * p;
+    DEM::Particle * p;
     p = dom.GetParticle (-2);
     p->FixVeloc();
 

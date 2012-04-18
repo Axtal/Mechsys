@@ -38,8 +38,8 @@ int main(int argc, char **argv) try
     //
     Domain d;
     d.CamPos = Vec3_t(0.0, 2.5, 30.0); // position of camera
-    //Mesh::Unstructured mesh(/*NDim*/2);
-    //mesh.Set    (8, 8, 1, 1);            // 8 points, 8 segments, 1 region, 1 hole
+    Mesh::Unstructured mesh(/*NDim*/2);
+    mesh.Set    (8, 8, 1, 1);            // 8 points, 8 segments, 1 region, 1 hole
     //mesh.SetReg (0, -1, -1.0, 0.2, 0.2); // id, tag, max{area}, x, y <<<<<<< regions
     //mesh.SetHol (0, 2.5, 2.5);           // id, x, y <<<<<<< holes
     //mesh.SetPnt (0, -1, 0.0, 0.0);       // id, vtag, x, y <<<<<< points
@@ -98,7 +98,7 @@ int main(int argc, char **argv) try
 
 
     //Fix the plane
-    Particle * p = d.GetParticle(-2,true);
+    DEM::Particle * p = d.GetParticle(-2,true);
     p->FixVeloc();
 
      //Initialize the gravity on the particles

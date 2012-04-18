@@ -33,6 +33,7 @@
 #include <mechsys/vtk/axes.h>
 
 using Util::PI;
+using namespace DEM;
 
 struct Data
 {

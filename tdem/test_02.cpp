@@ -31,7 +31,7 @@ using Util::FmtErr;
 using DEM::Domain;
 struct UserData
 {
-    Particle *p;   // The sphere
+    DEM::Particle *p;   // The sphere
     double omega;   // The angular velocity of the turntable
     double x0;      // The initial position in x
     double vx;      // velocity in the y axis
@@ -79,7 +79,7 @@ int main(int argc, char **argv) try
     dom.AddPlane(/*Tag*/-1,OrthoSys::O,0.1,20.0,20.0,1.0);
 
     // Get the position with tag -1 (the plane) and fix it
-    Particle *p = dom.GetParticle(-1);
+    DEM::Particle *p = dom.GetParticle(-1);
     p->FixVeloc();
     p->w = 0.0,0.0,angveltab;
 

@@ -32,7 +32,7 @@ using DEM::Domain;
 
 int main(int argc, char **argv) try
 {
-    Domain dom;
+    DEM::Domain dom;
     double dt = 1.0e-5;     // time step
     double g = 9.8;         // gravity acceleration
     double velocity = 10.0; // velocity of the sliding block.
@@ -42,7 +42,7 @@ int main(int argc, char **argv) try
     dom.AddPlane(/*Tag*/-2,OrthoSys::O,0.1,100.0,100.0,1.0);
     dom.WriteBPY("test_01");
     // Get the position with tag -2 (the plane) and fix it
-    Particle *p = dom.GetParticle(-2);
+    DEM::Particle *p = dom.GetParticle(-2);
     p->FixVeloc();
     // Assign gravity and a velocity to particle -1
     p = dom.GetParticle(-1);

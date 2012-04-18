@@ -49,7 +49,7 @@ int main(int argc, char **argv) try
     // nonconvex particle
     Mesh::Generic mesh(/*NDim*/3);
     mesh.ReadMesh("nonconvex", /*IsShell*/true); // read file nonconvex.mesh
-    Particle * p0 = new Particle(-1, mesh, 0.1);
+    DEM::Particle * p0 = new DEM::Particle(-1, mesh, 0.1);
     dom.Particles.Push (p0);
 
     // another particle
@@ -72,7 +72,7 @@ int main(int argc, char **argv) try
     E.Push (Array<int>(6,7));
     E.Push (Array<int>(7,4));
     F.Push (Array<int>(4,5,6,7));
-    Particle * p1 = new Particle(-1, V,E,F, Vec3_t(0.,0.,0.), Vec3_t(0.,0.,0.), 0.1);
+    DEM::Particle * p1 = new DEM::Particle(-1, V,E,F, Vec3_t(0.,0.,0.), Vec3_t(0.,0.,0.), 0.1);
     dom.Particles.Push (p1);
 
     // standard particles

@@ -25,6 +25,7 @@ SET(EXES
   ttt
   test_periodic
   test_distances
+  test_tetrahedra
   test_domain
   test_dynamics
   test_read
@@ -54,4 +55,4 @@ FOREACH(var ${TESTS})
     ADD_TEST (${var} ${var})
 ENDFOREACH(var)
 
-SUBDIRS(newtests)
+#SUBDIRS(newtests)

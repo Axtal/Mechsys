@@ -27,6 +27,7 @@
 
 using std::cout;
 using std::endl;
+using namespace DEM;
 
 int main(int argc, char **argv) try
 {
