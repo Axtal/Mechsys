@@ -41,6 +41,7 @@ public:
     // Methods
     void GetLoc       (Array<size_t> & Loc)                     const; ///< Get location vector for mounting K/M matrices
     void CalcK        (Mat_t & K)                               const; ///< Stiffness matrix
+    void CalcM        (Mat_t & M)                               const; ///< Mass matrix
     void CalcT        (Mat_t & T, double & l)                   const; ///< Transformation matrix
     void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)    const;
     void StateKeys    (Array<String> & Keys)                    const; ///< Get state keys
@@ -50,6 +51,7 @@ public:
     // Constants
     double E; ///< Young modulus
     double A; ///< Cross-sectional area
+    double rho; ///< density
 };
 
 
@@ -65,6 +67,7 @@ inline Rod::Rod (int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model con
     // parameters/properties
     E = Prp("E");
     A = Prp("A");
+    rho = (Prp.HasKey("rho") ? Prp("rho") : 1.0);
 }
 
 inline void Rod::GetLoc (Array<size_t> & Loc) const
@@ -95,6 +98,24 @@ inline void Rod::CalcK (Mat_t & K) const
     int nrows = 2*NDim; // number of rows in local K matrix
     K.change_dim (nrows,nrows);
     K = trans(T)*Kl*T;
+}
+
+inline void Rod::CalcM (Mat_t & M) const
+{
+    // length and T matrix
+    double l;
+    Mat_t  T;
+    CalcT (T, l);
+
+    // local M
+    Mat_t Ml(2,2);
+    Ml = 2., 1.,
+         1., 2.;
+
+    // M matrix
+    double m = rho*A*l/6.;
+    M.change_dim (4,4);
+    M = m*trans(T)*Ml*T;
 }
 
 inline void Rod::CalcT (Mat_t & T, double & l) const
