@@ -573,7 +573,7 @@ inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
         // strain and stress increments
         deps = B * dUe;
-        std::cout << "deps = " << PrintVector(deps);
+        //std::cout << "deps = " << PrintVector(deps);
         Mdl->SUp.Update (deps, Sta[i], dsig);
 
         // element nodal forces

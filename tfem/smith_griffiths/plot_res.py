@@ -54,13 +54,13 @@ if opts.tst=='1':
     legend (loc='best')
     xlabel ('Time')
     ylabel ('uy')
-    Grid   ()
+    grid   ()
     subplot(2,1,2)
     plot   (res['Time'],res['sy'],'r-',lw=2, label='MechSys')
     if not gn22==None: plot (gn22['Time'],gn22['sy'],'y-',lw=2, label='MechSys(GN22)')
     xlabel ('Time')
     ylabel ('sy')
-    Grid   ()
+    grid   ()
     show   ()
 
 if opts.tst=='2':
