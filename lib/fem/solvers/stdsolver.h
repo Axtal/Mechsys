@@ -126,6 +126,7 @@ private:
     void   _ME_update     (double tf, char const*FNK); ///< (Modified-Euler) Update Time and elements to tf (FNK=FilenameKey)
     void   _NR_update     (double tf);                 ///< (Newton-Rhapson) Update Time and elements to tf
     void   _TH_update     (double tf, double dt);      ///< (theta) Transient: update Time and elements to tf
+    void   _calc_F        (Vec_t & G, double t);       ///< Calculate F at time t: G = F(t)
     void   _GN22_update   (double tf, double dt);      ///< (Generalized-Newmark) Update Time and elements to tf
     void   _time_print    (char const * Comment=NULL); ///< Print timestep data
     void   _VUIV_to_Y     (double Y[]);
@@ -925,6 +926,15 @@ inline void STDSolver::Initialize (bool Transient)
     F_int = F;
     F0    = F;
 
+    // initialise accelerations
+    if (Transient)
+    {
+        AssembleKMA(1.0, 0.0);
+        _calc_F(W, Dom.Time);        // W = F(Dom.Time)
+        Sparse::SubMult (K11, U, W); // W -= K11*U
+        UMFPACK::Solve  (A11, W, A); // A = inv(A11)*W
+    }
+
     // calc residual
     _cal_resid ();
 
@@ -1307,6 +1317,21 @@ inline void STDSolver::_TH_update (double tf, double Dt)
     }
 }
 
+inline void STDSolver::_calc_F (Vec_t & G, double t)
+{
+    G = F0;
+    for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
+    {
+        Node * const nod = Dom.NodsWithPF[i];
+        for (size_t j=0; j<nod->NPF(); ++j)
+        {
+            int eq = nod->EqPF(j);
+            if (!pU[eq]) G(eq) = F0(eq) + nod->PF(j, t);
+        }
+    }
+    for (size_t i=0; i<Dom.ActEles.Size(); ++i) Dom.ActEles[i]->AddToF (t, G);
+}
+
 inline void STDSolver::_GN22_update (double tf, double Dt)
 {
     // timestep
@@ -1321,18 +1346,8 @@ inline void STDSolver::_GN22_update (double tf, double Dt)
     while (Dom.Time<tf)
     {
         // set prescribed F
-        F = F0;
-        double tb = Dom.Time+DynTh1*dt;
-        for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
-        {
-            Node * const nod = Dom.NodsWithPF[i];
-            for (size_t j=0; j<nod->NPF(); ++j)
-            {
-                int eq = nod->EqPF(j);
-                if (!pU[eq]) F(eq) = F0(eq) + nod->PF(j, tb);
-            }
-        }
-        for (size_t i=0; i<Dom.ActEles.Size(); ++i) Dom.ActEles[i]->AddToF (tb, F);
+        double tb = Dom.Time + dt;  // ERROR => +DynTh1*dt;
+        _calc_F(F, tb); // F = F(tb)
         double normF = Norm(F);
 
         // predictor
