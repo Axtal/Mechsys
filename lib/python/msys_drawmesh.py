@@ -119,7 +119,7 @@ class DrawMesh:
                         dat.append((self.PH.LINETO, (self.V[con[4]][2], self.V[con[4]][3])))
                         dat.append((self.PH.LINETO, (self.V[con[2]][2], self.V[con[2]][3])))
                         dat.append((self.PH.LINETO, (self.V[con[5]][2], self.V[con[5]][3])))
-                    if nnod==8:
+                    if nnod==8 or nnod==9:
                         dat.append((self.PH.LINETO, (self.V[con[4]][2], self.V[con[4]][3])))
                         dat.append((self.PH.LINETO, (self.V[con[1]][2], self.V[con[1]][3])))
                         dat.append((self.PH.LINETO, (self.V[con[5]][2], self.V[con[5]][3])))
@@ -174,6 +174,8 @@ class DrawMesh:
                 # centre
                 con = c[2] # connectivity
                 nnod = len(con)
+                va1, va2 = 'bottom', 'bottom'
+                ha1, ha2 = 'left',   'right'
                 if only_lin_cells and nnod>2: continue
                 if nnod==2:
                     if self.ndim==1:
@@ -199,6 +201,10 @@ class DrawMesh:
                         yc += self.V[con[j]][3]
                     xc = xc/nnod
                     yc = yc/nnod
+                if nnod==9:
+                    va2 = 'top'
+                    xc += self.yidnoise
+                    yc -= self.yidnoise
                 # text
                 txt = '   '
                 if with_tags: txt = '%s%d' % (txt,c[1])
@@ -209,8 +215,8 @@ class DrawMesh:
                         side = side_id[0]
                         eid  = side_id[1]
                         txt  = '%s %d' % (txt,eid)
-                if len(txt)>0: ax.text(xc,yc, txt,  ha='left',  backgroundcolor=self.lgreen,fontsize=self.fsz2)
-                if with_ids:   ax.text(xc,yc, c[0], ha='right', backgroundcolor=self.purple,fontsize=self.fsz1)
+                if len(txt)>0: ax.text(xc,yc, txt,  va=va1, ha=ha1, backgroundcolor=self.lgreen,fontsize=self.fsz2)
+                if with_ids:   ax.text(xc,yc, c[0], va=va2, ha=ha2, backgroundcolor=self.purple,fontsize=self.fsz1)
                 # edge tags
                 if with_tags and self.ndim>1 and len(c)>3:
                     nnod = len(con)
@@ -229,7 +235,7 @@ class DrawMesh:
                                 elif side==1: na, nb = con[1], con[2]
                                 elif side==2: na, nb = con[2], con[3]
                                 elif side==3: na, nb = con[3], con[0]
-                            elif nnod==8:
+                            elif nnod==8 or nnod==9:
                                 if   side==0: na, nb,  nc, nd = con[0], con[4],  con[4], con[1]
                                 elif side==1: na, nb,  nc, nd = con[1], con[5],  con[5], con[2]
                                 elif side==2: na, nb,  nc, nd = con[2], con[6],  con[6], con[3]
@@ -245,7 +251,7 @@ class DrawMesh:
                             xc = (xa+xb)/2.0
                             yc = (ya+yb)/2.0
                             ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
-                            if nnod==6 or nnod==8 or nnod==15:
+                            if nnod==6 or nnod==8 or nnod==9 or nnod==15:
                                 xa = self.V[nc][2]
                                 ya = self.V[nc][3]
                                 xb = self.V[nd][2]

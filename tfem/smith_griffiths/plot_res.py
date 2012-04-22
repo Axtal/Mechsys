@@ -74,7 +74,7 @@ if opts.tst=='2':
     if not rk==None: plot(rk['Time'],rk['uy'],'g-',lw=2,label='MechSys(RK)')
 
     legend(loc='best')
-    Grid()
+    grid()
     show()
 
 if opts.tst=='3':
