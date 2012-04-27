@@ -17,7 +17,7 @@
 ########################################################################
 
 from numpy import array, sqrt, linspace, pi, cos, sin
-from pylab import figure, text, show, axis
+from pylab import figure, text, show, axis, gca
 from pylab import matplotlib as MPL
 
 class DrawMesh:
@@ -50,6 +50,13 @@ class DrawMesh:
         self.fsz1 = fsz1
         self.fsz2 = fsz2
 
+        # constants for arrows
+        self.icf = 0.04 # icons coefficient
+        self.acf = 0.06 # arrow coefficient 
+        self.ndl = 5    # num divisions for load icon (arrows)
+        self.ndf = 5    # num divisions for flux icon (arrows)
+        self.ndc = 5    # num divisions for convection icon (little S)
+
         # colors
         self.pink    = (250/255.0,204/255.0,228/255.0)
         self.lblue   = (217/255.0,228/255.0,255/255.0)
@@ -75,8 +82,9 @@ class DrawMesh:
         # noise to move tags and ids
         self.yidnoise = 0.001*self.diag
 
-        # icon's length
-        self.l = self.pct*self.diag
+        # lengths
+        self.il = self.icf * self.diag # icon's length
+        self.al = self.acf * self.diag # arrows's length
 
         # matplotlib's structures
         self.PH = MPL.path.Path
@@ -89,7 +97,9 @@ class DrawMesh:
         # create figure
         fig = figure()
         ax  = fig.add_subplot(111)
-        if with_grid: ax.grid()
+        if with_grid:
+            ax.grid(color='gray')
+            ax.set_axisbelow(True)
 
         # draw points at bounding box
         dlim  = sqrt((self.lims[1]-self.lims[0])**2.0+(self.lims[3]-self.lims[2])**2.0)
@@ -166,41 +176,18 @@ class DrawMesh:
                     x1 = self.V[con[1]][2]
                     y1 = self.V[con[1]][3]
                     XY = array([[x0,y0],[x1,y1]])
-                    ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=self.lineedgeclr, lw=4))
+                    ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=self.lineedgeclr, lw=3))
 
         # text
         if with_ids or with_tags:
             for c in self.C:
                 # centre
-                con = c[2] # connectivity
-                nnod = len(con)
+                if only_lin_cells and len(c[2])>2: continue
+                cf = 0.5 if only_lin_cells else 0.3
+                xc, yc = self.get_cell_centre(c, cf)
+                # noise
                 va1, va2 = 'bottom', 'bottom'
                 ha1, ha2 = 'left',   'right'
-                if only_lin_cells and nnod>2: continue
-                if nnod==2:
-                    if self.ndim==1:
-                        x0 = self.V[con[0]][2]
-                        y0 = 0.0
-                        x1 = self.V[con[1]][2]
-                        y1 = 0.0
-                        xc = x0 + 0.5*(x1-x0)
-                        yc = y0 + 0.5*(y1-y0)
-                    else:
-                        x0 = self.V[con[0]][2]
-                        y0 = self.V[con[0]][3]
-                        x1 = self.V[con[1]][2]
-                        y1 = self.V[con[1]][3]
-                        cf = 0.5 if only_lin_cells else 0.3
-                        xc = x0 + cf*(x1-x0)
-                        yc = y0 + cf*(y1-y0)
-                else:
-                    xc = self.V[con[0]][2]
-                    yc = self.V[con[0]][3]
-                    for j in range(1,nnod):
-                        xc += self.V[con[j]][2]
-                        yc += self.V[con[j]][3]
-                    xc = xc/nnod
-                    yc = yc/nnod
                 if nnod==9:
                     va2 = 'top'
                     xc += self.yidnoise
@@ -327,6 +314,36 @@ class DrawMesh:
             if tag<0 and with_tags:
                 text(x, y, '%d'%tag, va='top', color='black', backgroundcolor='none', fontsize=self.fsz2)
 
+    # Get cell centre
+    # ===============
+    def get_cell_centre(self, c, cf=0.5):
+        con  = c[2] # connectivity
+        nnod = len(con)
+        if nnod==2:
+            if self.ndim==1:
+                x0 = self.V[con[0]][2]
+                y0 = 0.0
+                x1 = self.V[con[1]][2]
+                y1 = 0.0
+                xc = x0 + 0.5*(x1-x0)
+                yc = y0 + 0.5*(y1-y0)
+            else:
+                x0 = self.V[con[0]][2]
+                y0 = self.V[con[0]][3]
+                x1 = self.V[con[1]][2]
+                y1 = self.V[con[1]][3]
+                xc = x0 + cf*(x1-x0)
+                yc = y0 + cf*(y1-y0)
+        else:
+            xc = self.V[con[0]][2]
+            yc = self.V[con[0]][3]
+            for j in range(1,nnod):
+                xc += self.V[con[j]][2]
+                yc += self.V[con[j]][3]
+            xc = xc/nnod
+            yc = yc/nnod
+        return xc, yc
+
     # Show figure
     # ===========
     def show(self):
@@ -346,3 +363,184 @@ class DrawMesh:
         ph = self.PH (vert, cmd)
         pc = self.PC (ph, facecolor=self.lyellow, edgecolor="red", linewidth=4)
         ax.add_patch (pc)
+
+    # Draw node boundary conditions
+    #==============================
+    def node_bcs(self, vb, rotate=False):
+        ax = gca()
+        for v in self.V:
+            tag = v[1]
+            if tag>=0: continue
+            B = vb[tag]
+            # bcs
+            T  = False
+            ux = False
+            uy = False
+            fx = False
+            fy = False
+            for key in B:
+                if key=='T':  T  = True
+                if key=='ux': ux = True
+                if key=='uy': uy = True
+                if key=='fx': fx, sf = True, self.sgn(B[key])
+                if key=='fy': fy, sf = True, self.sgn(B[key])
+                if key=='T_func':
+                    text(v[2],v[3],'f',fontsize=18,color=self.orange)
+            # draw icon
+            if T:
+                n = array([0.0,1.0])
+                ax.add_patch(self.PP.CirclePolygon(array([v[2],v[3]]),self.il/2.0,facecolor='none',edgecolor=self.orange,linewidth=2))
+            if ux or uy:
+                # direction
+                dpx = abs(v[2]-self.lims[0])
+                dpy = abs(v[3]-self.lims[2])
+                dqx = abs(v[2]-self.lims[1])
+                dqy = abs(v[3]-self.lims[3])
+                fix = False
+                if ux and not uy:                      # only ux
+                    if dpx<0.01: n = array([ 1.0,0.0]) # left
+                    else:        n = array([-1.0,0.0]) # ?
+                elif uy and not ux:                    # only uy
+                    if dpy<0.01: n = array([0.0, 1.0]) # bottom
+                    else:        n = array([0.0,-1.0]) # ?
+                else:                                  # both ux and uy
+                    n = array([ 0.0, 1.0]) # ?
+                    if rotate:
+                        if   dpx<0.01 and dpy<0.01: n = array([ 0.0, 1.0]) # left-bottom
+                        elif dpx<0.01 and dqy<0.01: n = array([ 0.0,-1.0]) # left-top
+                        elif dqx<0.01 and dpy<0.01: n = array([ 0.0, 1.0]) # right-bottom
+                        elif dqx<0.01 and dqy<0.01: n = array([ 0.0,-1.0]) # right-top
+                        elif dpx<0.01:              n = array([ 1.0, 0.0]) # left
+                        elif dqx<0.01:              n = array([-1.0, 0.0]) # right
+                        elif dpy<0.01:              n = array([ 0.0, 1.0]) # bottom
+                        elif dqy<0.01:              n = array([ 0.0,-1.0]) # top
+                    fix = True
+                self.little_triangle(ax,array([v[2],v[3]]),self.il,n,fix)
+            if fx or fy:
+                d = sf * self.al
+                if fx:
+                    dx, dy = d, 0.0
+                    ax.add_patch(self.PP.Arrow(v[2],v[3],dx,dy,facecolor='black',edgecolor='none',width=0.5*d))
+                if fy:
+                    dx, dy = 0.0, d
+                    ax.add_patch(self.PP.Arrow(v[2],v[3],dx,dy,facecolor='black',edgecolor='none',width=0.5*d))
+
+    # Draw parameters
+    # ===============
+    def params(self, params, fs=10):
+        ax = gca()
+        for c in self.C:
+            P = params[c[1]]
+            xc, yc = self.get_cell_centre(c)
+            l = ''
+            keys = P.keys()
+            for i, key in enumerate(keys):
+                l += '%s=%s' % (key,P[key])
+                if i!=len(keys)-1: l+='\n'
+            text(xc, yc, l, fontsize=fs, ha='center',va='center')#, backgroundcolor='white')
+
+    # Draw eges boundary conditions
+    #==============================
+    def edge_bcs(self, ax, pa,pb,B):
+        dp = pb-pa
+        pm = (pa+pb)/2.0
+        dL = sqrt(dp[0]**2.0+dp[1]**2.0) # edge length
+        n  = array([dp[1],-dp[0]])/dL    # unit normal
+        t  = array([ -n[1], n[0]])       # unit tangent
+        for k, v in B.iteritems():
+            if k=='qn' or k=='qt' or k=='qx' or k=='qy':
+                p = pa.copy()
+                for i in range(self.ndl+1):
+                    if k=='qn':
+                        if self.sgn(v)<0 and i==0: p += self.acf*self.il*n
+                        dx = self.acf*self.sgn(v)*self.il*n[0]
+                        dy = self.acf*self.sgn(v)*self.il*n[1]
+                    if k=='qt':
+                        dx = self.acf*self.sgn(v)*self.il*t[0]
+                        dy = self.acf*self.sgn(v)*self.il*t[1]
+                    if k=='qx':
+                        dx = self.acf*self.sgn(v)*self.il
+                        dy = 0.0
+                    if k=='qy':
+                        dx = 0.0
+                        dy = self.acf*self.sgn(v)*self.il
+                    ax.add_patch(self.PP.Arrow(p[0],p[1],dx,dy,facecolor='red',edgecolor='none',width=0.7*self.il))
+                    p += dp/self.ndl
+            if k=='conv':
+                p  = pa.copy()
+                for i in range(self.ndc+1):
+                    self.little_S(ax,p,self.il,n)
+                    p += dp/self.ndc
+            if k=='flux':
+                if fabs(v)<1.0e-7: # insulated
+                    p0 = pa+(0.3*self.il)*n
+                    p1 = pb+(0.3*self.il)*n
+                    xy = array([[p0[0],p0[1]],[p1[0],p1[1]]])
+                    ax.add_patch(self.PP.Polygon(xy,edgecolor=self.orange,linewidth=4))
+                    p0 += (0.3*self.il)*n
+                    p1 += (0.3*self.il)*n
+                    xy  = array([[p0[0],p0[1]],[p1[0],p1[1]]])
+                    ax.add_patch(self.PP.Polygon(xy,edgecolor=self.orange,linewidth=4))
+                else:
+                    p = pa.copy()
+                    for i in range(self.ndf+1):
+                        if self.sgn(v)>0 and i==0: p += self.acf*self.il*n
+                        dx = -self.acf*self.sgn(v)*self.il*n[0]
+                        dy = -self.acf*self.sgn(v)*self.il*n[1]
+                        ax.add_patch(self.PP.Arrow(p[0],p[1],dx,dy,facecolor=(241/255.0,125/255.0,0/255.0),edgecolor='none',width=0.7*self.l))
+                        p += dp/self.ndf
+
+    # Draw little S
+    # =============
+    def little_S(self, ax, p0,l,n):
+        hh  = l*sqrt(3.0)/4.0     # half-height
+        t   = array([-n[1],n[0]]) # unit tangent
+        pm  = p0 + hh*n
+        p1  = pm + (l/2.0)*t
+        p2  = pm - (l/2.0)*t
+        p3  = p0 + 2.0*hh*n
+        dat = [(self.PH.MOVETO,(p0[0],p0[1])), (self.PH.CURVE4,(p1[0],p1[1])), (self.PH.CURVE4,(p2[0],p2[1])), (self.PH.CURVE4,(p3[0],p3[1]))]
+        c,v = zip(*dat)
+        ax.add_patch(self.PC(self.PH(v,c), facecolor='none', edgecolor=(241/255.0,125/255.0,0/255.0), linewidth=4))
+
+    # Draw little triangle
+    # ====================
+    # p0: tip position   (array)
+    # l:  side length    (array)
+    # n:  unit direction (array)
+    def little_triangle(self, ax, p0,l,n,fixed=False):
+        h   = l*sqrt(3.0)/2.0     # height
+        t   = array([-n[1],n[0]]) # unit tangent
+        pm  = p0 - h*n
+        p1  = pm + (l/2.0)*t
+        p2  = pm - (l/2.0)*t
+        dat = [(self.PH.MOVETO,(p0[0],p0[1])), (self.PH.LINETO,(p1[0],p1[1])), (self.PH.LINETO,(p2[0],p2[1])), (self.PH.CLOSEPOLY,(0,0))]
+        ld  = l/3.0 # length of details
+        if fixed: # fixed support
+            nd = 7
+            dx = l/nd
+            p  = p1
+            q  = p - ld*n
+            dat.append((self.PH.MOVETO,(p[0],p[1])))
+            dat.append((self.PH.LINETO,(q[0],q[1])))
+            for i in range(nd):
+                p -= dx*t
+                q  = p - (l/3.0)*n
+                dat.append((self.PH.MOVETO,(p[0],p[1])))
+                dat.append((self.PH.LINETO,(q[0],q[1])))
+        else:
+            pc = pm-(ld/2.0)*n
+            p3 = p1 - ld*n
+            p4 = p2 - ld*n
+            xy = array([[p3[0],p3[1]],[p4[0],p4[1]]])
+            ax.add_patch(self.PP.CirclePolygon(pc,ld/2.0,facecolor='none'))
+            ax.add_patch(self.PP.Polygon(xy,linewidth=2))
+        # create patch
+        c,v = zip(*dat)
+        ax.add_patch(self.PC(self.PH(v,c), facecolor=(250/255.0,204/255.0,95/255.0), edgecolor='black', linewidth=1))
+
+    # Sign funcion
+    # ============
+    def sgn(self, val):
+        if val<0: return -1
+        else:     return  1
