@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-from numpy import array, sqrt, linspace, pi, cos, sin
+from numpy import array, sqrt, linspace, pi, cos, sin, arctan2
 from pylab import figure, text, show, axis, gca
 from pylab import matplotlib as MPL
 
@@ -95,7 +95,7 @@ class DrawMesh:
     # Draw mesh
     #==========
     def draw(self, with_tags=True, with_ids=True, with_shares=True, only_lin_cells=False,
-             with_grid=True, jointsR=None, lineedgeLws={}):
+             with_grid=True, rotateIds=True, jointsR=None, lineedgeLws={}):
         # create figure
         fig = figure()
         ax  = fig.add_subplot(111)
@@ -186,10 +186,12 @@ class DrawMesh:
         if with_ids or with_tags:
             for c in self.C:
                 # centre
-                nnod = len(c[2])
+                con  = c[2]     # connectivity
+                nnod = len(con) # number of nodes per cell
                 if only_lin_cells and nnod>2: continue
                 cf = 0.5 if only_lin_cells else 0.3
-                xc, yc = self.get_cell_centre(c, cf)
+                xc, yc, alp = self.get_cell_centre(c, cf)
+                if not rotateIds: alp = 0.0
                 # noise
                 va1, va2 = 'bottom', 'bottom'
                 ha1, ha2 = 'left',   'right'
@@ -207,11 +209,10 @@ class DrawMesh:
                         side = side_id[0]
                         eid  = side_id[1]
                         txt  = '%s %d' % (txt,eid)
-                if len(txt)>0: ax.text(xc,yc, txt,  va=va1, ha=ha1, backgroundcolor=self.lgreen,fontsize=self.fsz2)
-                if with_ids:   ax.text(xc,yc, c[0], va=va2, ha=ha2, backgroundcolor=self.purple,fontsize=self.fsz1)
+                if len(txt)>0: ax.text(xc,yc, txt,  rotation=alp, va=va1, ha=ha1, backgroundcolor=self.lgreen,fontsize=self.fsz2)
+                if with_ids:   ax.text(xc,yc, c[0], rotation=alp, va=va2, ha=ha2, backgroundcolor=self.purple,fontsize=self.fsz1)
                 # edge tags
                 if with_tags and self.ndim>1 and len(c)>3:
-                    nnod = len(con)
                     for side, tag in c[3].iteritems():
                         if tag<0: # has tag
                             if nnod==3:
@@ -294,9 +295,11 @@ class DrawMesh:
                 if tag<0 and with_tags:
                     yval = v[3]-self.yidnoise if self.ndim>1 else -self.yidnoise
                     text(v[2], yval, '%d'%tag, va='top', ha='left', color='black', backgroundcolor=self.orange, fontsize=self.fsz2)
-                # joints
-                if jointsR!=None:
-                    Circle(v[2],v[3],jointsR,ec='black',fc='white',lw=1,zorder=10)
+
+        # joints
+        if jointsR!=None:
+            for v in self.V:
+                gca().add_patch(self.PP.Circle((v[2],v[3]), jointsR, clip_on=False, edgecolor='black', facecolor='white', lw=1, zorder=10))
 
         # pins
         for key, val in self.Pins.iteritems():
@@ -341,7 +344,16 @@ class DrawMesh:
                 yc += self.V[con[j]][3]
             xc = xc/nnod
             yc = yc/nnod
-        return xc, yc
+        # angle between first and second nodes
+        alp = 0.0
+        if self.ndim > 1:
+            x0, y0 = self.V[con[0]][2], self.V[con[0]][3]
+            x1, y1 = self.V[con[1]][2], self.V[con[1]][3]
+            dx, dy = x1-x0, y1-y0
+            alp = arctan2(dy, dx) * 180./pi
+            #if   x1 > x0: alp =  arccos((x1-x0)/l01) * 180./pi
+            #elif x0 > x1: alp = -arccos((x0-x1)/l01) * 180./pi
+        return xc, yc, alp
 
     # Show figure
     # ===========
@@ -426,17 +438,18 @@ class DrawMesh:
 
     # Draw parameters
     # ===============
-    def params(self, params, fs=10):
+    def params(self, params, fs=10, rotateIds=True):
         ax = gca()
         for c in self.C:
             P = params[c[1]]
-            xc, yc = self.get_cell_centre(c)
+            xc, yc, alp = self.get_cell_centre(c)
+            if not rotateIds: alp = 0.0
             l = ''
             keys = P.keys()
             for i, key in enumerate(keys):
                 l += '%s=%s' % (key,P[key])
                 if i!=len(keys)-1: l+='\n'
-            text(xc, yc, l, fontsize=fs, ha='center',va='center')#, backgroundcolor='white')
+            text(xc, yc, l, rotation=alp, fontsize=fs, ha='center',va='center')#, backgroundcolor='white')
 
     # Draw eges boundary conditions
     #==============================
