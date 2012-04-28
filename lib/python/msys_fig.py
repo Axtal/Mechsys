@@ -30,8 +30,9 @@ from pylab import contour, contourf, colorbar, clabel, xlim
 from pylab import cm as MPLcm
 from matplotlib.transforms   import offset_copy
 from matplotlib.patches      import FancyArrowPatch, PathPatch, Polygon
-from matplotlib.patches      import Arc  as MPLArc
-from matplotlib.path         import Path as MPLPath
+from matplotlib.patches      import Arc    as MPLArc
+from matplotlib.patches      import Circle as MPLCircle
+from matplotlib.path         import Path   as MPLPath
 from matplotlib.font_manager import FontProperties
 from matplotlib.ticker       import FuncFormatter
 from mpl_toolkits.mplot3d    import Axes3D
@@ -153,23 +154,15 @@ def Text (x, y, txt, x_offset=0, y_offset=0, units='points', va='bottom', ha='le
 def TextBox (x, y, txt, fsz=10, ha='left'):
     text(x, y, txt, bbox={'facecolor':'white'}, fontsize=fsz, ha=ha)
 
+# Draw circle
+# ===========
+def Circle (xc,yc,R, ec='red', fc='None', lw=1, ls='solid', zorder=None):
+    gca().add_patch(MPLCircle((xc,yc), R, clip_on=False, ls=ls, edgecolor=ec, facecolor=fc, lw=lw, zorder=zorder))
 
 # Draw arc
 # ========
-def Arc (xc,yc,R, alp_min=0.0, alp_max=pi, ec='red', fc='None', lw=2, ls='solid', label=None, useArc=True, res=200, zorder=0):
-    if useArc:
-        gca().add_patch(MPLArc([xc,yc], 2.*R,2.*R, clip_on=False, angle=0, theta1=alp_min*180.0/pi, theta2=alp_max*180.0/pi, ls=ls, color=ec, lw=lw, label=label, zorder=zorder))
-    else:
-        A   = linspace(alp_min,alp_max,res)
-        dat = [(MPLPath.MOVETO, (xc+R*cos(alp_min),yc+R*sin(alp_min)))]
-        for a in A[1:]:
-            x = xc + R*cos(a)
-            y = yc + R*sin(a)
-            dat.append ((MPLPath.LINETO, (x,y)))
-        cmd,vert = zip(*dat)
-        ph = MPLPath (vert, cmd)
-        gca().add_patch(PathPatch(ph, fc=fc, ec=ec, linewidth=lw, linestyle=ls, label=label, zorder=zorder))
-
+def Arc (xc,yc,R, alp_min=0.0, alp_max=pi, clr='red', lw=1, ls='solid', zorder=None):
+    gca().add_patch(MPLArc((xc,yc), 2.*R,2.*R, clip_on=False, angle=0, theta1=alp_min*180.0/pi, theta2=alp_max*180.0/pi, ls=ls, color=clr, lw=lw, zorder=zorder))
 
 # Draw arrow
 # ==========

@@ -36,7 +36,8 @@ class DrawMesh:
     # C=[[ 0, -1, [0,1,3,2], {0:-10,1:-20,2:-30,3:-40}, {}]]
     #
     # pct: percentage of drawing limits to use for icons
-    def __init__(self, V,C, Pins={}, Shares={}, pct=0.001, fsz1=8, fsz2=6):
+    def __init__(self, V,C, Pins={}, Shares={}, pct=0.001, fsz1=8, fsz2=6,
+                 icf=0.04, acf=0.06, ndl=5, ndf=5, ndc=5):
         # mesh
         self.V      = V
         self.C      = C
@@ -51,11 +52,11 @@ class DrawMesh:
         self.fsz2 = fsz2
 
         # constants for arrows
-        self.icf = 0.04 # icons coefficient
-        self.acf = 0.06 # arrow coefficient 
-        self.ndl = 5    # num divisions for load icon (arrows)
-        self.ndf = 5    # num divisions for flux icon (arrows)
-        self.ndc = 5    # num divisions for convection icon (little S)
+        self.icf = icf # icons coefficient
+        self.acf = acf # arrow coefficient 
+        self.ndl = ndl # num divisions for load icon (arrows)
+        self.ndf = ndf # num divisions for flux icon (arrows)
+        self.ndc = ndc # num divisions for convection icon (little S)
 
         # colors
         self.pink    = (250/255.0,204/255.0,228/255.0)
@@ -93,7 +94,8 @@ class DrawMesh:
 
     # Draw mesh
     #==========
-    def draw(self, with_tags=True, with_ids=True, with_shares=True, only_lin_cells=False, with_grid=True):
+    def draw(self, with_tags=True, with_ids=True, with_shares=True, only_lin_cells=False,
+             with_grid=True, jointsR=None, lineedgeLws={}):
         # create figure
         fig = figure()
         ax  = fig.add_subplot(111)
@@ -171,18 +173,21 @@ class DrawMesh:
             for c in self.C:
                 con = c[2] # connectivity
                 if len(con)==2:
+                    lw = 3
+                    if lineedgeLws.has_key(c[1]): lw = lineedgeLws[c[1]]
                     x0 = self.V[con[0]][2]
                     y0 = self.V[con[0]][3]
                     x1 = self.V[con[1]][2]
                     y1 = self.V[con[1]][3]
                     XY = array([[x0,y0],[x1,y1]])
-                    ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=self.lineedgeclr, lw=3))
+                    ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=self.lineedgeclr, lw=lw))
 
         # text
         if with_ids or with_tags:
             for c in self.C:
                 # centre
-                if only_lin_cells and len(c[2])>2: continue
+                nnod = len(c[2])
+                if only_lin_cells and nnod>2: continue
                 cf = 0.5 if only_lin_cells else 0.3
                 xc, yc = self.get_cell_centre(c, cf)
                 # noise
@@ -262,18 +267,9 @@ class DrawMesh:
                                 yc = (ya+yb)/2.0
                                 ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
 
-        #self.circle(0,0, 5.0,pi/2.0,ax)
-        #self.circle(0,0,15.0,pi/2.0,ax)
-
         # draw nodes
-
-        #prob = [ 455, 464, 468, 471, 478, 480, 483, 492, 494, 498, 2446, 2461, 2568, 2610, 2954, 3368, 3371, 3381, 3384]
-
         if with_ids:
             for v in self.V:
-
-                #if not v[0] in prob: continue
-
                 # skip if not connected to lin cell
                 if only_lin_cells and with_shares:
                     con_lin_cell = False # connected to lin cell ?
@@ -298,6 +294,9 @@ class DrawMesh:
                 if tag<0 and with_tags:
                     yval = v[3]-self.yidnoise if self.ndim>1 else -self.yidnoise
                     text(v[2], yval, '%d'%tag, va='top', ha='left', color='black', backgroundcolor=self.orange, fontsize=self.fsz2)
+                # joints
+                if jointsR!=None:
+                    Circle(v[2],v[3],jointsR,ec='black',fc='white',lw=1,zorder=10)
 
         # pins
         for key, val in self.Pins.iteritems():
