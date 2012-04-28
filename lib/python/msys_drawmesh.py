@@ -37,7 +37,7 @@ class DrawMesh:
     #
     # pct: percentage of drawing limits to use for icons
     def __init__(self, V,C, Pins={}, Shares={}, pct=0.001, fsz1=8, fsz2=6,
-                 icf=0.04, acf=0.06, ndl=5, ndf=5, ndc=5):
+                 yidpct=0.001, icf=0.04, acf=0.06, ndl=5, ndf=5, ndc=5):
         # mesh
         self.V      = V
         self.C      = C
@@ -81,7 +81,7 @@ class DrawMesh:
         self.diag = sqrt((self.lims[1]-self.lims[0])**2.0+(self.lims[3]-self.lims[2])**2.0)
 
         # noise to move tags and ids
-        self.yidnoise = 0.001*self.diag
+        self.yidnoise = yidpct * self.diag
 
         # lengths
         self.il = self.icf * self.diag # icon's length
