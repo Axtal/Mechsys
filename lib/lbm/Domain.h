@@ -63,7 +63,7 @@ public:
 #ifdef USE_HDF5
     void WriteXDMF (char const * FileKey);                                                                                            ///< Write the domain data in xdmf file
 #endif
-    void ApplyForce     (size_t n = 0, size_t Np = 1);                                                                                ///< Apply the interaction forces and the collision operator
+    void ApplyForce     (size_t n = 0, size_t Np = 1, bool MC=false);                                                                 ///< Apply the interaction forces and the collision operator
     void Collide        (size_t n = 0, size_t Np = 1);                                                                                ///< Apply the interaction forces and the collision operator
     void ImprintLattice (size_t n = 0, size_t Np = 1);                                                                                ///< Imprint the DEM particles into the lattices
     void Solve(double Tf, double dtOut, ptDFun_t ptSetup=NULL, ptDFun_t ptReport=NULL,
@@ -543,60 +543,75 @@ inline void Domain::WriteXDMF(char const * FileKey)
 }
 #endif
 
-inline void Domain::ApplyForce(size_t n, size_t Np)
+inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
 {
     size_t Ni = CellPairs.Size()/Np;
     size_t In = n*Ni;
     size_t Fn;
     n == Np-1 ? Fn = CellPairs.Size() : Fn = (n+1)*Ni;
 
-    for (size_t i=In;i<Fn;i++)
+    if (MC)
     {
-        size_t ind1 = CellPairs[i](0);
-        size_t ind2 = CellPairs[i](1);
-        size_t vec  = CellPairs[i](2);
-        for (size_t j=0;j<Lat.Size();j++)
+        for (size_t i=In;i<Fn;i++)
         {
-            bool solid = false;
-            Cell * c = Lat[j].Cells[ind1];
-            double psi;
-            if (c->IsSolid||c->Gamma>0.0)
+            size_t ind1 = CellPairs[i](0);
+            size_t ind2 = CellPairs[i](1);
+            size_t vec  = CellPairs[i](2);
+            Cell * c = Lat[0].Cells[ind1];
+
+
+        }
+    }
+    else
+    {
+        for (size_t i=In;i<Fn;i++)
+        {
+            size_t ind1 = CellPairs[i](0);
+            size_t ind2 = CellPairs[i](1);
+            size_t vec  = CellPairs[i](2);
+            for (size_t j=0;j<Lat.Size();j++)
             {
-                psi   = 1.0;
-                solid = true;
-            }
-            else fabs(Lat[j].G)>1.0e-12 ? psi = Lat[j].Psi(c->Rho) : psi = c->Rho;
-            for (size_t k=0;k<Lat.Size();k++)
-            {
-                Cell * nb = Lat[k].Cells[ind2];
-                double nb_psi;
-                if (nb->IsSolid||nb->Gamma>0.0)
+                bool solid = false;
+                Cell * c = Lat[j].Cells[ind1];
+                double psi;
+                if (c->IsSolid||c->Gamma>0.0)
                 {
-                    nb_psi = 1.0;
-                    solid  = true;
+                    psi   = 1.0;
+                    solid = true;
                 }
-                else fabs(Lat[j].G)>1.0e-12 ? nb_psi = Lat[k].Psi(nb->Rho) : nb_psi = nb->Rho;
-                double G;
-                solid ? G = Lat[j].Gs*2.0*ReducedValue(nb->Gs,c->Gs) : G = Lat[j].G; 
-                Vec3_t BF(OrthoSys::O);
-                if (j==k)
+                else fabs(Lat[j].G)>1.0e-12 ? psi = Lat[j].Psi(c->Rho) : psi = c->Rho;
+                for (size_t k=0;k<Lat.Size();k++)
                 {
-                    BF += -G*psi*nb_psi*c->W[vec]*c->C[vec];
-                }
-                else if(!solid)
-                {
-                    BF += -Gmix*c->Rho*nb->Rho*c->W[vec]*c->C[vec];
-                }
+                    Cell * nb = Lat[k].Cells[ind2];
+                    double nb_psi;
+                    if (nb->IsSolid||nb->Gamma>0.0)
+                    {
+                        nb_psi = 1.0;
+                        solid  = true;
+                    }
+                    else fabs(Lat[j].G)>1.0e-12 ? nb_psi = Lat[k].Psi(nb->Rho) : nb_psi = nb->Rho;
+                    double G;
+                    solid ? G = Lat[j].Gs*2.0*ReducedValue(nb->Gs,c->Gs) : G = Lat[j].G; 
+                    Vec3_t BF(OrthoSys::O);
+                    if (j==k)
+                    {
+                        BF += -G*psi*nb_psi*c->W[vec]*c->C[vec];
+                    }
+                    else if(!solid)
+                    {
+                        BF += -Gmix*c->Rho*nb->Rho*c->W[vec]*c->C[vec];
+                    }
 #ifdef USE_THREAD
-                pthread_mutex_lock(&c ->lck);
-                pthread_mutex_lock(&nb->lck);
+                    pthread_mutex_lock(&c ->lck);
+                    pthread_mutex_lock(&nb->lck);
 #endif
-                c ->BForce += BF;
-                nb->BForce -= BF;
+                    c ->BForce += BF;
+                    nb->BForce -= BF;
 #ifdef USE_THREAD
-                pthread_mutex_unlock(&c ->lck);
-                pthread_mutex_unlock(&nb->lck);
+                    pthread_mutex_unlock(&c ->lck);
+                    pthread_mutex_unlock(&nb->lck);
 #endif
+                }
             }
         }
     }

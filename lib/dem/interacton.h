@@ -294,10 +294,11 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             Ftnet += Kt*FMap[p];
             Vec3_t F = Fn + Kt*FMap[p] + Gn*dot(n,vrel)*n + Gt*vt;
             if (dot(F,n)<0) F-=dot(F,n)*n;
+    //std::cout << P1->Index << " " << P2->Index << std::endl;
 #ifdef USE_THREAD
-            pthread_mutex_lock(&lck);
-            //pthread_mutex_lock(&P1->lck);
-            //pthread_mutex_lock(&P2->lck);
+            //pthread_mutex_lock(&lck);
+            pthread_mutex_lock(&P1->lck);
+            pthread_mutex_lock(&P2->lck);
             //std::lock_guard<std::mutex> lk1(P1->mtex);
             //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
@@ -329,10 +330,11 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
                 }
             }
 #ifdef USE_THREAD
-            pthread_mutex_unlock(&lck);
-            //pthread_mutex_unlock(&P1->lck);
-            //pthread_mutex_unlock(&P2->lck);
+            //pthread_mutex_unlock(&lck);
+            pthread_mutex_unlock(&P1->lck);
+            pthread_mutex_unlock(&P2->lck);
 #endif
+    //std::cout << P1->Index << " " << P2->Index << std::endl;
 
             // potential energy
             Epot += 0.5*Kn*delta*delta+0.5*Kt*dot(FMap[p],FMap[p]);
@@ -406,9 +408,9 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
     Vec3_t Tt = P1->Props.R*cross(Normal,Ft);
     Vec3_t T;
 #ifdef USE_THREAD
-    pthread_mutex_lock(&lck);
-    //pthread_mutex_lock(&P1->lck);
-    //pthread_mutex_lock(&P2->lck);
+    //pthread_mutex_lock(&lck);
+    pthread_mutex_lock(&P1->lck);
+    pthread_mutex_lock(&P2->lck);
     //std::lock_guard<std::mutex> lk1(P1->mtex);
     //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
@@ -422,9 +424,9 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
     Rotation  (Tt,q,T);
     P2->T -= T;
 #ifdef USE_THREAD
-    pthread_mutex_unlock(&lck);
-    //pthread_mutex_unlock(&P1->lck);
-    //pthread_mutex_unlock(&P2->lck);
+    //pthread_mutex_unlock(&lck);
+    pthread_mutex_unlock(&P1->lck);
+    pthread_mutex_unlock(&P2->lck);
 #endif
 }
 

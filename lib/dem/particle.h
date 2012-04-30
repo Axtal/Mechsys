@@ -82,6 +82,7 @@ public:
     void   Rotate             (Quaternion_t & Q, Vec3_t & V);                                 ///< Apply rotation given by Quaternion Q at point v
     void   Translate          (double dt);                                                    ///< Apply translation once the total force is found
     void   Translate          (Vec3_t & t);                                                   ///< Apply translation by vector t
+    void   Position           (Vec3_t   V);                                                   ///< Position the particle at point V
     void   ResetDisplacements ();                                                             ///< Reset the displacements for the verlet algorithm
     double MaxDisplacement    ();                                                             ///< Maximun displacement for the verlet algorithm
     void   Draw               (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
@@ -480,6 +481,12 @@ inline void Particle::Translate (Vec3_t & V)
     }
     x += V;
     xb += V;
+}
+
+inline void Particle::Position  (Vec3_t V)
+{
+    Vec3_t DV = V - x;
+    Translate(DV);
 }
 
 inline void Particle::ResetDisplacements ()
