@@ -212,8 +212,9 @@ class DrawMesh:
                         side = side_id[0]
                         eid  = side_id[1]
                         txt  = '%s %d' % (txt,eid)
-                if len(txt)>0: ax.text(xc,yc, txt,  rotation=alp, va=va1, ha=ha1, backgroundcolor=self.lgreen,fontsize=self.fsz2)
-                if with_ids:   ax.text(xc,yc, c[0], rotation=alp, va=va2, ha=ha2, backgroundcolor=self.purple,fontsize=self.fsz1)
+                if with_ids:
+                    if len(txt)>0: ax.text(xc,yc, txt,  rotation=alp, va=va1, ha=ha1, backgroundcolor=self.lgreen,fontsize=self.fsz2)
+                    ax.text(xc,yc, c[0], rotation=alp, va=va2, ha=ha2, backgroundcolor=self.purple,fontsize=self.fsz1)
                 # edge tags
                 if with_tags and self.ndim>1 and len(c)>3:
                     self.edge_tags(ax, c, only_tag=True)
