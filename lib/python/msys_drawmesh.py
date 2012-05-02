@@ -481,6 +481,7 @@ class DrawMesh:
         t   = array([ -n[1], n[0]])       # unit tangent
         ddl = 1.0/self.ndl
         ndl = int(dL/ddl)
+        if ndl==0: ndl=2
         if beam: n, t = -n, -t
         if key=='qnqt':
             p = pa.copy()
