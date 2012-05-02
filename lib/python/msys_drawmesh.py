@@ -215,60 +215,7 @@ class DrawMesh:
                 if with_ids:   ax.text(xc,yc, c[0], rotation=alp, va=va2, ha=ha2, backgroundcolor=self.purple,fontsize=self.fsz1)
                 # edge tags
                 if with_tags and self.ndim>1 and len(c)>3:
-                    for side, tag in c[3].iteritems():
-                        if tag<0: # has tag
-                            if nnod==3:
-                                if   side==0: na, nb = con[0], con[1]
-                                elif side==1: na, nb = con[1], con[2]
-                                elif side==2: na, nb = con[2], con[0]
-                            elif nnod==6:
-                                if   side==0: na, nb,  nc, nd = con[0], con[3],  con[3], con[1]
-                                elif side==1: na, nb,  nc, nd = con[1], con[4],  con[4], con[2]
-                                elif side==2: na, nb,  nc, nd = con[2], con[5],  con[5], con[0]
-                            elif nnod==4:
-                                if   side==0: na, nb = con[0], con[1]
-                                elif side==1: na, nb = con[1], con[2]
-                                elif side==2: na, nb = con[2], con[3]
-                                elif side==3: na, nb = con[3], con[0]
-                            elif nnod==8 or nnod==9:
-                                if   side==0: na, nb,  nc, nd = con[0], con[4],  con[4], con[1]
-                                elif side==1: na, nb,  nc, nd = con[1], con[5],  con[5], con[2]
-                                elif side==2: na, nb,  nc, nd = con[2], con[6],  con[6], con[3]
-                                elif side==3: na, nb,  nc, nd = con[3], con[7],  con[7], con[0]
-                            elif nnod==15:
-                                if   side==0: na,nb, nc,nd, ne,nf, ng,nh = con[0],con[ 6], con[ 6],con[3], con[3],con[ 7], con[ 7],con[1]
-                                elif side==1: na,nb, nc,nd, ne,nf, ng,nh = con[1],con[ 8], con[ 8],con[4], con[4],con[ 9], con[ 9],con[2]
-                                elif side==2: na,nb, nc,nd, ne,nf, ng,nh = con[2],con[10], con[10],con[5], con[5],con[11], con[11],con[0]
-                            xa = self.V[na][2]
-                            ya = self.V[na][3]
-                            xb = self.V[nb][2]
-                            yb = self.V[nb][3]
-                            xc = (xa+xb)/2.0
-                            yc = (ya+yb)/2.0
-                            ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
-                            if nnod==6 or nnod==8 or nnod==9 or nnod==15:
-                                xa = self.V[nc][2]
-                                ya = self.V[nc][3]
-                                xb = self.V[nd][2]
-                                yb = self.V[nd][3]
-                                xc = (xa+xb)/2.0
-                                yc = (ya+yb)/2.0
-                                ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
-                            if nnod==15:
-                                xa = self.V[ne][2]
-                                ya = self.V[ne][3]
-                                xb = self.V[nf][2]
-                                yb = self.V[nf][3]
-                                xc = (xa+xb)/2.0
-                                yc = (ya+yb)/2.0
-                                ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
-                                xa = self.V[ng][2]
-                                ya = self.V[ng][3]
-                                xb = self.V[nh][2]
-                                yb = self.V[nh][3]
-                                xc = (xa+xb)/2.0
-                                yc = (ya+yb)/2.0
-                                ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
+                    self.draw_edge_tags(ax, c)
 
         # draw nodes
         if with_ids:
@@ -317,6 +264,66 @@ class DrawMesh:
             tag = self.V[key][1]
             if tag<0 and with_tags:
                 text(x, y, '%d'%tag, va='top', color='black', backgroundcolor='none', fontsize=self.fsz2)
+
+    # Draw edge tags
+    # ==============
+    def draw_edge_tags(self, ax, c, only_tag=True):
+        con  = c[2]     # connectivity
+        nnod = len(con) # number of nodes per cell
+        for side, tag in c[3].iteritems():
+            if tag<0: # has tag
+                if nnod==3:
+                    if   side==0: na, nb = con[0], con[1]
+                    elif side==1: na, nb = con[1], con[2]
+                    elif side==2: na, nb = con[2], con[0]
+                elif nnod==6:
+                    if   side==0: na, nb,  nc, nd = con[0], con[3],  con[3], con[1]
+                    elif side==1: na, nb,  nc, nd = con[1], con[4],  con[4], con[2]
+                    elif side==2: na, nb,  nc, nd = con[2], con[5],  con[5], con[0]
+                elif nnod==4:
+                    if   side==0: na, nb = con[0], con[1]
+                    elif side==1: na, nb = con[1], con[2]
+                    elif side==2: na, nb = con[2], con[3]
+                    elif side==3: na, nb = con[3], con[0]
+                elif nnod==8 or nnod==9:
+                    if   side==0: na, nb,  nc, nd = con[0], con[4],  con[4], con[1]
+                    elif side==1: na, nb,  nc, nd = con[1], con[5],  con[5], con[2]
+                    elif side==2: na, nb,  nc, nd = con[2], con[6],  con[6], con[3]
+                    elif side==3: na, nb,  nc, nd = con[3], con[7],  con[7], con[0]
+                elif nnod==15:
+                    if   side==0: na,nb, nc,nd, ne,nf, ng,nh = con[0],con[ 6], con[ 6],con[3], con[3],con[ 7], con[ 7],con[1]
+                    elif side==1: na,nb, nc,nd, ne,nf, ng,nh = con[1],con[ 8], con[ 8],con[4], con[4],con[ 9], con[ 9],con[2]
+                    elif side==2: na,nb, nc,nd, ne,nf, ng,nh = con[2],con[10], con[10],con[5], con[5],con[11], con[11],con[0]
+                xa = self.V[na][2]
+                ya = self.V[na][3]
+                xb = self.V[nb][2]
+                yb = self.V[nb][3]
+                xc = (xa+xb)/2.0
+                yc = (ya+yb)/2.0
+                ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
+                if nnod==6 or nnod==8 or nnod==9 or nnod==15:
+                    xa = self.V[nc][2]
+                    ya = self.V[nc][3]
+                    xb = self.V[nd][2]
+                    yb = self.V[nd][3]
+                    xc = (xa+xb)/2.0
+                    yc = (ya+yb)/2.0
+                    ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
+                if nnod==15:
+                    xa = self.V[ne][2]
+                    ya = self.V[ne][3]
+                    xb = self.V[nf][2]
+                    yb = self.V[nf][3]
+                    xc = (xa+xb)/2.0
+                    yc = (ya+yb)/2.0
+                    ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
+                    xa = self.V[ng][2]
+                    ya = self.V[ng][3]
+                    xb = self.V[nh][2]
+                    yb = self.V[nh][3]
+                    xc = (xa+xb)/2.0
+                    yc = (ya+yb)/2.0
+                    ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
 
     # Get cell centre
     # ===============
