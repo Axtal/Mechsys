@@ -50,6 +50,7 @@ class DrawMesh:
         self.pct  = pct
         self.fsz1 = fsz1
         self.fsz2 = fsz2
+        self.lw   = 1
 
         # constants for arrows
         self.icf = icf # icons coefficient
@@ -157,7 +158,7 @@ class DrawMesh:
             if len(dat)>0:
                 cmd,vert = zip(*dat)
                 ph0 = self.PH (vert, cmd)
-                pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.celledgeclr, linewidth=2)
+                pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.celledgeclr, linewidth=self.lw)
                 ax.add_patch  (pc0)
 
         # draw linear cells
@@ -215,7 +216,7 @@ class DrawMesh:
                 if with_ids:   ax.text(xc,yc, c[0], rotation=alp, va=va2, ha=ha2, backgroundcolor=self.purple,fontsize=self.fsz1)
                 # edge tags
                 if with_tags and self.ndim>1 and len(c)>3:
-                    self.draw_edge_tags(ax, c)
+                    self.edge_tags(ax, c, only_tag=True)
 
         # draw nodes
         if with_ids:
@@ -267,7 +268,7 @@ class DrawMesh:
 
     # Draw edge tags
     # ==============
-    def draw_edge_tags(self, ax, c, only_tag=True):
+    def edge_tags(self, ax, c, ebcs={}, only_tag=False):
         con  = c[2]     # connectivity
         nnod = len(con) # number of nodes per cell
         for side, tag in c[3].iteritems():
@@ -300,30 +301,35 @@ class DrawMesh:
                 yb = self.V[nb][3]
                 xc = (xa+xb)/2.0
                 yc = (ya+yb)/2.0
-                ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
-                if nnod==6 or nnod==8 or nnod==9 or nnod==15:
-                    xa = self.V[nc][2]
-                    ya = self.V[nc][3]
-                    xb = self.V[nd][2]
-                    yb = self.V[nd][3]
-                    xc = (xa+xb)/2.0
-                    yc = (ya+yb)/2.0
+                if only_tag:
                     ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
-                if nnod==15:
-                    xa = self.V[ne][2]
-                    ya = self.V[ne][3]
-                    xb = self.V[nf][2]
-                    yb = self.V[nf][3]
-                    xc = (xa+xb)/2.0
-                    yc = (ya+yb)/2.0
-                    ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
-                    xa = self.V[ng][2]
-                    ya = self.V[ng][3]
-                    xb = self.V[nh][2]
-                    yb = self.V[nh][3]
-                    xc = (xa+xb)/2.0
-                    yc = (ya+yb)/2.0
-                    ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
+                    if nnod==6 or nnod==8 or nnod==9 or nnod==15:
+                        xa = self.V[nc][2]
+                        ya = self.V[nc][3]
+                        xb = self.V[nd][2]
+                        yb = self.V[nd][3]
+                        xc = (xa+xb)/2.0
+                        yc = (ya+yb)/2.0
+                        ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
+                    if nnod==15:
+                        xa = self.V[ne][2]
+                        ya = self.V[ne][3]
+                        xb = self.V[nf][2]
+                        yb = self.V[nf][3]
+                        xc = (xa+xb)/2.0
+                        yc = (ya+yb)/2.0
+                        ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
+                        xa = self.V[ng][2]
+                        ya = self.V[ng][3]
+                        xb = self.V[nh][2]
+                        yb = self.V[nh][3]
+                        xc = (xa+xb)/2.0
+                        yc = (ya+yb)/2.0
+                        ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
+                else:
+                    pa, pb = array((xa,ya)), array((xb,yb))
+                    for k, v in ebcs[tag].iteritems():
+                        self.draw_bc_over_line(ax, pa, pb, k, v)
 
     # Get cell centre
     # ===============
@@ -370,23 +376,9 @@ class DrawMesh:
         axis('equal')
         show()
 
-    # Add circle
-    # ==========
-    def circle(self,xc,yc,R,alp_max,ax):
-        A   = linspace(0.0,alp_max,200)
-        dat = [(self.PH.MOVETO, (R,0.0))]
-        for a in A:
-            x = xc + R*cos(a)
-            y = yc + R*sin(a)
-            dat.append((self.PH.LINETO, (x,y)))
-        cmd,vert = zip(*dat)
-        ph = self.PH (vert, cmd)
-        pc = self.PC (ph, facecolor=self.lyellow, edgecolor="red", linewidth=4)
-        ax.add_patch (pc)
-
     # Draw node boundary conditions
     #==============================
-    def node_bcs(self, vb, rotate=False, usetip=False, zorder=None):
+    def node_bcs(self, vb, rotate=False, usetip=False, zorder=None, tag2normal=None):
         ax = gca()
         for v in self.V:
             tag = v[1]
@@ -437,6 +429,7 @@ class DrawMesh:
                         elif dpy<0.01:              n = array([ 0.0, 1.0]) # bottom
                         elif dqy<0.01:              n = array([ 0.0,-1.0]) # top
                     fix = True
+                if tag2normal!=None: n = tag2normal[tag]
                 if wz: self.fixed_rotation (ax,array([v[2],v[3]]),self.il,n)
                 else:  self.little_triangle(ax,array([v[2],v[3]]),self.il,n,fix)
             if fx or fy:
@@ -448,6 +441,12 @@ class DrawMesh:
                     dx, dy, yc = 0.0, d, v[3]
                     if usetip: yc += abs(d)
                     ax.add_patch(self.PP.Arrow(v[2],yc,dx,dy,facecolor='black',edgecolor='none',width=0.5*d,zorder=zorder))
+
+    # Draw edge boundary conditions
+    #==============================
+    def edge_bcs(self, eb, zorder=None):
+        for c in self.C:
+            self.edge_tags(gca(), c, eb, only_tag=False)
 
     # Draw parameters
     # ===============
@@ -463,7 +462,7 @@ class DrawMesh:
                 if key=='qnqt':
                     i0, i1 = c[2][0], c[2][1]
                     pa, pb = array((self.V[i0][2],self.V[i0][3])), array((self.V[i1][2],self.V[i1][3]))
-                    self.edge_bcs(gca(), pa,pb,key,P[key],len(c[2])==2,zorder)
+                    self.draw_bc_over_line(gca(), pa,pb,key,P[key],len(c[2])==2,zorder)
                 else:
                     #if P[key]>1.0e6: l += r'$%s=%g$' % (key,float(P[key]))
                     #else:            l += r'$%s=%s$' % (key,P[key])
@@ -472,9 +471,9 @@ class DrawMesh:
             yc += dytxt
             text(xc, yc, l, rotation=alp, fontsize=fs, ha='center',va='center')#, backgroundcolor='white')
 
-    # Draw eges boundary conditions
-    #==============================
-    def edge_bcs(self, ax, pa,pb,key,val,beam,zorder=None):
+    # Draw bry cond over line
+    #========================
+    def draw_bc_over_line(self, ax, pa,pb,key,val,beam=False,zorder=None):
         dp  = pb-pa
         pm  = (pa+pb)/2.0
         dL  = sqrt(dp[0]**2.0+dp[1]**2.0) # edge length
@@ -485,24 +484,28 @@ class DrawMesh:
         if beam: n, t = -n, -t
         if key=='qnqt':
             p = pa.copy()
-            if abs(val[0]) > 0.0: #'qn'
-                v = val[0]
-                if val[0] > val[1] or val[0] < val[1]:
-                    mq = abs(val[1]-val[0]) / max([val[0],val[1]])
-                else: mq = 1.0
+            if beam: qnl, qnr, qt = val[0], val[1], val[2]
+            else:    qnl, qnr, qt = val[0], val[0], val[1]
+            if abs(qnl) > 0.0: #'qn'
+                mq = 1.0
+                if qnl > qnr or qnl < qnr:
+                    mq = abs(qnl-qnr) / max([abs(qnl),abs(qnr)])
                 for i in range(ndl+1):
-                    dx = mq * self.sgn(v) * self.al * n[0] * 0.5
-                    dy = mq * self.sgn(v) * self.al * n[1] * 0.5
+                    dx = mq * self.sgn(qnl) * self.al * n[0] * 0.5
+                    dy = mq * self.sgn(qnl) * self.al * n[1] * 0.5
                     xc, yc = p[0], p[1]
-                    if self.sgn(v)<0:
+                    if self.sgn(qnl)<0:
                         ll = sqrt(dx**2.+dy**2.)
                         xc += n[0]*ll
                         yc += n[1]*ll
-                    ax.add_patch(self.PP.Arrow(xc,yc,dx,dy,facecolor=self.mblue,edgecolor='none',width=0.4*self.al,zorder=zorder))
+                    if zorder==None:
+                        ax.add_patch(self.PP.Arrow(xc,yc,dx,dy,width=0.4*self.al,lw=1,facecolor=self.mblue,edgecolor='None'))
+                    else:
+                        ax.add_patch(self.PP.Arrow(xc,yc,dx,dy,width=0.4*self.al,lw=1,facecolor=self.mblue,edgecolor='None',zorder=zorder))
                     p += dp/ndl
-            if abs(val[2]) > 0.0: #'qt'
-                dx = self.lcf*self.sgn(v)*self.il*t[0]
-                dy = self.lcf*self.sgn(v)*self.il*t[1]
+            if abs(qt) > 0.0: #'qt'
+                dx = self.lcf*self.sgn(qt)*self.il*t[0]
+                dy = self.lcf*self.sgn(qt)*self.il*t[1]
         if key=='conv':
             p  = pa.copy()
             for i in range(self.ndc+1):
