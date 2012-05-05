@@ -96,9 +96,9 @@ class DrawMesh:
 
     # Draw mesh
     #==========
-    def draw(self, with_tags=True, with_ids=True,
+    def draw(self, with_ids=True, with_tags=True,
              edgescells={}, cellscells=[], vertscells=[], vertsverts=[],
-             only_lin_cells=False,
+             p_vertscells=[], p_verts=[], only_lin_cells=False,
              with_grid=True, rotateIds=True, jointsR=None, lineedgeLws={}):
         # create figure
         fig = figure()
@@ -214,10 +214,10 @@ class DrawMesh:
                         eid  = side_id[1]
                         txt  = '%s %d' % (txt,eid)
                 if with_ids:
-                    if len(txt)>0: ax.text(xc,yc, txt,  rotation=alp, va=va1, ha=ha1, backgroundcolor=self.lgreen,fontsize=self.fsz2)
                     ax.text(xc,yc, c[0], rotation=alp, va=va2, ha=ha2, backgroundcolor=self.purple,fontsize=self.fsz1)
                 # edge tags
                 if with_tags and self.ndim>1 and len(c)>3:
+                    if len(txt)>0: ax.text(xc,yc, txt,  rotation=alp, va=va1, ha=ha1, backgroundcolor=self.lgreen,fontsize=self.fsz2)
                     self.edge_tags(ax, c, only_tag=True)
 
         # draw nodes
@@ -276,6 +276,25 @@ class DrawMesh:
                 s += '%d' % ic
                 if k < len(cells)-1: s += ' '
             text(xc, yc, s, va='center', ha='center', color='black', backgroundcolor='white', fontsize=self.fsz2)
+
+        # patch information
+        for iv, cells in enumerate(p_vertscells):              # for each 'driver' vertex and cells around it
+            if len(cells) == 0: continue                       # skip boundary vertex (without cells)
+            s = ''
+            for k, ic in enumerate(cells):
+                s += '%d' % ic
+                if k < len(cells)-1:
+                    s += ' '
+                    if k%3 == 2: s += '\n'
+            s += '\n---\n'
+            for k, iva in enumerate(p_verts[iv]):
+                s += '%d' % iva
+                if k < len(p_verts[iv])-1:
+                    s += ' '
+                    if k%3 == 2: s += '\n'
+            xval = self.V[iv][2]+2.*self.yidnoise
+            yval = self.V[iv][3]-self.yidnoise if self.ndim>1 else -self.yidnoise
+            text(xval, yval, s, va='bottom', ha='left', color='black', backgroundcolor='lightgray', fontsize=self.fsz2)
 
         # joints
         if jointsR!=None:
