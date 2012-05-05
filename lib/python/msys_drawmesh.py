@@ -36,13 +36,12 @@ class DrawMesh:
     # C=[[ 0, -1, [0,1,3,2], {0:-10,1:-20,2:-30,3:-40}, {}]]
     #
     # pct: percentage of drawing limits to use for icons
-    def __init__(self, V,C, Pins={}, Shares={}, pct=0.001, fsz1=8, fsz2=6,
-                 yidpct=0.001, icf=0.04, acf=0.06, lcf=0.05, ndl=5, ndf=5, ndc=5):
+    def __init__(self, V,C, Pins={}, pct=0.001, fsz1=8, fsz2=6,
+                 yidpct=0.002, icf=0.04, acf=0.06, lcf=0.05, ndl=5, ndf=5, ndc=5):
         # mesh
         self.V      = V
         self.C      = C
         self.Pins   = Pins
-        self.Shares = Shares
         self.ndim   = len(V[0])-2
         if self.ndim>2: raise Exception("Drawing: NDim=%d is invalid"%self.ndim)
 
@@ -97,7 +96,9 @@ class DrawMesh:
 
     # Draw mesh
     #==========
-    def draw(self, with_tags=True, with_ids=True, with_shares=True, only_lin_cells=False,
+    def draw(self, with_tags=True, with_ids=True,
+             edgescells={}, cellscells=[], vertscells=[], vertsverts=[],
+             only_lin_cells=False,
              with_grid=True, rotateIds=True, jointsR=None, lineedgeLws={}):
         # create figure
         fig = figure()
@@ -222,30 +223,59 @@ class DrawMesh:
         # draw nodes
         if with_ids:
             for v in self.V:
-                # skip if not connected to lin cell
-                if only_lin_cells and with_shares:
-                    con_lin_cell = False # connected to lin cell ?
-                    if len(self.Shares)<1: continue
-                    for e in self.Shares[v[0]]:
-                        if len(self.C[e][2])==2: con_lin_cell = True
-                    if not con_lin_cell: continue
-                # shares
-                if v[0] in self.Shares and with_shares:
-                    s    = '('
-                    eles = self.Shares[v[0]]
-                    for i, e in enumerate(eles):
-                        if i==len(eles)-1: s += '%d) .' % e
-                        else:              s += '%d,' % e
-                    text(v[2], v[3], s, va='bottom', ha='right', color='black', backgroundcolor='white', fontsize=self.fsz2)
-                # ids
                 s = '%d' % v[0]
                 yval = v[3]+self.yidnoise if self.ndim>1 else self.yidnoise
                 text(v[2], yval, s, va='bottom', ha='right', color='black', backgroundcolor=self.lyellow, fontsize=self.fsz1)
+
+        # draw nodes
+        if with_tags:
+            for v in self.V:
                 tag = v[1]
-                # tag
                 if tag<0 and with_tags:
+                    xval = v[2]+self.yidnoise
                     yval = v[3]-self.yidnoise if self.ndim>1 else -self.yidnoise
-                    text(v[2], yval, '%d'%tag, va='top', ha='left', color='black', backgroundcolor=self.orange, fontsize=self.fsz2)
+                    text(xval, yval, '%d'%tag, va='top', ha='left', color='black', backgroundcolor=self.orange, fontsize=self.fsz2)
+
+        # vertscells
+        for iv, cells in enumerate(vertscells):
+            s = ''
+            for k, ic in enumerate(cells):
+                s += '%d' % ic
+                if k < len(cells)-1: s += ' '
+            xval = self.V[iv][2]-2.*self.yidnoise
+            yval = self.V[iv][3]-self.yidnoise if self.ndim>1 else -self.yidnoise
+            text(xval, yval, s, va='top', ha='right', color='black', backgroundcolor='white', fontsize=self.fsz2)
+
+        # vertsverts
+        for iv, verts in enumerate(vertsverts):
+            s = ''
+            for k, otherv in enumerate(verts):
+                s += '%d' % otherv
+                if k < len(verts)-1: s += ' '
+            xval = self.V[iv][2]+3.*self.yidnoise
+            yval = self.V[iv][3]+2.*self.yidnoise if self.ndim>1 else +2.*self.yidnoise
+            text(xval, yval, s, va='bottom', ha='left', color='black', backgroundcolor='yellow', fontsize=self.fsz2)
+
+        # cellscells
+        for ic, cells in enumerate(cellscells):
+            s = ''
+            for k, otherc in enumerate(cells):
+                s += '%d' % otherc
+                if k < len(cells)-1: s += ' '
+            xc, yc, _ = self.get_cell_centre(self.C[ic], 0.)
+            xc -= 2.*self.yidnoise
+            yc -= 2.*self.yidnoise
+            text(xc, yc, s, va='top', ha='right', color='black', backgroundcolor='white', fontsize=self.fsz2)
+
+        # edgescells
+        for ed, cells in edgescells.iteritems():
+            xc = (self.V[ed[0]][2]+self.V[ed[1]][2])/2.
+            yc = (self.V[ed[0]][3]+self.V[ed[1]][3])/2. if self.ndim>1 else -3.*self.yidnoise
+            s  = ''
+            for k, ic in enumerate(cells):
+                s += '%d' % ic
+                if k < len(cells)-1: s += ' '
+            text(xc, yc, s, va='center', ha='center', color='black', backgroundcolor='white', fontsize=self.fsz2)
 
         # joints
         if jointsR!=None:
