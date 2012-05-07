@@ -19,6 +19,7 @@
 from numpy import array, sqrt, linspace, pi, cos, sin, arctan2
 from pylab import figure, text, show, axis, gca
 from pylab import matplotlib as MPL
+from msys_fig import GetLightClr
 
 class DrawMesh:
 
@@ -215,7 +216,8 @@ class DrawMesh:
                         txt  = '%s %d' % (txt,eid)
                 # cell tags
                 if with_tags:
-                    if len(txt)>0: ax.text(xc,yc, txt,  rotation=alp, va=va1, ha=ha1, backgroundcolor=self.lgreen,fontsize=self.fsz2)
+                    bclr = GetLightClr(abs(c[1]+1))
+                    if len(txt)>0: ax.text(xc,yc, txt,  rotation=alp, va=va1, ha=ha1, backgroundcolor=bclr,fontsize=self.fsz2)
                 # edge tags
                 if with_tags and self.ndim>1 and len(c)>3:
                     self.edge_tags(ax, c, only_tag=True)

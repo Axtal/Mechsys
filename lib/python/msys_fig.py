@@ -200,6 +200,14 @@ def GetClr (idx=0, scheme=1): # color
     return C[idx % len(C)]
 
 
+# Get ordered light color
+# =======================
+def GetLightClr (idx=0, scheme=1): # color
+    #if scheme==1:
+    C = ['#64f1c1', '#d2e5ff', '#fff0d2', '#bdb6b9', '#a6c9b7', '#c7c9a6', '#a6a6c9', '#c9a6bf']
+    return C[idx % len(C)]
+
+
 # Get ordered line style
 # ======================
 def GetLst (idx=0): # linestyle
