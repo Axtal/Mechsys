@@ -204,10 +204,10 @@ class DrawMesh:
                     xc += self.yidnoise
                     yc -= self.yidnoise
                 # text
-                txt = '   '
+                txt = '    '
                 if with_tags: txt = '%s%d' % (txt,c[1])
                 if len(c)>4:
-                    if len(c[4])>0: txt += '\n   '
+                    if len(c[4])>0: txt += '\n    '
                     for brykey, side_id in c[4].iteritems():
                         # neighbours
                         side = side_id[0]
@@ -431,11 +431,12 @@ class DrawMesh:
 
     # Draw node boundary conditions
     #==============================
-    def node_bcs(self, vb, rotate=False, usetip=False, zorder=None, tag2normal=None):
+    def node_bcs(self, vb, rotate=False, usetip=False, zorder=None, skiptags=[], tag2normal=None):
         ax = gca()
         for v in self.V:
             tag = v[1]
             if tag>=0: continue
+            if tag in skiptags: continue
             B = vb[tag]
             # bcs
             T  = False
@@ -503,30 +504,51 @@ class DrawMesh:
 
     # Draw parameters
     # ===============
-    def params(self, params, fs=10, rotateIds=True, dytxt=0.0, zorder=None):
+    def params(self, params, fs=10, rotateIds=True, mn={}, sf=None, zorder=None):
+        # mn : normal multiplier to displace text: map ids of cells to mn
+        # find qnmax
+        qnmax = 0.
+        for _, P in params.iteritems():
+            for key, vals in P.iteritems():
+                if key=='qnqt':
+                    qnmax = max(qnmax, abs(vals[0]), abs(vals[1]))
+        # calc scale factor
+        if sf==None:
+            if qnmax > 0.0:
+                Dx = self.lims[1]-self.lims[0]
+                Dy = self.lims[3]-self.lims[2]
+                dd = max([Dx,Dy])
+                sf = 0.1 * dd / qnmax
+            else: sf = 1.0
+        # draw
         ax = gca()
         for c in self.C:
-            P = params[c[1]]
-            xc, yc, alp = self.get_cell_centre(c)
-            if not rotateIds: alp = 0.0
-            l = ''
+            l    = ''
+            P    = params[c[1]]
             keys = P.keys()
+            i0, i1 = c[2][0], c[2][1]
+            pa, pb = array((self.V[i0][2],self.V[i0][3])), array((self.V[i1][2],self.V[i1][3]))
             for i, key in enumerate(keys):
                 if key=='qnqt':
-                    i0, i1 = c[2][0], c[2][1]
-                    pa, pb = array((self.V[i0][2],self.V[i0][3])), array((self.V[i1][2],self.V[i1][3]))
-                    self.draw_bc_over_line(gca(), pa,pb,key,P[key],len(c[2])==2,zorder)
+                    self.draw_bc_over_line(gca(), pa,pb,key,P[key],len(c[2])==2,sf,zorder)
                 else:
                     #if P[key]>1.0e6: l += r'$%s=%g$' % (key,float(P[key]))
                     #else:            l += r'$%s=%s$' % (key,P[key])
                     l += r'$%s=%g$' % (key,P[key])
                     if i!=len(keys)-1: l+='\n'
-            yc += dytxt
+            xc, yc, alp = self.get_cell_centre(c)
+            if not rotateIds: alp = 0.0
+            if mn.has_key(c[0]):
+                dp  = pb-pa
+                dL  = sqrt(dp[0]**2.0+dp[1]**2.0) # edge length
+                n   = array([-dp[1],dp[0]])/dL    # unit normal (of beam)
+                xc += mn[c[0]] * n[0]
+                yc += mn[c[0]] * n[1]
             text(xc, yc, l, rotation=alp, fontsize=fs, ha='center',va='center')#, backgroundcolor='white')
 
     # Draw bry cond over line
     #========================
-    def draw_bc_over_line(self, ax, pa,pb,key,val,beam=False,zorder=None):
+    def draw_bc_over_line(self, ax, pa,pb,key,val,beam=False,sf=1,zorder=None):
         dp  = pb-pa
         pm  = (pa+pb)/2.0
         dL  = sqrt(dp[0]**2.0+dp[1]**2.0) # edge length
@@ -540,15 +562,13 @@ class DrawMesh:
             p = pa.copy()
             if beam: qnl, qnr, qt = val[0], val[1], val[2]
             else:    qnl, qnr, qt = val[0], val[0], val[1]
-            if abs(qnl) > 0.0: #'qn'
-                mq = 1.0
-                if qnl > qnr or qnl < qnr:
-                    mq = abs(qnl-qnr) / max([abs(qnl),abs(qnr)])
+            if abs(qnl) > 0.0 or abs(qnr) > 0.0: #'qn'
                 for i in range(ndl+1):
-                    dx = mq * self.sgn(qnl) * self.al * n[0] * 0.5
-                    dy = mq * self.sgn(qnl) * self.al * n[1] * 0.5
                     xc, yc = p[0], p[1]
-                    if self.sgn(qnl)<0:
+                    qn = qnl + sqrt((p[0]-pa[0])**2.+(p[1]-pa[1])**2.) * (qnr-qnl) / dL
+                    dx = sf * qn * n[0]
+                    dy = sf * qn * n[1]
+                    if self.sgn(qnl) < 0 or self.sgn(qnr) < 0:
                         ll = sqrt(dx**2.+dy**2.)
                         xc += n[0]*ll
                         yc += n[1]*ll

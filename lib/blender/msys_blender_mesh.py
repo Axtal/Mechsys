@@ -21,7 +21,7 @@ import time
 import Blender
 import bpy
 import msys_blender_dict as di
-import mechsys as ms
+#import mechsys as ms
 
 
 def print_timing(func):

@@ -40,11 +40,11 @@ import Blender
 from   Blender import Draw, BGL
 from   Blender.Mathutils import Vector
 import bpy
-import msys_cad  as ca
-import msys_mesh as me
-import msys_dict as di
-import msys_fem  as fem
-import msys_gui  as gu
+import msys_blender_cad  as ca
+import msys_blender_mesh as me
+import msys_blender_dict as di
+import msys_blender_fem  as fem
+import msys_blender_gui  as gu
 
 #import rpdb2; rpdb2.start_embedded_debugger('msys')
 

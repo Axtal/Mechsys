@@ -20,7 +20,7 @@ from   multiprocessing import Process
 import subprocess, math
 import Blender, bpy
 from   Blender.Mathutils import Vector
-import mechsys   as ms
+#import mechsys   as ms
 import msys_blender_dict as di
 import msys_blender_mesh as me
 
