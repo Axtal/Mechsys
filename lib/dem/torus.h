@@ -66,7 +66,7 @@ inline void Torus::Draw (std::ostream & os, double Radius, char const * Color, b
 {
     if (BPY)
     {
-        throw new Fatal("Torus shape not implemented for blender");
+        //throw new Fatal("Torus shape not implemented for blender");
     }
     else
     {

@@ -76,7 +76,7 @@ public:
     void GenBoundingPlane(int InitialTag, double R, double Cf,bool Cohesion=false);                                              ///< Same as GenBounding but only generates one pair of planes.
     void GenFromMesh     (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);   ///< Generate particles from a FEM mesh generator
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
-    double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                                  ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
+    double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                        ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
     // Single particle addition
     void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
     void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a cube at position X with spheroradius R, side of length L and density rho
@@ -92,7 +92,7 @@ public:
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
     void Initialize        (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
     void Solve             (double tf, double dt, double dtOut, ptFun_t ptSetup=NULL, ptFun_t ptReport=NULL,
-                            char const * FileKey=NULL, bool RenderVideo=true, size_t Nproc=1);                  ///< Run simulation
+                            char const * FileKey=NULL, size_t VOut=3, size_t Nproc=1);                          ///< Run simulation the simulation up to time tf, with dt and dtOut the time and report steps. The funstion Setup and Report are used to control the workflow form outside, filekey is used to name the report files. VOut has the options 0 no visualization, 1 povray, 2 xmdf and 3 both
     void WritePOV          (char const * FileKey);                                                              ///< Write POV file
     void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
 #ifdef USE_HDF5    
@@ -230,8 +230,9 @@ void * GlobalIni(void * Data)
             }
         }
 
-        // initialize the coordination (number of contacts per particle) number
-        (*P)[i]->Cn = 0.0;
+        // initialize the coordination (number of contacts per particle) number and the Bdry flag
+        (*P)[i]->Cn   = 0.0;
+        (*P)[i]->Bdry = false;
     }
 }
 
@@ -994,7 +995,7 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
     }
 }
 
-// Single particle addition
+// Sihgle particle addition
 
 inline void Domain::AddSphere (int Tag,Vec3_t const & X, double R, double rho)
 {
@@ -1552,8 +1553,8 @@ inline void Domain::AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t c
     q = q/norm(q);
 
     Particles[Particles.Size()-1]->Q          = q;
-    Particles[Particles.Size()-1]->Props.V    = M_PI*R0*R0*norm(X1-X0);
-    Particles[Particles.Size()-1]->Props.m    = rho*M_PI*R0*R0*norm(X1-X0);
+    Particles[Particles.Size()-1]->Props.V    = 4.0*M_PI*R0*R*norm(X1-X0);
+    Particles[Particles.Size()-1]->Props.m    = rho*4.0*M_PI*R0*R*norm(X1-X0);
     Particles[Particles.Size()-1]->I          = 1.0, 1.0, 1.0;
     Particles[Particles.Size()-1]->x          = 0.5*(X0 + X1);
     Particles[Particles.Size()-1]->Ekin       = 0.0;
@@ -1677,8 +1678,10 @@ inline void Domain::Initialize (double dt)
 
 }
 
-inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * TheFileKey, bool RenderVideo, size_t Nproc)
+
+inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * TheFileKey, size_t VOut, size_t Nproc)
 {
+    if (VOut > 3) throw new Fatal("Domain::Solve The visuazlization argument can only have 4 values: 0 None, 1 povray visualization, 2 xdmf visualization and 3 both options");
     // Assigning some domain particles especifically to the output
     FileKey.Printf("%s",TheFileKey);
     idx_out = 0;
@@ -1711,6 +1714,8 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     // info
     Util::Stopwatch stopwatch;
     printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    printf("%s  Total mass   of free particles   = %g%s\n",TERM_CLR4, Ms, TERM_RST);
+    printf("%s  Total volume of free particles   = %g%s\n",TERM_CLR4, Vs, TERM_RST);
 
     // solve
     double t0   = Time;     // initial time
@@ -1753,14 +1758,10 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             {
                 String fn;
                 fn.Printf    ("%s_%04d", TheFileKey, idx_out);
-                if(RenderVideo)
-                {
 #ifdef USE_HDF5
-                    WriteXDMF    (fn.CStr());
-#else
+                if (VOut==2||VOut==3)    WriteXDMF    (fn.CStr());
 #endif
-                    WritePOV     (fn.CStr());
-                }
+                if (VOut==1||VOut==3)    WritePOV     (fn.CStr());
                 EnergyOutput (idx_out, oss_energy);
             }
             idx_out++;
@@ -1965,8 +1966,9 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
                 }
             }
 
-            // initialize the coordination (number of contacts per particle) number
-            Particles[i]->Cn = 0.0;
+            // initialize the coordination (number of contacts per particle) number and the flag of the particle begin in contact with the container
+            Particles[i]->Cn   = 0.0;
+            Particles[i]->Bdry = false;
 
             // external work added to the system by the fixed forces Ff
             Wext += dot(Particles[i]->Ff,Particles[i]->v)*dt;

@@ -81,7 +81,7 @@ public:
 #endif
     //Data
     bool                                    PrtVec;         ///< Print Vector data into the xdmf-h5 files
-    Array<Lattice>                             Lat;         ///< Fluid Lattices
+    Array <Lattice>                            Lat;         ///< Fluid Lattices
     Array <Particle *>                   Particles;         ///< Array of Disks
     Array <Interacton *>               Interactons;         ///< Array of insteractons
     Array <Interacton *>              CInteractons;         ///< Array of valid interactons
@@ -167,7 +167,12 @@ void * GlobalMove(void * Data)
 void * GlobalApplyForce (void * Data)
 {
     LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
-    dat.Dom->ApplyForce(dat.ProcRank, dat.N_Proc);
+    bool MC = false;
+    if (dat.Dom->Lat.Size()==2)
+    {
+        if (fabs(dat.Dom->Lat[0].G)<1.0e-9&&fabs(dat.Dom->Lat[1].G)<1.0e-9) MC = true;
+    }
+    dat.Dom->ApplyForce(dat.ProcRank, dat.N_Proc, MC);
 }
 
 void * GlobalCollide (void * Data)
@@ -558,8 +563,60 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
             size_t ind2 = CellPairs[i](1);
             size_t vec  = CellPairs[i](2);
             Cell * c = Lat[0].Cells[ind1];
+            Cell *nb = Lat[1].Cells[ind2];
+            double nb_psi,psi,G=Gmix;
+            if (c->IsSolid)
+            {
+                psi    = 1.0;
+                G      = Lat[1].Gs;
+            }
+            else psi   = c ->Rho;
+            if (nb->IsSolid)
+            {
+                nb_psi = 1.0;
+                G      = Lat[0].Gs;
+            }
+            else nb_psi = nb->Rho;
+            Vec3_t  BF = -G*psi*nb_psi*c->W[vec]*c->C[vec];
 
+#ifdef USE_THREAD
+            pthread_mutex_lock(&c ->lck);
+            pthread_mutex_lock(&nb->lck);
+#endif
+            c ->BForce += BF;
+            nb->BForce -= BF;
+#ifdef USE_THREAD
+            pthread_mutex_unlock(&c ->lck);
+            pthread_mutex_unlock(&nb->lck);
+#endif
 
+            c  = Lat[1].Cells[ind1];
+            nb = Lat[0].Cells[ind2];
+            G  = Gmix;
+            if (c->IsSolid)
+            {
+                psi    = 1.0;
+                G      = Lat[0].Gs;
+            }
+            else psi   = c ->Rho;
+            if (nb->IsSolid)
+            {
+                nb_psi = 1.0;
+                G      = Lat[1].Gs;
+            }
+            else nb_psi = nb->Rho;
+            BF = -G*psi*nb_psi*c->W[vec]*c->C[vec];
+
+#ifdef USE_THREAD
+            pthread_mutex_lock(&c ->lck);
+            pthread_mutex_lock(&nb->lck);
+#endif
+            c ->BForce += BF;
+            nb->BForce -= BF;
+#ifdef USE_THREAD
+            pthread_mutex_unlock(&c ->lck);
+            pthread_mutex_unlock(&nb->lck);
+#endif
         }
     }
     else
@@ -644,7 +701,7 @@ void Domain::Collide (size_t n, size_t Np)
             if (c->IsSolid||rho<1.0e-12) continue;
             if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
             double Tau = Lat[j].Tau;
-            Vec3_t DV  = Vmix + c->BForce*dt/rho;
+            Vec3_t DV  = Vmix + c->BForce*Tau/rho;
             double Bn  = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
             bool valid  = true;
             double alphal = 1.0;

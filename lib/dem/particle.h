@@ -98,6 +98,7 @@ public:
     size_t          Index;           ///< index of the particle in the domain
     bool            PropsReady;      ///< Are the properties calculated ready ?
     bool            IsBroken;        ///< True if the particle has at least one broken bond in cohesive simulations
+    bool            Bdry;            ///< True if the particle is in contact with one of the boundary containers
     bool            vxf, vyf, vzf;   ///< Fixed components of velocity
     bool            wxf, wyf, wzf;   ///< Fixed components of angular velocity
     Vec3_t          x;               ///< Position of the center of mass

@@ -62,7 +62,6 @@ inline Cylinder::Cylinder (Torus * TheT0, Torus * TheT1, Vec3_t const * TheY0, V
     Y1 = TheY1;
     T0->X0 = &X0;
     T1->X0 = &X1;
-
 }
 
 inline Cylinder::Cylinder (Torus & TheT0, Torus & TheT1, Vec3_t const & TheY0, Vec3_t const & TheY1)
@@ -86,7 +85,7 @@ inline void Cylinder::Draw (std::ostream & os, double Radius, char const * Color
 {
     if (BPY)
     {
-        throw new Fatal("Cylinder shape not implemented for blender");
+        //throw new Fatal("Cylinder shape not implemented for blender");
     }
     else
     {

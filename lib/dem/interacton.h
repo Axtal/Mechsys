@@ -210,12 +210,12 @@ inline void CInteracton::CalcForce (double dt)
     Epot   = 0.0;
     dEvis  = 0.0;
     dEfric = 0.0;
-    Nc     = 0.0;
-    Nsc    = 0.0;
-    Nr     = 0.0;
+    Nc     = 0;
+    Nsc    = 0;
+    Nr     = 0;
     Fnet   = 0.0;
     Ftnet  = 0.0;
-    Xc     = 0.0;
+    Xc     = OrthoSys::O;
     _update_disp_calc_force (P1->Edges     ,P2->Edges     ,Fdee,Lee,dt);
     _update_disp_calc_force (P1->Verts     ,P2->Faces     ,Fdvf,Lvf,dt);
     _update_disp_calc_force (P1->Faces     ,P2->Verts     ,Fdfv,Lfv,dt);
@@ -227,8 +227,22 @@ inline void CInteracton::CalcForce (double dt)
     //If there is at least a contact, increase the coordination number of the particles
     if (Nc>0) 
     {
+#ifdef USE_THREAD
+        //pthread_mutex_lock(&lck);
+        pthread_mutex_lock(&P1->lck);
+        pthread_mutex_lock(&P2->lck);
+        //std::lock_guard<std::mutex> lk1(P1->mtex);
+        //std::lock_guard<std::mutex> lk2(P2->mtex);
+#endif
         P1->Cn++;
         P2->Cn++;
+        if (!P1->IsFree()) P2->Bdry = true;
+        if (!P2->IsFree()) P1->Bdry = true;
+#ifdef USE_THREAD
+        //pthread_mutex_unlock(&lck);
+        pthread_mutex_unlock(&P1->lck);
+        pthread_mutex_unlock(&P2->lck);
+#endif
     }
 }
 
@@ -258,6 +272,7 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             if (delta > 0.8*(P1->Props.R+P2->Props.R))
             {
                 std::cout << "Maximun overlap between " << P1->Index << " and " << P2->Index <<  std::endl; 
+                std::cout << "Particle's tags         " << P1->Tag   << " and " << P2->Tag   <<  std::endl; 
                 std::cout << "Memory address          " << P1        << " and " << P2        <<   " " << (P1==P2) << std::endl; 
                 throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
             }
@@ -294,7 +309,6 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             Ftnet += Kt*FMap[p];
             Vec3_t F = Fn + Kt*FMap[p] + Gn*dot(n,vrel)*n + Gt*vt;
             if (dot(F,n)<0) F-=dot(F,n)*n;
-    //std::cout << P1->Index << " " << P2->Index << std::endl;
 #ifdef USE_THREAD
             //pthread_mutex_lock(&lck);
             pthread_mutex_lock(&P1->lck);
@@ -435,12 +449,12 @@ inline void CInteractonSphere::CalcForce(double dt)
     Epot   = 0.0;
     dEvis  = 0.0;
     dEfric = 0.0;
-    Nc     = 0.0;
-    Nsc    = 0.0;
-    Nr     = 0.0;
+    Nc     = 0;
+    Nsc    = 0;
+    Nr     = 0;
     Fnet   = 0.0;
     Ftnet  = 0.0;
-    Xc     = 0.0;
+    Xc     = OrthoSys::O;
     _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,Lvv,dt);
     if (Epot>0.0) _update_rolling_resistance(dt);
 
@@ -448,8 +462,22 @@ inline void CInteractonSphere::CalcForce(double dt)
     //If there is at least a contact, increase the coordination number of the particles
     if (Nc>0) 
     {
+#ifdef USE_THREAD
+        //pthread_mutex_lock(&lck);
+        pthread_mutex_lock(&P1->lck);
+        pthread_mutex_lock(&P2->lck);
+        //std::lock_guard<std::mutex> lk1(P1->mtex);
+        //std::lock_guard<std::mutex> lk2(P2->mtex);
+#endif
         P1->Cn++;
         P2->Cn++;
+        if (!P1->IsFree()) P2->Bdry = true;
+        if (!P2->IsFree()) P1->Bdry = true;
+#ifdef USE_THREAD
+        //pthread_mutex_unlock(&lck);
+        pthread_mutex_unlock(&P1->lck);
+        pthread_mutex_unlock(&P2->lck);
+#endif
     }
 }
 
@@ -581,9 +609,9 @@ inline void BInteracton::CalcForce(double dt)
         Vec3_t Ft   = -Bt*td/L0 - Gt*vt;
 
 #ifdef USE_THREAD
-        pthread_mutex_lock(&lck);
-        //pthread_mutex_lock(&P1->lck);
-        //pthread_mutex_lock(&P2->lck);
+        //pthread_mutex_lock(&lck);
+        pthread_mutex_lock(&P1->lck);
+        pthread_mutex_lock(&P2->lck);
         //std::lock_guard<std::mutex> lk1(P1->mtex);
         //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
@@ -615,9 +643,9 @@ inline void BInteracton::CalcForce(double dt)
         Rotation  (Tt,q2,T);
         P2->T += T;
 #ifdef USE_THREAD
-        pthread_mutex_unlock(&lck);
-        //pthread_mutex_unlock(&P1->lck);
-        //pthread_mutex_unlock(&P2->lck);
+        //pthread_mutex_unlock(&lck);
+        pthread_mutex_unlock(&P1->lck);
+        pthread_mutex_unlock(&P2->lck);
 #endif
 
         //Breaking point

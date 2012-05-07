@@ -362,10 +362,16 @@ void Report (DEM::Domain & dom, void *UD)
             }
         }
 
+        size_t n_inside = 0; // Number of particles not in contact with the boundaries
         for (size_t i=0; i<dom.Particles.Size(); i++)
         {
-            Cn += dom.Particles[i]->Cn/dom.Particles.Size();
+            if (!dom.Particles[i]->Bdry&&dom.Particles[i]->IsFree())
+            {
+                Cn += dom.Particles[i]->Cn;
+                n_inside++;
+            }
         }
+        Cn/=n_inside;
 
         dat.oss_ss << Util::_8s << Cn << Util::_8s << Nc << Util::_8s << Nsc << Util::_8s << Nb << Util::_8s << Nbb;
 
@@ -461,7 +467,7 @@ int main(int argc, char **argv) try
     
     double verlet;      // Verlet distance for optimization
     String ptype;       // Particle type 
-    bool   RenderVideo; // Decide is video should be render
+    size_t RenderVideo; // Decide is video should be render
     bool   Cohesion;    // Decide if coheison is going to be simulated
     double fraction;    // Fraction of particles to be generated
     double Kn;          // Normal stiffness
@@ -550,7 +556,7 @@ int main(int argc, char **argv) try
     dom.Alpha=verlet;
     dom.CamPos = Vec3_t(0.1*Lx, 0.7*(Lx+Ly+Lz), 0.15*Lz); // position of camera
     dat.dt = dt;
-    dat.RenderVideo = RenderVideo;
+    dat.RenderVideo = (bool) RenderVideo;
 
     // particle
     if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction, R);
