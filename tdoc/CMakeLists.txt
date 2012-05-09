@@ -17,7 +17,6 @@
 ########################################################################
 
 SET(PROGS
-  doc_vtk1
   doc_msh1
   doc_msh2
   doc_msh3)
@@ -29,3 +28,16 @@ FOREACH(var ${PROGS})
     TARGET_LINK_LIBRARIES (${var} ${LIBS})
     SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 ENDFOREACH(var)
+
+IF(A_USE_VTK)
+
+SET(VTK_PROGS
+  doc_vtk1)
+
+FOREACH(var ${VTK_PROGS})
+    ADD_EXECUTABLE        (${var} "${var}.cpp")
+    TARGET_LINK_LIBRARIES (${var} ${LIBS})
+    SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
+ENDFOREACH(var)
+
+ENDIF(A_USE_VTK)

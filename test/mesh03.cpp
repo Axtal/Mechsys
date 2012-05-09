@@ -30,9 +30,6 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
-    int order = 1;
-    if (argc>1) order = atoi(argv[1]);
-
     //////////////////////////////////////// 2D: structured //////////////////////////////////////////////////
     
     // 1) mesh03_quad8_to_tri6

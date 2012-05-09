@@ -592,7 +592,7 @@ inline void ProblemEP::Hardening (Vec_t const & Sig, Vec_t const & Ivs) const
     // new stress update
     if (NewSU)
     {
-        double F;
+        double F=0;
         switch (FC)
         {
             case VM_t:
@@ -637,7 +637,7 @@ inline double ProblemEP::YieldFunc (Vec_t const & Sig, Vec_t const & Ivs) const
     }
     */
 
-    double f;
+    double f=0;
     switch (FC)
     {
         case VM_t:

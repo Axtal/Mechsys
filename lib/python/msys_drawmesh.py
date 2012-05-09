@@ -215,15 +215,15 @@ class DrawMesh:
                         eid  = side_id[1]
                         txt  = '%s %d' % (txt,eid)
                 # cell tags
-                if with_tags:
+                if with_ids and with_tags:
                     bclr = GetLightClr(abs(c[1]+1))
                     if len(txt)>0: ax.text(xc,yc, txt,  rotation=alp, va=va1, ha=ha1, backgroundcolor=bclr,fontsize=self.fsz2)
-                # edge tags
-                if with_tags and self.ndim>1 and len(c)>3:
-                    self.edge_tags(ax, c, only_tag=True)
                 # ids
                 if with_ids:
                     ax.text(xc,yc, c[0], rotation=alp, va=va2, ha=ha2, backgroundcolor=self.purple,fontsize=self.fsz1)
+                # edge tags
+                if with_tags and self.ndim>1 and len(c)>3:
+                    self.edge_tags(ax, c, only_tag=True)
 
         # draw nodes
         if with_ids:

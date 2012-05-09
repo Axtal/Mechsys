@@ -16,6 +16,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+IF(IGRAPH_FOUND)
+
 SET(PROGS
   cluster01)
 
@@ -24,3 +26,5 @@ FOREACH(var ${PROGS})
     TARGET_LINK_LIBRARIES (${var} ${LIBS})
     SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 ENDFOREACH(var)
+
+ENDIF(IGRAPH_FOUND)

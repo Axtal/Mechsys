@@ -43,7 +43,7 @@ int main(int argc, char **argv) try
     if (argc<2)
     {
         cout << "Usage:\n";
-        cout << "         " << argv[0] << " WRC {pwfin}\n";
+        cout << "         " << argv[0] << " WRC\n";
         cout << "in which\n";
         cout << "           WRC: BC\n";
         cout << "                HZ\n";
@@ -53,9 +53,7 @@ int main(int argc, char **argv) try
     }
     String wrc   = argv[1];
     double pw0   =   0.0;
-    double pwfin = -10.0;
     int    ndiv  = 200;
-    if (argc>2) pwfin = atof(argv[2]);
     double porosity = 0.3;
 
     // model

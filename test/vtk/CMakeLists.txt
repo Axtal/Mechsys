@@ -16,6 +16,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+IF(VTK_FOUND)
+
 SET(PROGS
   arrows
   isosurf01
@@ -31,3 +33,5 @@ FOREACH(var ${PROGS})
     TARGET_LINK_LIBRARIES (${var} ${LIBS})
     SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 ENDFOREACH(var)
+
+ENDIF(VTK_FOUND)

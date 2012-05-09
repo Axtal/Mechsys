@@ -188,7 +188,7 @@ inline double Min<Instance>::Find (double X[], double StepSize, double Tol, size
         gsl_multimin_fdfminimizer_set (_gsl_fdfmin, &_gsl_fdf, _x, StepSize, Tol/10.0);
 
         // solve
-        int    status;
+        int    status=0;
         size_t it;
         for (it=0; it<MaxIt; ++it)
         {
@@ -222,7 +222,7 @@ inline double Min<Instance>::Find (double X[], double StepSize, double Tol, size
         gsl_multimin_fminimizer_set (_gsl_fmin, &_gsl_f, _x, _ss);
 
         // solve
-        int    status;
+        int    status=0;
         size_t it;
         double size;
         for (it=0; it<MaxIt; ++it)

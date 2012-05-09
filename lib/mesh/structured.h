@@ -844,7 +844,7 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2)
                                 Cell * e = verts_bry[j]->Shares[k].C;
                                 int    n = verts_bry[j]->Shares[k].N;
                                 e->V[n]  = verts_bry[i];
-                                Share sha = {e,n};
+                                Share sha = {e,(size_t)n};
                                 verts_bry[i]->Shares.Push (sha);
                             }
                             ndupl++;

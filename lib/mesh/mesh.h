@@ -105,31 +105,35 @@ int    NVertsToEdge3D[][12/*edges at most*/][3/*verts per edge at most*/]=
     {{0,1,8},{1,2,9},{2,3,10},{3,0,11},{4,5,12},{5,6,13},{6,7,14},{7,4,15},{0,4,16},{1,5,17},{2,6,18},{3,7,19}}    // 20 verts => O2 HEX
 };
 
-size_t NVertsToGeoNVerts2D[] = {-1,                // 0 verts
-                                -1,                // 1 vert
+#define NONE 0
+size_t NVertsToGeoNVerts2D[] = {NONE,              // 0 verts
+                                NONE,              // 1 vert
                                  2,                // 2 verts
                                  3,                // 3
                                  4,                // 4
-                                -1,                // 5
+                                NONE,              // 5
                                  3,                // 6
-                                -1,                // 7
+                                NONE,              // 7
                                  4,                // 8
-                                -1,-1,-1,-1,-1,-1, // 9,10,11,12,13,14
+                                NONE,NONE,NONE,    // 9,10,11
+                                NONE,NONE,NONE,    // 12,13,14
                                  3};               // 15
 
-size_t NVertsToGeoNVerts3D[] = {-1,                         //  0 verts
-                                -1,                         //  1 vert
+size_t NVertsToGeoNVerts3D[] = {NONE,                       //  0 verts
+                                NONE,                       //  1 vert
                                  2,                         //  2 verts
-                                -1,                         //  3
+                                NONE,                       //  3
                                  4,                         //  4
-                                -1,                         //  5
-                                -1,                         //  6
-                                -1,                         //  7
+                                NONE,                       //  5
+                                NONE,                       //  6
+                                NONE,                       //  7
                                  8,                         //  8
-                                -1,                         //  9
+                                NONE,                       //  9
                                  4,                         // 10
-                                -1,-1,-1,-1,-1,-1,-1,-1,-1, // 11,12,13,14,15,16,17,18,19
+                                NONE,NONE,NONE,NONE,NONE,   // 11,12,13,14,15
+                                NONE,NONE,NONE,NONE,        // 16,17,18,19
                                  8};                        // 20
+#undef NONE
 
 #define BRYKEY(num_verts,idx_cell,idx_bry)                                      \
     int vert_a, vert_b, vert_c=-1, vert_d=-1;                                   \
@@ -782,7 +786,7 @@ inline void Generic::AddPin (int VertIdOrTag)
                 // set connectivity of lin2
                 int idx = vert->Shares[i].N; // local vertex ID
                 cell->V[idx] = Verts[Verts.Size()-1];
-                Share sha = {cell,idx};
+                Share sha = {cell,(size_t)idx};
                 Verts[Verts.Size()-1]->Shares.Push (sha);
 
                 // set this lin2 to be disconnected from vert
@@ -905,7 +909,7 @@ inline void Generic::GenO2Verts ()
                 cell->V[idx_vert] = Verts[Verts.Size()-1];
 
                 // set shares information
-                Share sha = {cell,idx_vert};
+                Share sha = {cell,(size_t)idx_vert};
                 Verts[Verts.Size()-1]->Shares.Push (sha);
             }
         }
@@ -1889,7 +1893,7 @@ inline void Generic::Tri6ToTri15 ()
 
                         // set cell and shares
                         neigh->V[J] = Verts[iv];
-                        Share neigh_sha = {neigh,J};
+                        Share neigh_sha = {neigh,(size_t)J};
                         Verts[iv]->Shares.Push (neigh_sha);
                     }
                 }
@@ -1963,7 +1967,7 @@ inline void Generic::Tri3ToTri6 ()
 
                         // set cell and shares
                         neigh->V[J] = Verts[iv];
-                        Share neigh_sha = {neigh,J};
+                        Share neigh_sha = {neigh,(size_t)J};
                         Verts[iv]->Shares.Push (neigh_sha);
                     }
                 }
