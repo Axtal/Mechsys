@@ -17,7 +17,7 @@
 ########################################################################
 
 from numpy import array, sqrt, linspace, pi, cos, sin, arctan2
-from pylab import figure, text, show, axis, gca
+from pylab import figure, text, show, axis, gca, gcf
 from pylab import matplotlib as MPL
 from msys_fig import GetLightClr
 
@@ -50,7 +50,7 @@ class DrawMesh:
         self.pct  = pct
         self.fsz1 = fsz1
         self.fsz2 = fsz2
-        self.lw   = 1
+        self.lw   = 0.5
 
         # constants for arrows
         self.icf = icf # icons coefficient
@@ -101,8 +101,8 @@ class DrawMesh:
              edgescells={}, cellscells=[], vertscells=[], vertsverts=[],
              p_vertscells=[], p_verts=[], only_lin_cells=False,
              with_grid=True, rotateIds=True, jointsR=None, lineedgeLws={}):
-        # create figure
-        fig = figure()
+        # get figure
+        fig = gcf()
         ax  = fig.add_subplot(111)
         if with_grid:
             ax.grid(color='gray')
@@ -160,7 +160,7 @@ class DrawMesh:
             if len(dat)>0:
                 cmd,vert = zip(*dat)
                 ph0 = self.PH (vert, cmd)
-                pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.celledgeclr, linewidth=self.lw)
+                pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.celledgeclr, linewidth=self.lw, clip_on=False)
                 ax.add_patch  (pc0)
 
         # draw linear cells

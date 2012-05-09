@@ -1213,9 +1213,12 @@ inline void Structured::GenQPlateHole (double r, double R, double L, int Nx1, in
 
     blks[0].SetNx(Nx1);  blks[0].SetNy(Ny1);
     blks[1].SetNx(Nx1);  blks[1].SetNy(Ny1);
-    blks[2].SetNx(Nx2);  blks[2].SetNy(Ny1);
-    blks[3].SetNx(Ny2);  blks[3].SetNy(Ny1);
-    blks[4].SetNx(Nx2);  blks[4].SetNy(Ny2);
+    //blks[2].SetNx(Nx2);  blks[2].SetNy(Ny1);
+    //blks[3].SetNx(Ny2);  blks[3].SetNy(Ny1);
+    //blks[4].SetNx(Nx2);  blks[4].SetNy(Ny2);
+    blks[2].SetNx(Nx2, 1.5, true);  blks[2].SetNy(Ny1           );
+    blks[3].SetNx(Ny2, 1.5, true);  blks[3].SetNy(Ny1           );
+    blks[4].SetNx(Nx2, 1.5, true);  blks[4].SetNy(Ny2, 1.5, true);
 
     blks[0].AddArcCtr(1, 0.0, 0.0, R);  blks[0].AddArcCtr(3, 0.0, 0.0, r);
     blks[1].AddArcCtr(1, 0.0, 0.0, R);  blks[1].AddArcCtr(3, 0.0, 0.0, r);
