@@ -115,7 +115,7 @@ def RmOrNot(path):
 
 # Run command
 # ===========
-def Cmd(command, verbose=True, debug=False):
+def Cmd(command, verbose=False, debug=False):
     if debug:
         print '=================================================='
         print cmd
@@ -126,6 +126,7 @@ def Cmd(command, verbose=True, debug=False):
     if verbose:
         print out
         print err
+    return out, err
 
 
 # Archive
