@@ -1369,6 +1369,7 @@ inline void Generic::WriteMPY (char const * FileKey, bool WithTags, bool WithIDs
     oss << "}\n\n";
 
     // shares
+    /*
     oss << "shares = {";
     for (size_t i=0; i<Verts.Size(); ++i)
     {
@@ -1389,13 +1390,15 @@ inline void Generic::WriteMPY (char const * FileKey, bool WithTags, bool WithIDs
         }
     }
     oss << "}\n\n";
+    */
 
     // drawing
-    oss << "d = DrawMesh(V,C,pins,shares)\n";
+    //oss << "d = DrawMesh(V,C,pins,shares)\n";
+    oss << "d = DrawMesh(V,C,pins)\n";
     String prms;
-    if (WithTags)   prms.append("True,"); else prms.append("False,");
     if (WithIDs)    prms.append("True,"); else prms.append("False,");
-    if (WithShares) prms.append("True,"); else prms.append("False");
+    if (WithTags)   prms.append("True");  else prms.append("False");
+    //if (WithShares) prms.append("True,"); else prms.append("False");
     oss << "d.draw(" << prms << ")\n";
     if (Extra!=NULL) oss << Extra;
     oss << "d.show()\n";
