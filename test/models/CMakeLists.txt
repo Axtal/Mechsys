@@ -30,8 +30,12 @@ SET(VTK_PROGS
 SET(TESTS
   invariants01
   invariants02
-  invariants03
   invariants05)
+
+if(HAS_TENSORS)
+    SET(TESTS ${TESTS}
+      invariants03)
+endif(HAS_TENSORS)
 
 FOREACH(var ${PROGS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

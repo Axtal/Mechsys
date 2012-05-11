@@ -30,6 +30,11 @@
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/linalg/jacobirot.h>
 
+// Tensors
+#ifndef HAS_TENSORS
+  #error This module needs Tensors C++ library
+#else
+
 class AnisoInvs
 {
 public:
@@ -310,4 +315,5 @@ inline void AnisoInvs::CheckSym (char const * Name, Ten3_t const & T) const
     }
 }
 
+#endif // HAS_TENSORS
 #endif // MECHSYS_ANISOINVS_H
