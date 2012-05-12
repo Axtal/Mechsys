@@ -16,6 +16,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+# for Python 3
+from __future__ import print_function
+
+import sys
 import os.path
 from os.path import basename
 from scipy.special import erfc
@@ -96,7 +100,7 @@ def Save (filename, ea=None, verbose=False):
             ea = [ea]
     savefig (filename, bbox_inches='tight', bbox_extra_artists=ea)
     if verbose:
-        print 'File <[1;34m%s[0m> written'%filename
+        print('File <[1;34m%s[0m> written'%filename)
 # As a workaround, savefig can take bbox_extra_artists keyword (this may
 # only be in the svn version though), which is a list artist that needs
 # to be accounted for the bounding box calculation. So in your case, the
@@ -257,7 +261,7 @@ def read_table(filename, int_cols=[], make_maps=True):
         row += 1
     file.close()
     mkeys = ['%s2row'%k for k in k2m]
-    for key, val in dat.iteritems(): # convert lists to arrays (floats only)
+    for key, val in dat.items(): # convert lists to arrays (floats only)
         if key in int_cols or key in mkeys: continue
         dat[key] = array(val)
     return dat
@@ -291,16 +295,16 @@ def read_tables(filenames, num_int_columns=0):
 def read_tdata (fnkey, ids, arc_lens=[]):
     r0  = read_table ('%s_%d.res'%(fnkey,ids[0]))
     str_time = 'Time'
-    if r0.has_key('time'): str_time = 'time'
-    if r0.has_key('t'):    str_time = 't'
+    if 'time' in r0: str_time = 'time'
+    if 't'    in r0: str_time = 't'
     nt  = len(r0[str_time])
     np  = len(ids)
     if len(arc_lens)>0: dat = {'arc_len':zeros((np,nt))}
     else:               dat = {}
-    for k, v in r0.iteritems(): dat[k] = zeros((np,nt))
+    for k, v in r0.items(): dat[k] = zeros((np,nt))
     for i, n in enumerate(ids):
         r = read_table ('%s_%d.res'%(fnkey,n), make_maps=False)
-        for k, v in r.iteritems(): dat[k][i,:] = v
+        for k, v in r.items(): dat[k][i,:] = v
         if len(arc_lens)>0:
             dat['arc_len'][i,:] = arc_lens[i]
     return dat
@@ -348,29 +352,6 @@ def xRadFmt (gen_ticks=False, rad_and_deg=True):
     else:           gca().xaxis.set_major_formatter(FuncFormatter(rad_formatting))
 
 
-# test
-# ====
-if __name__=='__main__':
-    SetForEps ()
-    x = linspace (0, 10, 100)
-    y = x**1.5
-    plot    (x,y, 'b-', label='sim')
-    Arc     (0,0,10, useArc=False)
-    Arc     (0,0,20, ec='magenta', useArc=True)
-    Arrow   (-10,0,max(x),max(y))
-    Text    (-20,25,r'$\sigma$')
-    Text    (-20,25,r'$\sigma$',y_offset=-10)
-    axvline (0,color='black',zorder=-1)
-    axhline (0,color='black',zorder=-1)
-    FigGrid ()
-    axis    ('equal')
-    legend  (loc='upper left')
-    xlabel  (r'$x$')
-    ylabel  (r'$y$')
-    #show    ()
-    Save    ('test_msys_fig.eps')
-
-
 # Column nodes
 # ============
 # nc: number of cells along y
@@ -388,3 +369,28 @@ def column_nodes (nc=10, o2=True):
         R = L + 1
         return l, c, r, L, R
     return l, r
+
+
+# test
+# ====
+if __name__=='__main__':
+    #SetForEps ()
+    x = linspace (0, 10, 100)
+    y = x**1.5
+    plot    (x,y, 'b-', label='sim')
+    ver = int(sys.version[0])
+    if ver<3:
+        Arc (0,0,10)
+        Arc (0,0,20, clr='magenta')
+    Arrow   (-10,0,max(x),max(y))
+    Text    (0,25,r'$\sigma$')
+    Text    (0,25,r'$\sigma$',y_offset=-10)
+    axvline (0,color='black',zorder=-1)
+    axhline (0,color='black',zorder=-1)
+    FigGrid ()
+    axis    ('equal')
+    legend  (loc='upper left')
+    xlabel  (r'$x$')
+    ylabel  (r'$y$')
+    show    ()
+    #Save    ('test_msys_fig.eps')
