@@ -179,7 +179,7 @@ class DrawMesh:
                 con = c[2] # connectivity
                 if len(con)==2:
                     lw = 3
-                    if lineedgeLws.has_key(c[1]): lw = lineedgeLws[c[1]]
+                    if c[1] in lineedgeLws: lw = lineedgeLws[c[1]]
                     x0 = self.V[con[0]][2]
                     y0 = self.V[con[0]][3]
                     x1 = self.V[con[1]][2]
@@ -209,7 +209,7 @@ class DrawMesh:
                 if with_tags: txt = '%s%d' % (txt,c[1])
                 if len(c)>4:
                     if len(c[4])>0: txt += '\n    '
-                    for brykey, side_id in c[4].iteritems():
+                    for brykey, side_id in c[4].items():
                         # neighbours
                         side = side_id[0]
                         eid  = side_id[1]
@@ -273,7 +273,7 @@ class DrawMesh:
             text(xc, yc, s, va='top', ha='right', color='black', backgroundcolor='white', fontsize=self.fsz2)
 
         # edgescells
-        for ed, cells in edgescells.iteritems():
+        for ed, cells in edgescells.items():
             xc = (self.V[ed[0]][2]+self.V[ed[1]][2])/2.
             yc = (self.V[ed[0]][3]+self.V[ed[1]][3])/2. if self.ndim>1 else -3.*self.yidnoise
             s  = ''
@@ -307,7 +307,7 @@ class DrawMesh:
                 gca().add_patch(self.PP.Circle((v[2],v[3]), jointsR, clip_on=False, edgecolor='black', facecolor='white', lw=1, zorder=10))
 
         # pins
-        for key, val in self.Pins.iteritems():
+        for key, val in self.Pins.items():
             # ids
             x = self.V[key][2]
             y = self.V[key][3]
@@ -326,7 +326,7 @@ class DrawMesh:
     def edge_tags(self, ax, c, ebcs={}, only_tag=False):
         con  = c[2]     # connectivity
         nnod = len(con) # number of nodes per cell
-        for side, tag in c[3].iteritems():
+        for side, tag in c[3].items():
             if tag<0: # has tag
                 if nnod==3:
                     if   side==0: na, nb = con[0], con[1]
@@ -383,7 +383,7 @@ class DrawMesh:
                         ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
                 else:
                     pa, pb = array((xa,ya)), array((xb,yb))
-                    for k, v in ebcs[tag].iteritems():
+                    for k, v in ebcs[tag].items():
                         self.draw_bc_over_line(ax, pa, pb, k, v)
 
     # Get cell centre
@@ -510,8 +510,8 @@ class DrawMesh:
         # mn : normal multiplier to displace text: map ids of cells to mn
         # find qnmax
         qnmax = 0.
-        for _, P in params.iteritems():
-            for key, vals in P.iteritems():
+        for _, P in params.items():
+            for key, vals in P.items():
                 if key=='qnqt':
                     qnmax = max(qnmax, abs(vals[0]), abs(vals[1]))
         # calc scale factor
@@ -540,7 +540,7 @@ class DrawMesh:
                     if i!=len(keys)-1: l+='\n'
             xc, yc, alp = self.get_cell_centre(c)
             if not rotateIds: alp = 0.0
-            if mn.has_key(c[0]):
+            if c[0] in mn:
                 dp  = pb-pa
                 dL  = sqrt(dp[0]**2.0+dp[1]**2.0) # edge length
                 n   = array([-dp[1],dp[0]])/dL    # unit normal (of beam)
