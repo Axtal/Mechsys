@@ -100,7 +100,7 @@ class DrawMesh:
     def draw(self, with_ids=True, with_tags=True,
              edgescells={}, cellscells=[], vertscells=[], vertsverts=[],
              p_vertscells=[], p_verts=[], only_lin_cells=False,
-             with_grid=True, rotateIds=True, jointsR=None, lineedgeLws={}):
+             with_grid=True, rotateIds=False, jointsR=None, lineedgeLws={}):
         # get figure
         fig = gcf()
         ax  = fig.add_subplot(111)
@@ -191,39 +191,22 @@ class DrawMesh:
         if with_ids or with_tags:
             for c in self.C:
                 # centre
-                con  = c[2]     # connectivity
-                nnod = len(con) # number of nodes per cell
-                if only_lin_cells and nnod>2: continue
+                if only_lin_cells and len(c[2])>2: continue
                 cf = 0.5 if only_lin_cells else 0.3
                 xc, yc, alp = self.get_cell_centre(c, cf)
                 if not rotateIds: alp = 0.0
-                # noise
-                va1, va2 = 'bottom', 'bottom'
-                ha1, ha2 = 'left',   'right'
-                if nnod==9:
-                    va2 = 'top'
-                    xc += self.yidnoise
-                    yc -= self.yidnoise
-                # text
-                txt = '    '
-                if with_tags: txt = '%s%d' % (txt,c[1])
-                if len(c)>4:
-                    if len(c[4])>0: txt += '\n    '
-                    for brykey, side_id in c[4].items():
-                        # neighbours
-                        side = side_id[0]
-                        eid  = side_id[1]
-                        txt  = '%s %d' % (txt,eid)
-                # cell tags
-                if with_ids and with_tags:
-                    bclr = GetLightClr(abs(c[1]+1))
-                    if len(txt)>0: ax.text(xc,yc, txt,  rotation=alp, va=va1, ha=ha1, backgroundcolor=bclr,fontsize=self.fsz2)
-                # ids
                 if with_ids:
-                    ax.text(xc,yc, c[0], rotation=alp, va=va2, ha=ha2, backgroundcolor=self.purple,fontsize=self.fsz1)
-                # edge tags
-                if with_tags and self.ndim>1 and len(c)>3:
-                    self.edge_tags(ax, c, only_tag=True)
+                    if with_tags: txt = '%d (%d)' % (c[0], c[1])
+                    else:         txt = '%d'      %  c[0]
+                else:             txt = '%d'      %        c[1]
+                # text
+                bclr = GetLightClr(abs(c[1]+1))
+                ax.text(xc,yc, txt, rotation=alp, va='center', ha='center', backgroundcolor=bclr, fontsize=self.fsz2)
+
+        # edge tags
+        if with_tags and self.ndim>1 and len(c)>3:
+            for c in self.C:
+                self.edge_tags(ax, c, only_tag=True)
 
         # draw nodes
         if with_ids:
