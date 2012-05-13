@@ -38,7 +38,8 @@ class DrawMesh:
     #
     # pct: percentage of drawing limits to use for icons
     def __init__(self, V,C, Pins={}, pct=0.001, fsz1=8, fsz2=6,
-                 yidpct=0.002, icf=0.04, acf=0.06, lcf=0.05, ndl=5, ndf=5, ndc=5):
+                 yidpct=0.002, icf=0.04, acf=0.06, lcf=0.05, ndl=5, ndf=5, ndc=5,
+                 rainbow=True):
         # mesh
         self.V      = V
         self.C      = C
@@ -51,6 +52,9 @@ class DrawMesh:
         self.fsz1 = fsz1
         self.fsz2 = fsz2
         self.lw   = 0.5
+
+        # use different colors according to cell tags?
+        self.rainbow = rainbow
 
         # constants for arrows
         self.icf = icf # icons coefficient
@@ -114,9 +118,9 @@ class DrawMesh:
         ax.plot(limsx[:2],limsx[2:],'o',marker='None')
 
         # draw solid cells
-        dat = []
         if not only_lin_cells:
             for c in self.C:
+                dat  = []
                 con  = c[2] # connectivity
                 nnod = len(con)
                 if nnod>2:
@@ -157,11 +161,15 @@ class DrawMesh:
                         dat.append((self.PH.LINETO, (self.V[con[ 5]][2], self.V[con[ 5]][3])))
                         dat.append((self.PH.LINETO, (self.V[con[11]][2], self.V[con[11]][3])))
                     dat.append((self.PH.CLOSEPOLY, (0,0)))
-            if len(dat)>0:
-                cmd,vert = zip(*dat)
-                ph0 = self.PH (vert, cmd)
-                pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.celledgeclr, linewidth=self.lw, clip_on=False)
-                ax.add_patch  (pc0)
+                if len(dat)>0:
+                    cmd,vert = zip(*dat)
+                    ph0 = self.PH (vert, cmd)
+                    if self.rainbow:
+                        clr = GetLightClr(abs(c[1]))
+                        pc0 = self.PC (ph0, facecolor=clr, edgecolor='black', linewidth=self.lw, clip_on=False)
+                    else:
+                        pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.celledgeclr, linewidth=self.lw, clip_on=False)
+                    ax.add_patch(pc0)
 
         # draw linear cells
         if self.ndim==1:
@@ -199,14 +207,16 @@ class DrawMesh:
                     if with_tags: txt = '%d (%d)' % (c[0], c[1])
                     else:         txt = '%d'      %  c[0]
                 else:             txt = '%d'      %        c[1]
-                # text
-                bclr = GetLightClr(abs(c[1]+1))
-                ax.text(xc,yc, txt, rotation=alp, va='center', ha='center', backgroundcolor=bclr, fontsize=self.fsz2)
+                if self.rainbow:
+                    ax.text(xc,yc, txt, rotation=alp, va='center', ha='center', backgroundcolor='white', fontsize=self.fsz2)
+                else:
+                    bclr = GetLightClr(abs(c[1]+1))
+                    ax.text(xc,yc, txt, rotation=alp, va='center', ha='center', backgroundcolor=bclr, fontsize=self.fsz2)
 
         # edge tags
-        if with_tags and self.ndim>1 and len(c)>3:
+        if with_tags and self.ndim>1:
             for c in self.C:
-                self.edge_tags(ax, c, only_tag=True)
+                if len(c)>3: self.edge_tags(ax, c, only_tag=True)
 
         # draw nodes
         if with_ids:
