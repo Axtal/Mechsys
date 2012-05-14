@@ -19,7 +19,7 @@
 from numpy import array, sqrt, linspace, pi, cos, sin, arctan2
 from pylab import figure, text, show, axis, gca, gcf
 from pylab import matplotlib as MPL
-from msys_fig import GetLightClr
+from msys_fig import GetLightClr, GetClr
 
 class DrawMesh:
 
@@ -181,7 +181,11 @@ class DrawMesh:
                     x1 = self.V[con[1]][2]
                     y1 = 0.0
                     XY = array([[x0,y0],[x1,y1]])
-                    ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=self.celledgeclr, lw=2))
+                    if self.rainbow:
+                        clr = GetClr(abs(c[1]))
+                        ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=clr, lw=2))
+                    else:
+                        ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=self.celledgeclr, lw=2))
         else:
             for c in self.C:
                 con = c[2] # connectivity
