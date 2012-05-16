@@ -120,6 +120,7 @@ inline void Face::Centroid(Vec3_t & N)
 
 inline void Face::GetVec(size_t n, Vec3_t & V)
 {
+    if (n>=Edges.Size()) throw new Fatal("DEM::Face::GetVec: The selected number is greater than the number of existing vertices");
     V = *Edges[n]->X0;
 }
 

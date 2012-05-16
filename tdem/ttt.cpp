@@ -559,7 +559,7 @@ int main(int argc, char **argv) try
     dat.RenderVideo = (bool) RenderVideo;
 
     // particle
-    if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction, R);
+    if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction, Eps);
     else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, Cohesion, !Cohesion, seed, fraction);
     else if (ptype=="tetra")
     {
