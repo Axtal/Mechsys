@@ -99,8 +99,10 @@ FIND_PACKAGE (wxWidgets COMPONENTS ${WXW_COMPONENTS})       #  1
 INCLUDE      (FindMPI)                                      #  2
 INCLUDE      (FindVTK)                                      #  3
 FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
+#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  4
 INCLUDE      (FindBoost)                                    #  5
 INCLUDE      (FindLAPACK)                                   #  6
+#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindLocLAPACK.cmake) #  6
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindBLITZ.cmake    ) #  7
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindGSL.cmake      ) #  8
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindMTL.cmake      ) #  9
