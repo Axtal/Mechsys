@@ -1094,6 +1094,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     // info
     Util::Stopwatch stopwatch;
     printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    printf("%s  Porosity = %g%s\n",TERM_CLR4,1.0 - Lat[0].SolidFraction(),TERM_RST);
 
     idx_out     = 0;
     //Connect particles and lattice
