@@ -2513,6 +2513,7 @@ inline void Domain::Load (char const * FileKey)
     // Opening the file for reading
     String fn(FileKey);
     fn.append(".hdf5");
+    if (!Util::FileExists(fn)) throw new Fatal("File <%s> not found",fn.CStr());
     hid_t file_id;
     file_id = H5Fopen(fn.CStr(), H5F_ACC_RDONLY, H5P_DEFAULT);
 
