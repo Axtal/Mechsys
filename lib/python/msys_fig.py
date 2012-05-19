@@ -24,7 +24,7 @@ import os.path
 from os.path import basename
 from scipy.special import erfc
 from numpy.linalg import norm, eig, solve
-from numpy import cosh, sinh
+from numpy import cosh, sinh, polyfit
 from numpy import pi, sin, cos, tan, arcsin, arccos, arctan2, log, log10, exp, sqrt
 from numpy import array, linspace, insert, repeat, zeros, matrix, ones, eye, arange, diag, dot
 from numpy import logical_or, logical_and, delete, hstack, vstack, meshgrid, vectorize, transpose
@@ -44,6 +44,25 @@ from matplotlib.ticker import MaxNLocator
 
 # to stop clipping:
 # plot(..., clip_on=0)
+
+# Find slope and draw icon
+# ========================
+def DrawSlope(X, Y, numfmt='%.3f', div=4.0, fsz=8):
+    m, c   = polyfit(X, Y, 1)
+    yf     = lambda x: c + m * x
+    x0, x1 = min(X), max(X)
+    xx     = array([x0,x1])
+    yy     = yf(xx)
+    y0, y1 = min(yy), max(yy)
+    dx, dy = x1-x0, y1-y0
+    xm, ym = (x0+x1)/2.0, (y0+y1)/2.0
+    xa, xb = xm-dx/(2.0*div), xm+dx/(2.0*div)
+    ya, yb = yf(xa), yf(xb)
+    yc     = (ya+yb)/2.0
+    plot(xx, yy, color='gray')
+    plot([xa,xb,xb], [ya,ya,yb], '-', color='gray')
+    text(xb, yc, r'$%s$'%(numfmt%m), fontsize=fsz)
+
 
 # Plot 3D surface
 # ===============
@@ -198,9 +217,9 @@ def Contour (X,Y,Z, label='', nlevels=None, cmapidx=0, fmt='%g', wire=True, cbar
 # =================
 def GetClr (idx=0, scheme=1): # color
     if scheme==1:
-        C = ['blue', 'green', 'cyan', 'black', 'magenta', 'orange', 'red', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8', 'yellow']
+        C = ['blue', 'green', 'magenta', 'orange', 'red', 'cyan', 'black', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8', 'yellow']
     else:
-        C = ['blue', 'green', 'red', 'cyan', 'magenta', 'orange', 'black', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98ac9d', '#37a3e8', 'yellow']
+        C = ['#89009d', '#7ad473', '#737ad4', 'red', '#d473ce', '#de9700', '#7e6322', '#462222', '#98ac9d', '#37a3e8', 'yellow', 'blue', 'green', 'red', 'cyan', 'magenta', 'orange', 'black']
     return C[idx % len(C)]
 
 
