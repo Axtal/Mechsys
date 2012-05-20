@@ -107,15 +107,13 @@ inline void Rod::CalcM (Mat_t & M) const
     Mat_t  T;
     CalcT (T, l);
 
-    // local M
-    Mat_t Ml(2,2);
-    Ml = 2., 1.,
-         1., 2.;
-
     // M matrix
-    double m = rho*A*l/6.;
     M.change_dim (4,4);
-    M = m*trans(T)*Ml*T;
+    M = 2., 0., 1., 0.,
+        0., 2., 0., 1.,
+        1., 0., 2., 0.,
+        0., 1., 0., 2.;
+    M *= (rho*A*l/6.);
 }
 
 inline void Rod::CalcT (Mat_t & T, double & l) const
