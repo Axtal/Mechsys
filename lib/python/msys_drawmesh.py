@@ -685,5 +685,6 @@ class DrawMesh:
     # Sign funcion
     # ============
     def sgn(self, val):
+        if not isinstance(val, float): val = val(0)
         if val<0: return -1
         else:     return  1
