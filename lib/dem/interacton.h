@@ -269,7 +269,7 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
         double delta = P1->Props.R + P2->Props.R - dist;
         if (delta>0)
         {
-            if (delta > 0.8*(P1->Props.R+P2->Props.R))
+            if (delta > 0.4*(P1->Props.R+P2->Props.R))
             {
                 std::cout << "Maximun overlap between " << P1->Index << " and " << P2->Index <<  std::endl; 
                 std::cout << "Particle's tags         " << P1->Tag   << " and " << P2->Tag   <<  std::endl; 

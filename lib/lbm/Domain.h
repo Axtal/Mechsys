@@ -291,7 +291,7 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     Time   = 0.0;
     dt     = Thedt;
     Alpha  = 10.0;
-    PrtVec = false;
+    PrtVec = true;
     printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Size()*Lat[0].Cells.Size(),TERM_RST);
 }
 
@@ -305,7 +305,7 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     Time   = 0.0;
     dt     = Thedt;
     Alpha  = 10.0;
-    PrtVec = false;
+    PrtVec = true;
     printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Size()*Lat[0].Cells.Size(),TERM_RST);
 }
 
@@ -321,8 +321,6 @@ inline void Domain::WriteXDMF(char const * FileKey)
         // Creating data sets
         float * Density   = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
         float * Gamma     = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
-        //float * Velocity  = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
-        //float * MassFlux  = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
         float * Vvec      = new float[3*Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
         for (size_t i=0;i<Lat[j].Cells.Size();i++)
         {
@@ -330,8 +328,6 @@ inline void Domain::WriteXDMF(char const * FileKey)
             Vec3_t vel = Lat[j].Cells[i]->Vel;
             Density  [i] = (float) rho;
             Gamma    [i] = (float) Lat[j].Cells[i]->IsSolid? 1.0:Lat[j].Cells[i]->Gamma;
-            //Velocity [i] = (float) norm(vel);
-            //MassFlux [i] = (float) rho*norm(vel);
             Vvec[3*i  ]  = (float) vel(0);
             Vvec[3*i+1]  = (float) vel(1);
             Vvec[3*i+2]  = (float) vel(2);
@@ -343,21 +339,20 @@ inline void Domain::WriteXDMF(char const * FileKey)
         String dsname;
         dsname.Printf("Density_%d",j);
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Density );
-        dsname.Printf("Gamma_%d",j);
-        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Gamma   );
-        //dsname.Printf("Velocity_%d",j);
-        //H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Velocity);
-        //dsname.Printf("MassFlux_%d",j);
-        //H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,MassFlux);
-        dims[0] = 3*Lat[0].Ndim(0)*Lat[0].Ndim(1)*Lat[0].Ndim(2);
-        dsname.Printf("Velocity_%d",j);
-        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vvec    );
-
+        if (j==0)
+        {
+            dsname.Printf("Gamma");
+            H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Gamma   );
+        }
+        if (PrtVec)
+        {
+            dims[0] = 3*Lat[0].Ndim(0)*Lat[0].Ndim(1)*Lat[0].Ndim(2);
+            dsname.Printf("Velocity_%d",j);
+            H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vvec    );
+        }
 
         delete [] Density ;
         delete [] Gamma   ;
-        //delete [] Velocity;
-        //delete [] MassFlux;
         delete [] Vvec    ;
     }
 
@@ -443,16 +438,6 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "        " << fn.CStr() <<":/Gamma_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
-        //oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        //oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-        //oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
-        //oss << "       </DataItem>\n";
-        //oss << "     </Attribute>\n";
-        //oss << "     <Attribute Name=\"MassFlux_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        //oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-        //oss << "        " << fn.CStr() <<":/MassFlux_" << j << "\n";
-        //oss << "       </DataItem>\n";
-        //oss << "     </Attribute>\n";
         oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
         oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
@@ -484,27 +469,20 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "        " << fn.CStr() <<":/Density_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
-        oss << "     <Attribute Name=\"Gamma_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-        oss << "        " << fn.CStr() <<":/Gamma_" << j << "\n";
-        oss << "       </DataItem>\n";
-        oss << "     </Attribute>\n";
-        //oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        //oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-        //oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
-        //oss << "       </DataItem>\n";
-        //oss << "     </Attribute>\n";
-        //oss << "     <Attribute Name=\"MassFlux_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        //oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-        //oss << "        " << fn.CStr() <<":/MassFlux_" << j << "\n";
-        //oss << "       </DataItem>\n";
-        //oss << "     </Attribute>\n";
+        if (PrtVec)
+        {
         oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
         oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         }
+        }
+        oss << "     <Attribute Name=\"Gamma\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Gamma\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
         oss << "   </Grid>\n";
         if(Particles.Size()>0)
         {
@@ -568,13 +546,13 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
             if (c->IsSolid)
             {
                 psi    = 1.0;
-                G      = Lat[1].Gs;
+                G      = Lat[1].Gs*2.0*ReducedValue(nb->Gs,c->Gs);
             }
             else psi   = c ->Rho;
             if (nb->IsSolid)
             {
                 nb_psi = 1.0;
-                G      = Lat[0].Gs;
+                G      = Lat[0].Gs*2.0*ReducedValue(nb->Gs,c->Gs);
             }
             else nb_psi = nb->Rho;
             Vec3_t  BF = -G*psi*nb_psi*c->W[vec]*c->C[vec];

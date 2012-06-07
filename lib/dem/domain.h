@@ -2287,12 +2287,12 @@ inline void Domain::WriteXDMF (char const * FileKey)
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
-    oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Float\" Format=\"HDF\">\n";
     oss << "        " << fn.CStr() <<":/Velocity \n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     oss << "     <Attribute Name=\"AngVelocity\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
-    oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Float\" Format=\"HDF\">\n";
     oss << "        " << fn.CStr() <<":/AngVelocity \n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
