@@ -103,7 +103,7 @@ class DrawMesh:
     #==========
     def draw(self, with_ids=True, with_tags=True,
              edgescells={}, cellscells=[], vertscells=[], vertsverts=[],
-             p_vertscells=[], p_verts=[], only_lin_cells=False,
+             p_vids={}, p_cids={}, only_lin_cells=False,
              with_grid=True, rotateIds=False, jointsR=None, lineedgeLws={}):
         # get figure
         fig = gcf()
@@ -280,22 +280,22 @@ class DrawMesh:
             text(xc, yc, s, va='center', ha='center', color='black', backgroundcolor='white', fontsize=self.fsz2)
 
         # patch information
-        for iv, cells in enumerate(p_vertscells):              # for each 'driver' vertex and cells around it
-            if len(cells) == 0: continue                       # skip boundary vertex (without cells)
-            s = ''
-            for k, ic in enumerate(cells):
+        for key in p_vids.keys():
+            s = 'c:\n'
+            for k, ic in enumerate(p_cids[key]):
                 s += '%d' % ic
-                if k < len(cells)-1:
+                if k < len(p_cids[key])-1:
                     s += ' '
                     if k%3 == 2: s += '\n'
-            s += '\n---\n'
-            for k, iva in enumerate(p_verts[iv]):
-                s += '%d' % iva
-                if k < len(p_verts[iv])-1:
+            s += '\nv:\n'
+            for k, iv in enumerate(p_vids[key]):
+                s += '%d' % iv
+                if k < len(p_vids[key])-1:
                     s += ' '
                     if k%3 == 2: s += '\n'
-            xval = self.V[iv][2]+2.*self.yidnoise
-            yval = self.V[iv][3]-self.yidnoise if self.ndim>1 else -self.yidnoise
+            n    = key[0]
+            xval = self.V[n][2]+2.*self.yidnoise
+            yval = self.V[n][3]-self.yidnoise if self.ndim>1 else -self.yidnoise
             text(xval, yval, s, va='bottom', ha='left', color='black', backgroundcolor='lightgray', fontsize=self.fsz2)
 
         # joints
