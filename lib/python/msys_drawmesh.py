@@ -16,8 +16,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-from numpy import array, sqrt, linspace, pi, cos, sin, arctan2
-from pylab import figure, text, show, axis, gca, gcf
+from numpy import array, sqrt, linspace, pi, cos, sin, arctan2, zeros
+from pylab import figure, text, show, axis, gca, gcf, xlabel, ylabel, plot
 from pylab import matplotlib as MPL
 from msys_fig import GetLightClr, GetClr
 
@@ -52,6 +52,9 @@ class DrawMesh:
         self.fsz1 = fsz1
         self.fsz2 = fsz2
         self.lw   = 0.5
+
+        # vertices marker size
+        self.vmsz = 3
 
         # use different colors according to cell tags?
         self.rainbow = rainbow
@@ -104,10 +107,12 @@ class DrawMesh:
     def draw(self, with_ids=True, with_tags=True,
              edgescells={}, cellscells=[], vertscells=[], vertsverts=[],
              p_vids={}, p_cids={}, only_lin_cells=False,
-             with_grid=True, rotateIds=False, jointsR=None, lineedgeLws={}):
+             with_grid=True, rotateIds=False, jointsR=None, lineedgeLws={},
+             vert_tags=True, edge_tags=True, cell_tags=True, xy_labels=False,
+             show_verts=False):
+
         # get figure
-        fig = gcf()
-        ax  = fig.add_subplot(111)
+        ax = gca()
         if with_grid:
             ax.grid(color='gray')
             ax.set_axisbelow(True)
@@ -200,7 +205,7 @@ class DrawMesh:
                     ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=self.lineedgeclr, lw=lw))
 
         # text
-        if with_ids or with_tags:
+        if with_ids or (with_tags and cell_tags):
             for c in self.C:
                 # centre
                 if only_lin_cells and len(c[2])>2: continue
@@ -208,9 +213,9 @@ class DrawMesh:
                 xc, yc, alp = self.get_cell_centre(c, cf)
                 if not rotateIds: alp = 0.0
                 if with_ids:
-                    if with_tags: txt = '%d (%d)' % (c[0], c[1])
-                    else:         txt = '%d'      %  c[0]
-                else:             txt = '%d'      %        c[1]
+                    if with_tags and cell_tags: txt = '%d (%d)' % (c[0], c[1])
+                    else:                       txt = '%d'      %  c[0]
+                elif with_tags and cell_tags:   txt = '%d'      %        c[1]
                 if self.rainbow:
                     ax.text(xc,yc, txt, rotation=alp, va='center', ha='center', backgroundcolor='white', fontsize=self.fsz2)
                 else:
@@ -218,7 +223,7 @@ class DrawMesh:
                     ax.text(xc,yc, txt, rotation=alp, va='center', ha='center', backgroundcolor=bclr, fontsize=self.fsz2)
 
         # edge tags
-        if with_tags and self.ndim>1:
+        if edge_tags and with_tags and self.ndim>1:
             for c in self.C:
                 if len(c)>3: self.edge_tags(ax, c, only_tag=True)
 
@@ -230,10 +235,10 @@ class DrawMesh:
                 text(v[2], yval, s, va='bottom', ha='right', color='black', backgroundcolor=self.lyellow, fontsize=self.fsz1)
 
         # draw nodes
-        if with_tags:
+        if vert_tags and with_tags:
             for v in self.V:
                 tag = v[1]
-                if tag<0 and with_tags:
+                if tag<0:
                     xval = v[2]+self.yidnoise
                     yval = v[3]-self.yidnoise if self.ndim>1 else -self.yidnoise
                     text(xval, yval, '%d'%tag, va='top', ha='left', color='black', backgroundcolor=self.orange, fontsize=self.fsz2)
@@ -317,6 +322,20 @@ class DrawMesh:
             tag = self.V[key][1]
             if tag<0 and with_tags:
                 text(x, y, '%d'%tag, va='top', color='black', backgroundcolor='none', fontsize=self.fsz2)
+
+        # show vertices
+        if show_verts:
+            X = [v[2] for v in self.V]
+            if self.ndim == 1: plot(X, zeros(len(X), 'ko'), markersize=self.vmsz)
+            else:
+                Y = [v[3] for v in self.V]
+                plot(X, Y, 'ko', markersize=self.vmsz)
+
+        # force same scale
+        if xy_labels:
+            xlabel(r'$x$')
+            ylabel(r'$y$')
+        axis('equal')
 
     # Draw edge tags
     # ==============
