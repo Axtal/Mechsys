@@ -28,7 +28,7 @@ from numpy import cosh, sinh, polyfit
 from numpy import pi, sin, cos, tan, arcsin, arccos, arctan2, log, log10, exp, sqrt
 from numpy import array, linspace, insert, repeat, zeros, matrix, ones, eye, arange, diag, dot
 from numpy import logical_or, logical_and, delete, hstack, vstack, meshgrid, vectorize, transpose
-from pylab import rcParams, gca, gcf, clf, savefig
+from pylab import rcParams, gca, gcf, clf, savefig, ScalarFormatter
 from pylab import plot, xlabel, ylabel, show, grid, legend, subplot, axis, text, axhline, axvline, title, xticks
 from pylab import contour, contourf, colorbar, clabel, xlim, suptitle
 from pylab import cm as MPLcm
@@ -44,6 +44,17 @@ from matplotlib.ticker import MaxNLocator
 
 # to stop clipping:
 # plot(..., clip_on=0)
+
+
+# Scalar format for axes
+# ======================
+def SetScientificFmt(axis='y', min_order=-3, max_order=3):
+    # applies to current axis
+    fmt = ScalarFormatter(useOffset=True)
+    fmt.set_powerlimits((min_order,max_order))
+    if axis=='y': gca().yaxis.set_major_formatter(fmt)
+    else:         gca().xaxis.set_major_formatter(fmt)
+
 
 # Find slope and draw icon
 # ========================
