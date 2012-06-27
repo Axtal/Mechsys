@@ -20,8 +20,8 @@
 #####################################################################################
 
 SET(IGRAPH_INCLUDE_SEARCH_PATH
-  $ENV{MECHSYS_ROOT}/pkg/igraph-0.5.4
-  $ENV{HOME}/pkg/igraph-0.5.4
+  $ENV{MECHSYS_ROOT}/pkg/igraph-0.5.4/include
+  $ENV{HOME}/pkg/igraph-0.5.4/include
   /usr/include
   /usr/local/include)
 
@@ -31,7 +31,7 @@ SET(IGRAPH_LIBRARY_SEARCH_PATH
   /usr/lib
   /usr/local/lib)
 
-FIND_PATH(IGRAPH_IGRAPH_H include/igraph.h ${IGRAPH_INCLUDE_SEARCH_PATH})
+FIND_PATH(IGRAPH_IGRAPH_H igraph.h ${IGRAPH_INCLUDE_SEARCH_PATH})
 
 FIND_LIBRARY(IGRAPH_IGRAPH NAMES igraph PATHS ${IGRAPH_LIBRARY_SEARCH_PATH})
 FIND_LIBRARY(IGRAPH_DLAMCH NAMES dlamch PATHS ${IGRAPH_LIBRARY_SEARCH_PATH})

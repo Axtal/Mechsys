@@ -251,7 +251,7 @@ int main(int argc, char **argv) try
 
     // number:  nx ny nz
     Array<int> N(10, 10, 30);
-    double scale = 6.0;
+    //double scale = 6.0;
     if (argc> 1) N[0]      = atoi(argv[ 1]);
     if (argc> 2) N[1]      = atoi(argv[ 2]);
     if (argc> 3) N[2]      = atoi(argv[ 3]);
@@ -263,7 +263,7 @@ int main(int argc, char **argv) try
     if (argc> 9) dat.a(0)  = atof(argv[ 9]);
     if (argc>10) dat.a(1)  = atof(argv[10]);
     if (argc>11) dat.a(2)  = atof(argv[11]);
-    if (argc>12) scale     = atof(argv[12]);
+    //if (argc>12) scale     = atof(argv[12]);
     if (N[0]<2) throw new Fatal("nx must be greater than 1");
     if (N[1]<2) throw new Fatal("ny must be greater than 1");
     if (N[2]<2) throw new Fatal("nz must be greater than 1");

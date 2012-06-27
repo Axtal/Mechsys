@@ -191,7 +191,7 @@ inline ParaGrid3D::ParaGrid3D (Array<int> const & TheN, Array<double> & TheL, ch
         size_t k = 0; oss << "        ";
         int nx = N[0]+1;
         int ny = N[1]+1;
-        int nz = N[2]+1;
+        //int nz = N[2]+1;
         for (size_t n=0; n<nn; ++n)
         {
             int K =  n / (nx*ny);
@@ -212,7 +212,7 @@ inline ParaGrid3D::ParaGrid3D (Array<int> const & TheN, Array<double> & TheL, ch
         k = 0; oss << "        ";
         nx = N[0];
         ny = N[1];
-        nz = N[2];
+        //nz = N[2];
         for (size_t n=0; n<nc; ++n)
         {
             int K =  n / (nx*ny);

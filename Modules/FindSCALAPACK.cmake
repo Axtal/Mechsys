@@ -20,8 +20,8 @@
 #####################################################################################
 
 SET(SCALAPACK_LIBRARY_SEARCH_PATH
-  $ENV{MECHSYS_ROOT}/pkg/scalapack_installer/install/lib
-  $ENV{HOME}/pkg/scalapack_installer/install/lib)
+  $ENV{MECHSYS_ROOT}/pkg/scalapack_installer_1.0.2/install/lib
+  $ENV{HOME}/pkg/scalapack_installer_1.0.2/install/lib)
 
 FIND_LIBRARY(SCALAPACK_SCALAPACK NAMES scalapack PATHS ${SCALAPACK_LIBRARY_SEARCH_PATH})
 

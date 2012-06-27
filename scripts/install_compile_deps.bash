@@ -72,14 +72,14 @@ test -d $MECHSYS_ROOT/pkg || mkdir $MECHSYS_ROOT/pkg
 VER_TRIANGLE=1.6
 VER_TETGEN=1.4.3
 VER_VORO=0.3.1
-VER_OPENMPI=1.5.4
+VER_OPENMPI=1.6
 VER_PARMETIS=3.2.0 # 4.0.2 # MUMPS does not work with this one
 VER_MUMPS=4.10.0
 VER_IGRAPH=0.5.4
-VER_SOPLEX=1.5.0
-VER_VTK=5.8.0
-VER_VTK_MAJOR=5.8
-VER_SCALAPACK=1.0.1
+VER_SOPLEX=1.6.0
+VER_VTK=5.10.0
+VER_VTK_MAJOR=5.10
+VER_SCALAPACK=1.0.2
 VER_WXWIDGETS=2.9.3
 
 compile_scalapack() {
@@ -145,7 +145,7 @@ download_and_compile() {
         openmpi)
             PKG=openmpi-$VER_OPENMPI
             EXT=tar.bz2
-            LOCATION=http://www.open-mpi.org/software/ompi/v1.5/downloads/$PKG.$EXT
+            LOCATION=http://www.open-mpi.org/software/ompi/v1.6/downloads/$PKG.$EXT
             DO_CONF=1
             DO_MAKE_INST=1
             ;;
@@ -181,7 +181,7 @@ download_and_compile() {
             PKG=soplex-$VER_SOPLEX
             EXT=tgz
             LOCATION=http://soplex.zib.de/download/$PKG.$EXT
-            NPROCS=1 # it seems soples cannot be compiled in parallel...
+            #NPROCS=1 # it seems soples cannot be compiled in parallel...
             ;;
         vtk)
             PKG=vtk-$VER_VTK
@@ -333,7 +333,7 @@ download_and_compile scalapack
 download_and_compile mumps
 download_and_compile igraph
 download_and_compile soplex
-#download_and_compile vtk
+download_and_compile vtk
 download_and_compile wxwidgets
 
 echo

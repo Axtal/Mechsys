@@ -43,9 +43,9 @@ void FuncSMP (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
     F = 0;
     //if (X(0)<0.0 && X(1)<0.0 && X(2)<0.0)
     {
-        double I2  = X(0)*X(1) + X(1)*X(2) + X(2)*X(0);
-        double I3  = X(0)*X(1)*X(2);
-        double cof = sqrt(-I3/I2);
+        //double I2  = X(0)*X(1) + X(1)*X(2) + X(2)*X(0);
+        //double I3  = X(0)*X(1)*X(2);
+        //double cof = sqrt(-I3/I2);
         //V = -cof/sqrt(-X(0)), -cof/sqrt(-X(1)), -cof/sqrt(-X(2));
         //V = -1.0/sqrt(-X(0)), -1.0/sqrt(-X(1)), -1.0/sqrt(-X(2));
         V = 1.0/X(0), 1.0/X(1), 1.0/X(2);
