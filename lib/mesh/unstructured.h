@@ -836,6 +836,86 @@ inline void Unstructured::Delaunay (Array<double> const & X, Array<double> const
     TriDeallocateAll (tou);
 }
 
+inline void Unstructured::Delaunay (Array<double> const & X, Array<double> const & Y, Array<double> const & Z, int Tag)
+{
+    // check
+    if (NDim==2)            throw new Fatal("Unstructured::Delaunay: This method is only available for 3D");
+    if (X.Size()!=Y.Size()) throw new Fatal("Unstructured::Delaunay: Size of X and Y arrays must be equal (%d!=%d)",X.Size(),Y.Size());
+    if (Z.Size()!=Y.Size()) throw new Fatal("Unstructured::Delaunay: Size of Z and Y arrays must be equal (%d!=%d)",Z.Size(),Y.Size());
+
+    // points
+    Pin.deinitialize();
+    Pin.initialize();
+    size_t NPoints = X.Size();
+    Pin.firstnumber     = 0;
+    Pin.numberofpoints  = NPoints;
+    Pin.pointlist       = new double [NPoints*3];
+    Pin.pointmarkerlist = new int [NPoints];
+
+    //
+    // fill Pin.pointlist
+    //
+
+    TetIO pou;
+    tetrahedralize ("Qz", &Pin, &pou);
+
+    // verts
+    Verts.Resize (pou.numberofpoints);
+    for (size_t i=0; i<Verts.Size(); ++i)
+    {
+        Verts[i]      = new Vertex;
+        Verts[i]->ID  = i;
+        Verts[i]->Tag = 0;
+        Verts[i]->C   = pou.pointlist[i*3], pou.pointlist[i*3+1], pou.pointlist[i*3+2];
+
+        /* pou.pointmarkerlist[ipoint] will be equal to:
+         * == faceTag (<0) => on face with tag <<<<<<<<<<<<<<<<<< REMOVED
+         * == 0            => internal vertex (not on boundary)
+         * == 1            => on boundary                   */
+        int mark = pou.pointmarkerlist[i];
+        if (mark<0)
+        {
+            Verts[i]->Tag = mark;
+            TgdVerts.Push (Verts[i]);
+        }
+    }
+
+    // cells
+    Cells.Resize (pou.numberoftetrahedra);
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        Cells[i]      = new Cell;
+        Cells[i]->ID  = i;
+        Cells[i]->Tag = pou.tetrahedronattributelist[i*pou.numberoftetrahedronattributes];
+        Cells[i]->V.Resize (pou.numberofcorners);
+        for (size_t j=0; j<Cells[i]->V.Size(); ++j)
+        {
+            Share sha = {Cells[i],j};
+            Cells[i]->V[j] = Verts[pou.tetrahedronlist[i*pou.numberofcorners+FEM2TetPoint[j]]];
+            Cells[i]->V[j]->Shares.Push (sha);
+        }
+    }
+
+    // face tags
+    for (std::map<int,tetgenio::facemarkers>::const_iterator p=pou.tetfacemarkers.begin(); p!=pou.tetfacemarkers.end(); ++p)
+    {
+        int  icell       = p->first;
+        bool has_bry_tag = false;
+        for (size_t j=0; j<4; ++j)
+        {
+            int face_tag = p->second.m[FEM2TetFace[j]];
+            //std::cout << icell << " " << j << " " << face_tag << "\n";
+            if (face_tag<0)
+            {
+                Cells[icell]->BryTags[j] = face_tag;
+                has_bry_tag              = true;
+            }
+        }
+        if (has_bry_tag) TgdCells.Push (Cells[icell]);
+    }
+}
+
+
 #ifdef USE_BOOST_PYTHON
 
 inline void Unstructured::PySet (BPy::dict const & Dat)
