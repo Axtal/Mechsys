@@ -429,21 +429,24 @@ inline void Domain::WriteXDMF(char const * FileKey)
         for (size_t j=0;j<Lat.Size();j++)
         {
         oss << "     <Attribute Name=\"Density_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Density_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
-        oss << "     <Attribute Name=\"Gamma_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-        oss << "        " << fn.CStr() <<":/Gamma_" << j << "\n";
-        oss << "       </DataItem>\n";
-        oss << "     </Attribute>\n";
+        if (PrtVec)
+        {
         oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         }
+        }
+        oss << "     <Attribute Name=\"Gamma\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Gamma\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
         oss << "   </Grid>\n";
         oss << " </Domain>\n";
         oss << "</Xdmf>\n";

@@ -53,7 +53,8 @@ SET(PROGS_F # mesh
   mesh02
   mesh03
   mesh04
-  delaunay)
+  delaunay
+  delaunay3D)
 
 SET(PROGS_G # tests requiring wxWidgets
   wxplotxy

@@ -223,6 +223,7 @@ public:
 
     // Alternative methods
     void Delaunay (Array<double> const & X, Array<double> const & Y, int Tag=-1); ///< Find Delaunay triangulation of a set of points
+    void Delaunay (Array<double> const & X, Array<double> const & Y, Array<double> const & Z, int Tag=-1); ///< Find Delaunay tetrahedralization of a set of points in 3D
 
     // Data
     TriIO Tin; ///< Triangle structure: input PSLG
@@ -852,9 +853,12 @@ inline void Unstructured::Delaunay (Array<double> const & X, Array<double> const
     Pin.pointlist       = new double [NPoints*3];
     Pin.pointmarkerlist = new int [NPoints];
 
-    //
-    // fill Pin.pointlist
-    //
+    for (size_t i=0; i<X.Size(); ++i)
+    {
+        Pin.pointlist[3*i  ] = X[i];
+        Pin.pointlist[3*i+1] = Y[i];
+        Pin.pointlist[3*i+2] = Z[i];
+    }
 
     TetIO pou;
     tetrahedralize ("Qz", &Pin, &pou);
@@ -886,7 +890,8 @@ inline void Unstructured::Delaunay (Array<double> const & X, Array<double> const
     {
         Cells[i]      = new Cell;
         Cells[i]->ID  = i;
-        Cells[i]->Tag = pou.tetrahedronattributelist[i*pou.numberoftetrahedronattributes];
+        //Cells[i]->Tag = pou.tetrahedronattributelist[i*pou.numberoftetrahedronattributes];
+        Cells[i]->Tag = Tag;
         Cells[i]->V.Resize (pou.numberofcorners);
         for (size_t j=0; j<Cells[i]->V.Size(); ++j)
         {
