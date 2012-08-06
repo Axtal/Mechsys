@@ -174,7 +174,15 @@ inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
     Kt              = (r1+r2)*ReducedValue(Pt1->Props.Kt,Pt2->Props.Kt);
     Gn              = 2*ReducedValue(Pt1->Props.Gn,Pt2->Props.Gn)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
     Gt              = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
-    Mu              = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
+    //Mu              = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
+    if (Pt1->Props.Mu>0.0||Pt2->Props.Mu>0.0)
+    {
+        Mu          = std::max(Pt1->Props.Mu,Pt2->Props.Mu);
+    }
+    else 
+    {
+        Mu          = 0.0;
+    }
     CalcForce(0.0);
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
@@ -384,7 +392,15 @@ inline CInteractonSphere::CInteractonSphere (Particle * Pt1, Particle * Pt2)
     Kt   = 2*ReducedValue(Pt1->Props.Kt,Pt2->Props.Kt);
     Gn   = 2*ReducedValue(Pt1->Props.Gn,Pt2->Props.Gn)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
     Gt   = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
-    Mu   = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
+    //Mu   = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
+    if (Pt1->Props.Mu>0.0||Pt2->Props.Mu>0.0)
+    {
+        Mu          = std::max(Pt1->Props.Mu,Pt2->Props.Mu);
+    }
+    else 
+    {
+        Mu          = 0.0;
+    }
     beta = 2*ReducedValue(Pt1->Props.Beta,Pt2->Props.Beta);
     eta  = 2*ReducedValue(Pt1->Props.Eta,Pt2->Props.Eta);
     Nc = 0;

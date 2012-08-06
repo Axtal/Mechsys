@@ -27,6 +27,10 @@
 using std::cout;
 using std::endl;
 
+struct UserData
+{
+    std::ofstream      oss_ss;       ///< file for stress strain data
+};
 
 void Setup (DEM::Domain & dom, void * UD)
 {
@@ -38,6 +42,24 @@ void Setup (DEM::Domain & dom, void * UD)
 
 void Report (DEM::Domain & dom, void *UD)
 {
+    UserData & dat = (*static_cast<UserData *>(UD));
+    if (dom.idx_out==0)
+    {
+        String fs;
+        fs.Printf("%s_walls.res",dom.FileKey.CStr());
+        dat.oss_ss.open(fs.CStr());
+        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz \n";
+    }
+    if (!dom.Finished) 
+    {
+        double Area = (dom.Xmax-dom.Xmin)*(dom.GetParticle(-4)->x(1)-dom.GetParticle(-5)->x(1));
+        Vec3_t Sig = (dom.GetParticle(-6)->F-dom.GetParticle(-7)->F)/Area;
+        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << Sig(0) << Util::_8s << Sig(1) << Util::_8s << Sig(2) << std::endl;
+    }
+    else
+    {
+        dat.oss_ss.close();
+    }
 }
 
 int main(int argc, char **argv) try
@@ -55,7 +77,7 @@ int main(int argc, char **argv) try
     
     double verlet;      // Verlet distance for optimization
     String ptype;       // Particle type 
-    bool   RenderVideo; // Decide is video should be render
+    size_t  RenderVideo; // Decide is video should be render
     bool   Cohesion;    // Decide if coheison is going to be simulated
     double fraction;    // Fraction of particles to be generated
     double Kn;          // Normal stiffness
@@ -119,7 +141,8 @@ int main(int argc, char **argv) try
     }
 
     // domain and User data
-    DEM::Domain dom;
+    UserData dat;
+    DEM::Domain dom(&dat);
     dom.Alpha=verlet;
     dom.CamPos = Vec3_t(0.0, 1.0*(Lx+Ly+Lz), 0.15*Lz); // position of camera
 
@@ -158,20 +181,18 @@ int main(int argc, char **argv) try
 
     // properties of particles prior the triaxial test
     Dict B;
-    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,Mu ,Beta,Eta,Bn,Bt ,Bm ,     Eps);
-    //B.Set(-2,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,0.0,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    //B.Set(-3,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,0.0,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    B.Set(-4,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    B.Set(-5,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    B.Set(-6,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,Mu ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    B.Set(-7,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,Mu ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt ,Mu     ,Beta,Eta,Bn,Bt ,Bm ,     Eps);
+    B.Set(-4,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+    B.Set(-5,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+    B.Set(-6,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,50.0*Mu,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+    B.Set(-7,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,50.0*Mu,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
     dom.SetProps(B);
 
     // stage 1: isotropic compresssion  //////////////////////////////////////////////////////////////////////
     String fkey_a(filekey+"_a");
     String fkey_b(filekey+"_b");
 
-    dom.Solve  (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_a.CStr(),RenderVideo,Nproc);
+    dom.Solve  (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, NULL, fkey_a.CStr(),RenderVideo,Nproc);
 
     dom.GetParticle(-4)->vyf = true;
     dom.GetParticle(-5)->vyf = true;
@@ -183,6 +204,7 @@ int main(int argc, char **argv) try
     dom.GetParticle(-7)->v = Vec3_t(-vel,0.0,0.0);
     
 
+    // stage 2: shearing stage         //////////////////////////////////////////////////////////////////////
     dom.Solve (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_b.CStr(),RenderVideo,Nproc);
 
     return 0;

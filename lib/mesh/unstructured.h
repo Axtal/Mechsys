@@ -891,7 +891,7 @@ inline void Unstructured::Delaunay (Array<double> const & X, Array<double> const
         Cells[i]      = new Cell;
         Cells[i]->ID  = i;
         //Cells[i]->Tag = pou.tetrahedronattributelist[i*pou.numberoftetrahedronattributes];
-        Cells[i]->Tag = Tag;
+        Cells[i]->Tag = Tag-i;
         Cells[i]->V.Resize (pou.numberofcorners);
         for (size_t j=0; j<Cells[i]->V.Size(); ++j)
         {

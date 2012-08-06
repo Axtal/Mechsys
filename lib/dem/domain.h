@@ -1681,7 +1681,7 @@ inline void Domain::Initialize (double dt)
 
 inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * TheFileKey, size_t VOut, size_t Nproc)
 {
-    if (VOut > 3) throw new Fatal("Domain::Solve The visuazlization argument can only have 4 values: 0 None, 1 povray visualization, 2 xdmf visualization and 3 both options");
+    if (VOut > 3) throw new Fatal("Domain::Solve The visualization argument can only have 4 values: 0 None, 1 povray visualization, 2 xdmf visualization and 3 both options");
     // Assigning some domain particles especifically to the output
     FileKey.Printf("%s",TheFileKey);
     idx_out = 0;
