@@ -29,15 +29,19 @@ using std::endl;
 
 struct UserData
 {
+    Vec3_t Sig;
     std::ofstream      oss_ss;       ///< file for stress strain data
 };
 
 void Setup (DEM::Domain & dom, void * UD)
 {
+    UserData & dat = (*static_cast<UserData *>(UD));
     Vec3_t trans = Vec3_t(dom.GetParticle(-6)->xb(0) - dom.GetParticle(-6)->x(0),0.0,0.0);
     dom.GetParticle(-6)->Translate(trans);
     trans = Vec3_t(dom.GetParticle(-7)->xb(0) - dom.GetParticle(-7)->x(0),0.0,0.0);
     dom.GetParticle(-7)->Translate(trans);
+    double Area = (dom.Xmax-dom.Xmin)*(dom.GetParticle(-4)->x(1)-dom.GetParticle(-5)->x(1));
+    dat.Sig = (dom.GetParticle(-6)->F-dom.GetParticle(-7)->F)/Area;
 }
 
 void Report (DEM::Domain & dom, void *UD)
@@ -52,9 +56,7 @@ void Report (DEM::Domain & dom, void *UD)
     }
     if (!dom.Finished) 
     {
-        double Area = (dom.Xmax-dom.Xmin)*(dom.GetParticle(-4)->x(1)-dom.GetParticle(-5)->x(1));
-        Vec3_t Sig = (dom.GetParticle(-6)->F-dom.GetParticle(-7)->F)/Area;
-        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << Sig(0) << Util::_8s << Sig(1) << Util::_8s << Sig(2) << std::endl;
+        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dat.Sig(0) << Util::_8s << dat.Sig(1) << Util::_8s << dat.Sig(2) << std::endl;
     }
     else
     {
