@@ -40,11 +40,11 @@ from matplotlib.path         import Path   as MPLPath
 from matplotlib.font_manager import FontProperties
 from matplotlib.ticker       import FuncFormatter
 from mpl_toolkits.mplot3d    import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib.ticker import MaxNLocator
 
 # to stop clipping:
 # plot(..., clip_on=0)
-
 
 # Scalar format for axes
 # ======================
@@ -77,8 +77,9 @@ def DrawSlope(X, Y, numfmt='%.3f', div=4.0, fsz=8):
 
 # Plot 3D surface
 # ===============
-def PlotSurf(X,Y,Z,xlbl='X',ylbl='Y',zlbl='Z',zmin=None,zmax=None,cmapidx=0):
-    ax = gcf().gca(projection='3d')
+def PlotSurf(X, Y, Z, xlbl='X', ylbl='Y', zlbl='Z', zmin=None, zmax=None, cmapidx=0, splot=111):
+    #ax = gcf().gca(projection='3d')
+    ax = gcf().add_subplot(splot, projection='3d')
     ax.set_xlabel(xlbl)
     ax.set_ylabel(ylbl)
     ax.set_zlabel(zlbl)
@@ -86,6 +87,14 @@ def PlotSurf(X,Y,Z,xlbl='X',ylbl='Y',zlbl='Z',zmin=None,zmax=None,cmapidx=0):
     if zmin!=None and zmax!=None:
         ax.set_zlim(zmin,zmax)
     return ax
+
+
+# Plot polygons in 3D
+# ===================
+#   verts = zeros((nnodes, 3))
+#   ax = gcf().add_subplot(224, projection='3d')
+def AddPoly3D(ax, verts, clr='magenta'):
+    ax.add_collection3d(Poly3DCollection([zip(verts[:,0], verts[:,1], verts[:,2])], facecolors=[clr]))
 
 
 # Get colormap
