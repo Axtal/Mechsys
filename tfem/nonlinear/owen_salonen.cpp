@@ -98,8 +98,8 @@ int main(int argc, char **argv) try
         out_verts.Resize(1);
         fkey      = "owen_salonen_uni";
         out_verts = 0;
-        prps.Set(-1, "prob geom", PROB("Equilib"), (o2 ? GEOM("Hex20") : GEOM("Hex8")));
-        mdls.Set(-1, "name E nu VM sY Hp", MODEL("ElastoPlastic"), E, nu, TRUE, sY, Hp);
+        prps.Set(-1, "prob geom rho", PROB("Equilib"), (o2 ? GEOM("Hex20") : GEOM("Hex8")), 1.0);
+        mdls.Set(-1, "name E nu VM sY Hp rho", MODEL("ElastoPlastic"), E, nu, TRUE, sY, Hp, 1.0);
         //mdls.Set(-1, "name E nu", MODEL("LinElastic"), E, nu);
     }
     else
@@ -109,8 +109,8 @@ int main(int argc, char **argv) try
             out_verts.Resize(6);
             fkey      = "owen_salonen_2d";
             out_verts = 0,1,2, 27,28,29;
-            prps.Set(-1, "prob geom pse h", PROB("Equilib"), (o2 ? GEOM("Quad8") : GEOM("Quad4")), TRUE, t);
-            mdls.Set(-1, "name E nu VM sY Hp pse", MODEL("ElastoPlastic"), E, nu, TRUE, sY, Hp, TRUE);
+            prps.Set(-1, "prob geom pse h rho", PROB("Equilib"), (o2 ? GEOM("Quad8") : GEOM("Quad4")), TRUE, t, 1.0);
+            mdls.Set(-1, "name E nu VM sY Hp pse rho", MODEL("ElastoPlastic"), E, nu, TRUE, sY, Hp, TRUE, 1.0);
             //mdls.Set(-1, "name E nu pse", MODEL("LinElastic"), E, nu, 1.0);
         }
         else
@@ -118,8 +118,8 @@ int main(int argc, char **argv) try
             out_verts.Resize(8);
             fkey      = "owen_salonen_3d";
             out_verts = -1,-2,-3,-4,-5,-6,-7,-8;
-            prps.Set(-1, "prob geom", PROB("Equilib"), (o2 ? GEOM("Hex20") : GEOM("Hex8")));
-            mdls.Set(-1, "name E nu VM sY Hp", MODEL("ElastoPlastic"), E, nu, TRUE, sY, Hp);
+            prps.Set(-1, "prob geom rho", PROB("Equilib"), (o2 ? GEOM("Hex20") : GEOM("Hex8")), 1.0);
+            mdls.Set(-1, "name E nu VM sY Hp rho", MODEL("ElastoPlastic"), E, nu, TRUE, sY, Hp, 1.0);
             //mdls.Set(-1, "name E nu", MODEL("LinElastic"), E, nu);
         }
     }
