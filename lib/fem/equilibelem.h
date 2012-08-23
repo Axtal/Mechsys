@@ -337,6 +337,7 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFun
 
                 // coefficient used during integration
                 double coef = h*GE->FIPs[i].w; // *detJ is not necessary since qx,qy,qz are already multiplied by detJ (due to normal)
+                                               // in the case of given q{x,y,z}, these must be then multiplied by detJ
 
                 if (GTy==axs_t)
                 {
@@ -374,6 +375,15 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFun
                         qy = n(1)*qn;
                         qz = n(2)*qn;
                     }
+                }
+                else // must multiply q{x,y,z} by detJ
+                {
+                    throw new Fatal("equilibeleme.h:EquilibElem.SetBCs: specification of q{x,y,z} is not implemented yet");
+                    // TODO: implement determinant of 2x3 matrices
+                    double detJ = Det(J);
+                    qx *= detJ;
+                    qy *= detJ;  if (NDim==3)
+                    qz *= detJ;
                 }
 
                 // set boundary conditions
