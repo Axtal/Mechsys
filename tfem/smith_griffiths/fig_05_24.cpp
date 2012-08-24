@@ -339,6 +339,24 @@ int main(int argc, char **argv) try
          9.418280577447327E-03, -1.949142436127208E-02,  4.486925481160618E-02,  1.454414330918258E-05,  2.070766179871322E-02, -7.200882218333414E-04,
          7.995099154488386E-03, -1.997450490647943E-02,  4.571785645600748E-02, -1.461894224572280E-03,  2.062417534743544E-02, -4.287310248250484E-03);
 
+
+    Array<String> keys(6);
+    keys = "sx", "sy", "sz", "sxy", "syz", "szx";
+    for (size_t j=0; j<dom.Eles.Size(); ++j)
+    {
+        Array<SDPair> res;
+        dom.Eles[j]->StateAtIPs (res);
+        for (size_t k=0; k<dom.Eles[j]->GE->NIP; ++k)
+        {
+            for (size_t i=0; i<6; ++i)
+            {
+                printf("%23.15e", res[k](keys[i]));
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
+
     // error tolerance
     SDPair nod_tol, ele_tol;
     nod_tol.Set("ux uy uz",              1.0e-9, 1.0e-9, 1.0e-8);
