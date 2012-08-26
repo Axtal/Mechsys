@@ -111,8 +111,8 @@ int main(int argc, char **argv) try
     sol.Solve  (sol.IncsW.Size());
 
     // save and reload state
-    dom.SaveState ("owen_hinton_01");
-    dom.LoadState ("owen_hinton_01");
+    //dom.SaveState ("owen_hinton_01");
+    //dom.LoadState ("owen_hinton_01");
 
     // stage # 2 -----------------------------------------------------------
     if (two_stages)

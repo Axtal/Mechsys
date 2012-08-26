@@ -208,9 +208,11 @@ Element * NLRodMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, Model
 // Register element
 int NLRodRegister()
 {
-    ElementFactory["NLRod"]   = NLRodMaker;
-    ElementVarKeys["NLRod2D"] = std::make_pair ("ux uy",    "fx fy");
-    ElementVarKeys["NLRod3D"] = std::make_pair ("ux uy uz", "fx fy fz");
+    ElementFactory  ["NLRod"]   = NLRodMaker;
+    ElementVarKeys  ["NLRod2D"] = std::make_pair ("ux uy",    "fx fy");
+    ElementVarKeys  ["NLRod3D"] = std::make_pair ("ux uy uz", "fx fy fz");
+    ElementExtraKeys["NLRod2D"] = Array<String>  ();
+    ElementExtraKeys["NLRod3D"] = Array<String>  ();
     PROB.Set ("NLRod", (double)PROB.Keys.Size());
     return 0;
 }
