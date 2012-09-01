@@ -1819,7 +1819,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         // tell the user function to update its data
         if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
 
-        //Calculate forces
+        // Move Particles
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_create(&thrs[i], NULL, GlobalMove, &MTD[i]);

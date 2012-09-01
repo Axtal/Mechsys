@@ -34,7 +34,7 @@ namespace DEM
 
 // typedefs
 typedef std::map<std::pair<int,int>,Vec3_t> FrictionMap_t;
-typedef Array<pair<int,int> > ListContacts_t;
+typedef Array<std::pair<int,int> > ListContacts_t;
 
 class Interacton   //General class for interactons
 {
@@ -300,9 +300,9 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             Vec3_t vt = vrel - dot(n,vrel)*n;
             Fn = Kn*delta*n;
             Fnet += Fn;
-            pair<int,int> p;
-            p = make_pair(i,j);
-            if (FMap.count(p)==0) FMap[p] = 0.0,0.0,0.0;
+            std::pair<int,int> p;
+            p = std::make_pair(i,j);
+            if (FMap.count(p)==0) FMap[p] = OrthoSys::O;
             FMap[p] += vt*dt;
             FMap[p] -= dot(FMap[p],n)*n;
             Vec3_t tan = FMap[p];
@@ -372,8 +372,8 @@ inline void CInteracton::_update_contacts (FeatureA_T & A, FeatureB_T & B, ListC
     {
         if (Distance ((*A[i]), (*B[j]))<=P1->Props.R+P2->Props.R+2*alpha)
         {
-            pair<int,int> p;
-            p = make_pair(i,j);
+            std::pair<int,int> p;
+            p = std::make_pair(i,j);
             L.Push(p);
         }
     }
@@ -405,10 +405,11 @@ inline CInteractonSphere::CInteractonSphere (Particle * Pt1, Particle * Pt2)
     eta  = 2*ReducedValue(Pt1->Props.Eta,Pt2->Props.Eta);
     Nc = 0;
     Nsc = 0;
+    //std::cout << Kn << " " << Kt << " " << Gn << " " << Gt << " " << Mu << " " << eta << " " << beta << std::endl;
 
     Epot = 0.0;
     Fdr  = 0.0, 0.0, 0.0;
-    Lvv.Push(make_pair(0,0));
+    Lvv.Push(std::make_pair(0,0));
 
     CalcForce(0.0);
 #ifdef USE_THREAD

@@ -28,7 +28,8 @@
 #include <set>
 
 // MechSys
-#include <mechsys/lbm/Interacton.h>
+#include <mechsys/dem/interacton.h>
+#include <mechsys/lbm/Lattice.h>
 
 using std::set;
 using std::map;
@@ -58,19 +59,22 @@ public:
     double                dx,     ///< Space spacing
     double                dt);    ///< Time step
 
-
+    //Methods for adding particles
+    void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                               ///< Add sphere
+    void GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1, double R, double rho, size_t Randomseed, double fraction, double RminFraction); ///< Create an array of spheres
+    
+    
     //Methods
 #ifdef USE_HDF5
     void WriteXDMF (char const * FileKey);                                                                                            ///< Write the domain data in xdmf file
 #endif
+
+    void Initialize        (double dt=0.0);                                                                                           ///< Set the particles to a initial state and asign the possible insteractions
     void ApplyForce     (size_t n = 0, size_t Np = 1, bool MC=false);                                                                 ///< Apply the interaction forces and the collision operator
     void Collide        (size_t n = 0, size_t Np = 1);                                                                                ///< Apply the interaction forces and the collision operator
     void ImprintLattice (size_t n = 0, size_t Np = 1);                                                                                ///< Imprint the DEM particles into the lattices
     void Solve(double Tf, double dtOut, ptDFun_t ptSetup=NULL, ptDFun_t ptReport=NULL,
     char const * FileKey=NULL, bool RenderVideo=true, size_t Nproc=1);                                                                ///< Solve the Domain dynamics
-    void AddDisk  (int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt); ///< Add a disk element
-    void AddSphere(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt); ///< Add a disk element
-    void GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1, double R, double rho, size_t Randomseed, double fraction, double RminFraction); ///< Create an array of spheres
     void ResetContacts();                                                                                                             ///< Reset contacts for verlet method DEM
     void ResetDisplacements();                                                                                                        ///< Reset the displacements for the verlet method DEM
     double  MaxDisplacement();                                                                                                        ///< Give the maximun displacement of DEM particles
@@ -80,13 +84,14 @@ public:
     Array<pair<size_t, size_t> >      ListPosPairs;         ///< List of all possible particles pairs
 #endif
     //Data
+    bool                               Initialized;         ///< System (particles and interactons) initialized ?
     bool                                    PrtVec;         ///< Print Vector data into the xdmf-h5 files
     Array <Lattice>                            Lat;         ///< Fluid Lattices
-    Array <Particle *>                   Particles;         ///< Array of Disks
-    Array <Interacton *>               Interactons;         ///< Array of insteractons
-    Array <Interacton *>              CInteractons;         ///< Array of valid interactons
+    Array <DEM::Particle *>              Particles;         ///< Array of Disks
+    Array <DEM::Interacton *>          Interactons;         ///< Array of insteractons
+    Array <DEM::Interacton *>         CInteractons;         ///< Array of valid interactons
     Array <iVec3_t>                      CellPairs;         ///< pairs of cells
-    set<pair<Particle *, Particle *> > Listofpairs;         ///< List of pair of particles associated per interacton for memory optimization
+    set<pair<DEM::Particle *, DEM::Particle *> > Listofpairs;         ///< List of pair of particles associated per interacton for memory optimization
     double                                    Time;         ///< Time of the simulation
     double                                      dt;         ///< Timestep
     double                                   Alpha;         ///< Verlet distance
@@ -115,7 +120,7 @@ void * GlobalIni(void * Data)
     {
         dat.Dom->Lat[i].SetZeroGamma(dat.ProcRank, dat.N_Proc);
     }
-    Array<Particle * > * P = &dat.Dom->Particles;
+    Array<DEM::Particle * > * P = &dat.Dom->Particles;
 	size_t Ni = P->Size()/dat.N_Proc;
     size_t In = dat.ProcRank*Ni;
     size_t Fn;
@@ -136,7 +141,7 @@ void * GlobalImprint(void * Data)
 void * GlobalForce(void * Data)
 {
     LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
-    Array<Interacton * > * I = &dat.Dom->Interactons;
+    Array<DEM::Interacton * > * I = &dat.Dom->Interactons;
 	size_t Ni = I->Size()/dat.N_Proc;
     size_t In = dat.ProcRank*Ni;
     size_t Fn;
@@ -150,7 +155,7 @@ void * GlobalForce(void * Data)
 void * GlobalMove(void * Data)
 {
     LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
-    Array<Particle * > * P = &dat.Dom->Particles;
+    Array<DEM::Particle * > * P = &dat.Dom->Particles;
 	size_t Ni = P->Size()/dat.N_Proc;
     size_t In = dat.ProcRank*Ni;
     size_t Fn;
@@ -160,7 +165,7 @@ void * GlobalMove(void * Data)
 	{
 		(*P)[i]->Translate(dat.dt);
 		(*P)[i]->Rotate   (dat.dt);
-        if (norm((*P)[i]->X-(*P)[i]->X0)>dat.Dmx) dat.Dmx = norm((*P)[i]->X-(*P)[i]->X0);
+        if ((*P)[i]->MaxDisplacement()>dat.Dmx) dat.Dmx = (*P)[i]->MaxDisplacement();
 	}
 }
 
@@ -220,7 +225,7 @@ void * GlobalStream2 (void * Data)
 void * GlobalResetDisplacement(void * Data)
 {
     LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
-    Array<Particle * > * P = &dat.Dom->Particles;
+    Array<DEM::Particle * > * P = &dat.Dom->Particles;
 	size_t Ni = P->Size()/dat.N_Proc;
     size_t In = dat.ProcRank*Ni;
     size_t Fn;
@@ -228,7 +233,7 @@ void * GlobalResetDisplacement(void * Data)
     dat.Dmx = 0.0;
 	for (size_t i=In;i<Fn;i++)
     {
-        (*P)[i]->X0 = (*P)[i]->X;
+        (*P)[i]->ResetDisplacements();
     }
 }
 
@@ -248,11 +253,11 @@ void * GlobalResetContacts1 (void * Data)
         bool pi_has_vf = !dat.Dom->Particles[i]->IsFree();
         bool pj_has_vf = !dat.Dom->Particles[j]->IsFree();
 
-        bool close = (norm(dat.Dom->Particles[i]->X-dat.Dom->Particles[j]->X)<=dat.Dom->Particles[i]->R+dat.Dom->Particles[j]->R+2*dat.Dom->Alpha);
+        bool close = (norm(dat.Dom->Particles[i]->x-dat.Dom->Particles[j]->x)<=dat.Dom->Particles[i]->Props.R+dat.Dom->Particles[j]->Props.R+2*dat.Dom->Alpha);
         if ((pi_has_vf && pj_has_vf) || !close) continue;
         
         // checking if the interacton exist for that pair of particles
-        set<pair<Particle *, Particle *> >::iterator it = dat.Dom->Listofpairs.find(make_pair(dat.Dom->Particles[i],dat.Dom->Particles[j]));
+        set<pair<DEM::Particle *, DEM::Particle *> >::iterator it = dat.Dom->Listofpairs.find(std::make_pair(dat.Dom->Particles[i],dat.Dom->Particles[j]));
         if (it != dat.Dom->Listofpairs.end())
         {
             continue;
@@ -279,6 +284,7 @@ void * GlobalResetContacts2 (void * Data)
 
 inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx, double Thedt)
 {
+    Initialized = false;
     Util::Stopwatch stopwatch;
     printf("\n%s--- Initializing LBM Domain --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     if (nu.Size()==0) throw new Fatal("LBM::Domain: Declare at leat one fluid please");
@@ -297,6 +303,7 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
 
 inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, double Thedt)
 {
+    Initialized = false;
     Util::Stopwatch stopwatch;
     printf("\n%s--- Initializing LBM Domain --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     Lat.Push(Lattice(Method,nu,Ndim,dx,Thedt));
@@ -369,14 +376,14 @@ inline void Domain::WriteXDMF(char const * FileKey)
         for (size_t i=0;i<Particles.Size();i++)
         {
             Vec3_t Ome;
-            Rotation(Particles[i]->W,Particles[i]->Q,Ome);
-            Radius[i]     = (float) Particles[i]->R;
-            Posvec[3*i  ] = (float) Particles[i]->X(0);
-            Posvec[3*i+1] = (float) Particles[i]->X(1);
-            Posvec[3*i+2] = (float) Particles[i]->X(2);
-            Velvec[3*i  ] = (float) Particles[i]->V(0);
-            Velvec[3*i+1] = (float) Particles[i]->V(1);
-            Velvec[3*i+2] = (float) Particles[i]->V(2);
+            Rotation(Particles[i]->w,Particles[i]->Q,Ome);
+            Radius[i]     = (float) Particles[i]->Dmax;
+            Posvec[3*i  ] = (float) Particles[i]->x(0);
+            Posvec[3*i+1] = (float) Particles[i]->x(1);
+            Posvec[3*i+2] = (float) Particles[i]->x(2);
+            Velvec[3*i  ] = (float) Particles[i]->v(0);
+            Velvec[3*i+1] = (float) Particles[i]->v(1);
+            Velvec[3*i+2] = (float) Particles[i]->v(2);
             Omevec[3*i  ] = (float)  Ome(0);
             Omevec[3*i+1] = (float)  Ome(1);
             Omevec[3*i+2] = (float)  Ome(2);
@@ -682,7 +689,7 @@ void Domain::Collide (size_t n, size_t Np)
             if (c->IsSolid||rho<1.0e-12) continue;
             if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
             double Tau = Lat[j].Tau;
-            Vec3_t DV  = Vmix + c->BForce*Tau/rho;
+            Vec3_t DV  = Vmix + c->BForce*dt/rho;
             double Bn  = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
             bool valid  = true;
             double alphal = 1.0;
@@ -739,9 +746,9 @@ void Domain::ImprintLattice (size_t n,size_t Np)
     {
         for (size_t i = In;i<Fn;i++)
         {
-            LBM::Particle * Pa = Particles[i];
-            for (size_t n=std::max(0.0,double(Pa->X(0)-Pa->R-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->X(0)+Pa->R+Lat[0].dx)/Lat[0].dx);n++)
-            for (size_t m=std::max(0.0,double(Pa->X(1)-Pa->R-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->X(1)+Pa->R+Lat[0].dx)/Lat[0].dx);m++)
+            DEM::Particle * Pa = Particles[i];
+            for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);n++)
+            for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);m++)
             {
                 Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,0));
                 double x     = Lat[0].dx*cell->Index(0);
@@ -754,19 +761,19 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 P[1] = C + 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1;
                 P[2] = C + 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1;
                 P[3] = C - 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1;
-                double dmin = 2*Pa->R;
+                double dmin = 2*Pa->Props.R;
                 double dmax = 0.0;
                 for (size_t j=0;j<P.Size();j++)
                 {
-                    double dist = norm(P[j] - Pa->X);
+                    double dist = norm(P[j] - Pa->x);
                     if (dmin>dist) dmin = dist;
                     if (dmax<dist) dmax = dist;
                 }
-                if (dmin > Pa->R + Lat[0].dx) continue;
+                if (dmin > Pa->Props.R + Lat[0].dx) continue;
 
                 double len = 0.0;
 
-                if (dmax < Pa->R)
+                if (dmax < Pa->Props.R)
                 {
                     len = 4.0;
                 }
@@ -776,8 +783,8 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                     {
                         Vec3_t D = P[(j+1)%4] - P[j];
                         double a = dot(D,D);
-                        double b = 2*dot(P[j]-Pa->X,D);
-                        double c = dot(P[j]-Pa->X,P[j]-Pa->X) - Pa->R*Pa->R;
+                        double b = 2*dot(P[j]-Pa->x,D);
+                        double c = dot(P[j]-Pa->x,P[j]-Pa->x) - Pa->Props.R*Pa->Props.R;
                         if (b*b-4*a*c>0.0)
                         {
                             double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
@@ -796,8 +803,8 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                     cell = Lat[j].GetCell(iVec3_t(n,m,0));
                     cell->Gamma   = std::max(len/(4.0*Lat[0].dx),cell->Gamma);
                     if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) continue;
-                    Vec3_t B      = C - Pa->X;
-                    Vec3_t VelP   = Pa->V + cross(Pa->W,B);
+                    Vec3_t B      = C - Pa->x;
+                    Vec3_t VelP   = Pa->x + cross(Pa->x,B);
                     double rho = cell->Rho;
                     double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
                     for (size_t k=0;k<cell->Nneigh;k++)
@@ -819,10 +826,10 @@ void Domain::ImprintLattice (size_t n,size_t Np)
     {
         for (size_t i = In;i<Fn;i++)
         {
-            LBM::Particle * Pa = Particles[i];
-            for (size_t n=std::max(0.0,double(Pa->X(0)-Pa->R-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->X(0)+Pa->R+Lat[0].dx)/Lat[0].dx);n++)
-            for (size_t m=std::max(0.0,double(Pa->X(1)-Pa->R-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->X(1)+Pa->R+Lat[0].dx)/Lat[0].dx);m++)
-            for (size_t l=std::max(0.0,double(Pa->X(2)-Pa->R-Lat[0].dx)/Lat[0].dx);l<=std::min(double(Lat[0].Ndim(2)-1),double(Pa->X(2)+Pa->R+Lat[0].dx)/Lat[0].dx);l++)
+            DEM::Particle * Pa = Particles[i];
+            for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);n++)
+            for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);m++)
+            for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);l<=std::min(double(Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);l++)
             {
                 Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,l));
                 double x     = Lat[0].dx*cell->Index(0);
@@ -840,19 +847,19 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 P[6] = C + 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1 - 0.5*Lat[0].dx*OrthoSys::e2;
                 P[7] = C - 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1 - 0.5*Lat[0].dx*OrthoSys::e2;
 
-                double dmin = 2*Pa->R;
+                double dmin = 2*Pa->Props.R;
                 double dmax = 0.0;
                 for (size_t j=0;j<P.Size();j++)
                 {
-                    double dist = norm(P[j] - Pa->X);
+                    double dist = norm(P[j] - Pa->x);
                     if (dmin>dist) dmin = dist;
                     if (dmax<dist) dmax = dist;
                 }
-                if (dmin > Pa->R + Lat[0].dx) continue;
+                if (dmin > Pa->Props.R + Lat[0].dx) continue;
                 
                 double len = 0.0;
                 
-                if (dmax < Pa->R)
+                if (dmax < Pa->Props.R)
                 {
                     len = 12.0*Lat[0].dx;
                 }
@@ -866,8 +873,8 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                         double c; 
                         D = P[(j+1)%4] - P[j];
                         a = dot(D,D);
-                        b = 2*dot(P[j]-Pa->X,D);
-                        c = dot(P[j]-Pa->X,P[j]-Pa->X) - Pa->R*Pa->R;
+                        b = 2*dot(P[j]-Pa->x,D);
+                        c = dot(P[j]-Pa->x,P[j]-Pa->x) - Pa->Props.R*Pa->Props.R;
                         if (b*b-4*a*c>0.0)
                         {
                             double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
@@ -880,8 +887,8 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                         }
                         D = P[(j+1)%4 + 4] - P[j + 4];
                         a = dot(D,D);
-                        b = 2*dot(P[j + 4]-Pa->X,D);
-                        c = dot(P[j + 4]-Pa->X,P[j + 4]-Pa->X) - Pa->R*Pa->R;
+                        b = 2*dot(P[j + 4]-Pa->x,D);
+                        c = dot(P[j + 4]-Pa->x,P[j + 4]-Pa->x) - Pa->Props.R*Pa->Props.R;
                         if (b*b-4*a*c>0.0)
                         {
                             double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
@@ -894,8 +901,8 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                         }
                         D = P[j+4] - P[j];
                         a = dot(D,D);
-                        b = 2*dot(P[j]-Pa->X,D);
-                        c = dot(P[j]-Pa->X,P[j]-Pa->X) - Pa->R*Pa->R;
+                        b = 2*dot(P[j]-Pa->x,D);
+                        c = dot(P[j]-Pa->x,P[j]-Pa->x) - Pa->Props.R*Pa->Props.R;
                         if (b*b-4*a*c>0.0)
                         {
                             double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
@@ -917,10 +924,10 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                     {
                         continue;
                     }
-                    Vec3_t B      = C - Pa->X;
+                    Vec3_t B      = C - Pa->x;
                     Vec3_t tmp;
-                    Rotation(Pa->W,Pa->Q,tmp);
-                    Vec3_t VelP   = Pa->V + cross(tmp,B);
+                    Rotation(Pa->w,Pa->Q,tmp);
+                    Vec3_t VelP   = Pa->v + cross(tmp,B);
                     double rho = cell->Rho;
                     double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
                     for (size_t k=0;k<cell->Nneigh;k++)
@@ -948,7 +955,7 @@ inline void Domain::ResetDisplacements()
 {
     for (size_t i=0; i<Particles.Size(); i++)
     {
-        Particles[i]->X0 = Particles[i]->X;
+        Particles[i]->ResetDisplacements();
     }
 }
 
@@ -957,7 +964,7 @@ inline double Domain::MaxDisplacement()
     double md = 0.0;
     for (size_t i=0; i<Particles.Size(); i++)
     {
-        double mdp = norm(Particles[i]->X - Particles[i]->X0);
+        double mdp = Particles[i]->MaxDisplacement();
         if (mdp>md) md = mdp;
     }
     return md;
@@ -973,17 +980,24 @@ inline void Domain::ResetContacts()
         {
             bool pj_has_vf = !Particles[j]->IsFree();
 
-            bool close = (norm(Particles[i]->X-Particles[j]->X)<=Particles[i]->R+Particles[j]->R+2*Alpha);
+            bool close = (norm(Particles[i]->x-Particles[j]->x)<=Particles[i]->Dmax+Particles[j]->Dmax+2*Alpha);
             if ((pi_has_vf && pj_has_vf) || !close) continue;
             
             // checking if the interacton exist for that pair of particles
-            set<pair<Particle *, Particle *> >::iterator it = Listofpairs.find(make_pair(Particles[i],Particles[j]));
+            set<std::pair<DEM::Particle *, DEM::Particle *> >::iterator it = Listofpairs.find(std::make_pair(Particles[i],Particles[j]));
             if (it != Listofpairs.end())
             {
                 continue;
             }
-            Listofpairs.insert(make_pair(Particles[i],Particles[j]));
-            CInteractons.Push (new Interacton(Particles[i],Particles[j]));
+            Listofpairs.insert(std::make_pair(Particles[i],Particles[j]));
+            if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
+            {
+                CInteractons.Push (new DEM::CInteractonSphere(Particles[i],Particles[j]));
+            }
+            else
+            {
+                CInteractons.Push (new DEM::CInteracton(Particles[i],Particles[j]));
+            }
         }
     }
 
@@ -996,27 +1010,52 @@ inline void Domain::ResetContacts()
 
 inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
 {
-    minX = Vec3_t(Particles[0]->X(0) - Particles[0]->R, Particles[0]->X(1) - Particles[0]->R, Particles[0]->X(2) - Particles[0]->R);
-    maxX = Vec3_t(Particles[0]->X(0) + Particles[0]->R, Particles[0]->X(1) + Particles[0]->R, Particles[0]->X(2) + Particles[0]->R);
+    minX = Vec3_t(Particles[0]->MinX(), Particles[0]->MinY(), Particles[0]->MinZ());
+    maxX = Vec3_t(Particles[0]->MaxX(), Particles[0]->MaxY(), Particles[0]->MaxZ());
     for (size_t i=1; i<Particles.Size(); i++)
     {
-        if (minX(0)>(Particles[i]->X(0) - Particles[i]->R)&&Particles[i]->IsFree()) minX(0) = Particles[i]->X(0) - Particles[i]->R;
-        if (minX(1)>(Particles[i]->X(1) - Particles[i]->R)&&Particles[i]->IsFree()) minX(1) = Particles[i]->X(1) - Particles[i]->R;
-        if (minX(2)>(Particles[i]->X(2) - Particles[i]->R)&&Particles[i]->IsFree()) minX(2) = Particles[i]->X(2) - Particles[i]->R;
-        if (maxX(0)<(Particles[i]->X(0) + Particles[i]->R)&&Particles[i]->IsFree()) maxX(0) = Particles[i]->X(0) + Particles[i]->R;
-        if (maxX(1)<(Particles[i]->X(1) + Particles[i]->R)&&Particles[i]->IsFree()) maxX(1) = Particles[i]->X(1) + Particles[i]->R;
-        if (maxX(2)<(Particles[i]->X(2) + Particles[i]->R)&&Particles[i]->IsFree()) maxX(2) = Particles[i]->X(2) + Particles[i]->R;
+        if (minX(0)>Particles[i]->MinX()&&Particles[i]->IsFree()) minX(0) = Particles[i]->MinX();
+        if (minX(1)>Particles[i]->MinY()&&Particles[i]->IsFree()) minX(1) = Particles[i]->MinY();
+        if (minX(2)>Particles[i]->MinZ()&&Particles[i]->IsFree()) minX(2) = Particles[i]->MinZ();
+        if (maxX(0)<Particles[i]->MaxX()&&Particles[i]->IsFree()) maxX(0) = Particles[i]->MaxX();
+        if (maxX(1)<Particles[i]->MaxY()&&Particles[i]->IsFree()) maxX(1) = Particles[i]->MaxY();
+        if (maxX(2)<Particles[i]->MaxZ()&&Particles[i]->IsFree()) maxX(2) = Particles[i]->MaxZ();
     }
 }
 
-inline void Domain::AddDisk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
+inline void Domain::AddSphere (int Tag,Vec3_t const & X, double R, double rho)
 {
-    Particles.Push(new Disk(TheTag,TheX,TheV,TheW,Therho,TheR,dt));
-}
+    // vertices
+    Array<Vec3_t> V(1);
+    V[0] = X;
 
-inline void Domain::AddSphere(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
-{
-    Particles.Push(new Sphere(TheTag,TheX,TheV,TheW,Therho,TheR,dt));
+    // edges
+    Array<Array <int> > E(0); // no edges
+
+    // faces
+    Array<Array <int> > F(0); // no faces
+
+    // add particle
+    Particles.Push (new DEM::Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    Quaternion_t q;
+    q(0) = 1.0;
+    q(1) = 0.0;
+    q(2) = 0.0;
+    q(3) = 0.0;
+    q = q/norm(q);
+
+    Particles[Particles.Size()-1]->Q          = q;
+    Particles[Particles.Size()-1]->Props.V    = (4.0/3.0)*M_PI*R*R*R;
+    Particles[Particles.Size()-1]->Props.m    = rho*(4.0/3.0)*M_PI*R*R*R;
+    Particles[Particles.Size()-1]->I          = (2.0/5.0)*Particles[Particles.Size()-1]->Props.m*R*R;
+    Particles[Particles.Size()-1]->x          = X;
+    Particles[Particles.Size()-1]->Ekin       = 0.0;
+    Particles[Particles.Size()-1]->Erot       = 0.0;
+    Particles[Particles.Size()-1]->Dmax       = R;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
+
 }
 
 inline void Domain::GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1, double R, double rho, size_t Randomseed, double fraction, double RminFraction)
@@ -1025,26 +1064,6 @@ inline void Domain::GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1
     Util::Stopwatch stopwatch;
     printf("\n%s--- Generating packing of spheres -----------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     srand(Randomseed);
-    //size_t nx = 0.5*(X1(0)-X0(0))/R;
-    //size_t ny = 0.5*(X1(1)-X0(1))/R;
-    //size_t nz = 0.5*(X1(2)-X0(2))/R;
-    //std::cout << nx << " " << ny << " " << nz << std::endl;
-
-    //for (size_t i=0; i<nx; ++i)
-    //{
-        //for (size_t j=0; j<ny; ++j)
-        //{
-            //for (size_t k=0; k<nz; ++k)
-            //{
-                //Vec3_t pos((i+0.5)*2.0*R,(j+0.5)*2.0*R,(k+0.5)*2.0*R);
-                //pos += X0;
-                //if (rand()<fraction*RAND_MAX) AddSphere (Tag,pos,OrthoSys::O,OrthoSys::O,rho,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),Lat[0].dt);
-            //}
-        //}
-    //}
-   
-
-
 
     size_t nx = 0.5*(X1(0)-X0(0))/R-1;
     size_t ny = int((X1(1)-X0(1))/(sqrt(3.0)*R));
@@ -1061,12 +1080,39 @@ inline void Domain::GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1
             for (size_t i = 0; i < nx; i++)
             {
                 X += Vec3_t(2*R,0.0,0.0);
-                if (rand()<fraction*RAND_MAX) AddSphere (Tag,X,OrthoSys::O,OrthoSys::O,rho,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),Lat[0].dt);
+                if (rand()<fraction*RAND_MAX) AddSphere (Tag,X,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
             }
         }
     }
     
     printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
+}
+
+inline void Domain::Initialize (double dt)
+{
+    // info
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Initializing particles ------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    // set flag
+    if (!Initialized)
+    {
+        Initialized = true;
+        // initialize all particles
+        for (size_t i=0; i<Particles.Size(); i++)
+        {
+            Particles[i]->Initialize(i);
+            Particles[i]->InitializeVelocity(dt);
+        }
+    }
+    else
+    {
+        for (size_t i=0; i<Particles.Size(); i++)
+        {
+            if (Particles[i]->vxf) Particles[i]->xb(0) = Particles[i]->x(0) - Particles[i]->v(0)*dt;
+            if (Particles[i]->vyf) Particles[i]->xb(1) = Particles[i]->x(1) - Particles[i]->v(1)*dt;
+            if (Particles[i]->vzf) Particles[i]->xb(2) = Particles[i]->x(2) - Particles[i]->v(2)*dt;
+        }
+    }
 }
 
 inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t ptReport,
@@ -1078,11 +1124,17 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     printf("%s  Porosity = %g%s\n",TERM_CLR4,1.0 - Lat[0].SolidFraction(),TERM_RST);
 
     idx_out     = 0;
+
+    // initialize particles
+    Initialize (dt);
+
     //Connect particles and lattice
-    //
-    
     ImprintLattice();
+
+    // build the map of possible contacts (for the Halo)
     ResetContacts();
+    
+    // set the displacement of the particles to zero (for the Halo)
     ResetDisplacements();
     
     // Creates pair of cells to speed up body force calculation
@@ -1204,7 +1256,14 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
                     size_t n = MTD[i].LC[j].first;
                     size_t m = MTD[i].LC[j].second;
                     Listofpairs.insert(make_pair(Particles[n],Particles[m]));
-                    CInteractons.Push (new Interacton(Particles[n],Particles[m]));
+                    if (Particles[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
+                    {
+                        CInteractons.Push (new DEM::CInteractonSphere(Particles[n],Particles[m]));
+                    }
+                    else
+                    {
+                        CInteractons.Push (new DEM::CInteracton(Particles[n],Particles[m]));
+                    }
                 }
             }
             for (size_t i=0;i<Nproc;i++)

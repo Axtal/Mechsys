@@ -237,8 +237,8 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
     Props.Bn = 1.0e4;   
     Props.Bt = 5.0e3;   
     Props.Bm = 5.0e3;
-    Props.Gn = 16.0;   
-    Props.Gt = 8.0;   
+    Props.Gn = 8.0;   
+    Props.Gt = 0.0;   
     Props.Mu = 0.4;   
     Props.eps = 0.01;  
     Props.Beta = 0.12; 
