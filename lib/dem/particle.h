@@ -87,8 +87,8 @@ public:
     double MaxDisplacement    ();                                                             ///< Maximun displacement for the verlet algorithm
     void   Draw               (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
     void   FixVeloc           (double vx=0.0, double vy=0.0, double vz=0.0);                  ///< Fix all velocities
-    bool   IsFree             () {return !vxf&&!vyf&&!vzf&&!wxf&&!wyf&&!wzf;};                ///< Ask if the particle has any constrain in its movement
-
+    //bool   IsFree             () {return !vxf&&!vyf&&!vzf&&!wxf&&!wyf&&!wzf;};              ///< Ask if the particle has any constrain in its movement
+    bool   IsFree             () {return !vxf&&!vyf&&!vzf;};                                  ///< Ask if the particle has any constrain in its movement
 #ifdef USE_THREAD
     pthread_mutex_t lck;              ///< to protect variables in multithreading
     //std::mutex mtex;                 ///< to protect variables in multithreading

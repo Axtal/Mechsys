@@ -559,8 +559,14 @@ int main(int argc, char **argv) try
     dat.RenderVideo = (bool) RenderVideo;
 
     // particle
-    if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction, Eps);
-    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, Cohesion, !Cohesion, seed, fraction);
+    if      (ptype=="sphere")    dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction, Eps);
+    else if (ptype=="spherebox") 
+    {
+        Vec3_t Xmin(-0.5*Lx,-0.5*Ly,-0.5*Lz);
+        Vec3_t Xmax = -Xmin;
+        dom.GenSpheresBox (-1, Xmin, Xmax, R, rho, seed, fraction, Eps);
+    }
+    else if (ptype=="voronoi")   dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, Cohesion, !Cohesion, seed, fraction);
     else if (ptype=="tetra")
     {
         Mesh::Unstructured mesh(/*NDim*/3);
@@ -571,6 +577,19 @@ int main(int argc, char **argv) try
     else throw new Fatal("Packing for particle type not implemented yet");
     dat.InitialIndex = dom.Particles.Size();
     dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3,Cohesion);
+    
+    //Fixing some degrees of freedom for the particles, just for the biaxial test, not for the official version of the test
+    //Array<DEM::Particle *> Grains;
+    //dom.GetParticles(-1,Grains);
+    //for (size_t i=0;i<Grains.Size();i++)
+    //{
+        //Grains[i]->FixVeloc();
+        //Grains[i]->vxf = false;
+        //Grains[i]->vyf = false;
+        //Grains[i]->vzf = false;
+    //}
+
+
 
     // properties of particles prior the triaxial test
     Dict B;

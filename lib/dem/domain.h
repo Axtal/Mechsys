@@ -66,7 +66,7 @@ public:
 
     // Particle generation
     void GenSpheres      (int Tag, double L, size_t N, double rho, char const * Type,
-    size_t Randomseed, double fraction, double RminFraction = 1.0);                                                              ///< General spheres
+                          size_t Randomseed, double fraction, double RminFraction = 1.0);                                        ///< General spheres
     void GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1,                                                           ///< Generate spheres within a rectangular box defined by the vectors X0 and X1
                         double R, double rho, size_t Randomseed, double fraction, double RminFraction);
     void GenRice         (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction);                ///< General rices
