@@ -78,7 +78,7 @@ int main(int argc, char **argv) try
     FEM::Domain dom(mesh, prps, mdls, inis);
 
     // check matrices
-    if (false)
+    if (true)
     {
         double tol   = 1.0e-10;
         double error = 0.0;
@@ -128,21 +128,26 @@ int main(int argc, char **argv) try
     SDPair flags;
     flags.Set("calcwork", 1.0);
     FEM::STDSolver sol(dom, flags);
-    sol.WithInfo = false;
+    sol.WithInfo = true;
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
     bcs.Set( -10, "qn",   -20.0);
-    bcs.Set(-100, "ux uy", 0.0,0.1);
-    bcs.Set(-101, "ux uy", 0.33,0.0);
+    bcs.Set(-100, "ux uy", 0.0,0.0);
+    bcs.Set(-101, "ux uy", 0.0,0.0);
+    //bcs.Set(-100, "ux uy", 0.0,0.1);
+    //bcs.Set(-101, "ux uy", 0.33,0.0);
     dom.SetBCs (bcs);
     sol.Solve  (/*NDiv*/1);
 
+    /*
     printf("%20s\n", "u");
     for (int i=0; i<sol.U.Size(); i++) {
         printf("%20.10e\n", sol.U(i));
     }
+    */
 
+    /*
     //sol.Initialize(true);
     //sol.AssembleKMA(0,1);
     //Sparse::Matrix<double,int> A11(sol.A11);  Mat_t a11;
@@ -159,9 +164,7 @@ int main(int argc, char **argv) try
     //}
     //std::cout << PrintVector(f, "%20.10e");
     //sol.DebugPrintMatrices(true);
-    return 0;
-
-
+    */
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
