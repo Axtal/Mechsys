@@ -451,15 +451,16 @@ inline void Particle::Rotate (Quaternion_t & Q,Vec3_t & V)
 
 inline void Particle::Translate (double dt)
 {
-    if (vxf) F(0) = 0.0;
-    if (vyf) F(1) = 0.0;
-    if (vzf) F(2) = 0.0;
+    Vec3_t Ft = F;
+    if (vxf) Ft(0) = 0.0;
+    if (vyf) Ft(1) = 0.0;
+    if (vzf) Ft(2) = 0.0;
     if(Util::IsNan(norm(F))) 
     {
         throw new Fatal("Particle::Translate: The force is not a number %d(%d), try reducing the time step",Index,Tag);
     }
     Vec3_t temp,xa;
-    xa    = 2*x - xb + F*(dt*dt/Props.m);
+    xa    = 2*x - xb + Ft*(dt*dt/Props.m);
     temp  = xa - x;
     v    = 0.5*(xa - xb)/dt;
     xb   = x;

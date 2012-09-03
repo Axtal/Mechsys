@@ -39,8 +39,8 @@ void Setup(LBM::Domain & dom, void * UD)
     {
         Cell * c   = dom.Lat[0].Cells[i];
         c->BForcef = c->Density()*dat.g;
-        //c          = dom.Lat[1].Cells[i];
-        //c->BForcef = c->Density()*dat.g;
+        c          = dom.Lat[1].Cells[i];
+        c->BForcef = c->Density()*dat.g;
     }
     for (size_t i=0;i<dom.Particles.Size();i++)
     {
@@ -68,23 +68,23 @@ int main(int argc, char **argv) try
     size_t nx = 100;
     size_t ny = 100;
     size_t nz = 100;
-    double nu = 0.05;
+    double nu = 0.01;
     double dx = 1.0;
     double dt = 1.0;
     double rho= 3000.0;
     
-    //Array<double> Nu(2);
-    //Nu[0] = nu;
-    //Nu[1] = nu;
+    Array<double> Nu(2);
+    Nu[0] = nu;
+    Nu[1] = nu;
 
-    LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
+    LBM::Domain Dom(D3Q15, Nu, iVec3_t(nx,ny,nz), dx, dt);
     UserData dat;
     Dom.UserData = &dat;
     Dom.Lat[0].G    = -200.0;
     Dom.Lat[0].Gs   = -200.0;
-    //Dom.Lat[1].G    = 0.0;
-    //Dom.Lat[1].Gs   = 0.0;
-    //Dom.Gmix        =  0.001;
+    Dom.Lat[1].G    = 0.0;
+    Dom.Lat[1].Gs   = 0.0;
+    Dom.Gmix        =  0.001;
     dat.g           = 0.0,-0.001,0.0;
     dat.Xmin        = 0.0,0.0,0.0;
     dat.Xmax        = nx*dx,ny*dx,nz*dx;
@@ -100,12 +100,12 @@ int main(int argc, char **argv) try
         Dom.Lat[0].GetCell(iVec3_t(i,j,ny-1))->IsSolid = true;
         Dom.Lat[0].GetCell(iVec3_t(0   ,i,j))->IsSolid = true;
         Dom.Lat[0].GetCell(iVec3_t(ny-1,i,j))->IsSolid = true;
-        //Dom.Lat[1].GetCell(iVec3_t(i,0   ,j))->IsSolid = true;
-        //Dom.Lat[1].GetCell(iVec3_t(i,ny-1,j))->IsSolid = true;
-        //Dom.Lat[1].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
-        //Dom.Lat[1].GetCell(iVec3_t(i,j,ny-1))->IsSolid = true;
-        //Dom.Lat[1].GetCell(iVec3_t(0   ,i,j))->IsSolid = true;
-        //Dom.Lat[1].GetCell(iVec3_t(ny-1,i,j))->IsSolid = true;
+        Dom.Lat[1].GetCell(iVec3_t(i,0   ,j))->IsSolid = true;
+        Dom.Lat[1].GetCell(iVec3_t(i,ny-1,j))->IsSolid = true;
+        Dom.Lat[1].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
+        Dom.Lat[1].GetCell(iVec3_t(i,j,ny-1))->IsSolid = true;
+        Dom.Lat[1].GetCell(iVec3_t(0   ,i,j))->IsSolid = true;
+        Dom.Lat[1].GetCell(iVec3_t(ny-1,i,j))->IsSolid = true;
     }
 
     for (int i=0;i<nx;i++)
@@ -116,12 +116,12 @@ int main(int argc, char **argv) try
         if (j<ny/2.0)
         {
             Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(1800.0,v0);
-            //Dom.Lat[1].GetCell(iVec3_t(i,j,k))->Initialize(0.01  ,v0);
+            Dom.Lat[1].GetCell(iVec3_t(i,j,k))->Initialize(0.01  ,v0);
         }
         else
         {
             Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(0.01 ,v0);
-            //Dom.Lat[1].GetCell(iVec3_t(i,j,k))->Initialize(100.0,v0);
+            Dom.Lat[1].GetCell(iVec3_t(i,j,k))->Initialize(100.0,v0);
         }
     }
 

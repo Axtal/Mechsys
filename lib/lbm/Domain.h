@@ -84,20 +84,22 @@ public:
     Array<pair<size_t, size_t> >      ListPosPairs;         ///< List of all possible particles pairs
 #endif
     //Data
-    bool                               Initialized;         ///< System (particles and interactons) initialized ?
-    bool                                    PrtVec;         ///< Print Vector data into the xdmf-h5 files
-    Array <Lattice>                            Lat;         ///< Fluid Lattices
-    Array <DEM::Particle *>              Particles;         ///< Array of Disks
-    Array <DEM::Interacton *>          Interactons;         ///< Array of insteractons
-    Array <DEM::Interacton *>         CInteractons;         ///< Array of valid interactons
-    Array <iVec3_t>                      CellPairs;         ///< pairs of cells
+    bool                                         Initialized;         ///< System (particles and interactons) initialized ?
+    bool                                              PrtVec;         ///< Print Vector data into the xdmf-h5 files
+    bool                                            Finished;         ///< Has the simulation finished
+    String                                           FileKey;         ///< File Key for output files
+    Array <Lattice>                                      Lat;         ///< Fluid Lattices
+    Array <DEM::Particle *>                        Particles;         ///< Array of Disks
+    Array <DEM::Interacton *>                    Interactons;         ///< Array of insteractons
+    Array <DEM::Interacton *>                   CInteractons;         ///< Array of valid interactons
+    Array <iVec3_t>                                CellPairs;         ///< pairs of cells
     set<pair<DEM::Particle *, DEM::Particle *> > Listofpairs;         ///< List of pair of particles associated per interacton for memory optimization
-    double                                    Time;         ///< Time of the simulation
-    double                                      dt;         ///< Timestep
-    double                                   Alpha;         ///< Verlet distance
-    double                                    Gmix;         ///< Interaction constant for the mixture
-    void *                                UserData;         ///< User Data
-    size_t                                 idx_out;         ///< The discrete time step
+    double                                              Time;         ///< Time of the simulation
+    double                                                dt;         ///< Timestep
+    double                                             Alpha;         ///< Verlet distance
+    double                                              Gmix;         ///< Interaction constant for the mixture
+    void *                                          UserData;         ///< User Data
+    size_t                                           idx_out;         ///< The discrete time step
     
 };
 
@@ -920,7 +922,8 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 {
                     cell = Lat[j].GetCell(iVec3_t(n,m,l));
                     cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
-                    if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
+                    //if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
+                    if (fabs(cell->Gamma-1.0)<1.0e-12)
                     {
                         continue;
                     }
@@ -1116,7 +1119,7 @@ inline void Domain::Initialize (double dt)
 }
 
 inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t ptReport,
-                          char const * FileKey, bool RenderVideo, size_t Nproc)
+                          char const * TheFileKey, bool RenderVideo, size_t Nproc)
 {
     // info
     Util::Stopwatch stopwatch;
@@ -1124,6 +1127,8 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     printf("%s  Porosity = %g%s\n",TERM_CLR4,1.0 - Lat[0].SolidFraction(),TERM_RST);
 
     idx_out     = 0;
+    FileKey.Printf("%s",TheFileKey);
+    Finished = false;
 
     // initialize particles
     Initialize (dt);
@@ -1177,10 +1182,10 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
         if (Time >= tout)
         {
-            if (FileKey!=NULL)
+            if (TheFileKey!=NULL)
             {
                 String fn;
-                fn.Printf    ("%s_%04d", FileKey, idx_out);
+                fn.Printf    ("%s_%04d", TheFileKey, idx_out);
                 if ( RenderVideo) 
                 {
                     #ifdef USE_HDF5
@@ -1367,6 +1372,10 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
         Time += dt;
     }
+    // last output
+    Finished = true;
+    if (ptReport!=NULL) (*ptReport) ((*this), UserData);
+
     printf("%s  Final CPU time       = %s\n",TERM_CLR2, TERM_RST);
 }
 }
