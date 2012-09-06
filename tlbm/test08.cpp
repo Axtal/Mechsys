@@ -64,7 +64,6 @@ void Setup(LBM::Domain & dom, void * UD)
     //}
 }
 
-
 void Report(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
@@ -164,7 +163,9 @@ int main(int argc, char **argv) try
         //dat.xmax[i]->Initialize(1.0,    OrthoSys::O);
     //}
 
-    Dom.AddSphere(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),R,3.0);
+    //Dom.AddSphere(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),R,3.0);
+    //Dom.AddTetra(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*R,R,3.0);
+    Dom.AddCube(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*R,R,3.0);
     Dom.Particles[0]->FixVeloc();
     //Dom.Particles[0]->v = Vec3_t(vel,0.0,0.0);
 

@@ -60,9 +60,10 @@ public:
     double                dt);    ///< Time step
 
     //Methods for adding particles
-    void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                               ///< Add sphere
+    void AddSphere     (int Tag, Vec3_t const & X, double R, double rho);                                                               ///< Add sphere
     void GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1, double R, double rho, size_t Randomseed, double fraction, double RminFraction); ///< Create an array of spheres
-    
+    void AddCube       (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void AddTetra      (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
     
     //Methods
 #ifdef USE_HDF5
@@ -81,7 +82,7 @@ public:
     void BoundingBox(Vec3_t & Xmin, Vec3_t & Xmax);                                                                                   ///< Bounding box for DEM particles
 
 #ifdef USE_THREAD
-    Array<pair<size_t, size_t> >      ListPosPairs;         ///< List of all possible particles pairs
+    Array<pair<size_t, size_t> >                ListPosPairs;         ///< List of all possible particles pairs
 #endif
     //Data
     bool                                         Initialized;         ///< System (particles and interactons) initialized ?
@@ -92,7 +93,8 @@ public:
     Array <DEM::Particle *>                        Particles;         ///< Array of Disks
     Array <DEM::Interacton *>                    Interactons;         ///< Array of insteractons
     Array <DEM::Interacton *>                   CInteractons;         ///< Array of valid interactons
-    Array <iVec3_t>                                CellPairs;         ///< pairs of cells
+    Array <iVec3_t>                                CellPairs;         ///< Pairs of cells
+    Array <iVec3_t>                             ParCellPairs;         ///< Pairs of cells and particles
     set<pair<DEM::Particle *, DEM::Particle *> > Listofpairs;         ///< List of pair of particles associated per interacton for memory optimization
     double                                              Time;         ///< Time of the simulation
     double                                                dt;         ///< Timestep
@@ -113,6 +115,7 @@ struct MtData
     double                        dt; ///< Time step
     Array<pair<size_t,size_t> >   LC; ///< A temporal list of new contacts
     Array<size_t>                LCI; ///< A temporal array of posible Cinteractions
+    Array<iVec3_t>               LPC; ///< A temporal array of possible particle cell contacts
 };
 
 void * GlobalIni(void * Data)
@@ -266,6 +269,55 @@ void * GlobalResetContacts1 (void * Data)
         }
         dat.LC.Push(make_pair(i,j));
     }
+
+    Array<DEM::Particle * > * P = &dat.Dom->Particles;
+	Ni = P->Size()/dat.N_Proc;
+    In = dat.ProcRank*Ni;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.LPC.Resize(0);
+
+    if (dat.Dom->Lat[0].Ndim(2)==1)
+    {
+        // TODO 2D case
+    }
+    else
+    {
+	    for (size_t i=In;i<Fn;i++)
+        {
+            DEM::Particle * Pa = (*P)[i];
+            for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);n<=std::min(double(dat.Dom->Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);n++)
+            for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);m<=std::min(double(dat.Dom->Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);m++)
+            for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l<=std::min(double(dat.Dom->Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l++)
+            {
+                Cell  * cell = dat.Dom->Lat[0].GetCell(iVec3_t(n,m,l));
+                double x     = dat.Dom->Lat[0].dx*cell->Index(0);
+                double y     = dat.Dom->Lat[0].dx*cell->Index(1);
+                double z     = dat.Dom->Lat[0].dx*cell->Index(2);
+                Vec3_t  C(x,y,z);
+                if (Pa->Faces.Size()>0)
+                {
+                    for (size_t j=0;j<Pa->Faces.Size();j++)
+                    {
+                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*dat.Dom->Alpha+Pa->Props.R) dat.LPC.Push(iVec3_t(cell->ID,i,j));
+                    }
+                }
+                else if (Pa->Edges.Size()>0)
+                {
+                    for (size_t j=0;j<Pa->Edges.Size();j++)
+                    {
+                        if (DEM::Distance(C,*Pa->Edges[j])<2.0*dat.Dom->Alpha+Pa->Props.R) dat.LPC.Push(iVec3_t(cell->ID,i,j));
+                    }
+                }
+                else if (Pa->Verts.Size()>0)
+                {
+                    for (size_t j=0;j<Pa->Verts.Size();j++)
+                    {
+                        if (DEM::Distance(C,*Pa->Verts[j])<2.0*dat.Dom->Alpha+Pa->Props.R) dat.LPC.Push(iVec3_t(cell->ID,i,j));
+                    }
+                }
+            }
+        }
+    }
 }
 
 void * GlobalResetContacts2 (void * Data)
@@ -366,9 +418,118 @@ inline void Domain::WriteXDMF(char const * FileKey)
     }
 
 
+    size_t N_Faces = 0;
+    size_t N_Verts = 0;
     //Writing particle data
     if (Particles.Size()>0)
     {
+        for (size_t i=0; i<Particles.Size(); i++) 
+        { 
+            for (size_t j=0;j<Particles[i]->Faces.Size();j++)
+            {
+                N_Faces += Particles[i]->Faces[j]->Edges.Size();
+            }
+            N_Verts += Particles[i]->Verts.Size() + Particles[i]->Faces.Size();
+        }
+        if (N_Faces>0)
+        {
+
+            //Geometric information
+            float  * Verts   = new float [3*N_Verts];
+            int    * FaceCon = new int   [3*N_Faces];
+            
+            //Atributes
+            int    * Tags    = new int   [  N_Faces];
+            float  * Vel     = new float [  N_Faces];
+            float  * Ome     = new float [  N_Faces];
+            //float  * Stress  = new float [9*N_Faces];
+
+            size_t n_verts = 0;
+            size_t n_faces = 0;
+            size_t n_attrs = 0;
+            //size_t n_attrv = 0;
+            //size_t n_attrt = 0;
+            for (size_t i=0;i<Particles.Size();i++)
+            {
+                DEM::Particle * Pa = Particles[i];
+                size_t n_refv = n_verts/3;
+                for (size_t j=0;j<Pa->Verts.Size();j++)
+                {
+                    Verts[n_verts++] = (float) (*Pa->Verts[j])(0);
+                    Verts[n_verts++] = (float) (*Pa->Verts[j])(1);
+                    Verts[n_verts++] = (float) (*Pa->Verts[j])(2);
+                }
+                size_t n_reff = n_verts/3;
+                for (size_t j=0;j<Pa->FaceCon.Size();j++)
+                {
+                    Vec3_t C;
+                    Pa->Faces[j]->Centroid(C);
+                    Verts[n_verts++] = (float) C(0);
+                    Verts[n_verts++] = (float) C(1);
+                    Verts[n_verts++] = (float) C(2);
+                    for (size_t k=0;k<Pa->FaceCon[j].Size();k++)
+                    {
+                        size_t nin = Pa->FaceCon[j][k];
+                        size_t nen = Pa->FaceCon[j][(k+1)%Pa->FaceCon[j].Size()];
+                        FaceCon[n_faces++] = (int) n_reff + j;  
+                        FaceCon[n_faces++] = (int) n_refv + nin;
+                        FaceCon[n_faces++] = (int) n_refv + nen;
+
+                        //Writing the attributes
+                        Tags[n_attrs] = (int)   Pa->Tag;
+                        Vel [n_attrs] = (float) norm(Pa->v);
+                        Ome [n_attrs] = (float) norm(Pa->w);
+                        n_attrs++;
+
+                        //Vel [n_attrv  ] = (float) Pa->v(0);
+                        //Vel [n_attrv+1] = (float) Pa->v(1);
+                        //Vel [n_attrv+2] = (float) Pa->v(2);
+                        //n_attrv += 3;
+
+                        //Stress[n_attrt  ] = (float) Pa->M(0,0);
+                        //Stress[n_attrt+1] = (float) Pa->M(1,0);
+                        //Stress[n_attrt+2] = (float) Pa->M(2,0);
+                        //Stress[n_attrt+3] = (float) Pa->M(0,1);
+                        //Stress[n_attrt+4] = (float) Pa->M(1,1);
+                        //Stress[n_attrt+5] = (float) Pa->M(2,1);
+                        //Stress[n_attrt+6] = (float) Pa->M(0,2);
+                        //Stress[n_attrt+7] = (float) Pa->M(1,2);
+                        //Stress[n_attrt+8] = (float) Pa->M(2,2);
+                        //n_attrt += 9;
+                    }
+                }
+            }
+
+            //Write the data
+            hsize_t dims[1];
+            String dsname;
+            dims[0] = 3*N_Verts;
+            dsname.Printf("Verts");
+            H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Verts);
+            dims[0] = 3*N_Faces;
+            dsname.Printf("FaceCon");
+            H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,FaceCon);
+            dims[0] = N_Faces;
+            dsname.Printf("Tag");
+            H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,Tags   );
+            dims[0] = N_Faces;
+            dsname.Printf("Velocity");
+            H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vel);
+            dims[0] = N_Faces;
+            dsname.Printf("AngVelocity");
+            H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Ome);
+            //dims[0] = 9*N_Faces;
+            //dsname.Printf("Stress");
+            //H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Stress);
+            
+            //Erasing the data
+            delete [] Verts;
+            delete [] FaceCon;
+            delete [] Tags;
+            delete [] Vel;
+            delete [] Ome;
+            //delete [] Stress;
+        }
         //Creating data sets
         float * Radius = new float[  Particles.Size()];
         float * Posvec = new float[3*Particles.Size()];
@@ -397,14 +558,14 @@ inline void Domain::WriteXDMF(char const * FileKey)
         String dsname;
         dsname.Printf("Position");
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Posvec);
-        dsname.Printf("Velocity");
+        dsname.Printf("PVelocity");
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Velvec);
-        dsname.Printf("AngVel");
+        dsname.Printf("PAngVel");
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Omevec);
         dims[0] = Particles.Size();
         dsname.Printf("Radius");
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Radius);
-        dsname.Printf("Tag");
+        dsname.Printf("PTag");
         H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,Tags  );
 
 
@@ -466,7 +627,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
         oss << "<Xdmf Version=\"2.0\">\n";
         oss << " <Domain>\n";
-        oss << "   <Grid Name=\"mesh1\" GridType=\"Uniform\">\n";
+        oss << "   <Grid Name=\"LBM_Mesh\" GridType=\"Uniform\">\n";
         oss << "     <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"" << Lat[0].Ndim(2) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(0) << "\"/>\n";
         oss << "     <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n";
         oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> 0.0 0.0 0.0\n";
@@ -498,7 +659,48 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "   </Grid>\n";
         if(Particles.Size()>0)
         {
-        oss << "   <Grid Name=\"mesh2\" GridType=\"Uniform\">\n";
+        if(N_Faces>0)
+        {
+        oss << "   <Grid Name=\"DEM_Faces\">\n";
+        oss << "     <Topology TopologyType=\"Triangle\" NumberOfElements=\"" << N_Faces << "\">\n";
+        oss << "       <DataItem Format=\"HDF\" DataType=\"Int\" Dimensions=\"" << N_Faces << " 3\">\n";
+        oss << "        " << fn.CStr() <<":/FaceCon \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Topology>\n";
+        oss << "     <Geometry GeometryType=\"XYZ\">\n";
+        oss << "       <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"4\" Dimensions=\"" << N_Verts << " 3\" >\n";
+        oss << "        " << fn.CStr() <<":/Verts \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Geometry>\n";
+        oss << "     <Attribute Name=\"Tag\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+        oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Tag \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+        oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Float\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Velocity \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"AngVelocity\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+        oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Float\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/AngVelocity \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        //oss << "     </Attribute>\n";
+        //oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Cell\">\n";
+        //oss << "       <DataItem Dimensions=\"" << N_Faces << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        //oss << "        " << fn.CStr() <<":/AngVelocity \n";
+        //oss << "       </DataItem>\n";
+        //oss << "     </Attribute>\n";
+        //oss << "     <Attribute Name=\"Stress\" AttributeType=\"Tensor\" Center=\"Cell\">\n";
+        //oss << "       <DataItem Dimensions=\"" << N_Faces << " 3 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        //oss << "        " << fn.CStr() <<":/Stress \n";
+        //oss << "       </DataItem>\n";
+        //oss << "     </Attribute>\n";
+        oss << "   </Grid>\n";
+        }
+        oss << "   <Grid Name=\"DEM_Center\" GridType=\"Uniform\">\n";
         oss << "     <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"" << Particles.Size() << "\"/>\n";
         oss << "     <Geometry GeometryType=\"XYZ\">\n";
         oss << "       <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"4\" Dimensions=\"" << Particles.Size() << " 3\" >\n";
@@ -512,17 +714,17 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "     </Attribute>\n";
         oss << "     <Attribute Name=\"Tag\" AttributeType=\"Scalar\" Center=\"Node\">\n";
         oss << "       <DataItem Dimensions=\"" << Particles.Size() << "\" NumberType=\"Int\" Format=\"HDF\">\n";
-        oss << "        " << fn.CStr() <<":/Tag \n";
+        oss << "        " << fn.CStr() <<":/PTag \n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Node\">\n";
         oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-        oss << "        " << fn.CStr() <<":/Velocity\n";
+        oss << "        " << fn.CStr() <<":/PVelocity\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         oss << "     <Attribute Name=\"AngVel\" AttributeType=\"Vector\" Center=\"Node\">\n";
         oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-        oss << "        " << fn.CStr() <<":/AngVel\n";
+        oss << "        " << fn.CStr() <<":/PAngVel\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         oss << "   </Grid>\n";
@@ -738,220 +940,156 @@ void Domain::Collide (size_t n, size_t Np)
 void Domain::ImprintLattice (size_t n,size_t Np)
 {
     
-	size_t Ni = Particles.Size()/Np;
+	size_t Ni = ParCellPairs.Size()/Np;
     size_t In = n*Ni;
     size_t Fn;
-    n == Np-1 ? Fn = Particles.Size() : Fn = (n+1)*Ni;
+    n == Np-1 ? Fn = ParCellPairs.Size() : Fn = (n+1)*Ni;
     //std::cout << "Im proccess = " << n << std::endl;
     // 2D imprint
-    if (Lat[0].Ndim(2)==1)
-    {
-        for (size_t i = In;i<Fn;i++)
-        {
-            DEM::Particle * Pa = Particles[i];
-            for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);n++)
-            for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);m++)
-            {
-                Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,0));
-                double x     = Lat[0].dx*cell->Index(0);
-                double y     = Lat[0].dx*cell->Index(1);
-                double z     = Lat[0].dx*cell->Index(2);
-                Vec3_t  C(x,y,z);
-                Array<Vec3_t> P(4);
-
-                P[0] = C - 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1;
-                P[1] = C + 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1;
-                P[2] = C + 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1;
-                P[3] = C - 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1;
-                double dmin = 2*Pa->Props.R;
-                double dmax = 0.0;
-                for (size_t j=0;j<P.Size();j++)
-                {
-                    double dist = norm(P[j] - Pa->x);
-                    if (dmin>dist) dmin = dist;
-                    if (dmax<dist) dmax = dist;
-                }
-                if (dmin > Pa->Props.R + Lat[0].dx) continue;
-
-                double len = 0.0;
-
-                if (dmax < Pa->Props.R)
-                {
-                    len = 4.0;
-                }
-                else
-                {
-                    for (size_t j=0;j<4;j++)
-                    {
-                        Vec3_t D = P[(j+1)%4] - P[j];
-                        double a = dot(D,D);
-                        double b = 2*dot(P[j]-Pa->x,D);
-                        double c = dot(P[j]-Pa->x,P[j]-Pa->x) - Pa->Props.R*Pa->Props.R;
-                        if (b*b-4*a*c>0.0)
-                        {
-                            double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
-                            double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
-                            if (ta>1.0&&tb>1.0) continue;
-                            if (ta<0.0&&tb<0.0) continue;
-                            if (ta<0.0) ta = 0.0;
-                            if (tb>1.0) tb = 1.0;
-                            len += norm((tb-ta)*D);
-                        }
-                    }
-                }
-
-                for (size_t j=0;j<Lat.Size();j++)
-                {
-                    cell = Lat[j].GetCell(iVec3_t(n,m,0));
-                    cell->Gamma   = std::max(len/(4.0*Lat[0].dx),cell->Gamma);
-                    if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) continue;
-                    Vec3_t B      = C - Pa->x;
-                    Vec3_t VelP   = Pa->x + cross(Pa->x,B);
-                    double rho = cell->Rho;
-                    double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
-                    for (size_t k=0;k<cell->Nneigh;k++)
-                    {
-                        double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
-                        double Fvp     = cell->Feq(k          ,VelP,rho);
-                        cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
-                        Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k];
-                        Pa->F          += Flbm;
-                        Pa->T          += cross(B,Flbm);
-                    }
-                }
-            }
-        }
-    }
+    //if (Lat[0].Ndim(2)==1)
+    //{
+        //for (size_t i = In;i<Fn;i++)
+        //{
+            //DEM::Particle * Pa = Particles[i];
+            //for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);n++)
+            //for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);m++)
+            //{
+                //Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,0));
+                //double x     = Lat[0].dx*cell->Index(0);
+                //double y     = Lat[0].dx*cell->Index(1);
+                //double z     = Lat[0].dx*cell->Index(2);
+                //Vec3_t  C(x,y,z);
+                //Array<Vec3_t> P(4);
+//
+                //P[0] = C - 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1;
+                //P[1] = C + 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1;
+                //P[2] = C + 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1;
+                //P[3] = C - 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1;
+                //double dmin = 2*Pa->Props.R;
+                //double dmax = 0.0;
+                //for (size_t j=0;j<P.Size();j++)
+                //{
+                    //double dist = norm(P[j] - Pa->x);
+                    //if (dmin>dist) dmin = dist;
+                    //if (dmax<dist) dmax = dist;
+                //}
+                //if (dmin > Pa->Props.R + Lat[0].dx) continue;
+//
+                //double len = 0.0;
+//
+                //if (dmax < Pa->Props.R)
+                //{
+                    //len = 4.0;
+                //}
+                //else
+                //{
+                    //for (size_t j=0;j<4;j++)
+                    //{
+                        //Vec3_t D = P[(j+1)%4] - P[j];
+                        //double a = dot(D,D);
+                        //double b = 2*dot(P[j]-Pa->x,D);
+                        //double c = dot(P[j]-Pa->x,P[j]-Pa->x) - Pa->Props.R*Pa->Props.R;
+                        //if (b*b-4*a*c>0.0)
+                        //{
+                            //double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
+                            //double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
+                            //if (ta>1.0&&tb>1.0) continue;
+                            //if (ta<0.0&&tb<0.0) continue;
+                            //if (ta<0.0) ta = 0.0;
+                            //if (tb>1.0) tb = 1.0;
+                            //len += norm((tb-ta)*D);
+                        //}
+                    //}
+                //}
+//
+                //for (size_t j=0;j<Lat.Size();j++)
+                //{
+                    //cell = Lat[j].GetCell(iVec3_t(n,m,0));
+                    //cell->Gamma   = std::max(len/(4.0*Lat[0].dx),cell->Gamma);
+                    //if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) continue;
+                    //Vec3_t B      = C - Pa->x;
+                    //Vec3_t VelP   = Pa->x + cross(Pa->x,B);
+                    //double rho = cell->Rho;
+                    //double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
+                    //for (size_t k=0;k<cell->Nneigh;k++)
+                    //{
+                        //double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
+                        //double Fvp     = cell->Feq(k          ,VelP,rho);
+                        //cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
+                        //Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k];
+                        //Pa->F          += Flbm;
+                        //Pa->T          += cross(B,Flbm);
+                    //}
+                //}
+            //}
+        //}
+    //}
 
     //3D imprint
-    else
+
+    for (size_t i = In;i<Fn;i++)
     {
-        for (size_t i = In;i<Fn;i++)
+        DEM::Particle  * Pa   = Particles[ParCellPairs[i](1)];
+        Cell           * cell = Lat[0].Cells[ParCellPairs[i](0)];
+        double x              = Lat[0].dx*cell->Index(0);
+        double y              = Lat[0].dx*cell->Index(1);
+        double z              = Lat[0].dx*cell->Index(2);
+        Vec3_t  C(x,y,z);
+        Vec3_t  Xtemp, Xs;
+        if (Pa->Faces.Size()>0)
         {
-            DEM::Particle * Pa = Particles[i];
-            for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);n++)
-            for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);m++)
-            for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);l<=std::min(double(Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);l++)
+            DEM::Distance(C,*Pa->Faces[ParCellPairs[i](2)],Xtemp,Xs);
+        }
+        else if (Pa->Edges.Size()>0)
+        {
+            DEM::Distance(C,*Pa->Edges[ParCellPairs[i](2)],Xtemp,Xs);
+        }
+        else if (Pa->Verts.Size()>0)
+        {
+            DEM::Distance(C,*Pa->Verts[ParCellPairs[i](2)],Xtemp,Xs);
+        }
+
+        double len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
+        
+        if (fabs(len)<1.0e-12) continue;
+
+        for (size_t j=0;j<Lat.Size();j++)
+        {
+            cell = Lat[j].Cells[ParCellPairs[i](0)];
+            cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
+            if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
+            //if (fabs(cell->Gamma-1.0)<1.0e-12)
             {
-                Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,l));
-                double x     = Lat[0].dx*cell->Index(0);
-                double y     = Lat[0].dx*cell->Index(1);
-                double z     = Lat[0].dx*cell->Index(2);
-                Vec3_t  C(x,y,z);
-                Array<Vec3_t> P(8);
-
-                P[0] = C - 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1 + 0.5*Lat[0].dx*OrthoSys::e2; 
-                P[1] = C + 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1 + 0.5*Lat[0].dx*OrthoSys::e2;
-                P[2] = C + 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1 + 0.5*Lat[0].dx*OrthoSys::e2;
-                P[3] = C - 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1 + 0.5*Lat[0].dx*OrthoSys::e2;
-                P[4] = C - 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1 - 0.5*Lat[0].dx*OrthoSys::e2; 
-                P[5] = C + 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1 - 0.5*Lat[0].dx*OrthoSys::e2;
-                P[6] = C + 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1 - 0.5*Lat[0].dx*OrthoSys::e2;
-                P[7] = C - 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1 - 0.5*Lat[0].dx*OrthoSys::e2;
-
-                double dmin = 2*Pa->Props.R;
-                double dmax = 0.0;
-                for (size_t j=0;j<P.Size();j++)
-                {
-                    double dist = norm(P[j] - Pa->x);
-                    if (dmin>dist) dmin = dist;
-                    if (dmax<dist) dmax = dist;
-                }
-                if (dmin > Pa->Props.R + Lat[0].dx) continue;
-                
-                double len = 0.0;
-                
-                if (dmax < Pa->Props.R)
-                {
-                    len = 12.0*Lat[0].dx;
-                }
-                else
-                {
-                    for (size_t j=0;j<4;j++)
-                    {
-                        Vec3_t D;
-                        double a; 
-                        double b; 
-                        double c; 
-                        D = P[(j+1)%4] - P[j];
-                        a = dot(D,D);
-                        b = 2*dot(P[j]-Pa->x,D);
-                        c = dot(P[j]-Pa->x,P[j]-Pa->x) - Pa->Props.R*Pa->Props.R;
-                        if (b*b-4*a*c>0.0)
-                        {
-                            double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
-                            double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
-                            if (ta>1.0&&tb>1.0) continue;
-                            if (ta<0.0&&tb<0.0) continue;
-                            if (ta<0.0) ta = 0.0;
-                            if (tb>1.0) tb = 1.0;
-                            len += norm((tb-ta)*D);
-                        }
-                        D = P[(j+1)%4 + 4] - P[j + 4];
-                        a = dot(D,D);
-                        b = 2*dot(P[j + 4]-Pa->x,D);
-                        c = dot(P[j + 4]-Pa->x,P[j + 4]-Pa->x) - Pa->Props.R*Pa->Props.R;
-                        if (b*b-4*a*c>0.0)
-                        {
-                            double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
-                            double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
-                            if (ta>1.0&&tb>1.0) continue;
-                            if (ta<0.0&&tb<0.0) continue;
-                            if (ta<0.0) ta = 0.0;
-                            if (tb>1.0) tb = 1.0;
-                            len += norm((tb-ta)*D);
-                        }
-                        D = P[j+4] - P[j];
-                        a = dot(D,D);
-                        b = 2*dot(P[j]-Pa->x,D);
-                        c = dot(P[j]-Pa->x,P[j]-Pa->x) - Pa->Props.R*Pa->Props.R;
-                        if (b*b-4*a*c>0.0)
-                        {
-                            double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
-                            double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
-                            if (ta>1.0&&tb>1.0) continue;
-                            if (ta<0.0&&tb<0.0) continue;
-                            if (ta<0.0) ta = 0.0;
-                            if (tb>1.0) tb = 1.0;
-                            len += norm((tb-ta)*D);
-                        }
-                    }
-                }
-
-                for (size_t j=0;j<Lat.Size();j++)
-                {
-                    cell = Lat[j].GetCell(iVec3_t(n,m,l));
-                    cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
-                    //if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
-                    if (fabs(cell->Gamma-1.0)<1.0e-12)
-                    {
-                        continue;
-                    }
-                    Vec3_t B      = C - Pa->x;
-                    Vec3_t tmp;
-                    Rotation(Pa->w,Pa->Q,tmp);
-                    Vec3_t VelP   = Pa->v + cross(tmp,B);
-                    double rho = cell->Rho;
-                    double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
-                    for (size_t k=0;k<cell->Nneigh;k++)
-                    {
-                        double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
-                        double Fvp     = cell->Feq(k          ,VelP,rho);
-                        cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
-                        Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k]*cell->Cs;
-                        Pa->F          += Flbm;
-                        Vec3_t T,Tt;
-                        Tt =           cross(B,Flbm);
-                        Quaternion_t q;
-                        Conjugate    (Pa->Q,q);
-                        Rotation     (Tt,q,T);
-                        Pa->T          += T;
-                    }
-                }
+                continue;
+            }
+            Vec3_t B      = C - Pa->x;
+            Vec3_t tmp;
+            Rotation(Pa->w,Pa->Q,tmp);
+            Vec3_t VelP   = Pa->v + cross(tmp,B);
+            double rho = cell->Rho;
+            double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
+            for (size_t k=0;k<cell->Nneigh;k++)
+            {
+                double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
+                double Fvp     = cell->Feq(k          ,VelP,rho);
+                cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
+                Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k]*cell->Cs;
+                Vec3_t T,Tt;
+                Tt =           cross(B,Flbm);
+                Quaternion_t q;
+                Conjugate    (Pa->Q,q);
+                Rotation     (Tt,q,T);
+#ifdef USE_THREAD
+                pthread_mutex_lock(&Pa->lck);
+#endif
+                Pa->F          += Flbm;
+                Pa->T          += T;
+#ifdef USE_THREAD
+                pthread_mutex_unlock(&Pa->lck);
+#endif
             }
         }
     }
-    //std::cout << "Im finished = " << n << std::endl;
 }
 
 inline void Domain::ResetDisplacements()
@@ -1009,6 +1147,51 @@ inline void Domain::ResetContacts()
     {
         if(CInteractons[i]->UpdateContacts(Alpha)) Interactons.Push(CInteractons[i]);
     }
+
+    ParCellPairs.Resize(0);
+
+    if (Lat[0].Ndim(2)==1)
+    {
+        // TODO 2D case
+    }
+    else
+    {
+        for (size_t i=0; i<Particles.Size(); i++)
+        {
+            DEM::Particle * Pa = Particles[i];
+            for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);n++)
+            for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);m++)
+            for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);l<=std::min(double(Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);l++)
+            {
+                Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,l));
+                double x     = Lat[0].dx*cell->Index(0);
+                double y     = Lat[0].dx*cell->Index(1);
+                double z     = Lat[0].dx*cell->Index(2);
+                Vec3_t  C(x,y,z);
+                if (Pa->Faces.Size()>0)
+                {
+                    for (size_t j=0;j<Pa->Faces.Size();j++)
+                    {
+                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*Alpha+Pa->Props.R) ParCellPairs.Push(iVec3_t(cell->ID,i,j));
+                    }
+                }
+                else if (Pa->Edges.Size()>0)
+                {
+                    for (size_t j=0;j<Pa->Edges.Size();j++)
+                    {
+                        if (DEM::Distance(C,*Pa->Edges[j])<2.0*Alpha+Pa->Props.R) ParCellPairs.Push(iVec3_t(cell->ID,i,j));
+                    }
+                }
+                else if (Pa->Verts.Size()>0)
+                {
+                    for (size_t j=0;j<Pa->Verts.Size();j++)
+                    {
+                        if (DEM::Distance(C,*Pa->Verts[j])<2.0*Alpha+Pa->Props.R) ParCellPairs.Push(iVec3_t(cell->ID,i,j));
+                    }
+                }
+            }
+        }
+    }
 }
 
 inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
@@ -1026,6 +1209,7 @@ inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
     }
 }
 
+//DEM particle methods
 inline void Domain::AddSphere (int Tag,Vec3_t const & X, double R, double rho)
 {
     // vertices
@@ -1089,6 +1273,159 @@ inline void Domain::GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1
     }
     
     printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
+}
+
+inline void Domain::AddTetra (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
+{
+    // vertices
+    double sq8 = sqrt(8.0);
+    Array<Vec3_t> V(4);
+    V[0] =  L/sq8,  L/sq8, L/sq8;
+    V[1] = -L/sq8, -L/sq8, L/sq8;
+    V[2] = -L/sq8,  L/sq8,-L/sq8;
+    V[3] =  L/sq8, -L/sq8,-L/sq8;
+
+    // edges
+    Array<Array <int> > E(6);
+    for (size_t i=0; i<6; ++i) E[i].Resize(2);
+    E[0] = 0, 1;
+    E[1] = 1, 2;
+    E[2] = 2, 0;
+    E[3] = 0, 3;
+    E[4] = 1, 3;
+    E[5] = 2, 3;
+
+    // face
+    Array<Array <int> > F;
+    F.Resize(4);
+    for (size_t i=0; i<4; ++i) F[i].Resize(3);
+    F[0] = 0, 3, 2;
+    F[1] = 0, 1, 3;
+    F[2] = 0, 2, 1;
+    F[3] = 1, 2, 3;
+
+    // calculate the rotation
+    bool ThereisanAxis = true;
+    if (Axis==NULL)
+    {
+        Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
+        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+        ThereisanAxis = false;
+    }
+    Quaternion_t q;
+    NormalizeRotation (Angle,(*Axis),q);
+    for (size_t i=0; i<V.Size(); i++)
+    {
+        Vec3_t t;
+        Rotation (V[i],q,t);
+        V[i] = t+X;
+    }
+
+    // add particle
+    Particles.Push (new DEM::Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    // clean up
+    if (!ThereisanAxis) delete Axis;
+    q(0) = 1.0;
+    q(1) = 0.0;
+    q(2) = 0.0;
+    q(3) = 0.0;
+    q = q/norm(q);
+
+    Particles[Particles.Size()-1]->Q          = q;
+    Particles[Particles.Size()-1]->Props.V    = sqrt(2.0)*L*L*L/12.0;
+    Particles[Particles.Size()-1]->Props.m    = rho*sqrt(2.0)*L*L*L/12.0;
+    Particles[Particles.Size()-1]->I          = L*L, L*L, L*L;
+    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m/20.0;
+    Particles[Particles.Size()-1]->x          = X;
+    Particles[Particles.Size()-1]->Ekin       = 0.0;
+    Particles[Particles.Size()-1]->Erot       = 0.0;
+    Particles[Particles.Size()-1]->Dmax       = sqrt(3.0*L*L/8.0)+R;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
+}
+
+inline void Domain::AddCube (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
+{
+    // vertices
+    Array<Vec3_t> V(8);
+    double l = L/2.0;
+    V[0] = -l, -l, -l;
+    V[1] =  l, -l, -l;
+    V[2] =  l,  l, -l;
+    V[3] = -l,  l, -l;
+    V[4] = -l, -l,  l;
+    V[5] =  l, -l,  l;
+    V[6] =  l,  l,  l;
+    V[7] = -l,  l,  l;
+
+    // edges
+    Array<Array <int> > E(12);
+    for (size_t i=0; i<12; ++i) E[i].Resize(2);
+    E[ 0] = 0, 1;
+    E[ 1] = 1, 2;
+    E[ 2] = 2, 3;
+    E[ 3] = 3, 0;
+    E[ 4] = 4, 5;
+    E[ 5] = 5, 6;
+    E[ 6] = 6, 7;
+    E[ 7] = 7, 4;
+    E[ 8] = 0, 4;
+    E[ 9] = 1, 5;
+    E[10] = 2, 6;
+    E[11] = 3, 7;
+
+    // faces
+    Array<Array <int> > F(6);
+    for (size_t i=0; i<6; i++) F[i].Resize(4);
+    F[0] = 4, 7, 3, 0;
+    F[1] = 1, 2, 6, 5;
+    F[2] = 0, 1, 5, 4;
+    F[3] = 2, 3, 7, 6;
+    F[4] = 0, 3, 2, 1;
+    F[5] = 4, 5, 6, 7;
+
+    // calculate the rotation
+    bool ThereisanAxis = true;
+    if (Axis==NULL)
+    {
+        Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
+        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+        ThereisanAxis = false;
+    }
+    Quaternion_t q;
+    NormalizeRotation (Angle,(*Axis),q);
+    for (size_t i=0; i<V.Size(); i++)
+    {
+        Vec3_t t;
+        Rotation (V[i],q,t);
+        V[i] = t+X;
+    }
+
+    // add particle
+    Particles.Push (new DEM::Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    // clean up
+    if (!ThereisanAxis) delete Axis;
+    q(0) = 1.0;
+    q(1) = 0.0;
+    q(2) = 0.0;
+    q(3) = 0.0;
+    q = q/norm(q);
+
+    Particles[Particles.Size()-1]->Q          = q;
+    Particles[Particles.Size()-1]->Props.V    = L*L*L;
+    Particles[Particles.Size()-1]->Props.m    = rho*L*L*L;
+    Particles[Particles.Size()-1]->I          = L*L, L*L, L*L;
+    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m/6.0;
+    Particles[Particles.Size()-1]->x          = X;
+    Particles[Particles.Size()-1]->Ekin       = 0.0;
+    Particles[Particles.Size()-1]->Erot       = 0.0;
+    Particles[Particles.Size()-1]->Dmax       = sqrt(3.0*L*L/4.0)+R;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
+    
+
 }
 
 inline void Domain::Initialize (double dt)
@@ -1253,6 +1590,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             {
                 pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
             }
+            ParCellPairs.Resize(0);
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_join(thrs[i], NULL);
@@ -1269,6 +1607,11 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
                     {
                         CInteractons.Push (new DEM::CInteracton(Particles[n],Particles[m]));
                     }
+                }
+
+                for (size_t j=0;j<MTD[i].LPC.Size();j++)
+                {
+                    ParCellPairs.Push(MTD[i].LPC[j]);
                 }
             }
             for (size_t i=0;i<Nproc;i++)

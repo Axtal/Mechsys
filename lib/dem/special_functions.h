@@ -294,6 +294,87 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
     }
     F = Ftemp;
 }
+
+inline double SphereCube (Vec3_t & Xs, Vec3_t & Xc, double R, double dx) // Calculates the volume of intersection between a Cube and a Sphere
+{
+    Array<Vec3_t> P(8);
+    P[0] = Xc - 0.5*dx*OrthoSys::e0 - 0.5*dx*OrthoSys::e1 + 0.5*dx*OrthoSys::e2; 
+    P[1] = Xc + 0.5*dx*OrthoSys::e0 - 0.5*dx*OrthoSys::e1 + 0.5*dx*OrthoSys::e2;
+    P[2] = Xc + 0.5*dx*OrthoSys::e0 + 0.5*dx*OrthoSys::e1 + 0.5*dx*OrthoSys::e2;
+    P[3] = Xc - 0.5*dx*OrthoSys::e0 + 0.5*dx*OrthoSys::e1 + 0.5*dx*OrthoSys::e2;
+    P[4] = Xc - 0.5*dx*OrthoSys::e0 - 0.5*dx*OrthoSys::e1 - 0.5*dx*OrthoSys::e2; 
+    P[5] = Xc + 0.5*dx*OrthoSys::e0 - 0.5*dx*OrthoSys::e1 - 0.5*dx*OrthoSys::e2;
+    P[6] = Xc + 0.5*dx*OrthoSys::e0 + 0.5*dx*OrthoSys::e1 - 0.5*dx*OrthoSys::e2;
+    P[7] = Xc - 0.5*dx*OrthoSys::e0 + 0.5*dx*OrthoSys::e1 - 0.5*dx*OrthoSys::e2;
+    
+    double dmin = 2*R;
+    double dmax = 0.0;
+    for (size_t j=0;j<P.Size();j++)
+    {
+        double dist = norm(P[j] - Xs);
+        if (dmin>dist) dmin = dist;
+        if (dmax<dist) dmax = dist;
+    }
+    if (dmin > R + dx) return 0.0;
+    
+    if (dmax < R)
+    {
+        return 12.0*dx;
+    }
+    
+    double len = 0.0;
+    for (size_t j=0;j<4;j++)
+    {
+        Vec3_t D;
+        double a; 
+        double b; 
+        double c; 
+        D = P[(j+1)%4] - P[j];
+        a = dot(D,D);
+        b = 2*dot(P[j]-Xs,D);
+        c = dot(P[j]-Xs,P[j]-Xs) - R*R;
+        if (b*b-4*a*c>0.0)
+        {
+            double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
+            double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
+            if (ta>1.0&&tb>1.0) continue;
+            if (ta<0.0&&tb<0.0) continue;
+            if (ta<0.0) ta = 0.0;
+            if (tb>1.0) tb = 1.0;
+            len += norm((tb-ta)*D);
+        }
+        D = P[(j+1)%4 + 4] - P[j + 4];
+        a = dot(D,D);
+        b = 2*dot(P[j + 4]-Xs,D);
+        c = dot(P[j + 4]-Xs,P[j + 4]-Xs) - R*R;
+        if (b*b-4*a*c>0.0)
+        {
+            double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
+            double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
+            if (ta>1.0&&tb>1.0) continue;
+            if (ta<0.0&&tb<0.0) continue;
+            if (ta<0.0) ta = 0.0;
+            if (tb>1.0) tb = 1.0;
+            len += norm((tb-ta)*D);
+        }
+        D = P[j+4] - P[j];
+        a = dot(D,D);
+        b = 2*dot(P[j]-Xs,D);
+        c = dot(P[j]-Xs,P[j]-Xs) - R*R;
+        if (b*b-4*a*c>0.0)
+        {
+            double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
+            double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
+            if (ta>1.0&&tb>1.0) continue;
+            if (ta<0.0&&tb<0.0) continue;
+            if (ta<0.0) ta = 0.0;
+            if (tb>1.0) tb = 1.0;
+            len += norm((tb-ta)*D);
+        }
+    }
+    return len;
+}
+
 }
 #endif //MECHSYS_DEM_SPECIAL_H
 
