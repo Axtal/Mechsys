@@ -45,19 +45,19 @@ void Setup(LBM::Domain & dom, void * UD)
     for (size_t i=0;i<dom.Particles.Size();i++)
     {
         dom.Particles[i]->Ff = dom.Particles[i]->Props.m*dat.g;
-        double delta;
-        delta =   dat.Xmin(0) - dom.Particles[i]->x(0) + dom.Particles[i]->Props.R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(0) += dat.Kn*delta;
-        delta = - dat.Xmax(0) + dom.Particles[i]->x(0) + dom.Particles[i]->Props.R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(0) -= dat.Kn*delta;
-        delta =   dat.Xmin(1) - dom.Particles[i]->x(1) + dom.Particles[i]->Props.R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(1) += dat.Kn*delta;
-        delta = - dat.Xmax(1) + dom.Particles[i]->x(1) + dom.Particles[i]->Props.R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(1) -= dat.Kn*delta;
-        delta =   dat.Xmin(2) - dom.Particles[i]->x(2) + dom.Particles[i]->Props.R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(2) += dat.Kn*delta;
-        delta = - dat.Xmax(2) + dom.Particles[i]->x(2) + dom.Particles[i]->Props.R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(2) -= dat.Kn*delta;
+        //double delta;
+        //delta =   dat.Xmin(0) - dom.Particles[i]->x(0) + dom.Particles[i]->Props.R;
+        //if (delta > 0.0)  dom.Particles[i]->Ff(0) += dat.Kn*delta;
+        //delta = - dat.Xmax(0) + dom.Particles[i]->x(0) + dom.Particles[i]->Props.R;
+        //if (delta > 0.0)  dom.Particles[i]->Ff(0) -= dat.Kn*delta;
+        //delta =   dat.Xmin(1) - dom.Particles[i]->x(1) + dom.Particles[i]->Props.R;
+        //if (delta > 0.0)  dom.Particles[i]->Ff(1) += dat.Kn*delta;
+        //delta = - dat.Xmax(1) + dom.Particles[i]->x(1) + dom.Particles[i]->Props.R;
+        //if (delta > 0.0)  dom.Particles[i]->Ff(1) -= dat.Kn*delta;
+        //delta =   dat.Xmin(2) - dom.Particles[i]->x(2) + dom.Particles[i]->Props.R;
+        //if (delta > 0.0)  dom.Particles[i]->Ff(2) += dat.Kn*delta;
+        //delta = - dat.Xmax(2) + dom.Particles[i]->x(2) + dom.Particles[i]->Props.R;
+        //if (delta > 0.0)  dom.Particles[i]->Ff(2) -= dat.Kn*delta;
     }
 }
 
@@ -88,7 +88,7 @@ int main(int argc, char **argv) try
     dat.g           = 0.0,-0.001,0.0;
     dat.Xmin        = 0.0,0.0,0.0;
     dat.Xmax        = nx*dx,ny*dx,nz*dx;
-    dat.Kn          = 1.0e5*rho/500.0;
+    dat.Kn          = 1.0e4*rho/500.0;
 
     //Set solid boundaries
     for (size_t i=0;i<nx;i++)
@@ -115,7 +115,7 @@ int main(int argc, char **argv) try
         Vec3_t v0(0.0,0.0,0.0);
         if (j<ny/2.0)
         {
-            Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(1800.0,v0);
+            Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(2300.0,v0);
             Dom.Lat[1].GetCell(iVec3_t(i,j,k))->Initialize(0.01  ,v0);
         }
         else
@@ -125,11 +125,22 @@ int main(int argc, char **argv) try
         }
     }
 
-    Dom.AddSphere(-1,Vec3_t(0.58*nx*dx,0.65*ny*dx,0.58*nz*dx),0.1*ny,0.4*rho);
-    Dom.AddSphere(-2,Vec3_t(0.57*nx*dx,0.85*ny*dx,0.57*nz*dx),0.1*ny,rho    );
-    Dom.AddSphere(-3,Vec3_t(0.43*nx*dx,0.65*ny*dx,0.42*nz*dx),0.1*ny,rho    );
-    Dom.AddSphere(-4,Vec3_t(0.36*nx*dx,0.85*ny*dx,0.63*nz*dx),0.1*ny,0.3*rho);
-    Dom.AddSphere(-5,Vec3_t(0.70*nx*dx,0.65*ny*dx,0.40*nz*dx),0.1*ny,0.6*rho);
+    //Dom.AddSphere(-1,Vec3_t(0.58*nx*dx,0.65*ny*dx,0.58*nz*dx),0.1*ny,0.4*rho);
+    //Dom.AddSphere(-2,Vec3_t(0.57*nx*dx,0.85*ny*dx,0.57*nz*dx),0.1*ny,rho    );
+    //Dom.AddSphere(-3,Vec3_t(0.43*nx*dx,0.65*ny*dx,0.42*nz*dx),0.1*ny,rho    );
+    //Dom.AddSphere(-4,Vec3_t(0.36*nx*dx,0.85*ny*dx,0.63*nz*dx),0.1*ny,0.3*rho);
+    //Dom.AddSphere(-5,Vec3_t(0.70*nx*dx,0.65*ny*dx,0.40*nz*dx),0.1*ny,0.6*rho);
+    Dom.GenBox(-6,105,105,105,2,1.1);
+    Dom.Center(Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx));
+    Dom.GetParticle( -6)->FixVeloc();
+    Dom.GetParticle( -7)->FixVeloc();
+    Dom.GetParticle( -8)->FixVeloc();
+    Dom.GetParticle( -9)->FixVeloc();
+    Dom.GetParticle(-10)->FixVeloc();
+    Dom.GetParticle(-11)->FixVeloc();
+
+    Dom.AddTetra(-1,Vec3_t(0.63*nx*dx,0.8*ny*dx,0.63*nz*dx),0.01*ny,0.4*ny,rho);
+    Dom.AddTetra(-2,Vec3_t(0.38*nx*dx,0.8*ny*dx,0.38*nz*dx),0.01*ny,0.4*ny,rho);
     for (size_t i=0;i<Dom.Particles.Size();i++)
     {
         Dom.Particles[i]->Props.Kn = 1.0*dat.Kn;

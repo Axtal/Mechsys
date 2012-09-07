@@ -131,16 +131,17 @@ public:
     Array<Cylinder*>    Cylinders;   ///< Cylindrical features
 
     // Auxiliar methods
-    void   CalcProps  (size_t NCalls=5000); ///< Calculate properties: mass, center of mass, and moment of inertia
-    bool   IsInside   (Vec3_t & V);         ///< Find whether the point V is inside the particle or not
-    bool   IsInsideAlt(Vec3_t & V);         ///< Find whether the point V is inside the particle or not
-    double IsInside   (double * V);         ///< Find whether the point V is inside the particle or not
-    double MaxX       ();                   ///< Find Maximun X coordinate
-    double MaxY       ();                   ///< Find Maximun Y coordinate
-    double MaxZ       ();                   ///< Find Maximun Y coordinate
-    double MinX       ();                   ///< Find Minimun X coordinate
-    double MinY       ();                   ///< Find Minimun Y coordinate
-    double MinZ       ();                   ///< Find Minimun Y coordinate
+    void   CalcProps            (size_t NCalls=5000); ///< Calculate properties: mass, center of mass, and moment of inertia
+    bool   IsInside             (Vec3_t & V);         ///< Find whether the point V is inside the particle or not
+    bool   IsInsideAlt          (Vec3_t & V);         ///< Find whether the point V is inside the particle or not
+    bool   IsInsideFaceOnly     (Vec3_t & V);         ///< Find whether the point V is inside the polyhedron or not
+    double IsInside             (double * V);         ///< Find whether the point V is inside the particle or not
+    double MaxX                 ();                   ///< Find Maximun X coordinate
+    double MaxY                 ();                   ///< Find Maximun Y coordinate
+    double MaxZ                 ();                   ///< Find Maximun Y coordinate
+    double MinX                 ();                   ///< Find Minimun X coordinate
+    double MinY                 ();                   ///< Find Minimun Y coordinate
+    double MinZ                 ();                   ///< Find Minimun Y coordinate
 
     // Integrants for the calc of properties
     double Vol (double * X); ///< Calculate the volume of the sample at X
@@ -288,8 +289,8 @@ inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, dou
     Props.Bn = 1.0e4;   
     Props.Bt = 5.0e3;   
     Props.Bm = 5.0e3;
-    Props.Gn = 16.0;   
-    Props.Gt = 8.0;   
+    Props.Gn = 8.0;   
+    Props.Gt = 0.0;   
     Props.Mu = 0.4;   
     Props.eps = 0.01;  
     Props.Beta = 0.12; 
@@ -712,9 +713,47 @@ inline bool Particle::IsInsideAlt(Vec3_t & V)
             if (test) inside = false;
         }
     }
-
-
     return inside;
+}
+
+inline bool Particle::IsInsideFaceOnly(Vec3_t & V)
+{
+    bool inside = true;
+    Vec3_t D = V - x;
+    size_t nf = Faces.Size();
+    if (nf>3)
+    {
+        for (size_t i = 0; i < nf; i++)
+        {
+            Vec3_t B = x - *Faces[i]->Edges[0]->X0;
+            Mat3_t M;
+            M(0,0) = -D(0);
+            M(0,1) = (Faces[i]->Edges[0]->dL)(0);
+            M(0,2) = (Faces[i]->Edges[1]->dL)(0);
+            M(1,0) = -D(1);
+            M(1,1) = (Faces[i]->Edges[0]->dL)(1);
+            M(1,2) = (Faces[i]->Edges[1]->dL)(1);
+            M(2,0) = -D(2);
+            M(2,1) = (Faces[i]->Edges[0]->dL)(2);
+            M(2,2) = (Faces[i]->Edges[1]->dL)(2);
+            Vec3_t X;
+            try { Sol(M,B,X); }
+            catch (Fatal * fatal) { continue; }
+            if (X(0)>1.0||X(0)<0.0) continue;
+            B = *Faces[i]->Edges[0]->X0 + Faces[i]->Edges[0]->dL*X(1)+Faces[i]->Edges[1]->dL*X(2);
+            Vec3_t nor;
+            Faces[i]->Normal(nor);
+            bool test = true;
+            for (size_t j=0; j<Faces[i]->Edges.Size(); j++) 
+            {
+                Vec3_t tmp = B-*Faces[i]->Edges[j]->X0;
+                if (dot(cross(Faces[i]->Edges[j]->dL,tmp),nor)<0) test = false;
+            }
+            if (test) inside = false;
+        }
+        return inside;
+    }
+    else return false;
 }
 
 inline double Particle::IsInside (double * V)

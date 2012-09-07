@@ -58,12 +58,22 @@ public:
     iVec3_t               Ndim,   ///< Cell divisions per side
     double                dx,     ///< Space spacing
     double                dt);    ///< Time step
-
+    
+    //Utility methods
+    void BoundingBox       (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
+    void Center            (Vec3_t C = Vec3_t(0.0,0.0,0.0));                                                    ///< Centers the domain around C
+    
     //Methods for adding particles
-    void AddSphere     (int Tag, Vec3_t const & X, double R, double rho);                                                               ///< Add sphere
+    void AddSphere     (int Tag, Vec3_t const & X, double R, double rho);                                                                              ///< Add sphere
     void GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1, double R, double rho, size_t Randomseed, double fraction, double RminFraction); ///< Create an array of spheres
-    void AddCube       (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a cube at position X with spheroradius R, side of length L and density rho
-    void AddTetra      (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
+    void AddCube       (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void AddTetra      (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
+    void AddPlane      (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL);                     ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void GenBox        (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, bool Cohesion=false);                                    ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
+    
+    // Access methods
+    DEM::Particle       * GetParticle  (int Tag, bool Check=true);       ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
+    DEM::Particle const & GetParticle  (int Tag, bool Check=true) const; ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
     
     //Methods
 #ifdef USE_HDF5
@@ -79,7 +89,6 @@ public:
     void ResetContacts();                                                                                                             ///< Reset contacts for verlet method DEM
     void ResetDisplacements();                                                                                                        ///< Reset the displacements for the verlet method DEM
     double  MaxDisplacement();                                                                                                        ///< Give the maximun displacement of DEM particles
-    void BoundingBox(Vec3_t & Xmin, Vec3_t & Xmax);                                                                                   ///< Bounding box for DEM particles
 
 #ifdef USE_THREAD
     Array<pair<size_t, size_t> >                ListPosPairs;         ///< List of all possible particles pairs
@@ -93,6 +102,7 @@ public:
     Array <DEM::Particle *>                        Particles;         ///< Array of Disks
     Array <DEM::Interacton *>                    Interactons;         ///< Array of insteractons
     Array <DEM::Interacton *>                   CInteractons;         ///< Array of valid interactons
+    Array <DEM::BInteracton*>                   BInteractons;         ///< Cohesion interactons
     Array <iVec3_t>                                CellPairs;         ///< Pairs of cells
     Array <iVec3_t>                             ParCellPairs;         ///< Pairs of cells and particles
     set<pair<DEM::Particle *, DEM::Particle *> > Listofpairs;         ///< List of pair of particles associated per interacton for memory optimization
@@ -298,21 +308,21 @@ void * GlobalResetContacts1 (void * Data)
                 {
                     for (size_t j=0;j<Pa->Faces.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*dat.Dom->Alpha+Pa->Props.R) dat.LPC.Push(iVec3_t(cell->ID,i,j));
+                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*dat.Dom->Alpha+Pa->Props.R||Pa->IsInsideFaceOnly(C)) dat.LPC.Push(iVec3_t(cell->ID,i,j));
                     }
                 }
                 else if (Pa->Edges.Size()>0)
                 {
                     for (size_t j=0;j<Pa->Edges.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Edges[j])<2.0*dat.Dom->Alpha+Pa->Props.R) dat.LPC.Push(iVec3_t(cell->ID,i,j));
+                        if (DEM::Distance(C,*Pa->Edges[j])<2.0*dat.Dom->Alpha+Pa->Props.R||Pa->IsInsideFaceOnly(C)) dat.LPC.Push(iVec3_t(cell->ID,i,j));
                     }
                 }
                 else if (Pa->Verts.Size()>0)
                 {
                     for (size_t j=0;j<Pa->Verts.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Verts[j])<2.0*dat.Dom->Alpha+Pa->Props.R) dat.LPC.Push(iVec3_t(cell->ID,i,j));
+                        if (DEM::Distance(C,*Pa->Verts[j])<2.0*dat.Dom->Alpha+Pa->Props.R||Pa->IsInsideFaceOnly(C)) dat.LPC.Push(iVec3_t(cell->ID,i,j));
                     }
                 }
             }
@@ -891,7 +901,8 @@ void Domain::Collide (size_t n, size_t Np)
             Cell * c = Lat[j].Cells[i];
             double rho = c->Rho;
             if (c->IsSolid||rho<1.0e-12) continue;
-            if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
+            //if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
+            //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
             double Tau = Lat[j].Tau;
             Vec3_t DV  = Vmix + c->BForce*dt/rho;
             double Bn  = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
@@ -1036,20 +1047,25 @@ void Domain::ImprintLattice (size_t n,size_t Np)
         double z              = Lat[0].dx*cell->Index(2);
         Vec3_t  C(x,y,z);
         Vec3_t  Xtemp, Xs;
-        if (Pa->Faces.Size()>0)
-        {
-            DEM::Distance(C,*Pa->Faces[ParCellPairs[i](2)],Xtemp,Xs);
-        }
-        else if (Pa->Edges.Size()>0)
-        {
-            DEM::Distance(C,*Pa->Edges[ParCellPairs[i](2)],Xtemp,Xs);
-        }
-        else if (Pa->Verts.Size()>0)
-        {
-            DEM::Distance(C,*Pa->Verts[ParCellPairs[i](2)],Xtemp,Xs);
-        }
+        double len;
 
-        double len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
+        if (Pa->IsInsideFaceOnly(C)) len = 12.0*Lat[0].dx;
+        else
+        {
+            if (Pa->Faces.Size()>0)
+            {
+                DEM::Distance(C,*Pa->Faces[ParCellPairs[i](2)],Xtemp,Xs);
+            }
+            else if (Pa->Edges.Size()>0)
+            {
+                DEM::Distance(C,*Pa->Edges[ParCellPairs[i](2)],Xtemp,Xs);
+            }
+            else if (Pa->Verts.Size()>0)
+            {
+                DEM::Distance(C,*Pa->Verts[ParCellPairs[i](2)],Xtemp,Xs);
+            }
+            len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
+        }
         
         if (fabs(len)<1.0e-12) continue;
 
@@ -1172,21 +1188,21 @@ inline void Domain::ResetContacts()
                 {
                     for (size_t j=0;j<Pa->Faces.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*Alpha+Pa->Props.R) ParCellPairs.Push(iVec3_t(cell->ID,i,j));
+                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*Alpha+Pa->Props.R||Pa->IsInsideFaceOnly(C)) ParCellPairs.Push(iVec3_t(cell->ID,i,j));
                     }
                 }
                 else if (Pa->Edges.Size()>0)
                 {
                     for (size_t j=0;j<Pa->Edges.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Edges[j])<2.0*Alpha+Pa->Props.R) ParCellPairs.Push(iVec3_t(cell->ID,i,j));
+                        if (DEM::Distance(C,*Pa->Edges[j])<2.0*Alpha+Pa->Props.R||Pa->IsInsideFaceOnly(C)) ParCellPairs.Push(iVec3_t(cell->ID,i,j));
                     }
                 }
                 else if (Pa->Verts.Size()>0)
                 {
                     for (size_t j=0;j<Pa->Verts.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Verts[j])<2.0*Alpha+Pa->Props.R) ParCellPairs.Push(iVec3_t(cell->ID,i,j));
+                        if (DEM::Distance(C,*Pa->Verts[j])<2.0*Alpha+Pa->Props.R||Pa->IsInsideFaceOnly(C)) ParCellPairs.Push(iVec3_t(cell->ID,i,j));
                     }
                 }
             }
@@ -1194,6 +1210,7 @@ inline void Domain::ResetContacts()
     }
 }
 
+//Utility methods
 inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
 {
     minX = Vec3_t(Particles[0]->MinX(), Particles[0]->MinY(), Particles[0]->MinZ());
@@ -1207,6 +1224,15 @@ inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
         if (maxX(1)<Particles[i]->MaxY()&&Particles[i]->IsFree()) maxX(1) = Particles[i]->MaxY();
         if (maxX(2)<Particles[i]->MaxZ()&&Particles[i]->IsFree()) maxX(2) = Particles[i]->MaxZ();
     }
+}
+
+inline void Domain::Center(Vec3_t C)
+{
+    Vec3_t minX,maxX;
+    BoundingBox(minX,maxX);
+    Vec3_t Transport(-0.5*(maxX+minX));
+    Transport += C;
+    for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Translate(Transport);
 }
 
 //DEM particle methods
@@ -1428,6 +1454,171 @@ inline void Domain::AddCube (int Tag, Vec3_t const & X, double R, double L, doub
 
 }
 
+inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, double Ly, double rho, double Angle, Vec3_t * Axis)
+{
+    // vertices
+    Array<Vec3_t> V(4);
+    double lx = Lx/2.0, ly = Ly/2.0;
+    V[0] = -lx, -ly, 0.0;
+    V[1] =  lx, -ly, 0.0;
+    V[2] =  lx,  ly, 0.0;
+    V[3] = -lx,  ly, 0.0;
+
+    // edges
+    Array<Array <int> > E(4);
+    for (size_t i=0; i<4; ++i) E[i].Resize(2);
+    E[ 0] = 0, 1;
+    E[ 1] = 1, 2;
+    E[ 2] = 2, 3;
+    E[ 3] = 3, 0;
+
+    // faces
+    Array<Array <int> > F(1);
+    F[0].Resize(4);
+    F[0] = 0, 3, 2, 1;
+
+    bool ThereisanAxis = true;
+    if (Axis==NULL)
+    {
+        Angle   = 0.;
+        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+        ThereisanAxis = false;
+    }
+    Quaternion_t q;
+    NormalizeRotation (Angle,(*Axis),q);
+    for (size_t i=0; i<V.Size(); i++)
+    {
+        Vec3_t t;
+        Rotation (V[i],q,t);
+        V[i] = t+X;
+    }
+
+    // add particle
+    Particles.Push (new DEM::Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    Particles[Particles.Size()-1]->Q          = q;
+    Particles[Particles.Size()-1]->Props.V    = Lx*Ly*2*R;
+    Particles[Particles.Size()-1]->Props.m    = rho*Lx*Ly*2*R;
+    Particles[Particles.Size()-1]->I          = (1.0/12.0)*(Ly*Ly+4*R*R),(1.0/12.0)*(Lx*Lx+4*R*R),(1.0/12.0)*(Lx*Lx+Ly*Ly);
+    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m;
+    Particles[Particles.Size()-1]->x          = X;
+    Particles[Particles.Size()-1]->Ekin       = 0.0;
+    Particles[Particles.Size()-1]->Erot       = 0.0;
+    Particles[Particles.Size()-1]->Dmax       = sqrt(Lx*Lx+Ly*Ly)+R;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
+    // clean up
+    if (!ThereisanAxis) delete Axis;
+}
+
+inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, bool Cohesion)
+{
+    /*                         +----------------+
+     *                       ,'|              ,'|
+     *                     ,'  |  ___       ,'  |
+     *     z             ,'    |,'4,'  [1],'    |
+     *     |           ,'      |~~~     ,'      |
+     *    ,+--y      +'===============+'  ,'|   |
+     *  x'           |   ,'|   |      |   |2|   |
+     *               |   |3|   |      |   |,'   |
+     *               |   |,'   +- - - | +- - - -+
+     *               |       ,'       |       ,'
+     *               |     ,' [0]  ___|     ,'
+     *               |   ,'      ,'5,'|   ,'
+     *               | ,'        ~~~  | ,'
+     *               +----------------+'
+     */
+
+    
+    // add faces of box
+    Vec3_t axis0(OrthoSys::e0); // rotation of face
+    Vec3_t axis1(OrthoSys::e1); // rotation of face
+    size_t IIndex = Particles.Size();  // First face index
+    AddPlane (InitialTag,   Vec3_t(Lx/2.0,0.0,0.0),  R, Cf*Lz, Cf*Ly, 1.0, M_PI/2.0, &axis1);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-1, Vec3_t(-Lx/2.0,0.0,0.0), R, Cf*Lz, Cf*Ly, 1.0, 3.0*M_PI/2.0, &axis1);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-2, Vec3_t(0.0,Ly/2.0,0.0),  R, Cf*Lx, Cf*Lz, 1.0, 3.0*M_PI/2.0, &axis0);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-3, Vec3_t(0.0,-Ly/2.0,0.0), R, Cf*Lx, Cf*Lz, 1.0, M_PI/2.0, &axis0);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-4, Vec3_t(0.0,0.0,Lz/2.0),  R, Cf*Lx, Cf*Ly, 1.0);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-5, Vec3_t(0.0,0.0,-Lz/2.0), R, Cf*Lx, Cf*Ly, 1.0, M_PI, &axis0);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+
+    // define some tolerance for comparissions
+    if (Cohesion)
+    {
+        double tol1 = 1.0e-8;
+        double tol2 = 1.0e-3;
+        for (size_t i=0;i<IIndex;i++)
+        {
+            DEM::Particle * P1 = Particles[i];
+            for (size_t j=IIndex;j<Particles.Size();j++)
+            {
+                DEM::Particle * P2 = Particles[j];
+                for (size_t k=0;k<P1->Faces.Size();k++)
+                {
+                    DEM::Face * F1 = P1->Faces[k];
+                    Vec3_t n1,c1;
+                    F1->Normal  (n1);
+                    F1->Centroid(c1);
+                    DEM::Face * F2 = P2->Faces[0];
+                    Vec3_t n2,c2;
+                    F2->Normal  (n2);
+                    F2->Centroid(c2);
+                    Vec3_t n = 0.5*(n1-n2);
+                    n/=norm(n);
+                    if ((fabs(dot(n1,n2)+1.0)<tol1)
+                       &&(fabs(dot(c2-c1,n)-2*R)<tol2))
+                    {
+                        BInteractons.Push(new DEM::BInteracton(P1,P2,k,1));
+                        break;
+                    }
+                }
+            }        
+        }
+    }
+}
+
+//Particle access methods
+inline DEM::Particle * Domain::GetParticle (int Tag, bool Check)
+{
+    size_t idx   = 0;
+    size_t count = 0;
+    for (size_t i=0; i<Particles.Size(); ++i)
+    {
+        if (Particles[i]->Tag==Tag)
+        {
+            if (!Check) return Particles[i];
+            idx = i;
+            count++;
+        }
+    }
+    if      (count==0) throw new Fatal("Domain::GetParticle: Could not find Particle with Tag==%d",Tag);
+    else if (count>1)  throw new Fatal("Domain::GetParticle: There are more than one particle with Tag==%d",Tag);
+    return Particles[idx];
+}
+
+inline DEM::Particle const & Domain::GetParticle (int Tag, bool Check) const
+{
+    size_t idx   = 0;
+    size_t count = 0;
+    for (size_t i=0; i<Particles.Size(); ++i)
+    {
+        if (Particles[i]->Tag==Tag)
+        {
+            if (!Check) return (*Particles[i]);
+            idx = i;
+            count++;
+        }
+    }
+    if      (count==0) throw new Fatal("Domain::GetParticle: Could not find Particle with Tag==%d",Tag);
+    else if (count>1)  throw new Fatal("Domain::GetParticle: There are more than one particle with Tag==%d",Tag);
+    return (*Particles[idx]);
+}
+
+//Dynamic methods
 inline void Domain::Initialize (double dt)
 {
     // info
