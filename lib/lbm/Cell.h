@@ -163,9 +163,13 @@ inline double Cell::VelDen(Vec3_t & V)
 {
     V = 0.0, 0.0, 0.0;
     if (IsSolid) return 0.0;
-    double rho = Density();
+    double rho = 0.0;
+    for (size_t k=0;k<Nneigh;k++)
+    {
+        V   += F[k]*C[k];
+        rho += F[k];
+    }
     if (rho<1.0e-12) return 0.0;
-    for (size_t k=1;k<Nneigh;k++) V += F[k]*C[k];
     V *= Cs/rho;
     return rho;
 }

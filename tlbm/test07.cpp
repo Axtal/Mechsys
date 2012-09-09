@@ -68,7 +68,7 @@ int main(int argc, char **argv) try
     size_t nx = 100;
     size_t ny = 100;
     size_t nz = 100;
-    double nu = 0.01;
+    double nu = 0.001;
     double dx = 1.0;
     double dt = 1.0;
     double rho= 3000.0;
@@ -141,6 +141,7 @@ int main(int argc, char **argv) try
 
     Dom.AddTetra(-1,Vec3_t(0.63*nx*dx,0.8*ny*dx,0.63*nz*dx),0.01*ny,0.4*ny,rho);
     Dom.AddTetra(-2,Vec3_t(0.38*nx*dx,0.8*ny*dx,0.38*nz*dx),0.01*ny,0.4*ny,rho);
+    
     for (size_t i=0;i<Dom.Particles.Size();i++)
     {
         Dom.Particles[i]->Props.Kn = 1.0*dat.Kn;

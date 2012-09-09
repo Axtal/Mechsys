@@ -673,6 +673,39 @@ inline void Sol (Mat3_t const & M, Vec3_t const & B, Vec3_t & X, double Tol=1.0e
     X(2) = Mi(2,0)*B(0) + Mi(2,1)*B(1) + Mi(2,2)*B(2);
 }
 
+/** Alternative Solver that does not throw a fatal error when the matrix is singular */
+
+inline bool SolAlt (Mat3_t const & M, Vec3_t const & B, Vec3_t & X, double Tol=1.0e-10)
+{
+    // determinant
+    double det =   M(0,0)*(M(1,1)*M(2,2) - M(1,2)*M(2,1))
+                 - M(0,1)*(M(1,0)*M(2,2) - M(1,2)*M(2,0))
+                 + M(0,2)*(M(1,0)*M(2,1) - M(1,1)*M(2,0));
+    if (fabs(det)<Tol) return false;
+    
+    // inverse matrix
+    Mat3_t Mi;
+    Mi(0,0) = (M(1,1)*M(2,2) - M(1,2)*M(2,1)) / det;
+    Mi(0,1) = (M(0,2)*M(2,1) - M(0,1)*M(2,2)) / det;
+    Mi(0,2) = (M(0,1)*M(1,2) - M(0,2)*M(1,1)) / det;
+
+    Mi(1,0) = (M(1,2)*M(2,0) - M(1,0)*M(2,2)) / det;
+    Mi(1,1) = (M(0,0)*M(2,2) - M(0,2)*M(2,0)) / det;
+    Mi(1,2) = (M(0,2)*M(1,0) - M(0,0)*M(1,2)) / det;
+
+    Mi(2,0) = (M(1,0)*M(2,1) - M(1,1)*M(2,0)) / det;
+    Mi(2,1) = (M(0,1)*M(2,0) - M(0,0)*M(2,1)) / det;
+    Mi(2,2) = (M(0,0)*M(1,1) - M(0,1)*M(1,0)) / det;
+
+    // solve system
+    X(0) = Mi(0,0)*B(0) + Mi(0,1)*B(1) + Mi(0,2)*B(2);
+    X(1) = Mi(1,0)*B(0) + Mi(1,1)*B(1) + Mi(1,2)*B(2);
+    X(2) = Mi(2,0)*B(0) + Mi(2,1)*B(1) + Mi(2,2)*B(2);
+
+    return true;
+}
+
+
 /** Eigenvalues. NOTE: This function changes the matrix M. */
 inline void Eig (Mat3_t & M, Vec3_t & L)
 {

@@ -27,9 +27,16 @@
 #include <utility>
 #include <set>
 
+// Voro++
+#include "src/voro++.cc"
+
 // MechSys
 #include <mechsys/dem/interacton.h>
 #include <mechsys/lbm/Lattice.h>
+#include <mechsys/mesh/mesh.h>
+#include <mechsys/util/util.h>
+#include <mechsys/util/maps.h>
+#include <mechsys/mesh/unstructured.h>
 
 using std::set;
 using std::map;
@@ -62,6 +69,7 @@ public:
     //Utility methods
     void BoundingBox       (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
     void Center            (Vec3_t C = Vec3_t(0.0,0.0,0.0));                                                    ///< Centers the domain around C
+    void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
     
     //Methods for adding particles
     void AddSphere     (int Tag, Vec3_t const & X, double R, double rho);                                                                              ///< Add sphere
@@ -70,6 +78,10 @@ public:
     void AddTetra      (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
     void AddPlane      (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL);                     ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void GenBox        (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, bool Cohesion=false);                                    ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
+    void GenFromMesh   (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);                           ///< Generate particles from a FEM mesh generator
+    void AddVoroCell   (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode, Vec3_t nv = iVec3_t(1.0,1.0,1.0));                       ///< Add a single voronoi cell, it should be built before tough
+    void AddVoroPack   (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
+    double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                                              ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
     
     // Access methods
     DEM::Particle       * GetParticle  (int Tag, bool Check=true);       ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
@@ -126,6 +138,7 @@ struct MtData
     Array<pair<size_t,size_t> >   LC; ///< A temporal list of new contacts
     Array<size_t>                LCI; ///< A temporal array of posible Cinteractions
     Array<iVec3_t>               LPC; ///< A temporal array of possible particle cell contacts
+    Array<size_t>                LCB; ///< A temporal array of posible Binteractions
 };
 
 void * GlobalIni(void * Data)
@@ -268,7 +281,7 @@ void * GlobalResetContacts1 (void * Data)
         bool pi_has_vf = !dat.Dom->Particles[i]->IsFree();
         bool pj_has_vf = !dat.Dom->Particles[j]->IsFree();
 
-        bool close = (norm(dat.Dom->Particles[i]->x-dat.Dom->Particles[j]->x)<=dat.Dom->Particles[i]->Props.R+dat.Dom->Particles[j]->Props.R+2*dat.Dom->Alpha);
+        bool close = (norm(dat.Dom->Particles[i]->x-dat.Dom->Particles[j]->x)<=dat.Dom->Particles[i]->Dmax+dat.Dom->Particles[j]->Dmax+2*dat.Dom->Alpha);
         if ((pi_has_vf && pj_has_vf) || !close) continue;
         
         // checking if the interacton exist for that pair of particles
@@ -341,6 +354,14 @@ void * GlobalResetContacts2 (void * Data)
     for (size_t n=In;n<Fn;n++)
     {
         if(dat.Dom->CInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LCI.Push(n);
+    }
+	Ni = dat.Dom->BInteractons.Size()/dat.N_Proc;
+    In = dat.ProcRank*Ni;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->BInteractons.Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.LCB.Resize(0);
+    for (size_t n=In;n<Fn;n++)
+    {
+        if(dat.Dom->BInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LCB.Push(n);
     }
 }
 
@@ -933,7 +954,7 @@ void Domain::Collide (size_t n, size_t Np)
             }
             for (size_t k=0;k<c->Nneigh;k++)
             {
-                if (isnan(c->Ftemp[k]))
+                if (std::isnan(c->Ftemp[k]))
                 {
                     c->Gamma = 2.0;
                     #ifdef USE_HDF5
@@ -1163,6 +1184,10 @@ inline void Domain::ResetContacts()
     {
         if(CInteractons[i]->UpdateContacts(Alpha)) Interactons.Push(CInteractons[i]);
     }
+    for (size_t i=0; i<BInteractons.Size(); i++)
+    {
+        if(BInteractons[i]->UpdateContacts(Alpha)) Interactons.Push(BInteractons[i]);
+    }
 
     ParCellPairs.Resize(0);
 
@@ -1233,6 +1258,73 @@ inline void Domain::Center(Vec3_t C)
     Vec3_t Transport(-0.5*(maxX+minX));
     Transport += C;
     for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Translate(Transport);
+}
+
+inline void Domain::SetProps (Dict & D)
+{
+    for (size_t i =0 ; i<Particles.Size(); i++)
+    {
+        for (size_t j=0; j<D.Keys.Size(); ++j)
+        {
+            int tag = D.Keys[j];
+            if (tag==Particles[i]->Tag)
+            {
+                SDPair const & p = D(tag);
+                if (p.HasKey("Gn"))
+                {
+                    Particles[i]->Props.Gn = p("Gn");
+                }
+                if (p.HasKey("Gt"))
+                {
+                    Particles[i]->Props.Gt = p("Gt");
+                }
+                if (p.HasKey("Kn"))
+                {
+                    Particles[i]->Props.Kn = p("Kn");
+                }
+                if (p.HasKey("Kt"))
+                {
+                    Particles[i]->Props.Kt = p("Kt");
+                }
+                if (p.HasKey("Bn"))
+                {
+                    Particles[i]->Props.Bn = p("Bn");
+                }
+                if (p.HasKey("Bt"))
+                {
+                    Particles[i]->Props.Bt = p("Bt");
+                }
+                if (p.HasKey("Bm"))
+                {
+                    Particles[i]->Props.Bm = p("Bm");
+                }
+                if (p.HasKey("Mu"))
+                {
+                    Particles[i]->Props.Mu = p("Mu");
+                }
+                if (p.HasKey("Eps"))
+                {
+                    Particles[i]->Props.eps = p("Eps");
+                }
+                if (p.HasKey("Beta"))
+                {
+                    Particles[i]->Props.Beta = p("Beta");
+                }
+                if (p.HasKey("Eta"))
+                {
+                    Particles[i]->Props.Eta = p("Eta");
+                }
+            }
+        }
+    }
+    for (size_t i=0; i<BInteractons.Size(); i++)
+    {
+        BInteractons[i]->UpdateParameters();
+    }
+    for (size_t i=0; i<CInteractons.Size(); i++)
+    {
+        CInteractons[i]->UpdateParameters();
+    }
 }
 
 //DEM particle methods
@@ -1581,6 +1673,357 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
     }
 }
 
+inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool Cohesion, bool MC, double thickness)
+{
+    // info
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Generating particles from mesh ----------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+
+    size_t IIndex = Particles.Size();
+
+    for (size_t i=0; i<M.Cells.Size(); ++i)
+    {
+
+        Array<Vec3_t> V;             // Array of vertices
+        Array<Array <int> > E;       // Array of edges
+        Array<Array <int> > F;       // array of faces
+        if (M.NDim==3)
+        {
+            if (thickness > 0.0) throw new Fatal("Domain::GenFromMesh: Thickness should not be used in a 3D mesh");
+            Array<Mesh::Vertex*> const & verts = M.Cells[i]->V;
+            size_t nverts = verts.Size();
+
+            // verts
+            V.Resize(nverts);
+            for (size_t j=0; j<nverts; ++j)
+            {
+                V[j] = verts[j]->C;
+            }
+
+            // edges
+            size_t nedges = Mesh::NVertsToNEdges3D[nverts];
+            E.Resize(nedges);
+            for (size_t j=0; j<nedges; ++j)
+            {
+                E[j].Push (Mesh::NVertsToEdge3D[nverts][j][0]);
+                E[j].Push (Mesh::NVertsToEdge3D[nverts][j][1]);
+            }
+
+            size_t nfaces = Mesh::NVertsToNFaces3D[nverts];
+            size_t nvperf = Mesh::NVertsToNVertsPerFace3D[nverts];
+            F.Resize(nfaces);
+            for (size_t j=0; j<nfaces; ++j)
+            {
+                for (size_t k=0; k<nvperf; ++k)
+                {
+                    // TODO: check if face is planar or not
+                    F[j].Push(Mesh::NVertsToFace3D[nverts][j][k]);
+                }
+            }
+        }
+        else if (M.NDim==2)
+        {
+            if (thickness <= 0.0) throw new Fatal("Domain::GenFromMesh: Thickness should be positive in a 2D mesh");
+            Array<Mesh::Vertex*> const & verts = M.Cells[i]->V;
+            size_t nverts = verts.Size();
+            V.Resize(2*nverts);
+            for (size_t j=0; j<nverts; ++j)
+            {
+                V[j] = verts[j]->C;
+                V[j+nverts] = verts[j]->C + Vec3_t(0.0,0.0,thickness);
+            }
+            size_t nedges = 3*nverts;
+            E.Resize(nedges);
+            for (size_t j=0; j<nverts; ++j)
+            {
+                E[j].Push (Mesh::NVertsToEdge2D[nverts][j][0]);
+                E[j].Push (Mesh::NVertsToEdge2D[nverts][j][1]);
+                E[j+nverts].Push (Mesh::NVertsToEdge2D[nverts][j][0]+nverts);
+                E[j+nverts].Push (Mesh::NVertsToEdge2D[nverts][j][1]+nverts);
+                E[j+2*nverts].Push(j);
+                E[j+2*nverts].Push(j+nverts);
+            }
+            size_t nfaces = nverts+2;
+            F.Resize(nfaces);
+            for (size_t j=0; j<nverts; ++j)
+            {
+                F[j].Push (Mesh::NVertsToEdge2D[nverts][j][0]);
+                F[j].Push (Mesh::NVertsToEdge2D[nverts][j][1]);
+                F[j].Push (Mesh::NVertsToEdge2D[nverts][j][1]+nverts);
+                F[j].Push (Mesh::NVertsToEdge2D[nverts][j][0]+nverts);
+                F[nverts].Push(nverts-1-j);
+                F[nverts+1].Push(j+nverts);
+            }
+        }
+
+        double vol; // volume of the polyhedron
+        Vec3_t CM;  // Center of mass of the polyhedron
+        Mat3_t It;  // Inertia tensor of the polyhedron
+        DEM::PolyhedraMP(V,F,vol,CM,It);
+        DEM::Erosion(V,E,F,R);
+
+        // add particle
+        Particles.Push (new DEM::Particle(M.Cells[i]->Tag, V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+        Particles[Particles.Size()-1]->Index = Particles.Size()-1;
+        if (!MC)
+        {
+            Particles[Particles.Size()-1]->x       = CM;
+            Particles[Particles.Size()-1]->Props.V = vol;
+            Particles[Particles.Size()-1]->Props.m = vol*rho;
+            Vec3_t I;
+            Quaternion_t Q;
+            Vec3_t xp,yp,zp;
+            Eig(It,I,xp,yp,zp);
+            CheckDestroGiro(xp,yp,zp);
+            I *= rho;
+            Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+            Q(1) = (yp(2)-zp(1))/(4*Q(0));
+            Q(2) = (zp(0)-xp(2))/(4*Q(0));
+            Q(3) = (xp(1)-yp(0))/(4*Q(0));
+            Q = Q/norm(Q);
+            Particles[Particles.Size()-1]->I     = I;
+            Particles[Particles.Size()-1]->Q     = Q;
+            double Dmax = DEM::Distance(CM,V[0])+R;
+            for (size_t i=1; i<V.Size(); ++i)
+            {
+                if (DEM::Distance(CM,V[i])+R > Dmax) Dmax = DEM::Distance(CM,V[i])+R;
+            }
+            Particles[Particles.Size()-1]->Ekin = 0.0;
+            Particles[Particles.Size()-1]->Erot = 0.0;
+            Particles[Particles.Size()-1]->Dmax  = Dmax;
+            Particles[Particles.Size()-1]->PropsReady = true;
+        }
+    }
+
+    Array<Array <int> > Neigh(Particles.Size()-IIndex);
+    Array<Array <int> > FNeigh(Particles.Size()-IIndex);
+    if(Cohesion)
+    {
+        M.FindNeigh();
+        //std::cout << M;
+        for (size_t i=0; i<M.Cells.Size(); ++i) 
+        {
+            for (Mesh::Neighs_t::const_iterator p=M.Cells[i]->Neighs.begin(); p!=M.Cells[i]->Neighs.end(); ++p)
+            {
+                Neigh[i].Push(p->second.second->ID);
+                FNeigh[i].Push(p->second.first);
+            }           
+        }
+        for (size_t i=0; i<Neigh.Size(); ++i)
+        {
+            for (size_t j=0; j<Neigh[i].Size(); ++j)
+            {
+                size_t index = Neigh[Neigh[i][j]].Find(i);
+                if ((size_t)Neigh[i][j]>i) BInteractons.Push(new DEM::BInteracton(Particles[i+IIndex],Particles[Neigh[i][j]+IIndex],FNeigh[i][j],FNeigh[Neigh[i][j]][index]));
+            }
+        }
+        
+    }
+
+    // info
+    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
+}
+
+inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode, Vec3_t nv)
+{
+    Array<Vec3_t> V(VC.p);
+    Array<Array <int> > E;
+    Array<int> Eaux(2);
+    for(int i=0;i<VC.p;i++) 
+    {
+        V[i] = Vec3_t(0.5*VC.pts[3*i]*nv(0),0.5*VC.pts[3*i+1]*nv(1),0.5*VC.pts[3*i+2]*nv(2));
+        for(int j=0;j<VC.nu[i];j++) 
+        {
+            int k=VC.ed[i][j];
+            if (VC.ed[i][j]<i) 
+            {
+                Eaux[0] = i;
+                Eaux[1] = k;
+                E.Push(Eaux);
+            }
+        }
+    }
+    Array<Array <int> > F;
+    Array<int> Faux;
+    for(int i=0;i<VC.p;i++) 
+    {
+        for(int j=0;j<VC.nu[i];j++) 
+        {
+            int k=VC.ed[i][j];
+            if (k>=0) 
+            {
+                Faux.Push(i);
+                VC.ed[i][j]=-1-k;
+                int l=VC.cycle_up(VC.ed[i][VC.nu[i]+j],k);
+                do 
+                {
+                    Faux.Push(k);
+                    int m=VC.ed[k][l];
+                    VC.ed[k][l]=-1-m;
+                    l=VC.cycle_up(VC.ed[k][VC.nu[k]+l],m);
+                    k=m;
+                } while (k!=i);
+                Array<int> Faux2(Faux.Size());
+                for (size_t l = 0; l < Faux.Size();l++)
+                {
+                    Faux2[l] = Faux[Faux.Size()-1-l];
+                }
+
+                F.Push(Faux2);
+                Faux.Clear();
+                Faux2.Clear();
+            }
+        }
+    }
+    VC.reset_edges();
+    double vol; // volume of the polyhedron
+    Vec3_t CM;  // Center of mass of the polyhedron
+    Mat3_t It;  // Inertia tensor of the polyhedron
+    DEM::PolyhedraMP(V,F,vol,CM,It);
+    if (Erode) DEM::Erosion(V,E,F,R);
+    // add particle
+    Particles.Push (new DEM::Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    Particles[Particles.Size()-1]->x       = CM;
+    Particles[Particles.Size()-1]->Props.V = vol;
+    Particles[Particles.Size()-1]->Props.m = vol*rho;
+    Vec3_t I;
+    Quaternion_t Q;
+    Vec3_t xp,yp,zp;
+    Eig(It,I,xp,yp,zp);
+    CheckDestroGiro(xp,yp,zp);
+    I *= rho;
+    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+    Q(1) = (yp(2)-zp(1))/(4*Q(0));
+    Q(2) = (zp(0)-xp(2))/(4*Q(0));
+    Q(3) = (xp(1)-yp(0))/(4*Q(0));
+    Q = Q/norm(Q);
+    Particles[Particles.Size()-1]->I     = I;
+    Particles[Particles.Size()-1]->Q     = Q;
+    double Dmax = DEM::Distance(CM,V[0])+R;
+    for (size_t i=1; i<V.Size(); ++i)
+    {
+        if (DEM::Distance(CM,V[i])+R > Dmax) Dmax = DEM::Distance(CM,V[i])+R;
+    }
+    Particles[Particles.Size()-1]->Ekin = 0.0;
+    Particles[Particles.Size()-1]->Erot = 0.0;
+    Particles[Particles.Size()-1]->Dmax  = Dmax;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index = Particles.Size()-1;
+}
+
+inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho
+                                 , bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t qin)
+{
+    // info
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Adding Voronoi particles packing --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+
+    srand(Randomseed);
+    //const double x_min=-(nx*Lx/2.0), x_max=nx*Lx/2.0;
+    //const double y_min=-(ny*Ly/2.0), y_max=ny*Ly/2.0;
+    //const double z_min=-(nz*Lz/2.0), z_max=nz*Lz/2.0;
+    const double x_min=-(nx/2.0), x_max=nx/2.0;
+    const double y_min=-(ny/2.0), y_max=ny/2.0;
+    const double z_min=-(nz/2.0), z_max=nz/2.0;
+    container con(x_min,x_max,y_min,y_max,z_min,z_max,nx,ny,nz, Periodic,Periodic,Periodic,8);
+    int n = 0;
+    for (size_t i=0; i<nx; i++)
+    {
+        for (size_t j=0; j<ny; j++)
+        {
+            for (size_t k=0; k<nz; k++)
+            {
+                double x = x_min+(i+0.5*qin(0)+(1-qin(0))*double(rand())/RAND_MAX)*(x_max-x_min)/nx;
+                double y = y_min+(j+0.5*qin(1)+(1-qin(1))*double(rand())/RAND_MAX)*(y_max-y_min)/ny;
+                double z = z_min+(k+0.5*qin(2)+(1-qin(2))*double(rand())/RAND_MAX)*(z_max-z_min)/nz;
+                con.put (n,x,y,z);
+                n++;
+            }
+        }
+    }
+
+    fpoint x,y,z,px,py,pz;
+    container *cp = & con;
+    voropp_loop l1(cp);
+    int q,s;
+    voronoicell_neighbor c;
+    s=l1.init(con.ax,con.bx,con.ay,con.by,con.az,con.bz,px,py,pz);
+
+    Array<Array <size_t> > ListBpairs(n);
+    size_t IIndex = Particles.Size();
+    do 
+    {
+        for(q=0;q<con.co[s];q++) 
+        {
+            x=con.p[s][con.sz*q]+px;y=con.p[s][con.sz*q+1]+py;z=con.p[s][con.sz*q+2]+pz;
+            if(x>con.ax&&x<con.bx&&y>con.ay&&y<con.by&&z>con.az&&z<con.bz) 
+            {
+                if(con.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) 
+                {
+
+                    if (rand()<fraction*RAND_MAX)
+                    {
+                        AddVoroCell(Tag,c,R,rho,true,Vec3_t(Lx/nx,Ly/ny,Lz/nz));
+                        Vec3_t trans(Lx*x/nx,Ly*y/ny,Lz*z/nz);
+                        DEM::Particle * P = Particles[Particles.Size()-1];
+                        P->Translate(trans);
+                    }
+                }
+            }
+        }
+    } while((s=l1.inc(px,py,pz))!=-1);
+
+    // info
+    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
+
+
+    if (Cohesion)
+    {
+        //if (fraction<1.0) throw new Fatal("Domain::AddVoroPack: With the Cohesion all particles should be considered, plese change the fraction to 1.0");
+
+        // define some tolerance for comparissions
+        double tol1 = 1.0e-8;
+        double tol2 = 1.0e-3;
+        for (size_t i=IIndex;i<Particles.Size()-1;i++)
+        {
+            DEM::Particle * P1 = Particles[i];
+            for (size_t j=i+1;j<Particles.Size();j++)
+            {
+                DEM::Particle * P2 = Particles[j];
+                if (DEM::Distance(P1->x,P2->x)<P1->Dmax+P2->Dmax)
+                {
+                    for (size_t k=0;k<P1->Faces.Size();k++)
+                    {
+                        DEM::Face * F1 = P1->Faces[k];
+                        Vec3_t n1,c1;
+                        F1->Normal  (n1);
+                        F1->Centroid(c1);
+                        bool found = false;
+                        for (size_t l=0;l<P2->Faces.Size();l++)
+                        {
+                            DEM::Face * F2 = P2->Faces[l];
+                            Vec3_t n2,c2;
+                            F2->Normal  (n2);
+                            F2->Centroid(c2);
+                            Vec3_t n = 0.5*(n1-n2);
+                            n/=norm(n);
+                            if ((fabs(dot(n1,n2)+1.0)<tol1)
+                               &&(fabs(DEM::Distance(c1,*F2)-2*R)<tol2)
+                               &&(fabs(DEM::Distance(c2,*F1)-2*R)<tol2))
+                            {
+                                BInteractons.Push(new DEM::BInteracton(P1,P2,k,l));
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) break;
+                    }
+                }
+            }
+        }
+    }
+}
+
 //Particle access methods
 inline DEM::Particle * Domain::GetParticle (int Tag, bool Check)
 {
@@ -1661,15 +2104,6 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     // initialize particles
     Initialize (dt);
 
-    //Connect particles and lattice
-    ImprintLattice();
-
-    // build the map of possible contacts (for the Halo)
-    ResetContacts();
-    
-    // set the displacement of the particles to zero (for the Halo)
-    ResetDisplacements();
-    
     // Creates pair of cells to speed up body force calculation
     for (size_t i=0;i<Lat[0].Cells.Size();i++)
     {
@@ -1683,6 +2117,8 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             }
         }
     }
+
+    
 #ifdef USE_THREAD
     LBM::MtData MTD[Nproc];
     for (size_t i=0;i<Nproc;i++)
@@ -1703,10 +2139,88 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             ListPosPairs.Push(make_pair(i,j));
         }
     }
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_create(&thrs[i], NULL, GlobalResetDisplacement, &MTD[i]);
+    }
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_join(thrs[i], NULL);
+    }
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
+    }
+    ParCellPairs.Resize(0);
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_join(thrs[i], NULL);
+        for (size_t j=0;j<MTD[i].LC.Size();j++)
+        {
+            size_t n = MTD[i].LC[j].first;
+            size_t m = MTD[i].LC[j].second;
+            Listofpairs.insert(make_pair(Particles[n],Particles[m]));
+            if (Particles[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
+            {
+                CInteractons.Push (new DEM::CInteractonSphere(Particles[n],Particles[m]));
+            }
+            else
+            {
+                CInteractons.Push (new DEM::CInteracton(Particles[n],Particles[m]));
+            }
+        }
+
+        for (size_t j=0;j<MTD[i].LPC.Size();j++)
+        {
+            ParCellPairs.Push(MTD[i].LPC[j]);
+        }
+    }
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_create(&thrs[i], NULL, GlobalResetContacts2, &MTD[i]);
+    }
+    Interactons.Resize(0);
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_join(thrs[i], NULL);
+        for (size_t j=0;j<MTD[i].LCI.Size();j++)
+        {
+            Interactons.Push(CInteractons[MTD[i].LCI[j]]);
+        }
+        for (size_t j=0;j<MTD[i].LCB.Size();j++)
+        {
+            Interactons.Push(BInteractons[MTD[i].LCB[j]]);
+        }
+    }
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_create(&thrs[i], NULL, GlobalImprint, &MTD[i]);
+    }
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_join(thrs[i], NULL);
+    }
+#else
+
+    //Connect particles and lattice
+    ImprintLattice();
+
+    // build the map of possible contacts (for the Halo)
+    ResetContacts();
+    
+    // set the displacement of the particles to zero (for the Halo)
+    ResetDisplacements();
+
 #endif
+    
+    
+    
+    
+    
     double tout = Time;
     while (Time < Tf)
     {
+        //std::cout << Interactons.Size() << " " << CInteractons.Size() << " " << BInteractons.Size() << " " << ParCellPairs.Size() << " " << Particles.Size() << std::endl;
         if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
         if (Time >= tout)
         {
@@ -1816,6 +2330,10 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
                 for (size_t j=0;j<MTD[i].LCI.Size();j++)
                 {
                     Interactons.Push(CInteractons[MTD[i].LCI[j]]);
+                }
+                for (size_t j=0;j<MTD[i].LCB.Size();j++)
+                {
+                    Interactons.Push(BInteractons[MTD[i].LCB[j]]);
                 }
             }
         }

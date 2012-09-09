@@ -737,8 +737,7 @@ inline bool Particle::IsInsideFaceOnly(Vec3_t & V)
             M(2,1) = (Faces[i]->Edges[0]->dL)(2);
             M(2,2) = (Faces[i]->Edges[1]->dL)(2);
             Vec3_t X;
-            try { Sol(M,B,X); }
-            catch (Fatal * fatal) { continue; }
+            if (!SolAlt(M,B,X)) continue;
             if (X(0)>1.0||X(0)<0.0) continue;
             B = *Faces[i]->Edges[0]->X0 + Faces[i]->Edges[0]->dL*X(1)+Faces[i]->Edges[1]->dL*X(2);
             Vec3_t nor;

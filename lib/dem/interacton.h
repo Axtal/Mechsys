@@ -282,6 +282,8 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
                 std::cout << "Maximun overlap between " << P1->Index << " and " << P2->Index <<  std::endl; 
                 std::cout << "Particle's tags         " << P1->Tag   << " and " << P2->Tag   <<  std::endl; 
                 std::cout << "Memory address          " << P1        << " and " << P2        <<   " " << (P1==P2) << std::endl; 
+                std::cout << "Position particle 1     " << P1->x     << std::endl;
+                std::cout << "Position particle 2     " << P2->x     << std::endl;
                 throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
             }
             // Count a contact
