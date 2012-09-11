@@ -167,6 +167,7 @@ int main(int argc, char **argv) try
     inis.Set(-2, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
 
     // domain
+    FEM::Domain::WithInfo = false;
     FEM::Domain dom(mesh, prps, mdls, inis);
 
     // solver
@@ -185,13 +186,22 @@ int main(int argc, char **argv) try
     bcs.Set( -30, "ux uy uz", 0.0,0.0,0.0);
     dom.SetBCs (bcs);
     //cout << dom << endl;
-    dom.PrintBCs(std::cout);
+    //dom.PrintBCs(std::cout);
+    sol.WithInfo = false;
     sol.Solve ();
+
+
+    Mat_t K;
+    dom.Eles[5]->CalcK(K);
+    for (size_t i=0; i<num_rows(K); ++i) std::cout << "c" << i << " ";
+    std::cout << "\n" << PrintMatrix(K, "%23.15e", NULL, 1e-15, false);
+
+
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
     //dom.PrintResults ("%11.6g");
-    dom.WriteVTU   ("fig_05_24");
+    //dom.WriteVTU   ("fig_05_24");
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
     
@@ -340,6 +350,7 @@ int main(int argc, char **argv) try
          7.995099154488386E-03, -1.997450490647943E-02,  4.571785645600748E-02, -1.461894224572280E-03,  2.062417534743544E-02, -4.287310248250484E-03);
 
 
+    /*
     Array<String> keys(6);
     keys = "sx", "sy", "sz", "sxy", "syz", "szx";
     for (size_t j=0; j<dom.Eles.Size(); ++j)
@@ -356,6 +367,7 @@ int main(int argc, char **argv) try
         }
         printf("\n");
     }
+    */
 
     // error tolerance
     SDPair nod_tol, ele_tol;

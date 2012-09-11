@@ -126,7 +126,7 @@ int main(int argc, char **argv) try
 
     // solver
     SDPair flags;
-    flags.Set("calcwork", 1.0);
+    flags.Set("calcwork nr", 1.0, 1.0);
     FEM::STDSolver sol(dom, flags);
     sol.WithInfo = true;
 

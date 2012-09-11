@@ -4,7 +4,7 @@ from msys_fig import *
 # input
 op = optparse.OptionParser()
 op.add_option('--tst',  '-t', dest='tst',  default='1', help='test number')
-op.add_option('--twos', '-w', dest='twos', default='1', help='two stages')
+op.add_option('--twos', '-w', dest='twos', default='0', help='two stages')
 opts, args = op.parse_args()
 two_stages = int(opts.twos)
 
@@ -12,7 +12,7 @@ if opts.tst=='0':
     # 8, 12, 14, 18
     P   = 18
     dat = read_table("owen_hinton_02_P%d.dat"%P)
-    plot(dat['r'],dat['st'],'r*')
+    plot(dat['r'],dat['st'],'r*',label="OH")
 
     if two_stages:
         rs1 = read_table("owen_hinton_02_stg1_P%d.res"%P)
@@ -21,9 +21,9 @@ if opts.tst=='0':
         plot (rs2['r'],rs2['st'],'g-',marker='o',lw=2)
     else:
         res = read_table("owen_hinton_02_stg1_P%d.res"%P)
-        plot (res['r'],res['st'],'b-',marker='o',lw=2)
+        plot (res['r'],res['st'],'b-',marker='o',lw=2,label="MechSys")
 
-    Grid()
+    Gll('r','st')
     show()
 
 elif opts.tst=='1':
@@ -42,7 +42,6 @@ elif opts.tst=='1':
     xlabel ('u')
     ylabel ('force')
     legend (loc='best')
-    Grid   ()
 
     subplot(1,2,2)
     if two_stages:
@@ -53,7 +52,6 @@ elif opts.tst=='1':
     xlabel ('u')
     ylabel ('P')
     legend (loc='best')
-    Grid   ()
     show   ()
 
 elif opts.tst=='2':

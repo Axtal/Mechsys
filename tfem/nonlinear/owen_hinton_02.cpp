@@ -46,6 +46,8 @@ const double TRUE = 1.0;
 const double DelP = 19.0;
 const size_t NInc = 19;
 
+const double nip = 9.0;
+
 struct OutDat
 {
     std::ofstream of;
@@ -102,7 +104,13 @@ void OutFun (FEM::Solver * Sol, void * Dat)
             ele.StateAtIPs (res);
             for (size_t j=0; j<ele.GE->NIP; ++j)
             {
-                if (fabs(ele.GE->IPs[j].s)<1.0e-5) // mid point
+                bool found = false;
+                if ((int)nip == 4) {
+                    found = fabs(ele.GE->IPs[j].s - (-sqrt(3.0/5.0)))<1.0e-5;
+                } else {
+                    found = fabs(ele.GE->IPs[j].s)<1.0e-5;
+                }
+                if (found) // mid point
                 {
                     // coordinates of IP
                     Vec_t X;
@@ -135,7 +143,7 @@ void OutFun (FEM::Solver * Sol, void * Dat)
 
 int main(int argc, char **argv) try
 {
-    bool two_stages = true;
+    bool two_stages = false;
     if (argc>1) two_stages = atoi(argv[1]);
 
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
@@ -154,12 +162,12 @@ plot(dat['x'],dat['y'],'ro',lw=3)\n");
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad8"), TRUE);
+    prps.Set(-1, "prob geom psa rho nip", PROB("Equilib"), GEOM("Quad8"), TRUE, 1.0, nip);
 
     // models
     Dict mdls;
     //mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 2.1e+4, 0.3, TRUE);
-    mdls.Set(-1, "name E nu VM sY psa", MODEL("ElastoPlastic"), 2.1e+4, 0.3, TRUE, 24.0, TRUE);
+    mdls.Set(-1, "name E nu VM sY psa rho", MODEL("ElastoPlastic"), 2.1e+4, 0.3, TRUE, 24.0, TRUE, 1.0);
 
     // initial values
     Dict inis;
@@ -187,8 +195,8 @@ plot(dat['x'],dat['y'],'ro',lw=3)\n");
     // stage # 2 -----------------------------------------------------------
     if (two_stages)
     {
-        dom.SaveState ("owen_hinton_02");
-        dom.LoadState ("owen_hinton_02");
+        //dom.SaveState ("owen_hinton_02");
+        //dom.LoadState ("owen_hinton_02");
         OutDat dat_stg2("owen_hinton_02_stg2");  dat_stg2.nstg = (two_stages ? 2 : 1);
         sol.OutDat = &dat_stg2;
         dom.SetBCs (bcs);
@@ -199,6 +207,7 @@ plot(dat['x'],dat['y'],'ro',lw=3)\n");
 
     // draw elements with IPs
     String ext("\
+from msys_fig import *\n\
 A = linspace(0.0,pi/2.0,200)\n\
 X = 100.0*cos(A)\n\
 Y = 100.0*sin(A)\n\
