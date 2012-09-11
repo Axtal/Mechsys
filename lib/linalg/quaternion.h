@@ -35,6 +35,7 @@ typedef blitz::TinyVector<double,4> Quaternion_t;
 
 inline void NormalizeRotation (double Theta, Vec3_t const & Axis, Quaternion_t & C)
 {
+    if (norm(Axis)<1.0e-12) throw new Fatal("Quaternion: the norm of the axis is too small, please chose a different one");
     Vec3_t A = Axis/norm(Axis);
     C(0)     = cos(Theta/2.0);
     C(1)     = A(0)*sin(Theta/2.0);
