@@ -374,7 +374,7 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     printf("\n%s--- Initializing LBM Domain --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     if (nu.Size()==0) throw new Fatal("LBM::Domain: Declare at leat one fluid please");
     if (Ndim(2) >1&&Method==D2Q9)  throw new Fatal("LBM::Domain: D2Q9 scheme does not allow for a third dimension, please set Ndim(2)=1 or change to D3Q15");
-    if (Ndim(2)==1&&Method==D3Q15) throw new Fatal("LBM::Domain: Ndim(2) is greater than 1. Either change the method to D2Q9 or increse the z-dimension");
+    if (Ndim(2)==1&&Method==D3Q15) throw new Fatal("LBM::Domain: Ndim(2) is 1. Either change the method to D2Q9 or increse the z-dimension");
     for (size_t i=0;i<nu.Size();i++)
     {
         Lat.Push(Lattice(Method,nu[i],Ndim,dx,Thedt));
@@ -515,11 +515,12 @@ inline void Domain::WriteXDMF(char const * FileKey)
                     Vec3_t C,N;
                     Pa->Faces[j]->Centroid(C);
                     Pa->Faces[j]->Normal(N);
-
-
                     Verts[n_verts++] = (float) C(0) + multiplier*Pa->Props.R*N(0);
                     Verts[n_verts++] = (float) C(1) + multiplier*Pa->Props.R*N(1);
                     Verts[n_verts++] = (float) C(2) + multiplier*Pa->Props.R*N(2);
+                    //Verts[n_verts++] = (float) C(0);
+                    //Verts[n_verts++] = (float) C(1);
+                    //Verts[n_verts++] = (float) C(2);
                     for (size_t k=0;k<Pa->FaceCon[j].Size();k++)
                     {
                         size_t nin = Pa->FaceCon[j][k];
@@ -1116,11 +1117,11 @@ void Domain::ImprintLattice (size_t n,size_t Np)
         {
             cell = Lat[j].Cells[ParCellPairs[i](0)];
             cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
-            if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
+            //if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
             //if (fabs(cell->Gamma-1.0)<1.0e-12)
-            {
-                continue;
-            }
+            //{
+                //continue;
+            //}
             Vec3_t B      = C - Pa->x;
             Vec3_t tmp;
             Rotation(Pa->w,Pa->Q,tmp);

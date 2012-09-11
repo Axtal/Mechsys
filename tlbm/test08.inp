@@ -1,0 +1,12 @@
+tetra     = ptype     Particle type
+1         = Render    Produce visualization files?       
+100       = nx        x dimension of lbm grid           
+100       = ny        y dimension of lbm grid             
+100       = nz        z dimension of lbm grid                
+0.01      = nu        viscosity of the fluid    
+1.0       = dx        grid size    
+1.0       = dt        time step    
+0.001     = Dp        fluid acceleration    
+31        = R         particle size   
+0.01      = w         angular velocity 
+40000.0   = Tf        time   

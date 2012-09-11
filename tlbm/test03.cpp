@@ -26,28 +26,61 @@
 
 struct UserData
 {
+    std::ofstream      oss_ss;       ///< file for particle data
+    Vec3_t                acc;
 };
 
-void Report (LBM::Domain & Dom, void * UD)
+void Report (LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
-    //std::cout << Dom.Particles[0]->X(0) << " " << Dom.Particles[0]->X(1) << " "
-              //<< Dom.Particles[1]->X(0) << " " << Dom.Particles[1]->X(1) << std::endl;
+    if (dom.idx_out==0)
+    {
+        String fs;
+        fs.Printf("%s_force.res",dom.FileKey.CStr());
+        dat.oss_ss.open(fs.CStr());
+        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << " x" << Util::_8s << " y" << Util::_8s << " z";
+        dat.oss_ss                          << Util::_8s << "vx" << Util::_8s << "vy" << Util::_8s << "vz";
+        dat.oss_ss                          << Util::_8s << "wx" << Util::_8s << "wy" << Util::_8s << "wz";
+        dat.oss_ss                          << Util::_8s << "fx" << Util::_8s << "fy" << Util::_8s << "fz \n";
+    }
+    if (!dom.Finished) 
+    {
+        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dom.Particles[0]->x(0) << Util::_8s << dom.Particles[0]->x(1) << Util::_8s << dom.Particles[0]->x(2);
+        dat.oss_ss <<                            Util::_8s << dom.Particles[0]->v(0) << Util::_8s << dom.Particles[0]->v(1) << Util::_8s << dom.Particles[0]->v(2);
+        dat.oss_ss <<                            Util::_8s << dom.Particles[0]->w(0) << Util::_8s << dom.Particles[0]->w(1) << Util::_8s << dom.Particles[0]->w(2);
+        dat.oss_ss <<                            Util::_8s << dom.Particles[0]->F(0) << Util::_8s << dom.Particles[0]->F(1) << Util::_8s << dom.Particles[0]->F(2) << std::endl;
+    }
+    else
+    {
+        dat.oss_ss.close();
+    }
 }
 
 
 int main(int argc, char **argv) try
 {
+    size_t Nproc = 1; 
     size_t nx = 100;
     size_t ny = 100;
+    size_t nz = 100;
     double nu = 0.01;
-    LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), /*dx*/1.0, /*dt*/1.0);
-    //Dom.AddDisk(0,Vec3_t(15.0,20.0,0.0),Vec3_t( 0.01,0.0,0.0),Vec3_t(0.0,0.0, 0.01),3.0,10.0,1.0);
-    //Dom.AddDisk(0,Vec3_t(85.0,20.0,0.0),Vec3_t(-0.01,0.01,0.0),Vec3_t(0.0,0.0,-0.01),3.0,10.0,1.0);
-    Dom.AddDisk(0,Vec3_t(15.0,50.0,0.0),Vec3_t( 0.01,0.0,0.0),Vec3_t(0.0,0.0, 0.01),3.0,10.0,1.0);
+    double Tf = 10000.0;
+    double Dp = 0.001;
+    if (argc>=2)
+    {
+        Nproc = atoi(argv[1]);
+        Tf    = atof(argv[2]);
+    }
+    LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), /*dx*/1.0, /*dt*/1.0);
     UserData dat;
     Dom.UserData = &dat;
-    double rho0 = 0.01;
+    dat.acc      = Vec3_t(Dp,0.0,0.0);
+    Dom.AddSphere(-1,Vec3_t(0.2*nx,0.5*ny,0.5*nz),0.1*nx,3.0);
+    Dom.Particles[0]->v = Vec3_t(0.02,0.0,0.0);
+    Dom.Particles[0]->w = Vec3_t(0.0,0.0,0.0);
+    UserData dat;
+    Dom.UserData = &dat;
+    double rho0 = 0.12;
     Vec3_t v0(0.0,0.0,0.0);
 
     //Initializing values
@@ -56,20 +89,9 @@ int main(int argc, char **argv) try
         Dom.Lat[0].Cells[i]->Initialize(rho0, v0);
     }
 
-     //Set solid boundaries
-    for (size_t i=0;i<nx;i++)
-    {
-        Dom.Lat[0].GetCell(iVec3_t(i,0   ,0))->IsSolid = true;
-        Dom.Lat[0].GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
-    }
-    for (size_t i=0;i<ny;i++)
-    {
-        Dom.Lat[0].GetCell(iVec3_t(0   ,i,0))->IsSolid = true;
-        Dom.Lat[0].GetCell(iVec3_t(nx-1,i,0))->IsSolid = true;
-    }
 
     //Solving
-    Dom.Solve(10000.0,200.0,NULL,Report,"test03");
+    Dom.Solve(Tf,0.01*Tf,NULL,Report,"test03",true,Nproc);
 }
 MECHSYS_CATCH
 

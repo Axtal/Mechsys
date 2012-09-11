@@ -72,7 +72,7 @@ void Report(LBM::Domain & dom, void * UD)
         String fs;
         fs.Printf("%s_force.res",dom.FileKey.CStr());
         dat.oss_ss.open(fs.CStr());
-        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "Fx" << Util::_8s << "V" << Util::_8s << "Rho \n";
+        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "Fx" << Util::_8s << "Fy" << Util::_8s << "Vx" << Util::_8s << "Rho \n";
     }
     if (!dom.Finished) 
     {
@@ -88,7 +88,7 @@ void Report(LBM::Domain & dom, void * UD)
             nc++;
         }
         Flux/=M;
-        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dom.Particles[0]->F(0) << Util::_8s << Flux(0) << Util::_8s << M/nc << std::endl;
+        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dom.Particles[0]->F(0) << Util::_8s << dom.Particles[0]->F(1) << Util::_8s << Flux(0) << Util::_8s << M/nc << std::endl;
     }
     else
     {
@@ -98,7 +98,16 @@ void Report(LBM::Domain & dom, void * UD)
 
 int main(int argc, char **argv) try
 {
+    if (argc<2) throw new Fatal("This program must be called with one argument: the name of the data input file without the '.inp' suffix.\nExample:\t %s filekey\n",argv[0]);
     size_t Nproc = 1; 
+    if (argc==3) Nproc=atoi(argv[2]);
+    String filekey  (argv[1]);
+    String filename (filekey+".inp");
+    if (!Util::FileExists(filename)) throw new Fatal("File <%s> not found",filename.CStr());
+    ifstream infile(filename.CStr());
+
+    String ptype;
+    bool   Render = true;
     size_t nx = 100;
     size_t ny = 50;
     size_t nz = 50;
@@ -107,44 +116,29 @@ int main(int argc, char **argv) try
     double dt = 1.0;
     double Dp = 0.1;
     double R  = 10.0;
+    double w  = 0.001;
     double Tf = 40000.0;
-    if (argc>=2)
     {
-        Nproc = atoi(argv[1]);
-        nx    = atoi(argv[2]);
-        //ny = nz = nx/2;
-        ny = nz = nx;
-        nu    = atof(argv[3]);
-        Dp    = atof(argv[4]);
-        R     = atof(argv[5]);
-        Tf    = atof(argv[6]);
+        infile >> ptype;        infile.ignore(200,'\n');
+        infile >> Render;       infile.ignore(200,'\n');
+        infile >> nx;           infile.ignore(200,'\n');
+        infile >> ny;           infile.ignore(200,'\n');
+        infile >> nz;           infile.ignore(200,'\n');
+        infile >> nu;           infile.ignore(200,'\n');
+        infile >> dx;           infile.ignore(200,'\n');
+        infile >> dt;           infile.ignore(200,'\n');
+        infile >> Dp;           infile.ignore(200,'\n');
+        infile >> R;            infile.ignore(200,'\n');
+        infile >> w;            infile.ignore(200,'\n');
+        infile >> Tf;           infile.ignore(200,'\n');
     }
-
+    
     
 
     LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
     UserData dat;
     Dom.UserData = &dat;
     dat.acc      = Vec3_t(Dp,0.0,0.0);
-
-    //for (size_t i=0;i<nx;i++)
-    //for (size_t j=0;j<ny;j++)
-    //{
-        //Dom.Lat[0].GetCell(iVec3_t(i,0   ,j))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(i,ny-1,j))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(i,j,ny-1))->IsSolid = true;
-    //}
-
-    //for (size_t i=0;i<ny;i++)
-    //for (size_t j=0;j<nz;j++)
-    //{
-        //dat.xmin.Push(Dom.Lat[0].GetCell(iVec3_t(0   ,i,j)));
-        //dat.xmax.Push(Dom.Lat[0].GetCell(iVec3_t(nx-1,i,j)));
-        //Dom.Lat[0].GetCell(iVec3_t(0   ,i,j))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(nx-1,i,j))->IsSolid = true;
-    //}
-
 
     for (int i=0;i<nx;i++)
     for (int j=0;j<ny;j++)
@@ -154,23 +148,24 @@ int main(int argc, char **argv) try
         Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(1.0,v0);
     }
 
-    //Setting boundary conditions
-    //for (size_t i=0;i<dat.xmin.Size();i++)
-    //{
-        //dat.xmin[i]->RhoBC = 1.0 + Dp;
-        //dat.xmax[i]->RhoBC = 1.0;
-        //dat.xmin[i]->Initialize(1.0+Dp,OrthoSys::O);
-        //dat.xmax[i]->Initialize(1.0,    OrthoSys::O);
-    //}
+    if       (ptype=="sphere")  Dom.AddSphere(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),R,3.0);
+    else if  (ptype=="tetra" )
+    { 
+        Dom.AddTetra(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*R,R,3.0,M_PI/4.0,&OrthoSys::e2);
+        Quaternion_t q;
+        NormalizeRotation(35.26*M_PI/180.0,OrthoSys::e1,q);
+        Dom.Particles[0]->Rotate(q,Dom.Particles[0]->x);
+    }
+    else if  (ptype=="cube"  )
+    {
+        Dom.AddCube(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*R,R,3.0,0.0,&OrthoSys::e1);
+    }
 
-    //Dom.AddSphere(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),R,3.0);
-    //Dom.AddTetra(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*R,R,3.0);
-    Dom.AddCube(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*R,R,3.0);
     Dom.Particles[0]->FixVeloc();
-    //Dom.Particles[0]->v = Vec3_t(vel,0.0,0.0);
+    Dom.Particles[0]->w = Vec3_t(0.0,0.0,w);
 
     //Solving
-    Dom.Solve(Tf,0.01*Tf,Setup,Report,"test08",true,Nproc);
+    Dom.Solve(Tf,0.01*Tf,Setup,Report,filekey.CStr(),Render,Nproc);
 }
 MECHSYS_CATCH
 
