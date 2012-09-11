@@ -83,7 +83,7 @@ inline void PolyhedraMP(Array<Vec3_t> & V, Array<Array <int> > & F, double & vol
 
 inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int> > & F, double R) // Mathematical morphology erosion
 {
-    if (V.Size()<=3) throw new Fatal("There are no enough vertices to work with");
+    if (V.Size()<=3) throw new Fatal("special_functions.h::Erosion There are no enough vertices to work with");
     Array<Face*> Faces;
     for (size_t i=0; i<F.Size(); i++)
     {
@@ -233,8 +233,8 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
             }
         }
     }
-    // Creating faces, in order to do this we assume that the number of eroded faces is lees or equal to the number 
-    // of original faces. If a vertex belongs to th eoriginal and eroded face is pushed.
+    // Creating faces, in order to do this we assume that the number of eroded faces is less or equal to the number 
+    // of original faces. If a vertex belongs to the original, an eroded face is pushed.
     Array<Array <int> > Ftemp;
     Array <int> Faux;
     for (size_t i = 0;i < F.Size();i++)
@@ -250,7 +250,7 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
         if(Faux.Size()!=0) Ftemp.Push(Faux);
     }
     
-    //Now the vertices are ordered to ensure the the normal vector points outwars
+    //Now the vertices are ordered to ensure the the normal vector point outwars
     for (size_t i=0;i<Ftemp.Size();i++)
     {
         Array<double> Angles(Ftemp[i].Size());
@@ -293,6 +293,101 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
         }
     }
     F = Ftemp;
+    for (size_t i=0; i<F.Size(); i++)
+    {
+        delete Faces[i];
+    }
+}
+
+inline void Dilation(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int> > & F, Array<Vec3_t> & Vresult, double R) // Mathematical morphology erosion
+{
+    if (F.Size()<=3) throw new Fatal("special_functions.h::Dilation There are no enough faces to work with");
+
+    //Detect the set of faces that a vertex belong to
+    Array<Array <size_t> > FaceSet(V.Size());
+    for (size_t i=0;i<V.Size();i++)
+    {
+        for (size_t j=0;j<F.Size();j++)
+        {
+            if (F[j].Has(i)) FaceSet[i].Push(j);
+        }
+    }
+
+    //Build new vertices, the number of vertices is exactly the same as the original set
+    Vresult.Resize(V.Size());
+    Array<Vec3_t> Normal(3);
+
+    Array<Face*> Faces;
+    for (size_t i=0; i<F.Size(); i++)
+    {
+        Array<Vec3_t*> verts(F[i].Size());
+        for (size_t j=0; j<F[i].Size(); ++j) verts[j] = (&V[F[i][j]]);
+        Faces.Push (new Face(verts));
+    }
+    for (size_t n=0;n<V.Size();n++)
+    {
+        size_t i = FaceSet[n][0];
+        size_t j = FaceSet[n][1];
+        size_t k = FaceSet[n][2];
+        Normal[0] = cross(Faces[i]->Edges[0]->dL,Faces[i]->Edges[1]->dL);
+        Normal[0] = Normal[0]/norm(Normal[0]);
+        Normal[0] = *Faces[i]->Edges[0]->X0 + R*Normal[0];
+        Normal[1] = cross(Faces[j]->Edges[0]->dL,Faces[j]->Edges[1]->dL);
+        Normal[1] = Normal[1]/norm(Normal[1]);
+        Normal[1] = *Faces[j]->Edges[0]->X0 + R*Normal[1];
+        Normal[2] = cross(Faces[k]->Edges[0]->dL,Faces[k]->Edges[1]->dL);
+        Normal[2] = Normal[2]/norm(Normal[2]);
+        Normal[2] = *Faces[k]->Edges[0]->X0 + R*Normal[2];
+        Mat_t M(9,9);
+        Vec_t X(9),B(9);
+        M(0,0) = Faces[i]->Edges[0]->dL(0);
+        M(0,1) = Faces[i]->Edges[1]->dL(0);
+        M(0,6) = -1;
+        M(1,0) = Faces[i]->Edges[0]->dL(1);
+        M(1,1) = Faces[i]->Edges[1]->dL(1);
+        M(1,7) = -1;
+        M(2,0) = Faces[i]->Edges[0]->dL(2);
+        M(2,1) = Faces[i]->Edges[1]->dL(2);
+        M(2,8) = -1;
+        M(3,2) = Faces[j]->Edges[0]->dL(0);
+        M(3,3) = Faces[j]->Edges[1]->dL(0);
+        M(3,6) = -1;
+        M(4,2) = Faces[j]->Edges[0]->dL(1);
+        M(4,3) = Faces[j]->Edges[1]->dL(1);
+        M(4,7) = -1;
+        M(5,2) = Faces[j]->Edges[0]->dL(2);
+        M(5,3) = Faces[j]->Edges[1]->dL(2);
+        M(5,8) = -1;
+        M(6,4) = Faces[k]->Edges[0]->dL(0);
+        M(6,5) = Faces[k]->Edges[1]->dL(0);
+        M(6,6) = -1;
+        M(7,4) = Faces[k]->Edges[0]->dL(1);
+        M(7,5) = Faces[k]->Edges[1]->dL(1);
+        M(7,7) = -1;
+        M(8,4) = Faces[k]->Edges[0]->dL(2);
+        M(8,5) = Faces[k]->Edges[1]->dL(2);
+        M(8,8) = -1;
+        B(0) = -Normal[0](0);
+        B(1) = -Normal[0](1);
+        B(2) = -Normal[0](2);
+        B(3) = -Normal[1](0);
+        B(4) = -Normal[1](1);
+        B(5) = -Normal[1](2);
+        B(6) = -Normal[2](0);
+        B(7) = -Normal[2](1);
+        B(8) = -Normal[2](2);
+        Sol(M,B,X);
+        Vec3_t Inter;
+        Inter(0) = X(6);
+        Inter(1) = X(7);
+        Inter(2) = X(8);
+        Vresult[n] = Inter;
+        //std::cout << Inter << std::endl;
+    }
+    for (size_t i=0; i<F.Size(); i++)
+    {
+        delete Faces[i];
+    }
 }
 
 inline double SphereCube (Vec3_t & Xs, Vec3_t & Xc, double R, double dx) // Calculates the volume of intersection between a Cube and a Sphere

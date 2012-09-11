@@ -484,20 +484,42 @@ inline void Domain::WriteXDMF(char const * FileKey)
             {
                 DEM::Particle * Pa = Particles[i];
                 size_t n_refv = n_verts/3;
+                Array<Vec3_t> Vtemp(Pa->Verts.Size());
+                Array<Vec3_t> Vres (Pa->Verts.Size());
                 for (size_t j=0;j<Pa->Verts.Size();j++)
                 {
-                    Verts[n_verts++] = (float) (*Pa->Verts[j])(0);
-                    Verts[n_verts++] = (float) (*Pa->Verts[j])(1);
-                    Verts[n_verts++] = (float) (*Pa->Verts[j])(2);
+                    Vtemp[j] = *Pa->Verts[j];
+                    Vres [j] = *Pa->Verts[j];
+                }
+                double multiplier;
+
+                if (Pa->Faces.Size()>=4)
+                {
+                    DEM::Dilation(Vtemp,Pa->EdgeCon,Pa->FaceCon,Vres,Pa->Props.R);
+                    multiplier = 1.0;
+                }
+                else multiplier = 0.0;
+
+                for (size_t j=0;j<Pa->Verts.Size();j++)
+                {
+                    //Verts[n_verts++] = (float) (*Pa->Verts[j])(0);
+                    //Verts[n_verts++] = (float) (*Pa->Verts[j])(1);
+                    //Verts[n_verts++] = (float) (*Pa->Verts[j])(2);
+                    Verts[n_verts++] = (float) Vres[j](0);
+                    Verts[n_verts++] = (float) Vres[j](1);
+                    Verts[n_verts++] = (float) Vres[j](2);
                 }
                 size_t n_reff = n_verts/3;
                 for (size_t j=0;j<Pa->FaceCon.Size();j++)
                 {
-                    Vec3_t C;
+                    Vec3_t C,N;
                     Pa->Faces[j]->Centroid(C);
-                    Verts[n_verts++] = (float) C(0);
-                    Verts[n_verts++] = (float) C(1);
-                    Verts[n_verts++] = (float) C(2);
+                    Pa->Faces[j]->Normal(N);
+
+
+                    Verts[n_verts++] = (float) C(0) + multiplier*Pa->Props.R*N(0);
+                    Verts[n_verts++] = (float) C(1) + multiplier*Pa->Props.R*N(1);
+                    Verts[n_verts++] = (float) C(2) + multiplier*Pa->Props.R*N(2);
                     for (size_t k=0;k<Pa->FaceCon[j].Size();k++)
                     {
                         size_t nin = Pa->FaceCon[j][k];
