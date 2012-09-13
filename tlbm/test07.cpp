@@ -130,7 +130,7 @@ int main(int argc, char **argv) try
     //Dom.AddSphere(-3,Vec3_t(0.43*nx*dx,0.65*ny*dx,0.42*nz*dx),0.1*ny,rho    );
     //Dom.AddSphere(-4,Vec3_t(0.36*nx*dx,0.85*ny*dx,0.63*nz*dx),0.1*ny,0.3*rho);
     //Dom.AddSphere(-5,Vec3_t(0.70*nx*dx,0.65*ny*dx,0.40*nz*dx),0.1*ny,0.6*rho);
-    Dom.GenBox(-6,105,105,105,2,1.1);
+    Dom.GenBox(-6,1.05*nx,1.05*ny,1.05*nz,2,1.1,rho);
     Dom.Center(Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx));
     Dom.GetParticle( -6)->FixVeloc();
     Dom.GetParticle( -7)->FixVeloc();
@@ -139,14 +139,14 @@ int main(int argc, char **argv) try
     Dom.GetParticle(-10)->FixVeloc();
     Dom.GetParticle(-11)->FixVeloc();
 
-    Dom.AddTetra(-1,Vec3_t(0.63*nx*dx,0.8*ny*dx,0.63*nz*dx),0.01*ny,0.4*ny,rho);
-    Dom.AddTetra(-2,Vec3_t(0.38*nx*dx,0.8*ny*dx,0.38*nz*dx),0.01*ny,0.4*ny,rho);
+    Dom.AddTetra(-1,Vec3_t(0.63*nx*dx,0.8*ny*dx,0.63*nz*dx),0.01*ny,0.4*ny,    rho);
+    Dom.AddTetra(-2,Vec3_t(0.38*nx*dx,0.8*ny*dx,0.38*nz*dx),0.01*ny,0.4*ny,0.3*rho);
     
     for (size_t i=0;i<Dom.Particles.Size();i++)
     {
         Dom.Particles[i]->Props.Kn = 1.0*dat.Kn;
         Dom.Particles[i]->Props.Kt = 0.5*dat.Kn;
-        Dom.Particles[i]->Props.Gn = 0.016;
+        Dom.Particles[i]->Props.Gn = 0.16;
     }
 
     //Solving

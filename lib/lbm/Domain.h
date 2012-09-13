@@ -27,11 +27,8 @@
 #include <utility>
 #include <set>
 
-// Voro++
-#include "src/voro++.cc"
-
 // MechSys
-#include <mechsys/dem/interacton.h>
+#include <mechsys/dem/domain.h>
 #include <mechsys/lbm/Lattice.h>
 #include <mechsys/mesh/mesh.h>
 #include <mechsys/util/util.h>
@@ -45,6 +42,13 @@ using std::make_pair;
 
 namespace LBM
 {
+
+struct ParticleCellPair
+{
+    size_t ICell;         ///< Index of the cell
+    size_t IPar;          ///< Index of the particle
+    Array<size_t> IGeo;   ///< Array of index of the geometric feature
+};
 
 class Domain
 {
@@ -77,7 +81,7 @@ public:
     void AddCube       (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void AddTetra      (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
     void AddPlane      (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL);                     ///< Add a cube at position X with spheroradius R, side of length L and density rho
-    void GenBox        (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, bool Cohesion=false);                                    ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
+    void GenBox        (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, double rho, bool Cohesion=false);                        ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenFromMesh   (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);                           ///< Generate particles from a FEM mesh generator
     void AddVoroCell   (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode, Vec3_t nv = iVec3_t(1.0,1.0,1.0));                       ///< Add a single voronoi cell, it should be built before tough
     void AddVoroPack   (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
@@ -116,7 +120,7 @@ public:
     Array <DEM::Interacton *>                   CInteractons;         ///< Array of valid interactons
     Array <DEM::BInteracton*>                   BInteractons;         ///< Cohesion interactons
     Array <iVec3_t>                                CellPairs;         ///< Pairs of cells
-    Array <iVec3_t>                             ParCellPairs;         ///< Pairs of cells and particles
+    Array <ParticleCellPair>                    ParCellPairs;         ///< Pairs of cells and particles
     set<pair<DEM::Particle *, DEM::Particle *> > Listofpairs;         ///< List of pair of particles associated per interacton for memory optimization
     double                                              Time;         ///< Time of the simulation
     double                                                dt;         ///< Timestep
@@ -137,8 +141,8 @@ struct MtData
     double                        dt; ///< Time step
     Array<pair<size_t,size_t> >   LC; ///< A temporal list of new contacts
     Array<size_t>                LCI; ///< A temporal array of posible Cinteractions
-    Array<iVec3_t>               LPC; ///< A temporal array of possible particle cell contacts
     Array<size_t>                LCB; ///< A temporal array of posible Binteractions
+    Array<ParticleCellPair>      LPC; ///< A temporal array of possible particle cell contacts
 };
 
 void * GlobalIni(void * Data)
@@ -313,31 +317,51 @@ void * GlobalResetContacts1 (void * Data)
             for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l<=std::min(double(dat.Dom->Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l++)
             {
                 Cell  * cell = dat.Dom->Lat[0].GetCell(iVec3_t(n,m,l));
-                double x     = dat.Dom->Lat[0].dx*cell->Index(0);
-                double y     = dat.Dom->Lat[0].dx*cell->Index(1);
-                double z     = dat.Dom->Lat[0].dx*cell->Index(2);
+                double x     = dat.Dom->Lat[0].dx*(cell->Index(0));
+                double y     = dat.Dom->Lat[0].dx*(cell->Index(1));
+                double z     = dat.Dom->Lat[0].dx*(cell->Index(2));
                 Vec3_t  C(x,y,z);
+                ParticleCellPair NewPCP;
+                NewPCP.IPar = i;
+                NewPCP.ICell= cell->ID;
+                bool valid = false;
                 if (Pa->Faces.Size()>0)
                 {
                     for (size_t j=0;j<Pa->Faces.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*dat.Dom->Alpha+Pa->Props.R||Pa->IsInsideFaceOnly(C)) dat.LPC.Push(iVec3_t(cell->ID,i,j));
+                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*dat.Dom->Alpha+Pa->Props.R)
+                        {
+                            NewPCP.IGeo.Push(j);
+                            valid = true;
+                        }
                     }
                 }
                 else if (Pa->Edges.Size()>0)
                 {
                     for (size_t j=0;j<Pa->Edges.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Edges[j])<2.0*dat.Dom->Alpha+Pa->Props.R||Pa->IsInsideFaceOnly(C)) dat.LPC.Push(iVec3_t(cell->ID,i,j));
+                        if (DEM::Distance(C,*Pa->Edges[j])<2.0*dat.Dom->Alpha+Pa->Props.R) 
+                        {
+                            NewPCP.IGeo.Push(j);
+                            valid = true;
+                        }
+                           
                     }
                 }
                 else if (Pa->Verts.Size()>0)
                 {
                     for (size_t j=0;j<Pa->Verts.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Verts[j])<2.0*dat.Dom->Alpha+Pa->Props.R||Pa->IsInsideFaceOnly(C)) dat.LPC.Push(iVec3_t(cell->ID,i,j));
+                        if (DEM::Distance(C,*Pa->Verts[j])<2.0*dat.Dom->Alpha+Pa->Props.R)
+                        {
+                            NewPCP.IGeo.Push(j);
+                            valid = true;
+                        }
                     }
                 }
+                if (Pa->IsInsideFaceOnly(C)) valid = true;
+
+                if (valid) dat.LPC.Push(NewPCP);
             }
         }
     }
@@ -945,7 +969,7 @@ void Domain::Collide (size_t n, size_t Np)
             Cell * c = Lat[j].Cells[i];
             double rho = c->Rho;
             if (c->IsSolid||rho<1.0e-12) continue;
-            //if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
+            if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
             //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
             double Tau = Lat[j].Tau;
             Vec3_t DV  = Vmix + c->BForce*dt/rho;
@@ -1084,29 +1108,54 @@ void Domain::ImprintLattice (size_t n,size_t Np)
 
     for (size_t i = In;i<Fn;i++)
     {
-        DEM::Particle  * Pa   = Particles[ParCellPairs[i](1)];
-        Cell           * cell = Lat[0].Cells[ParCellPairs[i](0)];
-        double x              = Lat[0].dx*cell->Index(0);
-        double y              = Lat[0].dx*cell->Index(1);
-        double z              = Lat[0].dx*cell->Index(2);
+        DEM::Particle  * Pa   = Particles[ParCellPairs[i].IPar];
+        Cell           * cell = Lat[0].Cells[ParCellPairs[i].ICell];
+        double x              = Lat[0].dx*(cell->Index(0));
+        double y              = Lat[0].dx*(cell->Index(1));
+        double z              = Lat[0].dx*(cell->Index(2));
         Vec3_t  C(x,y,z);
-        Vec3_t  Xtemp, Xs;
-        double len;
+        Vec3_t  Xtemp,Xs,Xstemp;
+        double len,minl = Pa->Dmax;
 
         if (Pa->IsInsideFaceOnly(C)) len = 12.0*Lat[0].dx;
+        else if (ParCellPairs[i].IGeo.Size()==0) continue;
         else
         {
             if (Pa->Faces.Size()>0)
             {
-                DEM::Distance(C,*Pa->Faces[ParCellPairs[i](2)],Xtemp,Xs);
+                for (size_t j=0;j<ParCellPairs[i].IGeo.Size();j++)
+                {
+                    DEM::Distance(C,*Pa->Faces[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
+                    if (norm(Xtemp-Xstemp) < minl)
+                    {
+                        minl = norm(Xtemp-Xstemp);
+                        Xs   = Xstemp;
+                    }
+                }
             }
             else if (Pa->Edges.Size()>0)
             {
-                DEM::Distance(C,*Pa->Edges[ParCellPairs[i](2)],Xtemp,Xs);
+                for (size_t j=0;j<ParCellPairs[i].IGeo.Size();j++)
+                {
+                    DEM::Distance(C,*Pa->Edges[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
+                    if (norm(Xtemp-Xstemp) < minl)
+                    {
+                        minl = norm(Xtemp-Xstemp);
+                        Xs   = Xstemp;
+                    }
+                }
             }
             else if (Pa->Verts.Size()>0)
             {
-                DEM::Distance(C,*Pa->Verts[ParCellPairs[i](2)],Xtemp,Xs);
+                for (size_t j=0;j<ParCellPairs[i].IGeo.Size();j++)
+                {
+                    DEM::Distance(C,*Pa->Verts[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
+                    if (norm(Xtemp-Xstemp) < minl)
+                    {
+                        minl = norm(Xtemp-Xstemp);
+                        Xs   = Xstemp;
+                    }
+                }
             }
             len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
         }
@@ -1115,13 +1164,13 @@ void Domain::ImprintLattice (size_t n,size_t Np)
 
         for (size_t j=0;j<Lat.Size();j++)
         {
-            cell = Lat[j].Cells[ParCellPairs[i](0)];
+            cell = Lat[j].Cells[ParCellPairs[i].ICell];
             cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
-            //if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
             //if (fabs(cell->Gamma-1.0)<1.0e-12)
-            //{
-                //continue;
-            //}
+            if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
+            {
+                continue;
+            }
             Vec3_t B      = C - Pa->x;
             Vec3_t tmp;
             Rotation(Pa->w,Pa->Q,tmp);
@@ -1228,31 +1277,49 @@ inline void Domain::ResetContacts()
             for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);l<=std::min(double(Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);l++)
             {
                 Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,l));
-                double x     = Lat[0].dx*cell->Index(0);
-                double y     = Lat[0].dx*cell->Index(1);
-                double z     = Lat[0].dx*cell->Index(2);
+                double x     = Lat[0].dx*(cell->Index(0));
+                double y     = Lat[0].dx*(cell->Index(1));
+                double z     = Lat[0].dx*(cell->Index(2));
                 Vec3_t  C(x,y,z);
+                ParticleCellPair NewPCP;
+                NewPCP.IPar = i;
+                NewPCP.ICell= cell->ID;
+                bool valid = false;
                 if (Pa->Faces.Size()>0)
                 {
                     for (size_t j=0;j<Pa->Faces.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*Alpha+Pa->Props.R||Pa->IsInsideFaceOnly(C)) ParCellPairs.Push(iVec3_t(cell->ID,i,j));
+                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*Alpha+Pa->Props.R)                        
+                        {
+                            NewPCP.IGeo.Push(j);
+                            valid = true;
+                        }
                     }
                 }
                 else if (Pa->Edges.Size()>0)
                 {
                     for (size_t j=0;j<Pa->Edges.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Edges[j])<2.0*Alpha+Pa->Props.R||Pa->IsInsideFaceOnly(C)) ParCellPairs.Push(iVec3_t(cell->ID,i,j));
+                        if (DEM::Distance(C,*Pa->Edges[j])<2.0*Alpha+Pa->Props.R)
+                        {
+                            NewPCP.IGeo.Push(j);
+                            valid = true;
+                        }
                     }
                 }
                 else if (Pa->Verts.Size()>0)
                 {
                     for (size_t j=0;j<Pa->Verts.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Verts[j])<2.0*Alpha+Pa->Props.R||Pa->IsInsideFaceOnly(C)) ParCellPairs.Push(iVec3_t(cell->ID,i,j));
+                        if (DEM::Distance(C,*Pa->Verts[j])<2.0*Alpha+Pa->Props.R)
+                        {
+                            NewPCP.IGeo.Push(j);
+                            valid = true;
+                        }
                     }
                 }
+                if (Pa->IsInsideFaceOnly(C)) valid = true;
+                if (valid) ParCellPairs.Push(NewPCP);
             }
         }
     }
@@ -1625,7 +1692,7 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
     if (!ThereisanAxis) delete Axis;
 }
 
-inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, bool Cohesion)
+inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, double rho, bool Cohesion)
 {
     /*                         +----------------+
      *                       ,'|              ,'|
@@ -1643,22 +1710,21 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
      *               +----------------+'
      */
 
-    
     // add faces of box
     Vec3_t axis0(OrthoSys::e0); // rotation of face
     Vec3_t axis1(OrthoSys::e1); // rotation of face
     size_t IIndex = Particles.Size();  // First face index
-    AddPlane (InitialTag,   Vec3_t(Lx/2.0,0.0,0.0),  R, Cf*Lz, Cf*Ly, 1.0, M_PI/2.0, &axis1);
+    AddPlane (InitialTag,   Vec3_t(Lx/2.0,0.0,0.0),  R, Cf*Lz, Cf*Ly, rho, M_PI/2.0, &axis1);
     Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-1, Vec3_t(-Lx/2.0,0.0,0.0), R, Cf*Lz, Cf*Ly, 1.0, 3.0*M_PI/2.0, &axis1);
+    AddPlane (InitialTag-1, Vec3_t(-Lx/2.0,0.0,0.0), R, Cf*Lz, Cf*Ly, rho, 3.0*M_PI/2.0, &axis1);
     Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-2, Vec3_t(0.0,Ly/2.0,0.0),  R, Cf*Lx, Cf*Lz, 1.0, 3.0*M_PI/2.0, &axis0);
+    AddPlane (InitialTag-2, Vec3_t(0.0,Ly/2.0,0.0),  R, Cf*Lx, Cf*Lz, rho, 3.0*M_PI/2.0, &axis0);
     Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-3, Vec3_t(0.0,-Ly/2.0,0.0), R, Cf*Lx, Cf*Lz, 1.0, M_PI/2.0, &axis0);
+    AddPlane (InitialTag-3, Vec3_t(0.0,-Ly/2.0,0.0), R, Cf*Lx, Cf*Lz, rho, M_PI/2.0, &axis0);
     Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-4, Vec3_t(0.0,0.0,Lz/2.0),  R, Cf*Lx, Cf*Ly, 1.0);
+    AddPlane (InitialTag-4, Vec3_t(0.0,0.0,Lz/2.0),  R, Cf*Lx, Cf*Ly, rho);
     Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-5, Vec3_t(0.0,0.0,-Lz/2.0), R, Cf*Lx, Cf*Ly, 1.0, M_PI, &axis0);
+    AddPlane (InitialTag-5, Vec3_t(0.0,0.0,-Lz/2.0), R, Cf*Lx, Cf*Ly, rho, M_PI, &axis0);
     Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
 
     // define some tolerance for comparissions
@@ -2235,8 +2301,6 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     ResetDisplacements();
 
 #endif
-    
-    
     
     
     
