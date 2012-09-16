@@ -79,7 +79,8 @@ public:
     void AddSphere     (int Tag, Vec3_t const & X, double R, double rho);                                                                              ///< Add sphere
     void GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1, double R, double rho, size_t Randomseed, double fraction, double RminFraction); ///< Create an array of spheres
     void AddCube       (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a cube at position X with spheroradius R, side of length L and density rho
-    void AddTetra      (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
+    void AddOcta       (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void AddTetra      (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a octahedron at position X with spheroradius R, side of length L and density rho
     void AddPlane      (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL);                     ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void GenBox        (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, double rho, bool Cohesion=false);                        ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenFromMesh   (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);                           ///< Generate particles from a FEM mesh generator
@@ -90,6 +91,7 @@ public:
     // Access methods
     DEM::Particle       * GetParticle  (int Tag, bool Check=true);       ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
     DEM::Particle const & GetParticle  (int Tag, bool Check=true) const; ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
+    void                 DelParticles  (Array<int> const & Tags);        ///< Delete particle
     
     //Methods
 #ifdef USE_HDF5
@@ -297,10 +299,15 @@ void * GlobalResetContacts1 (void * Data)
         dat.LC.Push(make_pair(i,j));
     }
 
-    Array<DEM::Particle * > * P = &dat.Dom->Particles;
-	Ni = P->Size()/dat.N_Proc;
+    //Array<DEM::Particle * > * P = &dat.Dom->Particles;
+	//Ni = P->Size()/dat.N_Proc;
+    //In = dat.ProcRank*Ni;
+    //dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
+
+	Ni = dat.Dom->Lat[0].Cells.Size()/dat.N_Proc;
     In = dat.ProcRank*Ni;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->Lat[0].Cells.Size() : Fn = (dat.ProcRank+1)*Ni;
+    
     dat.LPC.Resize(0);
 
     if (dat.Dom->Lat[0].Ndim(2)==1)
@@ -311,18 +318,23 @@ void * GlobalResetContacts1 (void * Data)
     {
 	    for (size_t i=In;i<Fn;i++)
         {
-            DEM::Particle * Pa = (*P)[i];
-            for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);n<=std::min(double(dat.Dom->Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);n++)
-            for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);m<=std::min(double(dat.Dom->Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);m++)
-            for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l<=std::min(double(dat.Dom->Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l++)
+            Cell  * cell = dat.Dom->Lat[0].Cells[i];
+            //DEM::Particle * Pa = (*P)[i];
+            //for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);n<=std::min(double(dat.Dom->Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);n++)
+            //for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);m<=std::min(double(dat.Dom->Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);m++)
+            //for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l<=std::min(double(dat.Dom->Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l++)
+            for (size_t n=0;n<dat.Dom->Particles.Size();n++)
             {
-                Cell  * cell = dat.Dom->Lat[0].GetCell(iVec3_t(n,m,l));
+                DEM::Particle * Pa = dat.Dom->Particles[n];
+                //Cell  * cell = dat.Dom->Lat[0].GetCell(iVec3_t(n,m,l));
                 double x     = dat.Dom->Lat[0].dx*(cell->Index(0));
                 double y     = dat.Dom->Lat[0].dx*(cell->Index(1));
                 double z     = dat.Dom->Lat[0].dx*(cell->Index(2));
                 Vec3_t  C(x,y,z);
+                if (norm(C-Pa->x)>2.0*dat.Dom->Alpha+2.0*dat.Dom->Lat[0].dx+Pa->Dmax) continue;
                 ParticleCellPair NewPCP;
-                NewPCP.IPar = i;
+                //NewPCP.IPar = i;
+                NewPCP.IPar = n;
                 NewPCP.ICell= cell->ID;
                 bool valid = false;
                 if (Pa->Faces.Size()>0)
@@ -331,6 +343,11 @@ void * GlobalResetContacts1 (void * Data)
                     {
                         if (DEM::Distance(C,*Pa->Faces[j])<2.0*dat.Dom->Alpha+Pa->Props.R)
                         {
+                            if (Pa->Faces[j]->Area()<2.0*M_PI*Pa->Props.R*Pa->Props.R)
+                            {
+                                //std::cout << "it did" << std::endl;
+                                continue;
+                            }
                             NewPCP.IGeo.Push(j);
                             valid = true;
                         }
@@ -515,23 +532,22 @@ inline void Domain::WriteXDMF(char const * FileKey)
                     Vtemp[j] = *Pa->Verts[j];
                     Vres [j] = *Pa->Verts[j];
                 }
-                double multiplier;
+                double multiplier = 0.0;
 
-                if (Pa->Faces.Size()>=4)
-                {
-                    DEM::Dilation(Vtemp,Pa->EdgeCon,Pa->FaceCon,Vres,Pa->Props.R);
-                    multiplier = 1.0;
-                }
-                else multiplier = 0.0;
+                //if (Pa->Faces.Size()>=4)
+                //{
+                    //DEM::Dilation(Vtemp,Pa->EdgeCon,Pa->FaceCon,Vres,Pa->Props.R);
+                    //multiplier = 1.0;
+                //}
 
                 for (size_t j=0;j<Pa->Verts.Size();j++)
                 {
-                    //Verts[n_verts++] = (float) (*Pa->Verts[j])(0);
-                    //Verts[n_verts++] = (float) (*Pa->Verts[j])(1);
-                    //Verts[n_verts++] = (float) (*Pa->Verts[j])(2);
-                    Verts[n_verts++] = (float) Vres[j](0);
-                    Verts[n_verts++] = (float) Vres[j](1);
-                    Verts[n_verts++] = (float) Vres[j](2);
+                    Verts[n_verts++] = (float) (*Pa->Verts[j])(0);
+                    Verts[n_verts++] = (float) (*Pa->Verts[j])(1);
+                    Verts[n_verts++] = (float) (*Pa->Verts[j])(2);
+                    //Verts[n_verts++] = (float) Vres[j](0);
+                    //Verts[n_verts++] = (float) Vres[j](1);
+                    //Verts[n_verts++] = (float) Vres[j](2);
                 }
                 size_t n_reff = n_verts/3;
                 for (size_t j=0;j<Pa->FaceCon.Size();j++)
@@ -838,13 +854,13 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
             if (c->IsSolid)
             {
                 psi    = 1.0;
-                G      = Lat[1].Gs*2.0*ReducedValue(nb->Gs,c->Gs);
+                G      = Lat[1].Gs*c->Gs;
             }
             else psi   = c ->Rho;
             if (nb->IsSolid)
             {
                 nb_psi = 1.0;
-                G      = Lat[0].Gs*2.0*ReducedValue(nb->Gs,c->Gs);
+                G      = Lat[0].Gs*nb->Gs;
             }
             else nb_psi = nb->Rho;
             Vec3_t  BF = -G*psi*nb_psi*c->W[vec]*c->C[vec];
@@ -1117,6 +1133,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
         Vec3_t  Xtemp,Xs,Xstemp;
         double len,minl = Pa->Dmax;
 
+        //std::cout << "1" << std::endl;
         if (Pa->IsInsideFaceOnly(C)) len = 12.0*Lat[0].dx;
         else if (ParCellPairs[i].IGeo.Size()==0) continue;
         else
@@ -1160,6 +1177,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
             len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
         }
         
+        //std::cout << "2" << std::endl;
         if (fabs(len)<1.0e-12) continue;
 
         for (size_t j=0;j<Lat.Size();j++)
@@ -1188,6 +1206,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 Quaternion_t q;
                 Conjugate    (Pa->Q,q);
                 Rotation     (Tt,q,T);
+                //std::cout << "1" << std::endl;
 #ifdef USE_THREAD
                 pthread_mutex_lock(&Pa->lck);
 #endif
@@ -1196,8 +1215,19 @@ void Domain::ImprintLattice (size_t n,size_t Np)
 #ifdef USE_THREAD
                 pthread_mutex_unlock(&Pa->lck);
 #endif
+                //std::cout << "2" << std::endl;
+//#ifdef USE_THREAD
+                //pthread_mutex_lock  (&cell->lck);
+//#endif
+                //cell->Omeis[k] = Omeis;
+                //cell->Gamma    = Gamma;
+//#ifdef USE_THREAD
+                //pthread_mutex_unlock(&cell->lck);
+//#endif
+                //std::cout << "3" << std::endl;
             }
         }
+        //std::cout << "3" << std::endl;
     }
 }
 
@@ -1291,6 +1321,11 @@ inline void Domain::ResetContacts()
                     {
                         if (DEM::Distance(C,*Pa->Faces[j])<2.0*Alpha+Pa->Props.R)                        
                         {
+                            if (Pa->Faces[j]->Area()<2.0*M_PI*Pa->Props.R*Pa->Props.R)
+                            {
+                                //std::cout << "it did" << std::endl;
+                                continue;
+                            }
                             NewPCP.IGeo.Push(j);
                             valid = true;
                         }
@@ -1633,6 +1668,88 @@ inline void Domain::AddCube (int Tag, Vec3_t const & X, double R, double L, doub
     Particles[Particles.Size()-1]->PropsReady = true;
     Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
     
+
+}
+
+inline void Domain::AddOcta (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
+{
+    // vertices
+    Array<Vec3_t> V(6);
+    double l = L/sqrt(2.0);
+    V[0] =  l,0.0,0.0;
+    V[1] = -l,0.0,0.0;
+    V[2] =0.0,  l,0.0;
+    V[3] =0.0, -l,0.0;
+    V[4] =0.0,0.0,  l;
+    V[5] =0.0,0.0, -l;
+
+    // edges
+    Array<Array <int> > E(12);
+    for (size_t i=0; i<12; ++i) E[i].Resize(2);
+    E[ 0] = 0, 2;
+    E[ 1] = 0, 3;
+    E[ 2] = 0, 4;
+    E[ 3] = 0, 5;
+    E[ 4] = 1, 2;
+    E[ 5] = 1, 3;
+    E[ 6] = 1, 4;
+    E[ 7] = 1, 5;
+    E[ 8] = 2, 4;
+    E[ 9] = 2, 5;
+    E[10] = 3, 4;
+    E[11] = 3, 5;
+
+    // faces
+    Array<Array <int> > F(8);
+    for (size_t i=0; i<8; i++) F[i].Resize(3);
+    F[0] = 0, 2, 4;
+    F[1] = 0, 4, 3;
+    F[2] = 0, 3, 5;
+    F[3] = 0, 5, 2;
+    F[4] = 1, 2, 5;
+    F[5] = 1, 5, 3;
+    F[6] = 1, 3, 4;
+    F[7] = 1, 4, 2;
+
+    // calculate the rotation
+    bool ThereisanAxis = true;
+    if (Axis==NULL)
+    {
+        Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
+        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+        ThereisanAxis = false;
+    }
+    Quaternion_t q;
+    NormalizeRotation (Angle,(*Axis),q);
+    for (size_t i=0; i<V.Size(); i++)
+    {
+        Vec3_t t;
+        Rotation (V[i],q,t);
+        V[i] = t+X;
+    }
+
+    // add particle
+    Particles.Push (new DEM::Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    // clean up
+    if (!ThereisanAxis) delete Axis;
+    q(0) = 1.0;
+    q(1) = 0.0;
+    q(2) = 0.0;
+    q(3) = 0.0;
+    q = q/norm(q);
+
+    Particles[Particles.Size()-1]->Q          = q;
+    Particles[Particles.Size()-1]->Props.V    = sqrt(2.0)/3.0*L*L*L;
+    Particles[Particles.Size()-1]->Props.m    = rho*sqrt(2.0)/3.0*L*L*L;
+    Particles[Particles.Size()-1]->I          = L*L, L*L, L*L;
+    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m/10.0;
+    Particles[Particles.Size()-1]->x          = X;
+    Particles[Particles.Size()-1]->Ekin       = 0.0;
+    Particles[Particles.Size()-1]->Erot       = 0.0;
+    Particles[Particles.Size()-1]->Dmax       = L/sqrt(2.0)+R;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
 
 }
 
@@ -2150,6 +2267,20 @@ inline DEM::Particle const & Domain::GetParticle (int Tag, bool Check) const
     return (*Particles[idx]);
 }
 
+inline void Domain::DelParticles (Array<int> const & Tags)
+{
+    Array<int> idxs; // indices to be deleted
+    for (size_t i=0; i<Particles.Size(); ++i)
+    {
+        for (size_t j=0; j<Tags.Size(); ++j)
+        {
+            if (Particles[i]->Tag==Tags[j]) idxs.Push(i);
+        }
+    }
+    if (idxs.Size()<1) throw new Fatal("Domain::DelParticles: Could not find any particle to be deleted");
+    Particles.DelItems (idxs);
+}
+
 //Dynamic methods
 inline void Domain::Initialize (double dt)
 {
@@ -2281,6 +2412,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             Interactons.Push(BInteractons[MTD[i].LCB[j]]);
         }
     }
+    //std::cout << "1" << std::endl;
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_create(&thrs[i], NULL, GlobalImprint, &MTD[i]);
@@ -2289,6 +2421,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     {
         pthread_join(thrs[i], NULL);
     }
+    //std::cout << "2" << std::endl;
 #else
 
     //Connect particles and lattice
@@ -2358,6 +2491,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             pthread_join(thrs[i], NULL);
         }
         double maxdis = 0.0;
+        //std::cout << "3" <<std::endl;
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_create(&thrs[i], NULL, GlobalMove, &MTD[i]);
@@ -2367,7 +2501,6 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             pthread_join(thrs[i], NULL);
             if (maxdis<MTD[i].Dmx) maxdis = MTD[i].Dmx;
         }
-        //std::cout << "3" <<std::endl;
         if (maxdis>Alpha)
         {
             for (size_t i=0;i<Nproc;i++)

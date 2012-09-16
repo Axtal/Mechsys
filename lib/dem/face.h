@@ -43,12 +43,13 @@ public:
 
 
     // Methods
-    void UpdatedL ();                     ///< UdatedL for each edge
-    void Normal   (Vec3_t & N);           ///< Calculates the normal vecto rof the face
-    void Centroid (Vec3_t & C);           ///< Calculates the centroid of the polygonal face
-    void GetVec   (size_t n,Vec3_t & V);  ///< Returns the nth vector to the vector V
-    double Area   ();                     ///< Calculates the area of the face
-    void Draw      (std::ostream & os, double Radius=1.0, char const * Color="Blue", bool BPY=false);
+    void UpdatedL                   ();                             ///< UdatedL for each edge
+    void Normal                     (Vec3_t & N);                   ///< Calculates the normal vecto rof the face
+    void Centroid                   (Vec3_t & C);                   ///< Calculates the centroid of the polygonal face
+    void GetVec                     (size_t n,Vec3_t & V);          ///< Returns the nth vector to the vector V
+    double Area                     ();                             ///< Calculates the area of the face
+    void Draw                       (std::ostream & os, double Radius=1.0, char const * Color="Blue", bool BPY=false);
+    bool RayIntersect               (Vec3_t & XO, Vec3_t & X1);     ///< Check if a ray starting at X0 going trough X1 intersects the face
 
     // Data
     Array<Edge*> Edges; ///< Edges
@@ -157,5 +158,37 @@ inline void Face::Draw (std::ostream & os, double Radius, char const * Color, bo
         POVDrawPolygon (vs,os,Color);
     }
 }
+
+inline bool Face::RayIntersect(Vec3_t & X0,Vec3_t & X1)
+{
+    Vec3_t D = X1 - X0;
+    Vec3_t B = X0 - *Edges[0]->X0;
+    Mat3_t M;
+    M(0,0)   = -D(0);
+    M(0,1)   = (Edges[0]->dL)(0);
+    M(0,2)   = (Edges[1]->dL)(0);
+    M(1,0)   = -D(1);
+    M(1,1)   = (Edges[0]->dL)(1);
+    M(1,2)   = (Edges[1]->dL)(1);
+    M(2,0)   = -D(2);
+    M(2,1)   = (Edges[0]->dL)(2);
+    M(2,2)   = (Edges[1]->dL)(2);
+    Vec3_t X;
+    if (!SolAlt(M,B,X)) return false;
+    if (X(0)<0.0)       return false;
+    B = *Edges[0]->X0 + Edges[0]->dL*X(1) + Edges[1]->dL*X(2);
+    Vec3_t nor;
+    Normal(nor);
+    for (size_t j=0; j<Edges.Size(); j++) 
+    {
+        Vec3_t tmp = B-*Edges[j]->X0;
+        if (dot(cross(Edges[j]->dL,tmp),nor)<0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 }
 #endif // MECHSYS_DEM_FACE_H

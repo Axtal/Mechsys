@@ -69,8 +69,9 @@ public:
              double                      R,        ///< Spheroradius
              double                      rho=1.0); ///< Density of the material
 
-    // Alternative constructor
-    Particle (int Tag, Mesh::Generic const & M, double R, double rho=1.0);
+    // Alternative constructors
+    Particle (int Tag, Mesh::Generic const & M, double R, double rho=1.0);                       ///< Generats from mesh file
+    Particle (int Tag, char const * TheFileKey, double R, double rho=1.0, double scale = 1.0);   ///< Generates from verts-face pair files
 
     // Destructor
     ~Particle ();
@@ -306,10 +307,12 @@ inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, dou
 
     // vertices
     size_t nv = M.Verts.Size();
+    Array<Vec3_t> V;
     for (size_t i=0; i<nv; ++i)
     {
         Verts .Push (new Vec3_t(M.Verts[i]->C(0), M.Verts[i]->C(1), M.Verts[i]->C(2)));
         Vertso.Push (new Vec3_t(M.Verts[i]->C(0), M.Verts[i]->C(1), M.Verts[i]->C(2)));
+        V     .Push (    Vec3_t(M.Verts[i]->C(0), M.Verts[i]->C(1), M.Verts[i]->C(2)));
     }
 
     // edges and faces
@@ -351,10 +354,213 @@ inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, dou
         }
         Faces.Push (new Face(verts));
     }
+
+    double vol; // volume of the polyhedron
+    Vec3_t CM;  // Center of mass of the polyhedron
+    Mat3_t It;  // Inertia tensor of the polyhedron
+    PolyhedraMP(V,FaceCon,vol,CM,It); // Calculate the mass properties of the polyhedron
+    x       = CM;
+    Props.V = vol;
+    Props.m = vol*TheRho;
+    Quaternion_t Q;
+    Vec3_t xp,yp,zp;
+    Eig(It,I,xp,yp,zp);
+    I *= TheRho;
+    CheckDestroGiro(xp,yp,zp);
+    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+    Q(1) = (yp(2)-zp(1))/(4*Q(0));
+    Q(2) = (zp(0)-xp(2))/(4*Q(0));
+    Q(3) = (xp(1)-yp(0))/(4*Q(0));
+    Dmax = Distance(CM,V[0])+TheR;
+    for (size_t i=1; i<V.Size(); ++i)
+    {
+        if (Distance(CM,V[i])+TheR > Dmax) Dmax = Distance(CM,V[i])+TheR;
+    }
+    PropsReady = true;
+
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
 #endif
 }
+
+inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, double TheRho, double scale)
+    : Tag(TheTag), PropsReady(false), IsBroken(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0))
+{
+    String fnv(TheFileKey); fnv.append("_verts.mesh");
+    String fnf(TheFileKey); fnf.append("_faces.mesh");
+    ifstream fnvf(fnv.CStr());
+    ifstream fnff(fnf.CStr());
+    Array<Vec3_t>            V;
+    Array<Array<int> >      Fa;
+    Array<Array<int> >       E;
+    Array<Array<int> >  VFlist;
+    
+    size_t ncol=0;
+    Vec3_t Vtemp;
+    while (!fnvf.eof())
+    {
+        fnvf >> Vtemp(ncol);
+        ncol++;
+        ncol = ncol%3;
+        if (ncol==0)
+        {
+            V.Push(scale*Vtemp);
+            //std::cout << V[V.Size()-1] << std::endl;
+        }
+    }
+    Array<int> Ftemp;
+    ncol = 0;
+    while (!fnff.eof())
+    {
+        size_t tmp;
+        fnff >> tmp;
+        ncol++;
+        if (ncol!=4)
+        {
+            Ftemp.Push(tmp-1);
+        }
+        else 
+        {
+            Fa.Push(Ftemp);
+            Ftemp.Resize(0);
+            ncol = 0;
+        }
+    }
+    //for (size_t i=0;i<F.Size();i++)
+    //{
+        //for (size_t j=0;j<F[i].Size();j++)
+        //{
+            //std::cout << F[i][j] << " ";
+        //}
+        //std::cout << std::endl;
+    //}
+
+
+
+    Props.Kn = 1.0e4;   
+    Props.Kt = 5.0e3;   
+    Props.Bn = 1.0e4;   
+    Props.Bt = 5.0e3;   
+    Props.Bm = 5.0e3;
+    Props.Gn = 8.0;   
+    Props.Gt = 0.0;   
+    Props.Mu = 0.4;   
+    Props.eps = 0.01;  
+    Props.Beta = 0.12; 
+    Props.Eta = 1.0;  
+    Props.R = TheR;    
+    Props.rho = TheRho;  
+
+    vxf = false;
+    vyf = false;
+    vzf = false;
+
+    wxf = false;
+    wyf = false;
+    wzf = false;
+
+    F  = 0.0,0.0,0.0;
+    Ff = 0.0,0.0,0.0;
+    Tf = 0.0,0.0,0.0;
+
+    VFlist.Resize(V.Size());
+
+    for (size_t i=0; i<V.Size(); i++)
+    {
+        Verts .Push (new Vec3_t(V[i]));
+        Vertso.Push (new Vec3_t(V[i]));
+    }
+    for (size_t i=0; i<Fa.Size(); i++)
+    {
+        Array<Vec3_t*> verts(Fa[i].Size());
+        for (size_t j=0; j<Fa[i].Size(); ++j)
+        {
+            verts[j] = Verts[Fa[i][j]];
+            VFlist[Fa[i][j]].Push(i);
+        }
+        Faces.Push (new Face(verts));
+    }
+
+    E.Resize(0);
+
+    for (size_t i = 0; i < V.Size()-1; i++)
+    {
+        for (size_t j = i+1; j < V.Size(); j++)
+        {
+            bool first = true;
+            for (size_t k = 0; k < VFlist[i].Size(); k++)
+            {
+            	// Checking if vertex i and j share face k
+                if (VFlist[j].Find(VFlist[i][k])!=-1)
+                {
+                    if (!first)
+                    {
+                        Array<int> Eaux(2);
+                        Eaux[0] = i;
+                        Eaux[1] = j;
+                        E.Push(Eaux);
+                    }
+                    first = false;
+                }
+            }
+        }
+    }
+
+    for (size_t i=0; i<E.Size(); i++) Edges.Push (new Edge((*Verts[E[i][0]]), (*Verts[E[i][1]])));
+
+    EdgeCon = E;
+    FaceCon = Fa;
+
+    double vol; // volume of the polyhedron
+    Vec3_t CM;  // Center of mass of the polyhedron
+    Mat3_t It;  // Inertia tensor of the polyhedron
+    PolyhedraMP(V,Fa,vol,CM,It);  //Calculate the mass properties
+    x       = CM;
+    Props.V = vol;
+    Props.m = vol*TheRho;
+    Vec3_t xp,yp,zp;
+    Eig(It,I,xp,yp,zp);
+    CheckDestroGiro(xp,yp,zp);
+    I *= TheRho;
+    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+    Q(1) = (yp(2)-zp(1))/(4*Q(0));
+    Q(2) = (zp(0)-xp(2))/(4*Q(0));
+    Q(3) = (xp(1)-yp(0))/(4*Q(0));
+    Q = Q/norm(Q);
+    Dmax = Distance(CM,V[0])+TheR;
+    for (size_t i=1; i<V.Size(); ++i)
+    {
+        if (Distance(CM,V[i])+TheR > Dmax) Dmax = Distance(CM,V[i])+TheR;
+    }
+    Ekin = 0.0;
+    Erot = 0.0;
+    PropsReady = true;
+
+    //size_t nfaces = 0;
+    //for (size_t i=0;i<Faces.Size();i++)
+    //{
+        //Vec3_t X0,X1;
+        //Faces[i]->Centroid(X0);
+        //Faces[i]->Normal(X1);
+        //X1 = X0 + X1;
+        //size_t ntimes = 0;
+        //for (size_t j=0;j<Faces.Size();j++)
+        //{
+            //if (i==j) continue;
+            //if (Faces[j]->RayIntersect(X0,X1)) ntimes++;
+        //}
+        //if (ntimes%2==0) 
+        //{
+            //nfaces++;
+            //std::cout << i << " " << ntimes << std::endl;
+        //}
+    //}
+    //std::cout << nfaces << std::endl;
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
+}
+
 
 inline Particle::~Particle()
 {
@@ -698,45 +904,6 @@ inline bool Particle::IsInsideAlt(Vec3_t & V)
             M(2,1) = (Faces[i]->Edges[0]->dL)(2);
             M(2,2) = (Faces[i]->Edges[1]->dL)(2);
             Vec3_t X;
-            try { Sol(M,B,X); }
-            catch (Fatal * fatal) { continue; }
-            if (X(0)>1.0||X(0)<0.0) continue;
-            B = *Faces[i]->Edges[0]->X0 + Faces[i]->Edges[0]->dL*X(1)+Faces[i]->Edges[1]->dL*X(2);
-            Vec3_t nor;
-            Faces[i]->Normal(nor);
-            bool test = true;
-            for (size_t j=0; j<Faces[i]->Edges.Size(); j++) 
-            {
-                Vec3_t tmp = B-*Faces[i]->Edges[j]->X0;
-                if (dot(cross(Faces[i]->Edges[j]->dL,tmp),nor)<0) test = false;
-            }
-            if (test) inside = false;
-        }
-    }
-    return inside;
-}
-
-inline bool Particle::IsInsideFaceOnly(Vec3_t & V)
-{
-    bool inside = true;
-    Vec3_t D = V - x;
-    size_t nf = Faces.Size();
-    if (nf>3)
-    {
-        for (size_t i = 0; i < nf; i++)
-        {
-            Vec3_t B = x - *Faces[i]->Edges[0]->X0;
-            Mat3_t M;
-            M(0,0) = -D(0);
-            M(0,1) = (Faces[i]->Edges[0]->dL)(0);
-            M(0,2) = (Faces[i]->Edges[1]->dL)(0);
-            M(1,0) = -D(1);
-            M(1,1) = (Faces[i]->Edges[0]->dL)(1);
-            M(1,2) = (Faces[i]->Edges[1]->dL)(1);
-            M(2,0) = -D(2);
-            M(2,1) = (Faces[i]->Edges[0]->dL)(2);
-            M(2,2) = (Faces[i]->Edges[1]->dL)(2);
-            Vec3_t X;
             if (!SolAlt(M,B,X)) continue;
             if (X(0)>1.0||X(0)<0.0) continue;
             B = *Faces[i]->Edges[0]->X0 + Faces[i]->Edges[0]->dL*X(1)+Faces[i]->Edges[1]->dL*X(2);
@@ -746,13 +913,73 @@ inline bool Particle::IsInsideFaceOnly(Vec3_t & V)
             for (size_t j=0; j<Faces[i]->Edges.Size(); j++) 
             {
                 Vec3_t tmp = B-*Faces[i]->Edges[j]->X0;
-                if (dot(cross(Faces[i]->Edges[j]->dL,tmp),nor)<0) test = false;
+                if (dot(cross(Faces[i]->Edges[j]->dL,tmp),nor)<0)
+                {
+                    test = false;
+                }
             }
             if (test) inside = false;
         }
-        return inside;
     }
-    else return false;
+    return inside;
+}
+
+//inline bool Particle::IsInsideFaceOnly(Vec3_t & V)
+//{
+    //bool inside = true;
+    //Vec3_t D = V - x;
+    //size_t nf = Faces.Size();
+    //if (nf>3)
+    //{
+        //for (size_t i = 0; i < nf; i++)
+        //{
+            //Vec3_t B = x - *Faces[i]->Edges[0]->X0;
+            //Mat3_t M;
+            //M(0,0) = -D(0);
+            //M(0,1) = (Faces[i]->Edges[0]->dL)(0);
+            //M(0,2) = (Faces[i]->Edges[1]->dL)(0);
+            //M(1,0) = -D(1);
+            //M(1,1) = (Faces[i]->Edges[0]->dL)(1);
+            //M(1,2) = (Faces[i]->Edges[1]->dL)(1);
+            //M(2,0) = -D(2);
+            //M(2,1) = (Faces[i]->Edges[0]->dL)(2);
+            //M(2,2) = (Faces[i]->Edges[1]->dL)(2);
+            //Vec3_t X;
+            //if (!SolAlt(M,B,X)) continue;
+            //if (X(0)>1.0||X(0)<0.0) continue;
+            //B = *Faces[i]->Edges[0]->X0 + Faces[i]->Edges[0]->dL*X(1)+Faces[i]->Edges[1]->dL*X(2);
+            //Vec3_t nor;
+            //Faces[i]->Normal(nor);
+            //bool test = true;
+            //for (size_t j=0; j<Faces[i]->Edges.Size(); j++) 
+            //{
+                //Vec3_t tmp = B-*Faces[i]->Edges[j]->X0;
+                //if (dot(cross(Faces[i]->Edges[j]->dL,tmp),nor)<0)
+                //{
+                    //test = false;
+                    //break;
+                //}
+            //}
+            //if (test) inside = false;
+        //}
+        //return inside;
+    //}
+    //else return false;
+//}
+
+inline bool Particle::IsInsideFaceOnly(Vec3_t & V)
+{
+    size_t nf = Faces.Size();
+    size_t ni = 0;             //Number of intersections
+    if (nf>3)
+    {
+        for (size_t i = 0; i < nf; i++)
+        {
+            if (Faces[i]->RayIntersect(V,x)) ni++;
+        }
+    }
+    if (ni%2==0) return false;
+    else         return true;
 }
 
 inline double Particle::IsInside (double * V)

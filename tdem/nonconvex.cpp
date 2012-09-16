@@ -37,54 +37,57 @@ using DEM::Domain;
 int main(int argc, char **argv) try
 {
     // camera coordinates
-    double cx=10., cy=10., cz=2.;
-    if (argc>1) cx = atof(argv[1]);
-    if (argc>2) cy = atof(argv[2]);
-    if (argc>3) cz = atof(argv[3]);
+    //double cx=10., cy=10., cz=2.;
+    //if (argc>1) cx = atof(argv[1]);
+    //if (argc>2) cy = atof(argv[2]);
+    //if (argc>3) cz = atof(argv[3]);
 
     // domain
     Domain dom;
-    dom.CamPos = cx,cy,cz;
+    //dom.CamPos = cx,cy,cz;
+    DEM::Particle * p0 = new DEM::Particle(-1, "dolphin", 0.1, 3.0,10.0);
+    dom.Particles.Push(p0);
 
     // nonconvex particle
-    Mesh::Generic mesh(/*NDim*/3);
-    mesh.ReadMesh("nonconvex", /*IsShell*/true); // read file nonconvex.mesh
-    DEM::Particle * p0 = new DEM::Particle(-1, mesh, 0.1);
-    dom.Particles.Push (p0);
+    //Mesh::Generic mesh(/*NDim*/3);
+    //mesh.ReadMesh("nonconvex", /*IsShell*/true); // read file nonconvex.mesh
+    //DEM::Particle * p0 = new DEM::Particle(-1, mesh, 0.1, 3.0);
+    //dom.Particles.Push (p0);
 
     // another particle
-    Array<Vec3_t> V;
-    Array< Array<int> > E,F;
-    V.Push (Vec3_t(0.,0.,1.1));
-    V.Push (Vec3_t(1.,0.,1.1));
-    V.Push (Vec3_t(1.,1.,1.1));
-    V.Push (Vec3_t(0.,1.,1.1));
-    V.Push (Vec3_t(0.,0.,1.5));
-    V.Push (Vec3_t(1.,0.,1.5));
-    V.Push (Vec3_t(1.,1.,1.5));
-    V.Push (Vec3_t(0.,1.,1.5));
-    E.Push (Array<int>(0,4));
-    E.Push (Array<int>(1,5));
-    E.Push (Array<int>(2,6));
-    E.Push (Array<int>(3,7));
-    E.Push (Array<int>(4,5));
-    E.Push (Array<int>(5,6));
-    E.Push (Array<int>(6,7));
-    E.Push (Array<int>(7,4));
-    F.Push (Array<int>(4,5,6,7));
-    DEM::Particle * p1 = new DEM::Particle(-1, V,E,F, Vec3_t(0.,0.,0.), Vec3_t(0.,0.,0.), 0.1);
-    dom.Particles.Push (p1);
+    //Array<Vec3_t> V;
+    //Array< Array<int> > E,F;
+    //V.Push (Vec3_t(0.,0.,1.1));
+    //V.Push (Vec3_t(1.,0.,1.1));
+    //V.Push (Vec3_t(1.,1.,1.1));
+    //V.Push (Vec3_t(0.,1.,1.1));
+    //V.Push (Vec3_t(0.,0.,1.5));
+    //V.Push (Vec3_t(1.,0.,1.5));
+    //V.Push (Vec3_t(1.,1.,1.5));
+    //V.Push (Vec3_t(0.,1.,1.5));
+    //E.Push (Array<int>(0,4));
+    //E.Push (Array<int>(1,5));
+    //E.Push (Array<int>(2,6));
+    //E.Push (Array<int>(3,7));
+    //E.Push (Array<int>(4,5));
+    //E.Push (Array<int>(5,6));
+    //E.Push (Array<int>(6,7));
+    //E.Push (Array<int>(7,4));
+    //F.Push (Array<int>(4,5,6,7));
+    //DEM::Particle * p1 = new DEM::Particle(-1, V,E,F, Vec3_t(0.,0.,0.), Vec3_t(0.,0.,0.), 0.1);
+    //dom.Particles.Push (p1);
 
     // standard particles
-    dom.AddSphere (-1, Vec3_t(2.,0.,0.), /*R*/1.0, /*rho*/1.0);
-    dom.AddCube   (-1, Vec3_t(3.,0.,0.), /*R*/0.1, /*L*/0.5, /*rho*/1.0);
-    dom.AddTetra  (-1, Vec3_t(4.,0.,0.), /*R*/0.1, /*L*/0.5, /*rho*/1.0);
-    dom.AddRice   (-1, Vec3_t(5.,0.,0.), /*R*/0.1, /*L*/0.5, /*rho*/1.0);
-    dom.AddPlane  (-1, Vec3_t(6.,0.,0.), /*R*/0.1, /*Lx*/1.0, /*Ly*/1.0, /*rho*/1.0);
+    //dom.AddSphere (-1, Vec3_t(2.,0.,0.), /*R*/1.0, /*rho*/1.0);
+    //dom.AddCube   (-1, Vec3_t(3.,0.,0.), /*R*/0.1, /*L*/0.5, /*rho*/1.0);
+    //dom.AddTetra  (-1, Vec3_t(4.,0.,0.), /*R*/0.1, /*L*/0.5, /*rho*/1.0);
+    //dom.AddRice   (-1, Vec3_t(5.,0.,0.), /*R*/0.1, /*L*/0.5, /*rho*/1.0);
+    //dom.AddPlane  (-1, Vec3_t(6.,0.,0.), /*R*/0.1, /*Lx*/1.0, /*Ly*/1.0, /*rho*/1.0);
 
     // domain
-    dom.WritePOV ("nonconvex");
+    //dom.WritePOV ("nonconvex");
     dom.Save     ("nonconvex");
+    dom.WriteXDMF("nonconvex");
     return 0;
 }
 MECHSYS_CATCH

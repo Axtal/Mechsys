@@ -33,6 +33,9 @@ int main(int argc, char **argv) try
     Vec3_t w(0,M_PI/5,0); //  rot veloc
     Vec3_t v(1.,0,0);     // veloc
 	d.AddCube (-1, x,0.3,3.,1.);
+    
+    //d.Particles.Push(new DEM::Particle(-1, "duck2", 0.1, 3.0,10.0));
+    //d.Particles[0]->Translate(x);
     d.Particles[0]->v = v;
     d.Particles[0]->w = w;
 
@@ -71,7 +74,7 @@ int main(int argc, char **argv) try
 
     // solve
     d.CamPos = 0.0,30.0,0.0;
-    d.Solve(/*tf*/100.0, 1.0e-5, /*dtOut*/0.3, NULL, NULL, "test_dynamics", true, 1);
+    d.Solve(/*tf*/100.0, 1.0e-5, /*dtOut*/0.3, NULL, NULL, "test_dynamics", 2, 1);
 
     // final constants
     Vec3_t l1(0,0,0);  // initial linear momentum
