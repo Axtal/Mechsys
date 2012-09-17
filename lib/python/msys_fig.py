@@ -273,8 +273,10 @@ def read_table(filename, int_cols=[], make_maps=True):
     if not os.path.isfile(filename): raise Exception("[1;31mread_table: could not find file <[1;34m%s[0m[1;31m>[0m"%filename)
     file   = open(filename,'r')
     header = file.readline().split()
-    while len(header) == 0:
-        header = file.readline().split()
+    if len(header) == 0:
+        raise Exception('[1;31mread_table: reading header of file <%s> failed: the first line in file must contain the header. ex: time ux uy uz[0m'%filename)
+    #while len(header) == 0:
+        #header = file.readline().split()
     dat = {}
     im  = ['id','Id','tag','Tag'] # int keys to be mapped
     fm  = ['time','Time']         # float keys to be mapped
