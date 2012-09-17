@@ -180,7 +180,7 @@ inline void WriteSMAT (Mat_t const & M, char const * FileKey, double Tol=1.0e-14
     {
         if (fabs(M(i,j))>Tol)
         {
-            sprintf(buf, "  %zd  %zd  %.17g\n", i, j, M(i,j));
+            sprintf(buf, "  %zd  %zd  %23.15e\n", i, j, M(i,j));
             oss << buf;
         }
     }

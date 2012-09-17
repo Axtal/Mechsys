@@ -63,6 +63,9 @@ int main(int argc, char **argv) try
         x += l;
     }
     mesh.WriteMPY (inp.fnkey.CStr());
+
+    mesh.WriteJSON("sg-11.19");
+
     
     // allocate and solve
     FEM_ALLOC_DOMAIN(mesh, mat, inp, dom);

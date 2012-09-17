@@ -1569,10 +1569,12 @@ inline void STDSolver::DebugPrintMatrices (bool Stop)
     A11.WriteSMAT("A11");
     WriteSMAT    (mm,"M");
     WriteSMAT    (kk,"K");
+    std::cout << "M =\n" << PrintMatrix(mm, "%23.15e");
+    std::cout << "K =\n" << PrintMatrix(kk, "%23.15e");
     std::cout << std::endl << std::endl;
     printf("det(A11) = %g\n", UMFPACK::Det(A11));
     printf("det(M)   = %g\n", Det(mm));
-    printf("det(K)   = %g\n", Det(kk));
+    //printf("det(K)   = %g\n", Det(kk));
     if (DampTy!=None_t)
     {
         Sparse::Matrix<double,int> CC11(C11), CC12(C12), CC21(C21), CC22(C22);

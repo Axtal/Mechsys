@@ -1421,20 +1421,21 @@ inline void Generic::WriteJSON (char const * FileKey) const
     {
         if (Verts[i]==NULL) throw new Fatal("Generic::WriteJSON: Vertex %d is not defined",i);
         oss << "        { ";
-        oss << "\"id\":"  << Verts[i]->ID  << ", ";
-        oss << "\"tag\":" << Verts[i]->Tag << ", ";
+        oss << "\"id\":"  << Util::_3 << Verts[i]->ID  << ", ";
+        oss << "\"tag\":" << Util::_4 << Verts[i]->Tag << ", ";
         oss << "\"c\":[";
         if (NDim==3)
         {
-            oss << Verts[i]->C(0) << ", ";
-            oss << Verts[i]->C(1) << ", ";
-            oss << Verts[i]->C(2);
+            oss << Util::_20_15 << Verts[i]->C(0) << ", ";
+            oss << Util::_20_15 << Verts[i]->C(1) << ", ";
+            oss << Util::_20_15 << Verts[i]->C(2);
         }
         else
         {
-            oss << Verts[i]->C(0) << ", ";
-            oss << Verts[i]->C(1);
+            oss << Util::_20_15 << Verts[i]->C(0) << ", ";
+            oss << Util::_20_15 << Verts[i]->C(1);
         }
+        /*
         oss << "], \"shares\":[";
         for (size_t j=0; j<Verts[i]->Shares.Size(); ++j)
         {
@@ -1447,6 +1448,7 @@ inline void Generic::WriteJSON (char const * FileKey) const
             oss << Verts[i]->PartIDs[j];
             if (j!=Verts[i]->PartIDs.Size()-1) oss << ", ";
         }
+        */
         if (i==Verts.Size()-1) oss << "] }\n";
         else                   oss << "] },\n";
     }
@@ -1458,28 +1460,31 @@ inline void Generic::WriteJSON (char const * FileKey) const
     {
         if (Cells[i]==NULL) throw new Fatal("Generic::WriteJSON: Cell %d is not defined",i);
         oss << "        { ";
-        oss << "\"id\":"   << Cells[i]->ID     << ", ";
-        oss << "\"tag\":"  << Cells[i]->Tag    << ", ";
-        oss << "\"part\":" << Cells[i]->PartID << ", ";
+        oss << "\"id\":"   << Util::_3 << Cells[i]->ID  << ", ";
+        oss << "\"tag\":"  << Util::_3 << Cells[i]->Tag << ", ";
+        oss << "\"gdim\":" << NDim << ", ";
+        //oss << "\"part\":" << Cells[i]->PartID << ", ";
         oss << "\"verts\":[";
         for (size_t j=0; j<Cells[i]->V.Size(); ++j)
         {
-            oss << Cells[i]->V[j]->ID;
+            oss << Util::_3 << Cells[i]->V[j]->ID;
             if (j!=Cells[i]->V.Size()-1) oss << ", ";
         }
         oss << "], \"ftags\":[";
         size_t nbrys = (NDim==2 ? NVertsToNEdges2D[Cells[i]->V.Size()] : NVertsToNFaces3D[Cells[i]->V.Size()]);
         for (size_t j=0; j<nbrys; ++j)
         {
-            oss << CellGetBryTag(j, Cells[i]);
+            oss << Util::_3 << CellGetBryTag(j, Cells[i]);
             if (j!=nbrys-1) oss << ", ";
         }
+        /*
         oss << "], \"neigh\":[";
         for (size_t j=0; j<nbrys; ++j)
         {
             oss << CellGetNeigh(j, Cells[i]);
             if (j!=nbrys-1) oss << ", ";
         }
+        */
         if (i==Cells.Size()-1) oss << "] }\n";
         else                   oss << "] },\n";
     }

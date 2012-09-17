@@ -88,6 +88,8 @@ int main(int argc, char **argv) try
     FEM::STDSolver sol(dom, flags);
     sol.DynSolve (/*tf*/5, /*dt*/0.05, /*dtOut*/0.05, fnkey.CStr());
 
+    sol.DebugPrintMatrices(false);
+
     return 0.0;
 }
 MECHSYS_CATCH
