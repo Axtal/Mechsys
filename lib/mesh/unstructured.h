@@ -861,7 +861,7 @@ inline void Unstructured::Delaunay (Array<double> const & X, Array<double> const
     }
 
     TetIO pou;
-    tetrahedralize ("Qz", &Pin, &pou);
+    tetrahedralize ((char*)"Qz", &Pin, &pou);
 
     // verts
     Verts.Resize (pou.numberofpoints);
