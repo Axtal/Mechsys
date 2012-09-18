@@ -107,17 +107,17 @@ public:
     void Set (int NDim, int Tag, size_t NVerts, ...); ///< Set block
 
     // Methods
-    void   SetNx       (size_t Nx, double Ax=0.0, bool NonLin=false);             ///< Set number of x divisions with all x weights equal to 1.0
-    void   SetNy       (size_t Ny, double Ay=0.0, bool NonLin=false);             ///< Set number of y divisions with all y weights equal to 1.0
-    void   SetNz       (size_t Nz, double Az=0.0, bool NonLin=false);             ///< Set number of z divisions with all z weights equal to 1.0
-    void   SetNx       (Array<double> const & TheWx);                             ///< Set divisions along x given weights
-    double Diagonal    () const;                                                  ///< Find diagonal of block
-    void   GenMidNodes ();                                                        ///< Generate mid nodes of block
-    bool   BryIDs      (size_t i, size_t j, size_t k, Array<int> & BryIDs) const; ///< ID of boundary sides (edges or faces) of the block where i,j,k is located on
-    int    GetVTag     (size_t i, size_t j, size_t k) const;                      ///< Get vertex tag
-    void   AddArcCtr   (int Side, double x, double y, double R, double Tol=1.0e-8); ///< Add Arc constraint to nodes along side # Side
-    void   AddCylXCtr  (int Side, double y, double z, double R, double Tol=1.0e-8); ///< Constarint: cylinder parallel to x
-    void   ApplyCtr    (Array<int> const & Sides, Vertex & V) const;                ///< Apply constraints to Vertex V which is belong to sides Sides
+    void   SetNx       (size_t Nx, double Ax=0.0, bool NonLin=false);                ///< Set number of x divisions with all x weights equal to 1.0
+    void   SetNy       (size_t Ny, double Ay=0.0, bool NonLin=false);                ///< Set number of y divisions with all y weights equal to 1.0
+    void   SetNz       (size_t Nz, double Az=0.0, bool NonLin=false);                ///< Set number of z divisions with all z weights equal to 1.0
+    void   SetNx       (Array<double> const & TheWx);                                ///< Set divisions along x given weights
+    double Diagonal    () const;                                                     ///< Find diagonal of block
+    void   GenMidNodes ();                                                           ///< Generate mid nodes of block
+    bool   BryIDs      (size_t i, size_t j, size_t k, Array<int> & BryIDs) const;    ///< ID of boundary sides (edges or faces) of the block where i,j,k is located on
+    int    GetVTag     (size_t i, size_t j, size_t k) const;                         ///< Get vertex tag
+    void   AddArcCtr   (int Side, double x, double y, double R, double Tol=1.0e-10); ///< Add Arc constraint to nodes along side # Side
+    void   AddCylXCtr  (int Side, double y, double z, double R, double Tol=1.0e-10); ///< Constarint: cylinder parallel to x
+    void   ApplyCtr    (Array<int> const & Sides, Vertex & V) const;                 ///< Apply constraints to Vertex V which is belong to sides Sides
 
     // Data
     int           NDim;              ///< Space dimension
@@ -450,6 +450,7 @@ inline void Block::ApplyCtr (Array<int> const & Sides, Vertex & V) const
                 (*X) = x + a*nx;
                 (*Y) = y + a*ny;
                 F = pow((*X)-xc,2.0) + pow((*Y)-yc,2.0) - R*R;
+                if (fabs(F)>tol) throw new Fatal("Mesh::Block::ApplyCtr: Constraint failed with F=%g",F);
                 //std::cout << "   F_{after} = " << F << std::endl;
             }
         }
