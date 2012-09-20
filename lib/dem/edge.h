@@ -33,16 +33,16 @@ class Edge
 {
 public:
     // Constructor
-    Edge (Vec3_t const * X0, Vec3_t const * X1); ///< Xi: endpoints of edge
-    Edge (Vec3_t const & X0, Vec3_t const & X1); ///< Xi: endpoints of edge
+    Edge (Vec3_t * X0, Vec3_t * X1); ///< Xi: endpoints of edge
+    Edge (Vec3_t & X0, Vec3_t & X1); ///< Xi: endpoints of edge
 
     // Methods
     void UpdatedL  ();  
     void Draw      (std::ostream & os, double Radius=1.0, char const * Color="Blue", bool BPY=false);
 
     // Data
-    Vec3_t const * X0; ///< Left endpoint
-    Vec3_t const * X1; ///< Right endpoint
+    Vec3_t * X0; ///< Left endpoint
+    Vec3_t * X1; ///< Right endpoint
     Vec3_t dL; ///< Delta(X) = X1 - X0. difference Vector
 };
 
@@ -50,12 +50,12 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Edge::Edge (Vec3_t const * TheX0, Vec3_t const * TheX1)
+inline Edge::Edge (Vec3_t * TheX0, Vec3_t * TheX1)
     : X0(TheX0), X1(TheX1), dL(*X1-*X0)
 {
 }
 
-inline Edge::Edge (Vec3_t const & TheX0, Vec3_t const & TheX1)
+inline Edge::Edge (Vec3_t & TheX0, Vec3_t & TheX1)
     : X0(&TheX0), X1(&TheX1), dL(*X1-*X0)
 {
 }

@@ -45,7 +45,7 @@ int main(int argc, char **argv) try
     // domain
     Domain dom;
     //dom.CamPos = cx,cy,cz;
-    DEM::Particle * p0 = new DEM::Particle(-1, "dolphin", 0.1, 3.0,10.0);
+    DEM::Particle * p0 = new DEM::Particle(-1, "../tlbm/dolphin", 0.1, 3.0,10.0);
     dom.Particles.Push(p0);
 
     // nonconvex particle

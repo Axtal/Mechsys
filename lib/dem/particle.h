@@ -390,6 +390,9 @@ inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, doub
     String fnf(TheFileKey); fnf.append("_faces.mesh");
     ifstream fnvf(fnv.CStr());
     ifstream fnff(fnf.CStr());
+    if (!Util::FileExists(fnv)) throw new Fatal("File <%s> not found",fnv.CStr());
+    if (!Util::FileExists(fnf)) throw new Fatal("File <%s> not found",fnf.CStr());
+
     Array<Vec3_t>            V;
     Array<Array<int> >      Fa;
     Array<Array<int> >       E;
@@ -470,6 +473,7 @@ inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, doub
         Verts .Push (new Vec3_t(V[i]));
         Vertso.Push (new Vec3_t(V[i]));
     }
+
     for (size_t i=0; i<Fa.Size(); i++)
     {
         Array<Vec3_t*> verts(Fa[i].Size());
@@ -508,6 +512,47 @@ inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, doub
 
     for (size_t i=0; i<E.Size(); i++) Edges.Push (new Edge((*Verts[E[i][0]]), (*Verts[E[i][1]])));
 
+    //Array<Array<int> > FaMP;
+
+    for (size_t i=0;i<Faces.Size();i++)
+    {
+        Vec3_t X0,X1,X2;
+        Faces[i]->Centroid(X0);
+        Faces[i]->Normal(X1);
+        X2 = X0 - X1;
+        X1 = X0 + X1;
+        size_t ntimesp = 0;
+        //size_t ntimesn = 0;
+        for (size_t j=0;j<Faces.Size();j++)
+        {
+            if (i==j) continue;
+            if (Faces[j]->RayIntersect(X0,X1)) ntimesp++;
+            //if (Faces[j]->RayIntersect(X0,X2)) ntimesn++;
+        }
+        //if (ntimesp%2==0&&ntimesn%2==0) continue;
+        if (ntimesp%2!=0) 
+        {           
+            Array<Edge *> Etemp(Faces[i]->Edges.Size());
+            Array<size_t> Fatemp(Fa[i].Size());
+            for (size_t j=0;j<Faces[i]->Edges.Size();j++)
+            {
+                Vec3_t * P;
+                Etemp[j] = Faces[i]->Edges[Faces[i]->Edges.Size()-1-j];
+                P = Etemp[j]->X0;
+                Etemp[j]->X0 = Etemp[j]->X1;
+                Etemp[j]->X1 = P;
+                Etemp[j]->UpdatedL();
+                Fatemp[j] = Fa[i][Fa[i].Size()-1-j];
+            }
+            for (size_t j=0;j<Faces[i]->Edges.Size();j++)
+            {
+                Faces[i]->Edges[j] = Etemp[j];
+                Fa[i][j] = Fatemp[j];
+            }
+        }
+        //FaMP.Push(Fa[i]);
+    }
+
     EdgeCon = E;
     FaceCon = Fa;
 
@@ -536,7 +581,6 @@ inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, doub
     Erot = 0.0;
     PropsReady = true;
 
-    //size_t nfaces = 0;
     //for (size_t i=0;i<Faces.Size();i++)
     //{
         //Vec3_t X0,X1;
@@ -549,13 +593,12 @@ inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, doub
             //if (i==j) continue;
             //if (Faces[j]->RayIntersect(X0,X1)) ntimes++;
         //}
-        //if (ntimes%2==0) 
-        //{
-            //nfaces++;
-            //std::cout << i << " " << ntimes << std::endl;
+        //if (ntimes%2!=0) 
+        //{           
+            //std::cout << i << std::endl;
         //}
     //}
-    //std::cout << nfaces << std::endl;
+
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
 #endif

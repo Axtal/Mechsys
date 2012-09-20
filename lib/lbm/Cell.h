@@ -67,7 +67,7 @@ public:
 #endif
 
     // Data
-    LBMethod     Method;   ///< Is 2D, 3D and how many velocities it has
+    //LBMethod     Method;   ///< Is 2D, 3D and how many velocities it has
     bool         IsSolid;  ///< It is a solid node
     double       Tau;      ///< Relaxation Time
     double       Gamma;    ///< Solid/Fluid ratio
@@ -78,7 +78,7 @@ public:
     double       Rho;      ///< Density of the Cell
     iVec3_t      Index;    ///< Vector of indexes
     Vec3_t       Vel;      ///< Velocity of the Cell
-    Vec3_t       VelBC;    ///< Velocity at boundary
+    //Vec3_t       VelBC;    ///< Velocity at boundary
     Vec3_t       BForce;   ///< Applied body force
     Vec3_t       BForcef;  ///< Fixed Applied body force
     double       RhoBC;    ///< Density at boundary
@@ -96,20 +96,20 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
 {
     IsSolid= false;
     ID     = TheID;
-    Method = TheMethod;
+    //Method = TheMethod;
     Index  = TheIndexes;
     Cs     = TheCs;
     Gamma  = 0.0;
     Gs     = 1.0;
     Tau    = TheTau;
-    if (Method==D2Q9)
+    if (TheMethod==D2Q9)
     {
         Nneigh = 9;
         W      = WEIGHTSD2Q9;
         C      = LVELOCD2Q9;
         Op     = OPPOSITED2Q9;
     }
-    if (Method==D3Q15)
+    if (TheMethod==D3Q15)
     {
         Nneigh = 15;
         W      = WEIGHTSD3Q15;

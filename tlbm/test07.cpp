@@ -66,7 +66,7 @@ int main(int argc, char **argv) try
     size_t Nproc = 1; 
     if (argc==2) Nproc=atoi(argv[1]);
     size_t nx = 100;
-    size_t ny = 150;
+    size_t ny = 100;
     size_t nz = 100;
     double nu = 0.001;
     double dx = 1.0;
@@ -118,11 +118,11 @@ int main(int argc, char **argv) try
     for (int k=0;k<nz;k++)
     {
         Vec3_t v0(0.0,0.0,0.0);
-        if (j<0.6*ny)
-        //if (j<ny/2.0)
+        //if (j<0.6*ny)
+        if (j<ny/2.0)
         {
-            //Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(2300.0,v0);
-            Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(3000.0,v0);
+            Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(2300.0,v0);
+            //Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(3000.0,v0);
             Dom.Lat[1].GetCell(iVec3_t(i,j,k))->Initialize(0.01  ,v0);
         }
         else
@@ -152,17 +152,17 @@ int main(int argc, char **argv) try
 
     //
 
-    //DEM::Particle * Pa = new DEM::Particle(-1, "duck2", 1.0, 0.2*rho,50.0);
-    DEM::Particle * Pa = new DEM::Particle(-1, "dolphin", 0.7, 0.5*rho,0.85);
-    //Vec3_t t(0.5*nx,0.75*ny,0.5*nz);
-    Vec3_t t(0.5*nx,0.90*ny,0.5*nz);
+    DEM::Particle * Pa = new DEM::Particle(-1, "duck2", 1.0, 0.2*rho,50.0);
+    //DEM::Particle * Pa = new DEM::Particle(-1, "dolphin", 0.7, 0.3*rho,0.85);
+    Vec3_t t(0.5*nx,0.75*ny,0.5*nz);
+    //Vec3_t t(0.5*nx,0.90*ny,0.5*nz);
     Dom.Particles.Push(Pa);
     Pa->Position(t);
-    Vec3_t w = Vec3_t(0.005,0.0,0.0),wb;
-    Quaternion_t q;
-    Conjugate (Pa->Q,q);
-    Rotation  (w,q,wb);
-    Pa->w = wb;
+    //Vec3_t w = Vec3_t(0.005,0.0,0.0),wb;
+    //Quaternion_t q;
+    //Conjugate (Pa->Q,q);
+    //Rotation  (w,q,wb);
+    //Pa->w = wb;
     
     //Dom.Particles.Push(new DEM::Particle(-1, "octahedron", 0.01*ny, rho,20.0));
     //Vec3_t t(0.63*nx,0.75*ny,0.63*nz);

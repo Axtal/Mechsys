@@ -72,7 +72,7 @@ void Report(LBM::Domain & dom, void * UD)
         String fs;
         fs.Printf("%s_force.res",dom.FileKey.CStr());
         dat.oss_ss.open(fs.CStr());
-        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "Fx" << Util::_8s << "Fy" << Util::_8s << "Vx" << Util::_8s << "Rho \n";
+        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "Fx" << Util::_8s << "Fy" << Util::_8s << "Fz" << Util::_8s << "Vx" << Util::_8s << "Rho \n";
     }
     if (!dom.Finished) 
     {
@@ -88,7 +88,7 @@ void Report(LBM::Domain & dom, void * UD)
             nc++;
         }
         Flux/=M;
-        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dom.Particles[0]->F(0) << Util::_8s << dom.Particles[0]->F(1) << Util::_8s << Flux(0) << Util::_8s << M/nc << std::endl;
+        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dom.Particles[0]->F(0) << Util::_8s << dom.Particles[0]->F(1) << Util::_8s << dom.Particles[0]->F(2) << Util::_8s << Flux(0) << Util::_8s << M/nc << std::endl;
     }
     else
     {
@@ -159,6 +159,13 @@ int main(int argc, char **argv) try
     else if  (ptype=="cube"  )
     {
         Dom.AddCube(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*R,R,3.0,0.0,&OrthoSys::e1);
+    }
+    else
+    {
+        DEM::Particle * Pa = new DEM::Particle(-1, ptype.CStr(), 0.05*R, 3.0, R );
+        Dom.Particles.Push(Pa);
+        Vec3_t t(0.5*nx,0.5*ny,0.5*nz);
+        Pa->Position(t);
     }
 
     Dom.Particles[0]->FixVeloc();

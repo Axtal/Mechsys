@@ -92,7 +92,7 @@ public:
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
     void Initialize        (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
     void Solve             (double tf, double dt, double dtOut, ptFun_t ptSetup=NULL, ptFun_t ptReport=NULL,
-                            char const * FileKey=NULL, size_t VOut=3, size_t Nproc=1);                          ///< Run simulation the simulation up to time tf, with dt and dtOut the time and report steps. The funstion Setup and Report are used to control the workflow form outside, filekey is used to name the report files. VOut has the options 0 no visualization, 1 povray, 2 xmdf and 3 both
+                            char const * FileKey=NULL, size_t VOut=3, size_t Nproc=1,double minEkin=0.0);       ///< Run simulation the simulation up to time tf, with dt and dtOut the time and report steps. The funstion Setup and Report are used to control the workflow form outside, filekey is used to name the report files. VOut has the options 0 no visualization, 1 povray, 2 xmdf and 3 both. minEkin is a minimun of kinetic energy before the simulation stops
     void WritePOV          (char const * FileKey);                                                              ///< Write POV file
     void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
 #ifdef USE_HDF5    
@@ -1679,7 +1679,7 @@ inline void Domain::Initialize (double dt)
 }
 
 
-inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * TheFileKey, size_t VOut, size_t Nproc)
+inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * TheFileKey, size_t VOut, size_t Nproc, double minEkin)
 {
     if (VOut > 3) throw new Fatal("Domain::Solve The visualization argument can only have 4 values: 0 None, 1 povray visualization, 2 xdmf visualization and 3 both options");
     // Assigning some domain particles especifically to the output
@@ -1752,6 +1752,9 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         // output
         if (Time>=tout)
         {
+            double Ekin,Epot;
+            CalcEnergy(Ekin,Epot);
+            if (Ekin<minEkin) break;
             if (BInteractons.Size()>0) Clusters();
             if (ptReport!=NULL) (*ptReport) ((*this), UserData);
             if (TheFileKey!=NULL)
