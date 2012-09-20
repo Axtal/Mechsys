@@ -62,7 +62,7 @@ if [ "$#" -gt 1 ]; then
     fi
 fi
 
-NPROCS=4
+NPROCS=8
 if [ "$#" -gt 2 ]; then
     NPROCS=$3
 fi
@@ -81,6 +81,7 @@ VER_VTK=5.10.0
 VER_VTK_MAJOR=5.10
 VER_SCALAPACK=1.0.2
 VER_WXWIDGETS=2.9.3
+VER_SUPERLUMT=2.0
 
 compile_scalapack() {
     INC_OPENMPI=/usr/local/lib/openmpi/include
@@ -90,17 +91,15 @@ compile_scalapack() {
     python setup.py --notesting --mpiincdir=$INC_OPENMPI --lapacklib=$LIB_LAPACK --blaslib=$LIB_BLAS
 }
 
-compile_mumps() {
-    cp $MECHSYS_ROOT/mechsys/patches/mumps/Makefile.inc .
-    make clean
-    make -j$NPROCS
-}
-
 parmetis_links() {
     LDIR=$MECHSYS_ROOT/pkg/parmetis-$VER_PARMETIS
     MACH=`uname -m`
     ln -s $LDIR/build/Linux-$MACH/libmetis/libmetis.a $LDIR/
     ln -s $LDIR/build/Linux-$MACH/libparmetis/libparmetis.a $LDIR/
+}
+
+superlumt_rename() {
+    mv superlu_mt_$VER_SUPERLUMT.tar.gz SuperLU_MT_$VER_SUPERLUMT.tar.gz
 }
 
 error_message() {
@@ -116,6 +115,7 @@ download_and_compile() {
     PKG_DIR=""
     EXT=tar.gz
     LOCATION=""
+    RENAME_PKG=""
     EXTRA_CONF=""
     EXTRA_CMD=""
     CONF_PRMS=""
@@ -169,8 +169,7 @@ download_and_compile() {
             PKG=MUMPS_$VER_MUMPS
             #LOCATION=""
             LOCATION=http://mumps.enseeiht.fr/$PKG.$EXT
-            DO_MAKE=0
-            EXTRA_CMD=compile_mumps
+            DO_PATCH=1
             ;;
         igraph)
             PKG=igraph-$VER_IGRAPH
@@ -197,6 +196,12 @@ download_and_compile() {
             DO_CONF=1
             DO_MAKE_INST=1
             CONF_PRMS="-enable-monolithic --disable-compat26 --disable-compat28 --with-opengl"
+            ;;
+        superlumt)
+            PKG=SuperLU_MT_$VER_SUPERLUMT
+            LOCATION=http://crd-legacy.lbl.gov/~xiaoye/SuperLU/superlu_mt_$VER_SUPERLUMT.$EXT
+            RENAME_PKG=superlumt_rename
+            DO_PATCH=1
             ;;
         *)
             error_message "download_and_compile: __Internal_error__"
@@ -255,6 +260,11 @@ download_and_compile() {
             fi
             echo "    Downloading <$PKG_FILENAME>"
             wget $LOCATION
+            # rename package
+            if [ ! -z "$RENAME_PKG" ]; then
+                echo "        . . . renaming package . . . . . . ."
+                $RENAME_PKG
+            fi
         fi
     else
         if [ ! -d "$MECHSYS_ROOT/pkg/$PKG_DIR" ]; then
@@ -279,7 +289,7 @@ download_and_compile() {
     # patch
     if [ "$DO_PATCH" -eq 1 ]; then
         echo "        . . . patching . . ."
-        sh $MECHSYS_ROOT/mechsys/patches/${1}/do_patch.sh
+        bash $MECHSYS_ROOT/mechsys/patches/${1}/do_patch.bash
     fi
 
     # configure
@@ -335,6 +345,7 @@ download_and_compile igraph
 download_and_compile soplex
 download_and_compile vtk
 download_and_compile wxwidgets
+download_and_compile superlumt
 
 echo
 echo "Finished ###################################################################"

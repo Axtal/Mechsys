@@ -199,7 +199,7 @@ download_and_compile() {
     # patch
     if [ "$DO_PATCH" -eq 1 ]; then
         echo "        . . . patching . . ."
-        sh $MECHSYS_ROOT/mechsys/patches/${1}/do_patch.sh
+        bash $MECHSYS_ROOT/mechsys/patches/${1}/do_patch.bash
     fi
 
     # configure
