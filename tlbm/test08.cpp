@@ -72,23 +72,26 @@ void Report(LBM::Domain & dom, void * UD)
         String fs;
         fs.Printf("%s_force.res",dom.FileKey.CStr());
         dat.oss_ss.open(fs.CStr());
-        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "Fx" << Util::_8s << "Fy" << Util::_8s << "Fz" << Util::_8s << "Vx" << Util::_8s << "Rho \n";
+        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "Fx" << Util::_8s << "Fy" << Util::_8s << "Fz" << Util::_8s << "Vx" << Util::_8s << "Fx" << Util::_8s << "F" << Util::_8s << "Rho \n";
     }
     if (!dom.Finished) 
     {
-        Vec3_t Flux = OrthoSys::O;
         double M    = 0.0;
+        double Vx   = 0.0;
         size_t nc   = 0;
+        Vec3_t Flux = OrthoSys::O;
         for (size_t i=0;i<dom.Lat[0].Cells.Size();i++)
         {
             Cell * c = dom.Lat[0].Cells[i];
             if (c->IsSolid||c->Gamma>1.0e-8) continue;
+            Vx   += (1.0 - c->Gamma)*c->Vel(0);
             Flux += c->Rho*c->Vel;
-            M += c->Rho;
+            M    += c->Rho;
             nc++;
         }
+        Vx  /=dom.Lat[0].Cells.Size();
         Flux/=M;
-        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dom.Particles[0]->F(0) << Util::_8s << dom.Particles[0]->F(1) << Util::_8s << dom.Particles[0]->F(2) << Util::_8s << Flux(0) << Util::_8s << M/nc << std::endl;
+        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dom.Particles[0]->F(0) << Util::_8s << dom.Particles[0]->F(1) << Util::_8s << dom.Particles[0]->F(2) << Util::_8s << Vx << Util::_8s << Flux(0) << Util::_8s << norm(Flux) << Util::_8s << M/nc << std::endl;
     }
     else
     {
@@ -151,14 +154,16 @@ int main(int argc, char **argv) try
     if       (ptype=="sphere")  Dom.AddSphere(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),R,3.0);
     else if  (ptype=="tetra" )
     { 
-        Dom.AddTetra(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*R,R,3.0,M_PI/4.0,&OrthoSys::e2);
+        double e = pow(sqrt(2)*M_PI,1.0/3.0)*2*R;
+        Dom.AddTetra(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*e,e,3.0,M_PI/4.0,&OrthoSys::e2);
         Quaternion_t q;
         NormalizeRotation(35.26*M_PI/180.0,OrthoSys::e1,q);
         Dom.Particles[0]->Rotate(q,Dom.Particles[0]->x);
     }
     else if  (ptype=="cube"  )
     {
-        Dom.AddCube(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*R,R,3.0,0.0,&OrthoSys::e1);
+        double e = pow(M_PI/6.0,1.0/3.0)*2*R;
+        Dom.AddCube(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*e,e,3.0,M_PI/4.0,&OrthoSys::e1);
     }
     else
     {
