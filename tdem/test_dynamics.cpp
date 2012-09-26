@@ -36,16 +36,18 @@ int main(int argc, char **argv) try
     
     //d.Particles.Push(new DEM::Particle(-1, "duck2", 0.1, 3.0,10.0));
     //d.Particles[0]->Translate(x);
-    d.Particles[0]->v = v;
-    d.Particles[0]->w = w;
+    d.Particles[0]->v      = v;
+    d.Particles[0]->w      = w;
+    d.Particles[0]->Eroded = true;
 
     // add tetrahedron
     x =  10 , 0 , 0;
     w =   0 , 0 , M_PI/10.;
     v = -1. , 0 , 0;
     d.AddTetra (-2, x,0.5,5.,1.);
-    d.Particles[1]->v = v;
-    d.Particles[1]->w = w;
+    d.Particles[1]->v      = v;
+    d.Particles[1]->w      = w;
+    d.Particles[1]->Eroded = true;
     
 	//Vec3_t x(-10,0,0);    // position
     //Vec3_t v(1.,0,0);     // veloc

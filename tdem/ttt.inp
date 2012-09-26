@@ -38,4 +38,4 @@ sphere  = ptype:       Particle type (voronoi, sphere,rice and tetrahedra mesh s
 0.0     = qf:          Final deviatoric stress q
 30.0    = thf:         Angle of the stress path alpha
 90    = alpf;          Angle in the p q plane
-50.0     = Tf:          Final time for the test
+100.0     = Tf:          Final time for the test

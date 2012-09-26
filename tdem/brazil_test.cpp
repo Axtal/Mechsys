@@ -123,7 +123,7 @@ int main(int argc, char **argv) try
     UserData dat; 
     Domain d(&dat);
     Mesh::Unstructured mesh(2);
-    bool   Render;
+    size_t Render;
     size_t n_divisions = 30;
     double thickness   = 5.0;
     double radius      = 20.0;
@@ -196,8 +196,10 @@ int main(int argc, char **argv) try
     }
     else
     {
-        CreateContact(d,-2,angle,angle0      ,20*angle/30.0,radius,SR,thickness);
-        CreateContact(d,-3,angle,angle0+180.0,20*angle/30.0,radius,SR,thickness);
+        CreateContact(d,-2,angle,angle0      ,n_divisions*angle/360.0,1.0*radius,SR,thickness);
+        CreateContact(d,-3,angle,angle0+180.0,n_divisions*angle/360.0,1.0*radius,SR,thickness);
+        //CreateContact(d,-2,angle,angle0      ,20.0*angle/60.0,radius,SR,thickness);
+        //CreateContact(d,-3,angle,angle0+180.0,20.0*angle/60.0,radius,SR,thickness);
         velocity = -strf*radius/Tf*Vec3_t(sin(angle0),cos(angle0),0.0);
     }
     DEM::Particle * p1 = d.GetParticle(-2);

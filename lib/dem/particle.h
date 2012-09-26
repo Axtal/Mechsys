@@ -97,8 +97,9 @@ public:
 
     int             Tag;             ///< Tag of the particle
     size_t          Index;           ///< index of the particle in the domain
+    int             Cluster;         ///< The number of the cohesive cluster the particle belongs to.
     bool            PropsReady;      ///< Are the properties calculated ready ?
-    bool            IsBroken;        ///< True if the particle has at least one broken bond in cohesive simulations
+    bool            Eroded;          ///< True if the particle has been eroded
     bool            Bdry;            ///< True if the particle is in contact with one of the boundary containers
     bool            vxf, vyf, vzf;   ///< Fixed components of velocity
     bool            wxf, wyf, wzf;   ///< Fixed components of angular velocity
@@ -201,7 +202,6 @@ std::ostream & operator<< (std::ostream & os, Particle const & P)
     os << "Tag           = "  << P.Tag        << std::endl;
     os << "Index         = "  << P.Index      << std::endl;
     os << "PropsReady    = "  << P.PropsReady << std::endl;
-    os << "IsBroken      = "  << P.IsBroken   << std::endl;
     os << "vxf, vyf, vzf = "  << P.vxf << ", " << P.vyf << ", " << P.vzf << std::endl;
     os << "wxf, wyf, wzf = "  << P.wxf << ", " << P.wyf << ", " << P.wzf << std::endl;
     os << "x             = "  << PrintVector(P.x );
@@ -232,7 +232,7 @@ std::ostream & operator<< (std::ostream & os, Particle const & P)
 // Constructor and destructor
 
 inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & Fa, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
-    : Tag(TheTag), PropsReady(false), IsBroken(false), v(v0), w(w0)
+    : Tag(TheTag), PropsReady(false), Eroded(false), v(v0), w(w0), Cluster(0)
 {
     Props.Kn = 1.0e4;   
     Props.Kt = 5.0e3;   
@@ -283,7 +283,7 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
 }
 
 inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, double TheRho)
-    : Tag(TheTag), PropsReady(false), IsBroken(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0))
+    : Tag(TheTag), PropsReady(false), Eroded(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0)), Cluster(0)
 {
     Props.Kn = 1.0e4;   
     Props.Kt = 5.0e3;   
@@ -384,7 +384,7 @@ inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, dou
 }
 
 inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, double TheRho, double scale)
-    : Tag(TheTag), PropsReady(false), IsBroken(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0))
+    : Tag(TheTag), PropsReady(false), Eroded(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0)), Cluster(0)
 {
     String fnv(TheFileKey); fnv.append("_verts.mesh");
     String fnf(TheFileKey); fnf.append("_faces.mesh");
@@ -607,10 +607,10 @@ inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, doub
 
 inline Particle::~Particle()
 {
-    for (size_t i=0; i<Verts.Size(); ++i) delete Verts[i];
+    for (size_t i=0; i<Verts .Size(); ++i) delete Verts[i];
     for (size_t i=0; i<Vertso.Size(); ++i) delete Vertso[i];
-    for (size_t i=0; i<Edges.Size(); ++i) delete Edges[i];
-    for (size_t i=0; i<Faces.Size(); ++i) delete Faces[i];
+    for (size_t i=0; i<Edges .Size(); ++i) delete Edges[i];
+    for (size_t i=0; i<Faces .Size(); ++i) delete Faces[i];
 }
 
 // Methods

@@ -822,6 +822,7 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
 
         // add particle
         Particles.Push (new Particle(M.Cells[i]->Tag, V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+        Particles[Particles.Size()-1]->Eroded = true;
         Particles[Particles.Size()-1]->Index = Particles.Size()-1;
         if (!MC)
         {
@@ -1433,6 +1434,7 @@ inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, d
     if (Erode) Erosion(V,E,F,R);
     // add particle
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    if (Erode) Particles[Particles.Size()-1]->Eroded = true;
     Particles[Particles.Size()-1]->x       = CM;
     Particles[Particles.Size()-1]->Props.V = vol;
     Particles[Particles.Size()-1]->Props.m = vol*rho;
@@ -1686,16 +1688,10 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     FileKey.Printf("%s",TheFileKey);
     idx_out = 0;
 
+    
     // initialize particles
     Initialize (dt);
 
-    // set the displacement of the particles to zero (for the Halo)
-    ResetDisplacements();
-
-    // build the map of possible contacts (for the Halo)
-    ResetContacts();
-    if (fabs(Xmax-Xmin)>Alpha) ResetBoundaries();
-    
 
     // calc the total volume of particles (solids)
     Vs = 0.0;
@@ -1744,7 +1740,129 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     {
         ListPosPairs.Push(make_pair(i,j));
     }
+
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_create(&thrs[i], NULL, GlobalResetDisplacement, &MTD[i]);
+    }
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_join(thrs[i], NULL);
+    }
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
+    }
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_join(thrs[i], NULL);
+        for (size_t j=0;j<MTD[i].LC.Size();j++)
+        {
+            size_t n = MTD[i].LC[j].first;
+            size_t m = MTD[i].LC[j].second;
+            Listofpairs.insert(make_pair(Particles[n],Particles[m]));
+            if (Particles[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
+            {
+                CInteractons.Push (new CInteractonSphere(Particles[n],Particles[m]));
+            }
+            else
+            {
+                CInteractons.Push (new CInteracton(Particles[n],Particles[m]));
+            }
+        }
+    }
+    //std::cout << "2 " << CInteractons.Size() << std::endl;
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_create(&thrs[i], NULL, GlobalResetContacts2, &MTD[i]);
+    }
+    Interactons.Resize(0);
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_join(thrs[i], NULL);
+        for (size_t j=0;j<MTD[i].LCI.Size();j++)
+        {
+            Interactons.Push(CInteractons[MTD[i].LCI[j]]);
+        }
+        for (size_t j=0;j<MTD[i].LCB.Size();j++)
+        {
+            Interactons.Push(BInteractons[MTD[i].LCB[j]]);
+        }
+    }
+
+    if (Xmax-Xmin>Alpha)
+    {
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_create(&thrs[i], NULL, GlobalResetBoundaries1, &MTD[i]);
+        }
+        ParXmax.Resize(0);
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_join(thrs[i], NULL);
+            for (size_t j=0;j<MTD[i].LBP.Size();j++)
+            {
+                ParXmax.Push(Particles[MTD[i].LBP[j]]);
+            }
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_create(&thrs[i], NULL, GlobalResetBoundaries2, &MTD[i]);
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_join(thrs[i], NULL);
+            for (size_t j=0;j<MTD[i].LPC.Size();j++)
+            {
+                size_t n = MTD[i].LPC[j].first;
+                size_t m = MTD[i].LPC[j].second;
+                PListofpairs.insert(make_pair(ParXmax[n],Particles[m]));
+                if (ParXmax[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
+                {
+                    CPInteractons.Push (new CInteractonSphere(ParXmax[n],Particles[m]));
+                }
+                else
+                {
+                    CPInteractons.Push (new CInteracton(ParXmax[n],Particles[m]));
+                }
+            }
+        }
+        //std::cout << "2 " << CPInteractons.Size() << std::endl;
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_create(&thrs[i], NULL, GlobalResetBoundaries3, &MTD[i]);
+        }
+        PInteractons.Resize(0);
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_join(thrs[i], NULL);
+            for (size_t j=0;j<MTD[i].LPCI.Size();j++)
+            {
+                PInteractons.Push(CPInteractons[MTD[i].LPCI[j]]);
+            }
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_create(&thrs[i], NULL, GlobalPerTranslateBack, &MTD[i]);
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            pthread_join(thrs[i], NULL);
+        }
+        //std::cout << ParXmax.Size() << std::endl;
+    }
+
+#else
+
+    // set the displacement of the particles to zero (for the Halo)
+    ResetDisplacements();
+
+    // build the map of possible contacts (for the Halo)
+    ResetContacts();
+    if (fabs(Xmax-Xmin)>Alpha) ResetBoundaries();
+
 #endif
+
     // run
     while (Time<tf)
     {
@@ -2124,6 +2242,7 @@ inline void Domain::WriteXDMF (char const * FileKey)
         
         //Atributes
         int    * Tags    = new int   [  N_Faces];
+        int    * Clus    = new int   [  N_Faces];
         float  * Vel     = new float [  N_Faces];
         float  * Ome     = new float [  N_Faces];
         //float  * Stress  = new float [9*N_Faces];
@@ -2137,20 +2256,40 @@ inline void Domain::WriteXDMF (char const * FileKey)
         {
             Particle * Pa = Particles[i];
             size_t n_refv = n_verts/3;
+            Array<Vec3_t> Vtemp(Pa->Verts.Size());
+            Array<Vec3_t> Vres (Pa->Verts.Size());
             for (size_t j=0;j<Pa->Verts.Size();j++)
             {
-                Verts[n_verts++] = (float) (*Pa->Verts[j])(0);
-                Verts[n_verts++] = (float) (*Pa->Verts[j])(1);
-                Verts[n_verts++] = (float) (*Pa->Verts[j])(2);
+                Vtemp[j] = *Pa->Verts[j];
+                Vres [j] = *Pa->Verts[j];
+            }
+            double multiplier = 0.0;
+            if (Pa->Eroded&&Pa->Faces.Size()>=4)
+            {
+                DEM::Dilation(Vtemp,Pa->EdgeCon,Pa->FaceCon,Vres,Pa->Props.R);
+                multiplier = 1.0;
+            }
+            for (size_t j=0;j<Pa->Verts.Size();j++)
+            {
+                //Verts[n_verts++] = (float) (*Pa->Verts[j])(0);
+                //Verts[n_verts++] = (float) (*Pa->Verts[j])(1);
+                //Verts[n_verts++] = (float) (*Pa->Verts[j])(2);
+                Verts[n_verts++] = (float) Vres[j](0);
+                Verts[n_verts++] = (float) Vres[j](1);
+                Verts[n_verts++] = (float) Vres[j](2);
             }
             size_t n_reff = n_verts/3;
             for (size_t j=0;j<Pa->FaceCon.Size();j++)
             {
-                Vec3_t C;
+                Vec3_t C,N;
                 Pa->Faces[j]->Centroid(C);
-                Verts[n_verts++] = (float) C(0);
-                Verts[n_verts++] = (float) C(1);
-                Verts[n_verts++] = (float) C(2);
+                Pa->Faces[j]->Normal(N);
+                Verts[n_verts++] = (float) C(0) + multiplier*Pa->Props.R*N(0);
+                Verts[n_verts++] = (float) C(1) + multiplier*Pa->Props.R*N(1);
+                Verts[n_verts++] = (float) C(2) + multiplier*Pa->Props.R*N(2);
+                //Verts[n_verts++] = (float) C(0);
+                //Verts[n_verts++] = (float) C(1);
+                //Verts[n_verts++] = (float) C(2);
                 for (size_t k=0;k<Pa->FaceCon[j].Size();k++)
                 {
                     size_t nin = Pa->FaceCon[j][k];
@@ -2160,9 +2299,10 @@ inline void Domain::WriteXDMF (char const * FileKey)
                     FaceCon[n_faces++] = (int) n_refv + nen;
 
                     //Writing the attributes
-                    Tags[n_attrs] = (int)   Pa->Tag;
-                    Vel [n_attrs] = (float) norm(Pa->v);
-                    Ome [n_attrs] = (float) norm(Pa->w);
+                    Tags[n_attrs] = (int)    Pa->Tag;
+                    Clus[n_attrs] = (size_t) Pa->Cluster;
+                    Vel [n_attrs] = (float)  norm(Pa->v);
+                    Ome [n_attrs] = (float)  norm(Pa->w);
                     n_attrs++;
 
                     //Vel [n_attrv  ] = (float) Pa->v(0);
@@ -2197,6 +2337,9 @@ inline void Domain::WriteXDMF (char const * FileKey)
         dsname.Printf("Tag");
         H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,Tags   );
         dims[0] = N_Faces;
+        dsname.Printf("Cluster");
+        H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,Clus   );
+        dims[0] = N_Faces;
         dsname.Printf("Velocity");
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vel);
         dims[0] = N_Faces;
@@ -2210,6 +2353,7 @@ inline void Domain::WriteXDMF (char const * FileKey)
         delete [] Verts;
         delete [] FaceCon;
         delete [] Tags;
+        delete [] Clus;
         delete [] Vel;
         delete [] Ome;
         //delete [] Stress;
@@ -2287,6 +2431,11 @@ inline void Domain::WriteXDMF (char const * FileKey)
     oss << "     <Attribute Name=\"Tag\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
     oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Int\" Format=\"HDF\">\n";
     oss << "        " << fn.CStr() <<":/Tag \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Cluster\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+    oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Cluster \n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
@@ -2652,6 +2801,7 @@ inline void Domain::Load (char const * FileKey)
     H5Fclose(file_id);
 
 }
+
 #endif
 
 inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
@@ -2940,6 +3090,13 @@ inline void Domain::Clusters ()
 
     Util::Tree tree(connections);
     tree.GetClusters(Listofclusters);
+    for (size_t i=0;i<Listofclusters.Size();i++)
+    {
+        for (size_t j=0;j<Listofclusters[i].Size();j++)
+        {
+            Particles[Listofclusters[i][j]]->Cluster = i;
+        }
+    }
 }
 
 inline void Domain::DelParticles (Array<int> const & Tags)
