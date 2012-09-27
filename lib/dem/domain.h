@@ -139,6 +139,7 @@ public:
     Array<CInteracton*>                               CPInteractons;               ///< Contact interacton for periodic conditions
     Vec3_t                                            CamPos;                      ///< Camera position for POV
     double                                            Time;                        ///< Current time
+    double                                            Dt;                          ///< Time step
     double                                            Evis;                        ///< Energy dissipated by the viscosity of the grains
     double                                            Efric;                       ///< Energy dissipated by friction
     double                                            Wext;                        ///< Work done by external forces
@@ -199,7 +200,6 @@ struct MtData
     size_t                    N_Proc; ///< Total number of threads
     DEM::Domain *                Dom; ///< Pointer to the lbm domain
     double                       Dmx; ///< Maximun displacement
-    double                        dt; ///< Time step
     Array<pair<size_t,size_t> >   LC; ///< A temporal list of new contacts
     Array<size_t>                LCI; ///< A temporal array of posible Cinteractions
     Array<size_t>                LCB; ///< A temporal array of posible Binteractions
@@ -246,7 +246,7 @@ void * GlobalForce(void * Data)
     dat.ProcRank == dat.N_Proc-1 ? Fn = I->Size() : Fn = (dat.ProcRank+1)*Ni;
 	for (size_t i=In;i<Fn;i++)
 	{
-		(*I)[i]->CalcForce(dat.dt);
+		(*I)[i]->CalcForce(dat.Dom->Dt);
 	}
 }
 
@@ -261,8 +261,8 @@ void * GlobalMove(void * Data)
     dat.Dmx = 0.0;
 	for (size_t i=In;i<Fn;i++)
 	{
-		(*P)[i]->Translate(dat.dt);
-		(*P)[i]->Rotate(dat.dt);
+		(*P)[i]->Translate(dat.Dom->Dt);
+		(*P)[i]->Rotate(dat.Dom->Dt);
         if ((*P)[i]->MaxDisplacement()>dat.Dmx) dat.Dmx = (*P)[i]->MaxDisplacement();
 	}
 }
@@ -446,7 +446,7 @@ void * GlobalPerForce(void * Data)
     dat.ProcRank == dat.N_Proc-1 ? Fn = I->Size() : Fn = (dat.ProcRank+1)*Ni;
 	for (size_t i=In;i<Fn;i++)
 	{
-		(*I)[i]->CalcForce(dat.dt);
+		(*I)[i]->CalcForce(dat.Dom->Dt);
 	}
 }
 
@@ -1687,10 +1687,12 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     // Assigning some domain particles especifically to the output
     FileKey.Printf("%s",TheFileKey);
     idx_out = 0;
-
     
+    //Assigning the vlaue for the time step to the domain variable
+    Dt = dt;
+
     // initialize particles
-    Initialize (dt);
+    Initialize (Dt);
 
 
     // calc the total volume of particles (solids)
@@ -1731,7 +1733,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         MTD[i].ProcRank = i;
         MTD[i].Dom      = this;
         MTD[i].Dmx      = 0.0;
-        MTD[i].dt       = dt;
     }
     pthread_t thrs[Nproc];
      
@@ -2092,13 +2093,13 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             Particles[i]->Bdry = false;
 
             // external work added to the system by the fixed forces Ff
-            Wext += dot(Particles[i]->Ff,Particles[i]->v)*dt;
+            Wext += dot(Particles[i]->Ff,Particles[i]->v)*Dt;
         }
 
         // calc contact forces: collision and bonding (cohesion)
         for (size_t i=0; i<Interactons.Size(); i++)
         {
-            Interactons[i]->CalcForce (dt);
+            Interactons[i]->CalcForce (Dt);
         }
 
         if (fabs(Xmax-Xmin)>Alpha)
@@ -2111,7 +2112,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             for (size_t i=0; i<PInteractons.Size(); i++)
             {   
                 Interacton * PI = PInteractons[i];
-                PI->CalcForce(dt);
+                PI->CalcForce(Dt);
             }
 
             //for (size_t i=0;i<ParXmin.Size();i++) ParXmin[i]->Translate(vmax);
@@ -2131,8 +2132,8 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         // move particles
         for (size_t i=0; i<Particles.Size(); i++)
         {
-            Particles[i]->Translate (dt);
-            Particles[i]->Rotate    (dt);
+            Particles[i]->Translate (Dt);
+            Particles[i]->Rotate    (Dt);
         }
 
         double maxdis = MaxDisplacement();
@@ -2148,7 +2149,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         
 
         // next time position
-        Time += dt;
+        Time += Dt;
     }
 
     // last output
