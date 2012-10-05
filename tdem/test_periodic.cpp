@@ -195,6 +195,7 @@ int main(int argc, char **argv) try
     String fkey_b(filekey+"_b");
 
     dom.Solve  (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, NULL, fkey_a.CStr(),RenderVideo,Nproc);
+    dom.WriteXDMF(fkey_a.CStr());
 
     dom.GetParticle(-4)->vyf = true;
     dom.GetParticle(-5)->vyf = true;
@@ -208,6 +209,7 @@ int main(int argc, char **argv) try
 
     // stage 2: shearing stage         //////////////////////////////////////////////////////////////////////
     dom.Solve (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_b.CStr(),RenderVideo,Nproc);
+    dom.WriteXDMF(fkey_b.CStr());
 
     return 0;
 }

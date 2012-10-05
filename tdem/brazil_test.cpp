@@ -32,17 +32,30 @@ struct UserData
 {
     DEM::Particle         * p1;  // Upper plane
     DEM::Particle         * p2;  // Lower plane
-    Vec3_t          force;  // Force on planes
-    double              S;  // Vertical separation of the planes
-    std::ofstream  oss_ss;  // File to store the forces
+    Vec3_t                  X1;  //Initial position of first plate
+    Vec3_t                  X2;  //Initial position of second plate
+    Vec3_t               force;  // Force on planes
+    double                  L0;  // Initial vertical separation of the plates
+    double                   S;  // Vertical separation of the planes
+    double                strf;  // Final strain
+    double              strflu;  // strain fluctuation
+    double              angle0;  // Angle of the plates
+    double                 ome;  // frequency
+    double                  Tf;  // final time
+    std::ofstream       oss_ss;  // File to store the forces
 };
 
 void Setup (DEM::Domain & dom, void *UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     dat.force = 0.5*(dat.p2->F-dat.p1->F);
-    dat.S     = dat.p2->x(1)-dat.p1->x(1);
-    //std::cout << (*dat.p2->Verts[0]) << std::endl;
+    dat.S     = (dat.L0 - dat.p2->x(1) + dat.p1->x(1))/dat.L0;
+    Vec3_t    X2 = dat.X2 - 0.5*dat.L0*(dat.strf*dom.Time/dat.Tf +  dat.strflu*sin(dat.ome*dom.Time))*Vec3_t(sin(dat.angle0),cos(dat.angle0),0.0);
+    Vec3_t    X1 = dat.X1 + 0.5*dat.L0*(dat.strf*dom.Time/dat.Tf +  dat.strflu*sin(dat.ome*dom.Time))*Vec3_t(sin(dat.angle0),cos(dat.angle0),0.0);
+    dat.p2->v        = (X2 - dat.p2->x)/dom.Dt;
+    dat.p1->v        = (X1 - dat.p1->x)/dom.Dt;
+    dat.p2->Position(X2);
+    dat.p1->Position(X1);
 }
 
 void Report (DEM::Domain & dom, void *UD)
@@ -53,18 +66,15 @@ void Report (DEM::Domain & dom, void *UD)
         String fs;
         fs.Printf("%s_walls.res",dom.FileKey.CStr());
         dat.oss_ss.open(fs.CStr());
-        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "fx" << Util::_8s << "fy" << Util::_8s << "fz" << Util::_8s << "S \n";
+        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "fx" << Util::_8s << "fy" << Util::_8s << "fz" << Util::_8s << "S" << Util::_8s << "Nc \n";
     }
-    else 
+    if (!dom.Finished) 
     {
-        if (!dom.Finished) 
-        {
-            dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << fabs(dat.force(0)) << Util::_8s << fabs(dat.force(1)) << Util::_8s << fabs(dat.force(2)) << Util::_8s << dat.S << std::endl;
-        }
-        else
-        {
-            dat.oss_ss.close();
-        }
+        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << fabs(dat.force(0)) << Util::_8s << fabs(dat.force(1)) << Util::_8s << fabs(dat.force(2)) << Util::_8s << dat.S << Util::_8s << dom.Listofclusters.Size() << std::endl;
+    }
+    else
+    {
+        dat.oss_ss.close();
     }
 }
 
@@ -76,8 +86,8 @@ void CreateContact(DEM::Domain & dom, int Tag,  double angle, double angle0,size
 
     for (size_t i=0; i<=Ndiv;i++) 
     {
-        V[i       ] = Vec3_t((R+1.0*SR)*sin(i*angle*M_PI/(180.0*Ndiv)-0.5*angle*M_PI/180.0+angle0*M_PI/180.0),(R+1.0*SR)*cos(i*angle*M_PI/(180.0*Ndiv)-0.5*angle*M_PI/180.0+angle0*M_PI/180.0),-0.5*thick);
-        V[i+Ndiv+1] = Vec3_t((R+1.0*SR)*sin(i*angle*M_PI/(180.0*Ndiv)-0.5*angle*M_PI/180.0+angle0*M_PI/180.0),(R+1.0*SR)*cos(i*angle*M_PI/(180.0*Ndiv)-0.5*angle*M_PI/180.0+angle0*M_PI/180.0), 0.5*thick);
+        V[i       ] = Vec3_t((R+1.1*SR)*sin(i*angle*M_PI/(180.0*Ndiv)-0.5*angle*M_PI/180.0+angle0*M_PI/180.0),(R+1.1*SR)*cos(i*angle*M_PI/(180.0*Ndiv)-0.5*angle*M_PI/180.0+angle0*M_PI/180.0),-0.5*thick);
+        V[i+Ndiv+1] = Vec3_t((R+1.1*SR)*sin(i*angle*M_PI/(180.0*Ndiv)-0.5*angle*M_PI/180.0+angle0*M_PI/180.0),(R+1.1*SR)*cos(i*angle*M_PI/(180.0*Ndiv)-0.5*angle*M_PI/180.0+angle0*M_PI/180.0), 0.5*thick);
         E[i+2*Ndiv].Resize(2);
         E[i+2*Ndiv] = i,i+Ndiv+1;
     }
@@ -144,6 +154,8 @@ int main(int argc, char **argv) try
     double dtOut       = 0.1;
     double Tf          = 10.0;
     double strf        = 0.01;
+    double strflu      = 0.001;
+    double ome         = 1000.0;
 
 
     infile >> Render;             infile.ignore(200,'\n');
@@ -167,6 +179,8 @@ int main(int argc, char **argv) try
     infile >> dtOut;              infile.ignore(200,'\n');
     infile >> Tf;                 infile.ignore(200,'\n');
     infile >> strf;               infile.ignore(200,'\n');
+    infile >> strflu;             infile.ignore(200,'\n');
+    infile >> ome;                infile.ignore(200,'\n');
 
 
     d.CamPos = Vec3_t(0.0, 0.0, 3*radius); // position of camera
@@ -187,12 +201,12 @@ int main(int argc, char **argv) try
     d.Center();
     Vec3_t Xmin,Xmax;
     d.BoundingBox(Xmin,Xmax);
-    Vec3_t velocity;
+    //Vec3_t velocity;
     if (angle<1.0e-3)
     {
         d.AddPlane(-2, Vec3_t(0.0,Xmin(1)-0.5*sqrt(Amax/10),0.0), 0.5*sqrt(Amax/10), width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
         d.AddPlane(-3, Vec3_t(0.0,Xmax(1)+0.5*sqrt(Amax/10),0.0), 0.5*sqrt(Amax/10), width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
-        velocity = Vec3_t(0.0,strf*radius/Tf,0.0);
+        //velocity = Vec3_t(0.0,strf*radius/Tf,0.0);
     }
     else
     {
@@ -200,16 +214,27 @@ int main(int argc, char **argv) try
         CreateContact(d,-3,angle,angle0+180.0,n_divisions*angle/360.0,1.0*radius,SR,thickness);
         //CreateContact(d,-2,angle,angle0      ,20.0*angle/60.0,radius,SR,thickness);
         //CreateContact(d,-3,angle,angle0+180.0,20.0*angle/60.0,radius,SR,thickness);
-        velocity = -strf*radius/Tf*Vec3_t(sin(angle0),cos(angle0),0.0);
+        //velocity = -strf*radius/Tf*Vec3_t(sin(angle0),cos(angle0),0.0);
     }
     DEM::Particle * p1 = d.GetParticle(-2);
     DEM::Particle * p2 = d.GetParticle(-3);
     p1->FixVeloc();
-    p1->v =  velocity;
+    //p1->v =  velocity;
     p2->FixVeloc();
-    p2->v = -velocity;
-    dat.p1=p1;
-    dat.p2=p2;
+    //p2->v = -velocity;
+
+    dat.p1     = p1;
+    dat.p2     = p2;
+    dat.X1     = p1->x;
+    dat.X2     = p2->x;
+    dat.L0     = p2->x(1) - p1->x(1);
+    dat.Tf     = Tf;
+    dat.ome    = ome*2*M_PI/Tf;
+    dat.strf   = strf;
+    dat.strflu = strflu;
+    dat.angle0 = angle0;
+    dat.force = OrthoSys::O;
+    dat.S     = 0.0;
     
     // properties of particles prior the brazilian test
     Dict B;
@@ -217,8 +242,6 @@ int main(int argc, char **argv) try
     B.Set(-2,"Bn Bt Bm Gn Gt Eps Kn Kt Mu",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt,0.0);
     B.Set(-3,"Bn Bt Bm Gn Gt Eps Kn Kt Mu",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt,0.0);
     d.SetProps(B);
-
-    d.WriteBPY("test");
 
     d.Solve(Tf, dt, dtOut, &Setup, &Report, filekey.CStr(),Render,Nproc);
 

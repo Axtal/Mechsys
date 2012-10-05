@@ -4,8 +4,8 @@
 100.0          radius;
 1.0e5         Kn;                 
 1.0e5         Kt;                 
-1.0e6         Bn;                 
-1.0e6         Bt;                 
+1.0e5         Bn;                 
+1.0e5         Bt;                 
 0.0e3         Bm;                 
 1.0          Gn;                 
 0.0           Gt;                 
@@ -18,4 +18,6 @@
 1.0e-5        dt;
 0.1           dtOut;
 10.0          Tf;
-0.02       strf;
+0.01       strf;
+0.001     strflu
+1000.0    ome
