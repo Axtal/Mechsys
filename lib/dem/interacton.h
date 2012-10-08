@@ -342,8 +342,9 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             P2->T += T;
             //Transfering the branch vector information
             Vec3_t nor = n;
-            if (P1->IsFree()&&P2->IsFree())
-            {
+            Vec3_t dif = P2->x - P1->x;
+            //if (P1->IsFree()&&P2->IsFree())
+            //{
                 for (size_t m=0;m<3;m++)
                 {
                     for (size_t n=0;n<3;n++)
@@ -355,7 +356,7 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
                         this->B(m,n) = nor(m)*nor(n);
                     }
                 }
-            }
+            //}
 #ifdef USE_THREAD
             //pthread_mutex_unlock(&lck);
             pthread_mutex_unlock(&P1->lck);

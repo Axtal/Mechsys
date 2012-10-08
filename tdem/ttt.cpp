@@ -326,13 +326,17 @@ void Report (DEM::Domain & dom, void *UD)
         dat.oss_ss <<                                               Util::_8s << "Nb" << Util::_8s << "Nbb" << "\n";
         fs.Printf("%s_branch.res",dom.FileKey.CStr());
         dat.oss_sc.open(fs.CStr());
-        dat.oss_sc << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "Tan(2A)" << Util::_8s << "s1" << Util::_8s << "s2 \n";
+        dat.oss_sc << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "Tan(2A)" << Util::_8s << "s1" << Util::_8s << "s2" << Util::_8s << "s3 \n";
     }
     if (dat.RenderVideo)
     {
-        double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->Props.R+dom.Particles[dat.InitialIndex+1]->Props.R)*
-                                 (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->Props.R+dom.Particles[dat.InitialIndex+3]->Props.R)*
-                                 (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->Props.R+dom.Particles[dat.InitialIndex+5]->Props.R);
+
+        //double R = 0.15*dat.L0(0);
+        double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->Props.R-dom.Particles[dat.InitialIndex+1]->Props.R)*
+                                 (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->Props.R-dom.Particles[dat.InitialIndex+3]->Props.R)*
+                                 (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->Props.R-dom.Particles[dat.InitialIndex+5]->Props.R);
+        //volumecontainer = M_PI*R*R;
+        
         double frsind = 0.0;
         double frsina = 0.0;
         double frcosd = 0.0;
@@ -341,14 +345,27 @@ void Report (DEM::Domain & dom, void *UD)
         double ftsina = 0.0;
         double ftcosd = 0.0;
         double ftcosa = 0.0;
+        Mat3_t S;
+        for (size_t m=0;m<3;m++)
+        {
+            for (size_t n=0;n<3;n++)
+            {
+                S(m,n)=0.0;
+            }
+        }
         for (size_t i=0; i<dom.CInteractons.Size(); i++)
         {
             DEM::CInteracton * CI = dom.CInteractons[i];
-            if (dom.CInteractons[i]->Nc>0&&dom.CInteractons[i]->P1->IsFree()&&dom.CInteractons[i]->P2->IsFree())
+            Vec3_t x = 0.5*(CI->P1->x + CI->P2->x);
+            //if (CI->Nc>0&&CI->P1->IsFree()&&CI->P2->IsFree()&&(norm(x)<R))
+            if (CI->Nc>0&&CI->P1->IsFree()&&CI->P2->IsFree())
+            if (CI->Nc>0)
             {
+                //CI->P2->Tag = 1;
+                //CI->P1->Tag = 1;
                 Vec3_t branch    = CI->P2->x - CI->P1->x;
                 double nbranch   = norm(branch);
-                double angbv     = atan2(branch(1),branch(0));
+                double angbv     = atan2(CI->Fnet(1),CI->Fnet(0));
                 double angtv     = 0.5*M_PI + angbv;
                 double fr        = norm(CI->Fnet);
                 double ft        = dot(OrthoSys::e2,cross(CI->Fnet,CI->Ftnet))/fr;
@@ -361,45 +378,58 @@ void Report (DEM::Domain & dom, void *UD)
                 ftsina += nbranch*ft*sin(angtv+angbv);
                 ftcosd += nbranch*ft*cos(angtv-angbv);
                 ftcosa += nbranch*ft*cos(angtv+angbv);
+
+                for (size_t m=0;m<3;m++)
+                {
+                    for (size_t n=0;n<3;n++)
+                    {
+                        S(m,n) += (CI->Fnet(m) + CI->Ftnet(m))*branch(n)/volumecontainer;
+                    }
+                }
+
             }
         }
 
+        //double s1ps2 = (frsind + ftcosd)/(M_PI*pow(0.15*dat.L0(0),2));
+        //double s1ms2 = sqrt(pow(frsina+ftcosa,2) + pow(frcosd-frcosa+ftsina-ftsind,2))/(M_PI*pow(0.15*dat.L0(0),2));
         double s1ps2 = (frsind + ftcosd)/volumecontainer;
         double s1ms2 = sqrt(pow(frsina+ftcosa,2) + pow(frcosd-frcosa+ftsina-ftsind,2))/volumecontainer;
         double s1    = 0.5*(s1ps2 + s1ms2);
         double s2    = 0.5*(s1ps2 - s1ms2);
         double tan2a = (frcosd - frcosa + ftsina - ftsind)/(frsina + ftcosa);
-        Mat3_t S;
-        for (size_t m=0;m<3;m++)
-        {
-            for (size_t n=0;n<3;n++)
-            {
-                S(m,n)=0.0;
-            }
-        }
-        for (size_t i=0; i<dom.Particles.Size(); i++)
-        {
-            for (size_t m=0;m<3;m++)
-            {
-                for (size_t n=0;n<3;n++)
-                {
-                    if (dom.Particles[i]->IsFree())
-                    {
-                        S(m,n)+=dom.Particles[i]->M(m,n)/volumecontainer;
-                    }
-                }
-            }
-        }
+        //for (size_t i=0; i<dom.Particles.Size(); i++)
+        //{
+            //for (size_t m=0;m<3;m++)
+            //{
+                //for (size_t n=0;n<3;n++)
+                //{
+                    //if (dom.Particles[i]->IsFree())
+                    //{
+                    //S(m,n)+=dom.Particles[i]->M(m,n)/volumecontainer;
+                    //}
+                //}
+            //}
+        //}
         Vec3_t xp,yp,zp,E;
         Eig(S,E,xp,yp,zp);
-        double e1 = -E(0);
-        if (fabs(-E(1)-s1)<fabs(e1-s1)) e1 = -E(1);
-        if (fabs(-E(2)-s1)<fabs(e1-s1)) e1 = -E(2);
-        double e2 = -E(0);
-        if (fabs(-E(1)-s2)<fabs(e2-s2)) e2 = -E(1);
-        if (fabs(-E(2)-s2)<fabs(e2-s2)) e2 = -E(2);
-        //std::cout << E << " " << s1 << " " << s2 << std::endl;
-        dat.oss_sc << Util::_10_6 << dom.Time << Util::_8s << s1 << Util::_8s << s2 << Util::_8s << tan2a << Util::_8s << e1 << Util::_8s << e2 << std::endl;
+        //double e1 = E(0);
+        //if (fabs(E(1)-s1)<fabs(e1-s1)) e1 = E(1);
+        //if (fabs(E(2)-s1)<fabs(e1-s1)) e1 = E(2);
+        //double e2 = E(0);
+        //if (fabs(E(1)-s2)<fabs(e2-s2)) e2 = E(1);
+        //if (fabs(E(2)-s2)<fabs(e2-s2)) e2 = E(2);
+        //double e3 = E(0);
+        //if (fabs(E(1))<fabs(e3)) e3 = E(1);
+        //if (fabs(E(2))<fabs(e3)) e3 = E(2);
+        
+        double doubs[] = {E(0),E(1),E(2)};
+        vector<double> ds(doubs,doubs+3);
+        sort(ds.begin(),ds.begin()+3);
+        
+        double e1 = ds[0];
+        double e2 = ds[1];
+        double e3 = ds[2];
+        dat.oss_sc << Util::_10_6 << dom.Time << Util::_8s << s1 << Util::_8s << s2 << Util::_8s << tan2a << Util::_8s << e1 << Util::_8s << e2 << Util::_8s << e3 << std::endl;
     }
     if (!dom.Finished) 
     {
@@ -477,6 +507,25 @@ void Report (DEM::Domain & dom, void *UD)
                 B(m,n)=0.0;
             }
         }
+        double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->Props.R-dom.Particles[dat.InitialIndex+1]->Props.R)*
+                                 (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->Props.R-dom.Particles[dat.InitialIndex+3]->Props.R)*
+                                 (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->Props.R-dom.Particles[dat.InitialIndex+5]->Props.R);
+        for (size_t i=0; i<dom.CInteractons.Size(); i++)
+        {
+            DEM::CInteracton * CI = dom.CInteractons[i];
+            if (CI->Nc>0)
+            {
+                Vec3_t branch    = CI->P2->x - CI->P1->x;
+                for (size_t m=0;m<3;m++)
+                {
+                    for (size_t n=0;n<3;n++)
+                    {
+                        S(m,n) += (CI->Fnet(m) + CI->Ftnet(m))*branch(n)/volumecontainer;
+                    }
+                }
+
+            }
+        }
         size_t Ncontacts = 0;
         for (size_t i=0; i<dom.CInteractons.Size(); i++)
         {
@@ -496,23 +545,7 @@ void Report (DEM::Domain & dom, void *UD)
         }
         OF.close();
 
-        double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->Props.R+dom.Particles[dat.InitialIndex+1]->Props.R)*
-                                 (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->Props.R+dom.Particles[dat.InitialIndex+3]->Props.R)*
-                                 (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->Props.R+dom.Particles[dat.InitialIndex+5]->Props.R);
 
-        for (size_t i=0; i<dom.Particles.Size(); i++)
-        {
-            for (size_t m=0;m<3;m++)
-            {
-                for (size_t n=0;n<3;n++)
-                {
-                    if (dom.Particles[i]->IsFree())
-                    {
-                        S(m,n)+=dom.Particles[i]->M(m,n)/volumecontainer;
-                    }
-                }
-            }
-        }
 
         for (size_t m=0;m<3;m++)
         {
@@ -640,13 +673,20 @@ int main(int argc, char **argv) try
     dat.dt = dt;
     dat.RenderVideo = (bool) RenderVideo;
 
+    bool load = false;
     // particle
     if      (ptype=="sphere")    dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction, Eps);
-    else if (ptype=="spherebox") 
+    else if (ptype=="sphereboxnormal") 
     {
         Vec3_t Xmin(-0.5*Lx,-0.5*Ly,-0.5*Lz);
         Vec3_t Xmax = -Xmin;
-        dom.GenSpheresBox (-1, Xmin, Xmax, R, rho, seed, fraction, Eps);
+        dom.GenSpheresBox (-1, Xmin, Xmax, R, rho, "Normal", seed, fraction, Eps);
+    }
+    else if (ptype=="sphereboxhcp") 
+    {
+        Vec3_t Xmin(-0.5*Lx,-0.5*Ly,-0.5*Lz);
+        Vec3_t Xmax = -Xmin;
+        dom.GenSpheresBox (-1, Xmin, Xmax, R, rho, "HCP",    seed, fraction, Eps);
     }
     else if (ptype=="voronoi")   dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, Cohesion, !Cohesion, seed, fraction);
     else if (ptype=="tetra")
@@ -656,9 +696,18 @@ int main(int argc, char **argv) try
         dom.GenFromMesh (mesh,/*R*/R,/*rho*/rho,Cohesion,false);
     }
     else if (ptype=="rice") dom.GenRice(-1,Lx,nx,R,rho,seed,fraction);
-    else throw new Fatal("Packing for particle type not implemented yet");
+    else
+    {
+        dom.Load(ptype.CStr());
+        Array<int> DeleteTags(6);
+        DeleteTags = -2,-3,-4,-5,-6,-7;
+        dom.DelParticles(DeleteTags);
+        load = true;
+    }
+        
+     //throw new Fatal("Packing for particle type not implemented yet");
     dat.InitialIndex = dom.Particles.Size();
-    dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3,Cohesion);
+    dom.GenBoundingBox (/*InitialTag*/-2, 0.02*R, /*Cf*/1.3,Cohesion);
     
     //Fixing some degrees of freedom for the particles, just for the biaxial test, not for the official version of the test
     //Array<DEM::Particle *> Grains;
@@ -676,6 +725,7 @@ int main(int argc, char **argv) try
     // properties of particles prior the triaxial test
     Dict B;
     B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,Mu ,Beta,Eta,Bn,Bt ,Bm ,     Eps);
+    //B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,0.0,Beta,Eta,Bn,Bt ,Bm ,     Eps);
     B.Set(-2,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,0.0,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
     B.Set(-3,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,0.0,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
     B.Set(-4,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,0.0,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
@@ -692,19 +742,21 @@ int main(int argc, char **argv) try
     Vec3_t  depsdt(0.0,0.0,0.0);       // strain rate
 
     sigf =  Vec3_t(-p0,-p0,-p0);
+    if (load) dat.Sig = sigf;
     ResetEps  (dom,dat);
     SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
     dat.tspan = T0/2.0 - dom.Time;
-#ifdef USE_HDF5    
-    dom.Save(filekey.CStr());
-#endif
     dom.Solve  (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_a.CStr(),RenderVideo,Nproc);
+    dom.Save(fkey_a.CStr());
     SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
     dat.tspan = T0 - dom.Time;
+    //Dict D;
+    //D.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt,Mu ,Beta,Eta,Bn,Bt ,Bm ,     Eps);
+    //dom.SetProps(D);
     dom.Solve (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_b.CStr(),RenderVideo,Nproc);
-#ifdef USE_HDF5    
     dom.Save(fkey_b.CStr());
-#endif
+
+
 
     // stage 2: The proper triaxial test /////////////////////////////////////////////////////////////////////////
     String fkey_c(filekey+"_c");
@@ -719,9 +771,7 @@ int main(int argc, char **argv) try
     SetTxTest (sigf, peps, depsdt, thf*M_PI/180, alpf*M_PI/180, isfailure, dat, dom);
     dat.tspan = Tf - dom.Time;
     dom.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_c.CStr(),RenderVideo,Nproc);
-#ifdef USE_HDF5    
     dom.Save(fkey_c.CStr());
-#endif
 
     return 0;
 }

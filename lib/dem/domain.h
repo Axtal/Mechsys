@@ -68,7 +68,7 @@ public:
     void GenSpheres      (int Tag, double L, size_t N, double rho, char const * Type,
                           size_t Randomseed, double fraction, double RminFraction = 1.0);                                        ///< General spheres
     void GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1,                                                           ///< Generate spheres within a rectangular box defined by the vectors X0 and X1
-                        double R, double rho, size_t Randomseed, double fraction, double RminFraction);
+                        double R, double rho, char const * Type, size_t Randomseed, double fraction, double RminFraction);
     void GenRice         (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction);                ///< General rices
     void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, bool Cohesion=false);            ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenOpenBox      (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                                 ///< Generate five walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
@@ -517,33 +517,51 @@ inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char con
     printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
-inline void Domain::GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1, double R, double rho, size_t Randomseed, double fraction, double RminFraction)
+inline void Domain::GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1, double R, double rho, char const * Type, size_t Randomseed, double fraction, double RminFraction)
 {
     // find radius from the edge's length
     Util::Stopwatch stopwatch;
     printf("\n%s--- Generating packing of spheres -----------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     srand(Randomseed);
-
-    size_t nx = 0.5*(X1(0)-X0(0))/R-1;
-    size_t ny = int((X1(1)-X0(1))/(sqrt(3.0)*R));
-    size_t nz = int((X1(2)-X0(2))/(sqrt(8.0/3.0)*R));
-    for (size_t k = 0; k < nz; k++)
+    if (strcmp(Type,"Normal")==0)
     {
+        size_t nx = 0.5*(X1(0)-X0(0))/R;
+        size_t ny = 0.5*(X1(1)-X0(1))/R;
+        size_t nz = 0.5*(X1(2)-X0(2))/R;
+        for (size_t i = 0; i < nx; i++)
         for (size_t j = 0; j < ny; j++)
+        for (size_t k = 0; k < nz; k++)
         {
-            Vec3_t X;
-            if (k%2==0) X = Vec3_t(-R,R,2*R+k*sqrt(8.0/3.0)*R) + X0;
-            else X = Vec3_t(0.0,R+sqrt(1.0/3.0)*R,2*R+k*sqrt(8.0/3.0)*R) + X0;
-            if (j%2==0) X += Vec3_t(R,j*sqrt(3.0)*R,0.0);
-            else X += Vec3_t(0.0,j*sqrt(3.0)*R,0.0);
-            for (size_t i = 0; i < nx; i++)
+            Vec3_t pos(-(X1(0)-X0(0))/2.0+R, -(X1(1)-X0(1))/2.0+R, -(X1(2)-X0(2))/2.0+R);
+            pos += Vec3_t(2.0*i*R, 2.0*j*R, 2.0*k*R);
+            if (rand()<fraction*RAND_MAX) AddSphere (Tag,pos,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
+        }
+    }
+
+    else if (strcmp(Type,"HCP")==0)
+    {
+        size_t nx = 0.5*(X1(0)-X0(0))/R-1;
+        size_t ny = int((X1(1)-X0(1))/(sqrt(3.0)*R));
+        size_t nz = int((X1(2)-X0(2))/(sqrt(8.0/3.0)*R));
+        for (size_t k = 0; k < nz; k++)
+        {
+            for (size_t j = 0; j < ny; j++)
             {
-                X += Vec3_t(2*R,0.0,0.0);
-                if (rand()<fraction*RAND_MAX) AddSphere (Tag,X,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
+                Vec3_t X;
+                if (k%2==0) X = Vec3_t(-R,R,2*R+k*sqrt(8.0/3.0)*R) + X0;
+                else X = Vec3_t(0.0,R+sqrt(1.0/3.0)*R,2*R+k*sqrt(8.0/3.0)*R) + X0;
+                if (j%2==0) X += Vec3_t(R,j*sqrt(3.0)*R,0.0);
+                else X += Vec3_t(0.0,j*sqrt(3.0)*R,0.0);
+                for (size_t i = 0; i < nx; i++)
+                {
+                    X += Vec3_t(2*R,0.0,0.0);
+                    if (rand()<fraction*RAND_MAX) AddSphere (Tag,X,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
+                }
             }
         }
     }
     
+    else throw new Fatal ("Right now there are only two possible packings available the Normal and the HCP, packing %s is not implemented yet",Type);
     printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
@@ -1873,7 +1891,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         {
             double Ekin,Epot;
             CalcEnergy(Ekin,Epot);
-            if (Ekin<minEkin) break;
+            if (Ekin<minEkin&&Time>0.1*tf) break;
             if (BInteractons.Size()>0) Clusters();
             if (ptReport!=NULL) (*ptReport) ((*this), UserData);
             if (TheFileKey!=NULL)
