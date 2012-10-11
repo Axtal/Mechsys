@@ -20,16 +20,10 @@
 #####################################################################################
 
 SET(MUMPS_INCLUDE_SEARCH_PATH
-  $ENV{MECHSYS_ROOT}/pkg/MUMPS_4.9.2/include
-  $ENV{HOME}/pkg/MUMPS_4.9.2/include
-  $ENV{MECHSYS_ROOT}/pkg/MUMPS_4.10.0/include
-  $ENV{HOME}/pkg/MUMPS_4.10.0/include)
+    /usr/include)
 
 SET(MUMPS_LIBRARY_SEARCH_PATH
-  $ENV{MECHSYS_ROOT}/pkg/MUMPS_4.9.2/lib
-  $ENV{HOME}/pkg/MUMPS_4.9.2/lib
-  $ENV{MECHSYS_ROOT}/pkg/MUMPS_4.10.0/lib
-  $ENV{HOME}/pkg/MUMPS_4.10.0/lib)
+    /usr/lib)
 
 FIND_PATH(MUMPS_MUMPS_H dmumps_c.h ${MUMPS_INCLUDE_SEARCH_PATH})
 

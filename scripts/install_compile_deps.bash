@@ -82,6 +82,7 @@ VER_VTK_MAJOR=5.10
 VER_SCALAPACK=1.0.2
 VER_WXWIDGETS=2.9.3
 VER_SUPERLUMT=2.0
+VER_BLITZ=0.9
 
 compile_scalapack() {
     INC_OPENMPI=/usr/local/lib/openmpi/include
@@ -201,6 +202,13 @@ download_and_compile() {
             PKG=SuperLU_MT_$VER_SUPERLUMT
             LOCATION=http://crd-legacy.lbl.gov/~xiaoye/SuperLU/superlu_mt_$VER_SUPERLUMT.$EXT
             RENAME_PKG=superlumt_rename
+            DO_PATCH=1
+            ;;
+        blitz)
+            PKG=blitz-$VER_BLITZ
+            EXT=tar.gz
+            LOCATION=http://downloads.sourceforge.net/project/blitz/blitz/Blitz%2B%2B%20$VER_BLITZ/blitz-$VER_BLITZ.$EXT 
+            DO_CONF=1
             DO_PATCH=1
             ;;
         *)
@@ -337,15 +345,16 @@ download_and_compile() {
 download_and_compile triangle
 download_and_compile tetgen
 download_and_compile voro
-download_and_compile openmpi
-download_and_compile parmetis
-download_and_compile scalapack
-download_and_compile mumps
+download_and_compile blitz
 download_and_compile igraph
 download_and_compile soplex
-download_and_compile vtk
-download_and_compile wxwidgets
-download_and_compile superlumt
+#download_and_compile openmpi
+#download_and_compile parmetis
+#download_and_compile scalapack
+#download_and_compile mumps
+#download_and_compile vtk
+#download_and_compile wxwidgets
+#download_and_compile superlumt
 
 echo
 echo "Finished ###################################################################"

@@ -20,20 +20,12 @@
 #####################################################################################
 
 SET(PARMETIS_INCLUDE_SEARCH_PATH
-    #$ENV{MECHSYS_ROOT}/pkg/parmetis-4.0.2/include
-    #$ENV{HOME}/pkg/parmetis-4.0.2/include
-    #$ENV{MECHSYS_ROOT}/pkg/parmetis-4.0.2/metis/include
-    #$ENV{HOME}/pkg/parmetis-4.0.2/metis/include
-  $ENV{MECHSYS_ROOT}/pkg/ParMetis-3.2.0/
-  $ENV{HOME}/pkg/ParMetis-3.2.0/
-  $ENV{MECHSYS_ROOT}/pkg/ParMetis-3.2.0/METISLib
-  $ENV{HOME}/pkg/ParMetis-3.2.0/METISLib)
+    /usr/include/metis
+    /usr/include/parmetis
+    /usr/include/)
 
 SET(PARMETIS_LIBRARY_SEARCH_PATH
-    #$ENV{MECHSYS_ROOT}/pkg/parmetis-4.0.2
-    #$ENV{HOME}/pkg/parmetis-4.0.2)
-  $ENV{MECHSYS_ROOT}/pkg/ParMetis-3.2.0
-  $ENV{HOME}/pkg/ParMetis-3.2.0)
+    /usr/lib)
 
 FIND_PATH(PARMETIS_METIS_H metis.h ${PARMETIS_INCLUDE_SEARCH_PATH})
 FIND_LIBRARY(PARMETIS_METIS NAMES metis PATHS ${PARMETIS_LIBRARY_SEARCH_PATH})

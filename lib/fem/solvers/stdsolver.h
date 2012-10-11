@@ -599,7 +599,11 @@ inline void STDSolver::AssembleKCMA (double C1, double C2, double C3)
 inline void STDSolver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 {
     // assemble global K matrix
-    AssembleKA ();
+    {
+        //Util::Stopwatch sw;
+        AssembleKA ();
+        //printf("assembly time\n");
+    }
 
     // set prescribed dF
     set_to_zero (dF);
@@ -642,8 +646,12 @@ inline void STDSolver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     Sparse::SubMult (K12, dU, W); // W1 -= K12*dU2
 
     // calc dU and dF
-    if (FEM::Domain::PARA) MUMPS  ::Solve (A11, W, dU); // dU = inv(A11)*W
-    else                   UMFPACK::Solve (A11, W, dU); // dU = inv(A11)*W
+    {
+        //Util::Stopwatch sw;
+        if (FEM::Domain::PARA) MUMPS  ::Solve (A11, W, dU); // dU = inv(A11)*W
+        else                   UMFPACK::Solve (A11, W, dU); // dU = inv(A11)*W
+        //printf("solution time\n");
+    }
 
     // calc dF2
     Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1
