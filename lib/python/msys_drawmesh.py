@@ -171,8 +171,8 @@ class DrawMesh:
                     ph0  = self.PH (vert, cmd)
                     clr  = self.lblue
                     eclr = self.celledgeclr
-                    if show_parts and len(c)>5:
-                        clr  = GetLightClr(c[5])
+                    if show_parts and len(c)>4:
+                        clr  = GetLightClr(c[4])
                         eclr = 'None'
                     elif self.rainbow:
                         clr  = GetLightClr(abs(c[1]))

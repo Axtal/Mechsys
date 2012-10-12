@@ -649,15 +649,15 @@ inline void STDSolver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     {
         if (FEM::Domain::PARA)
         {
-            //Util::Stopwatch sw;
+            Util::Stopwatch sw;
             MUMPS::Solve (A11, W, dU); // dU = inv(A11)*W
-            //printf("MUMPS time\n");
+            printf("MUMPS time\n");
         }
         else
         {
-            //Util::Stopwatch sw;
+            Util::Stopwatch sw;
             UMFPACK::Solve (A11, W, dU); // dU = inv(A11)*W
-            //printf("UMFPACK time\n");
+            printf("UMFPACK time\n");
         }
     }
 
