@@ -504,7 +504,17 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     // write file with IDs and tags of output nodes
     if (FNKey!=NULL && OutV!=NULL)
     {
-        String buf(FNKey);  buf.append("_out_nods.res");
+        String buf(FNKey);
+#ifdef HAS_MPI
+        if (PARA)
+        {
+            buf.Printf("%s_out_nods_p%d.res", buf.CStr(), MPI::COMM_WORLD.Get_rank());
+        }
+        else
+#endif
+        {
+            buf.append("_out_nods.res");
+        }
         std::ofstream of(buf.CStr(), std::ios::out);
         buf.Printf("%6s %6s %16s %16s %16s\n","id","tag","x","y","z");
         of << buf;

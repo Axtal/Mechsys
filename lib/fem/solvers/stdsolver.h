@@ -600,9 +600,9 @@ inline void STDSolver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 {
     // assemble global K matrix
     {
-        //Util::Stopwatch sw;
+        Util::Stopwatch sw;
         AssembleKA ();
-        //printf("assembly time\n");
+        printf("assembly time\n");
     }
 
     // set prescribed dF
@@ -647,10 +647,18 @@ inline void STDSolver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 
     // calc dU and dF
     {
-        //Util::Stopwatch sw;
-        if (FEM::Domain::PARA) MUMPS  ::Solve (A11, W, dU); // dU = inv(A11)*W
-        else                   UMFPACK::Solve (A11, W, dU); // dU = inv(A11)*W
-        //printf("solution time\n");
+        if (FEM::Domain::PARA)
+        {
+            //Util::Stopwatch sw;
+            MUMPS::Solve (A11, W, dU); // dU = inv(A11)*W
+            //printf("MUMPS time\n");
+        }
+        else
+        {
+            //Util::Stopwatch sw;
+            UMFPACK::Solve (A11, W, dU); // dU = inv(A11)*W
+            //printf("UMFPACK time\n");
+        }
     }
 
     // calc dF2
