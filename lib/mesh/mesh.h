@@ -347,6 +347,7 @@ std::ostream & operator<< (std::ostream & os, Generic const & M)
             os << "[" << p->second.first << "," << p->second.second->ID << "]";
         }
         os << "}";
+        os << ", " << Util::_4 << M.Cells[i]->PartID;
         if (i==M.Cells.Size()-1) os << "]]\n";
         else                     os << "],\n   ";
     }
@@ -1463,7 +1464,7 @@ inline void Generic::WriteJSON (char const * FileKey) const
         oss << "\"id\":"   << Util::_3 << Cells[i]->ID  << ", ";
         oss << "\"tag\":"  << Util::_3 << Cells[i]->Tag << ", ";
         oss << "\"gdim\":" << NDim << ", ";
-        //oss << "\"part\":" << Cells[i]->PartID << ", ";
+        oss << "\"part\":" << Cells[i]->PartID << ", ";
         oss << "\"verts\":[";
         for (size_t j=0; j<Cells[i]->V.Size(); ++j)
         {

@@ -109,7 +109,7 @@ class DrawMesh:
              p_vids={}, p_cids={}, only_lin_cells=False,
              with_grid=True, rotateIds=False, jointsR=None, lineedgeLws={},
              vert_tags=True, edge_tags=True, cell_tags=True, xy_labels=False,
-             show_verts=False):
+             show_verts=False, show_parts=True):
 
         # get figure
         ax = gca()
@@ -168,12 +168,16 @@ class DrawMesh:
                     dat.append((self.PH.CLOSEPOLY, (0,0)))
                 if len(dat)>0:
                     cmd,vert = zip(*dat)
-                    ph0 = self.PH (vert, cmd)
-                    if self.rainbow:
-                        clr = GetLightClr(abs(c[1]))
-                        pc0 = self.PC (ph0, facecolor=clr, edgecolor='black', linewidth=self.lw, clip_on=False)
-                    else:
-                        pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.celledgeclr, linewidth=self.lw, clip_on=False)
+                    ph0  = self.PH (vert, cmd)
+                    clr  = self.lblue
+                    eclr = self.celledgeclr
+                    if show_parts and len(c)>5:
+                        clr  = GetLightClr(c[5])
+                        eclr = 'None'
+                    elif self.rainbow:
+                        clr  = GetLightClr(abs(c[1]))
+                        eclr = 'black'
+                    pc0 = self.PC (ph0, facecolor=clr, edgecolor=eclr, linewidth=self.lw, clip_on=False)
                     ax.add_patch(pc0)
 
         # draw linear cells
