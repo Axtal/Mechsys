@@ -119,8 +119,8 @@ public:
     Array <Lattice>                                      Lat;         ///< Fluid Lattices
     Array <DEM::Particle *>                        Particles;         ///< Array of Disks
     Array <DEM::Interacton *>                    Interactons;         ///< Array of insteractons
-    Array <DEM::Interacton *>                   CInteractons;         ///< Array of valid interactons
-    Array <DEM::BInteracton*>                   BInteractons;         ///< Cohesion interactons
+    Array <DEM::CInteracton *>                  CInteractons;         ///< Array of valid  collision interactons
+    Array <DEM::BInteracton *>                  BInteractons;         ///< Cohesion interactons
     Array <iVec3_t>                                CellPairs;         ///< Pairs of cells
     Array <ParticleCellPair>                    ParCellPairs;         ///< Pairs of cells and particles
     set<pair<DEM::Particle *, DEM::Particle *> > Listofpairs;         ///< List of pair of particles associated per interacton for memory optimization
@@ -128,6 +128,7 @@ public:
     double                                                dt;         ///< Timestep
     double                                             Alpha;         ///< Verlet distance
     double                                              Gmix;         ///< Interaction constant for the mixture
+    double                                            Voltot;         ///< toala particle volume
     void *                                          UserData;         ///< User Data
     size_t                                           idx_out;         ///< The discrete time step
     size_t                                              Step;         ///< The space step to reduce the size of the h5 file for visualization
@@ -299,14 +300,14 @@ void * GlobalResetContacts1 (void * Data)
         dat.LC.Push(make_pair(i,j));
     }
 
-    //Array<DEM::Particle * > * P = &dat.Dom->Particles;
-	//Ni = P->Size()/dat.N_Proc;
-    //In = dat.ProcRank*Ni;
-    //dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
-
-	Ni = dat.Dom->Lat[0].Cells.Size()/dat.N_Proc;
+    Array<DEM::Particle * > * P = &dat.Dom->Particles;
+	Ni = P->Size()/dat.N_Proc;
     In = dat.ProcRank*Ni;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->Lat[0].Cells.Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
+//
+	//Ni = dat.Dom->Lat[0].Cells.Size()/dat.N_Proc;
+    //In = dat.ProcRank*Ni;
+    //dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->Lat[0].Cells.Size() : Fn = (dat.ProcRank+1)*Ni;
     
     dat.LPC.Resize(0);
 
@@ -318,23 +319,23 @@ void * GlobalResetContacts1 (void * Data)
     {
 	    for (size_t i=In;i<Fn;i++)
         {
-            Cell  * cell = dat.Dom->Lat[0].Cells[i];
-            //DEM::Particle * Pa = (*P)[i];
-            //for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);n<=std::min(double(dat.Dom->Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);n++)
-            //for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);m<=std::min(double(dat.Dom->Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);m++)
-            //for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l<=std::min(double(dat.Dom->Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l++)
-            for (size_t n=0;n<dat.Dom->Particles.Size();n++)
+            //Cell  * cell = dat.Dom->Lat[0].Cells[i];
+            DEM::Particle * Pa = (*P)[i];
+            for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);n<=std::min(double(dat.Dom->Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);n++)
+            for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);m<=std::min(double(dat.Dom->Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);m++)
+            for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l<=std::min(double(dat.Dom->Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l++)
+            //for (size_t n=0;n<dat.Dom->Particles.Size();n++)
             {
-                DEM::Particle * Pa = dat.Dom->Particles[n];
-                //Cell  * cell = dat.Dom->Lat[0].GetCell(iVec3_t(n,m,l));
+                //DEM::Particle * Pa = dat.Dom->Particles[n];
+                Cell  * cell = dat.Dom->Lat[0].GetCell(iVec3_t(n,m,l));
                 double x     = dat.Dom->Lat[0].dx*(cell->Index(0));
                 double y     = dat.Dom->Lat[0].dx*(cell->Index(1));
                 double z     = dat.Dom->Lat[0].dx*(cell->Index(2));
                 Vec3_t  C(x,y,z);
                 if (norm(C-Pa->x)>2.0*dat.Dom->Alpha+2.0*dat.Dom->Lat[0].dx+Pa->Dmax) continue;
                 ParticleCellPair NewPCP;
-                //NewPCP.IPar = i;
-                NewPCP.IPar = n;
+                NewPCP.IPar = i;
+                //NewPCP.IPar = n;
                 NewPCP.ICell= cell->ID;
                 bool valid = false;
                 if (Pa->Faces.Size()>0)
@@ -423,6 +424,7 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     Time   = 0.0;
     dt     = Thedt;
     Alpha  = 10.0;
+    Step   = 1;
     PrtVec = true;
     printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Size()*Lat[0].Cells.Size(),TERM_RST);
 }
@@ -438,6 +440,7 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     Time   = 0.0;
     dt     = Thedt;
     Alpha  = 10.0;
+    Step   = 1;
     PrtVec = true;
     printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Size()*Lat[0].Cells.Size(),TERM_RST);
 }
@@ -449,26 +452,61 @@ inline void Domain::WriteXDMF(char const * FileKey)
     fn.append(".h5");
     hid_t     file_id;
     file_id = H5Fcreate(fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    size_t  Nx = Lat[0].Ndim[0]/Step;
+    size_t  Ny = Lat[0].Ndim[1]/Step;
+    size_t  Nz = Lat[0].Ndim[2]/Step;
     for (size_t j=0;j<Lat.Size();j++)
     {
         // Creating data sets
-        float * Density   = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
-        float * Gamma     = new float[Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
-        float * Vvec      = new float[3*Lat[0].Ndim[0]*Lat[0].Ndim[1]*Lat[0].Ndim[2]];
-        for (size_t i=0;i<Lat[j].Cells.Size();i++)
+        float * Density   = new float[  Nx*Ny*Nz];
+        float * Gamma     = new float[  Nx*Ny*Nz];
+        float * Vvec      = new float[3*Nx*Ny*Nz];
+
+        size_t i=0;
+        for (size_t m=0;m<Lat[0].Ndim(2);m+=Step)
+        for (size_t l=0;l<Lat[0].Ndim(1);l+=Step)
+        for (size_t n=0;n<Lat[0].Ndim(0);n+=Step)
         {
-            double rho = Lat[j].Cells[i]->Rho;
-            Vec3_t vel = Lat[j].Cells[i]->Vel;
-            Density  [i] = (float) rho;
-            Gamma    [i] = (float) Lat[j].Cells[i]->IsSolid? 1.0:Lat[j].Cells[i]->Gamma;
+
+            Cell * c = Lat[j].GetCell(iVec3_t(n,l,m));
+            double rho    = 0.0;
+            double gamma  = 0.0;
+            Vec3_t vel    = OrthoSys::O;
+
+            for (size_t ni=0;ni<Step;ni++)
+            for (size_t li=0;li<Step;li++)
+            for (size_t mi=0;mi<Step;mi++)
+            {
+                rho  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Rho;
+                gamma+= Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Gamma;
+                vel  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel;
+            }
+            rho  /= Step*Step*Step;
+            gamma/= Step*Step*Step;
+            vel  /= Step*Step*Step;
+            Density [i]  = (float) rho;
+            Gamma   [i]  = (float) Lat[j].Cells[i]->IsSolid&&Step==1? 1.0: gamma;
             Vvec[3*i  ]  = (float) vel(0);
             Vvec[3*i+1]  = (float) vel(1);
             Vvec[3*i+2]  = (float) vel(2);
+            i++;
         }
+
+
+        //for (size_t i=0;i<Lat[j].Cells.Size();i++)
+        //{
+            //double rho   = Lat[j].Cells[i]->Rho;
+            //Vec3_t vel   = Lat[j].Cells[i]->Vel;
+            //Density [i]  = (float) rho;
+            //Gamma   [i]  = (float) Lat[j].Cells[i]->IsSolid? 1.0:Lat[j].Cells[i]->Gamma;
+            //Vvec[3*i  ]  = (float) vel(0);
+            //Vvec[3*i+1]  = (float) vel(1);
+            //Vvec[3*i+2]  = (float) vel(2);
+        //}
 
         //Write the data
         hsize_t dims[1];
-        dims[0] = Lat[0].Ndim(0)*Lat[0].Ndim(1)*Lat[0].Ndim(2);
+        dims[0] = Nx*Ny*Nz;
         String dsname;
         dsname.Printf("Density_%d",j);
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Density );
@@ -479,7 +517,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
         }
         if (PrtVec)
         {
-            dims[0] = 3*Lat[0].Ndim(0)*Lat[0].Ndim(1)*Lat[0].Ndim(2);
+            dims[0] = 3*Nx*Ny*Nz;
             dsname.Printf("Velocity_%d",j);
             H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vvec    );
         }
@@ -676,6 +714,8 @@ inline void Domain::WriteXDMF(char const * FileKey)
 	// Writing xmf file
     std::ostringstream oss;
 
+    //std::cout << "2" << std::endl;
+
     if (Lat[0].Ndim(2)==1)
     {
         oss << "<?xml version=\"1.0\" ?>\n";
@@ -722,31 +762,31 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "<Xdmf Version=\"2.0\">\n";
         oss << " <Domain>\n";
         oss << "   <Grid Name=\"LBM_Mesh\" GridType=\"Uniform\">\n";
-        oss << "     <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"" << Lat[0].Ndim(2) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(0) << "\"/>\n";
+        oss << "     <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\"/>\n";
         oss << "     <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n";
         oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> 0.0 0.0 0.0\n";
         oss << "       </DataItem>\n";
-        oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> 1.0 1.0 1.0\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> " << Step << " " << Step << " " << Step << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Geometry>\n";
         for (size_t j=0;j<Lat.Size();j++)
         {
         oss << "     <Attribute Name=\"Density_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Density_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         if (PrtVec)
         {
         oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         }
         }
         oss << "     <Attribute Name=\"Gamma\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Gamma\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
@@ -2292,10 +2332,12 @@ inline void Domain::Initialize (double dt)
     {
         Initialized = true;
         // initialize all particles
+        Voltot = 0.0;
         for (size_t i=0; i<Particles.Size(); i++)
         {
             Particles[i]->Initialize(i);
             Particles[i]->InitializeVelocity(dt);
+            Voltot+=Particles[i]->Props.V;
         }
     }
     else
@@ -2367,11 +2409,11 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     {
         pthread_join(thrs[i], NULL);
     }
+    ParCellPairs.Resize(0);
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
     }
-    ParCellPairs.Resize(0);
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_join(thrs[i], NULL);
@@ -2394,12 +2436,13 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         {
             ParCellPairs.Push(MTD[i].LPC[j]);
         }
+        MTD[i].LPC.Resize(0);
     }
+    Interactons.Resize(0);
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_create(&thrs[i], NULL, GlobalResetContacts2, &MTD[i]);
     }
-    Interactons.Resize(0);
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_join(thrs[i], NULL);
@@ -2511,11 +2554,11 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             {
                 pthread_join(thrs[i], NULL);
             }
+            ParCellPairs.Resize(0);
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
             }
-            ParCellPairs.Resize(0);
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_join(thrs[i], NULL);
@@ -2538,6 +2581,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
                 {
                     ParCellPairs.Push(MTD[i].LPC[j]);
                 }
+                MTD[i].LPC.Resize(0);
             }
             for (size_t i=0;i<Nproc;i++)
             {

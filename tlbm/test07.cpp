@@ -80,6 +80,7 @@ int main(int argc, char **argv) try
     LBM::Domain Dom(D3Q15, Nu, iVec3_t(nx,ny,nz), dx, dt);
     UserData dat;
     Dom.UserData = &dat;
+    Dom.Step = 2;
     Dom.Lat[0].G    = -200.0;
     //Dom.Lat[0].Gs   = -200.0;
     Dom.Lat[0].Gs   = -20.0;

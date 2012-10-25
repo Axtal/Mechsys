@@ -130,6 +130,7 @@ public:
     // Data
     bool                                              Initialized;                 ///< System (particles and interactons) initialized ?
     bool                                              Finished;                    ///< Has the simulation finished
+    bool                                              Dilate;                      ///< True if eroded particles should be dilated for visualization
     Array<Particle*>                                  Particles;                   ///< All particles in domain
     Array<Particle*>                                  ParXmax;                     ///< Particles that are on the Xmax boundary for periodic boudary conditions
     Array<Interacton*>                                Interactons;                 ///< All interactons
@@ -455,7 +456,7 @@ void * GlobalPerForce(void * Data)
 // Constructor & Destructor
 
 inline Domain::Domain (void * UD)
-    :  Initialized(false), Time(0.0), Alpha(0.05), UserData(UD)
+    :  Initialized(false), Dilate(false), Time(0.0), Alpha(0.05), UserData(UD)
 {
     Xmax = Xmin = 0.0;
     CamPos = 1.0, 2.0, 3.0;
@@ -2283,7 +2284,7 @@ inline void Domain::WriteXDMF (char const * FileKey)
                 Vres [j] = *Pa->Verts[j];
             }
             double multiplier = 0.0;
-            if (Pa->Eroded&&Pa->Faces.Size()>=4)
+            if (Dilate&&Pa->Eroded&&Pa->Faces.Size()>=4)
             {
                 DEM::Dilation(Vtemp,Pa->EdgeCon,Pa->FaceCon,Vres,Pa->Props.R);
                 multiplier = 1.0;
