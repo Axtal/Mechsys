@@ -80,6 +80,7 @@ public:
     // Single particle addition
     void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
     void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void AddRecBox   (int Tag, Vec3_t const & X, Vec3_t const & L, double R, double rho, double Angle=0, Vec3_t * Axis=NULL);    ///< Add a rectangular box with dimensions given by the vector L
     void AddTetra    (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
     void AddDrill    (int Tag, Vec3_t const & X, double R, double Lt, double Ll, double rho);                                    ///< A drill made as a combination of a cube and a pyramid.
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
@@ -1129,6 +1130,91 @@ inline void Domain::AddCube (int Tag, Vec3_t const & X, double R, double L, doub
     Particles[Particles.Size()-1]->Ekin       = 0.0;
     Particles[Particles.Size()-1]->Erot       = 0.0;
     Particles[Particles.Size()-1]->Dmax       = sqrt(3.0*L*L/4.0)+R;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
+    
+
+}
+
+inline void Domain::AddRecBox (int Tag, Vec3_t const & X, Vec3_t const & L, double R, double rho, double Angle, Vec3_t * Axis)
+{
+    // vertices
+    Array<Vec3_t> V(8);
+    double lx = L(0)/2.0;
+    double ly = L(1)/2.0;
+    double lz = L(2)/2.0;
+    V[0] = -lx, -ly, -lz;
+    V[1] =  lx, -ly, -lz;
+    V[2] =  lx,  ly, -lz;
+    V[3] = -lx,  ly, -lz;
+    V[4] = -lx, -ly,  lz;
+    V[5] =  lx, -ly,  lz;
+    V[6] =  lx,  ly,  lz;
+    V[7] = -lx,  ly,  lz;
+
+    // edges
+    Array<Array <int> > E(12);
+    for (size_t i=0; i<12; ++i) E[i].Resize(2);
+    E[ 0] = 0, 1;
+    E[ 1] = 1, 2;
+    E[ 2] = 2, 3;
+    E[ 3] = 3, 0;
+    E[ 4] = 4, 5;
+    E[ 5] = 5, 6;
+    E[ 6] = 6, 7;
+    E[ 7] = 7, 4;
+    E[ 8] = 0, 4;
+    E[ 9] = 1, 5;
+    E[10] = 2, 6;
+    E[11] = 3, 7;
+
+    // faces
+    Array<Array <int> > F(6);
+    for (size_t i=0; i<6; i++) F[i].Resize(4);
+    F[0] = 4, 7, 3, 0;
+    F[1] = 1, 2, 6, 5;
+    F[2] = 0, 1, 5, 4;
+    F[3] = 2, 3, 7, 6;
+    F[4] = 0, 3, 2, 1;
+    F[5] = 4, 5, 6, 7;
+
+    // calculate the rotation
+    bool ThereisanAxis = true;
+    if (Axis==NULL)
+    {
+        Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
+        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+        ThereisanAxis = false;
+    }
+    Quaternion_t q;
+    NormalizeRotation (Angle,(*Axis),q);
+    for (size_t i=0; i<V.Size(); i++)
+    {
+        Vec3_t t;
+        Rotation (V[i],q,t);
+        V[i] = t+X;
+    }
+
+    // add particle
+    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    // clean up
+    if (!ThereisanAxis) delete Axis;
+    q(0) = 1.0;
+    q(1) = 0.0;
+    q(2) = 0.0;
+    q(3) = 0.0;
+    q = q/norm(q);
+
+    Particles[Particles.Size()-1]->Q          = q;
+    Particles[Particles.Size()-1]->Props.V    = L(0)*L(1)*L(2);
+    Particles[Particles.Size()-1]->Props.m    = rho*L(0)*L(1)*L(2);
+    Particles[Particles.Size()-1]->I          = L(1)*L(1) + L(2)*L(2), L(0)*L(0) + L(2)*L(2), L(0)*L(0) + L(1)*L(1);
+    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m/12.0;
+    Particles[Particles.Size()-1]->x          = X;
+    Particles[Particles.Size()-1]->Ekin       = 0.0;
+    Particles[Particles.Size()-1]->Erot       = 0.0;
+    Particles[Particles.Size()-1]->Dmax       = 0.5*norm(L)+R;
     Particles[Particles.Size()-1]->PropsReady = true;
     Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
     

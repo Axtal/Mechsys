@@ -32,7 +32,11 @@ int main(int argc, char **argv) try
 	Vec3_t x(-10,0,0);    // position
     Vec3_t w(0,M_PI/5,0); //  rot veloc
     Vec3_t v(1.,0,0);     // veloc
-	d.AddCube (-1, x,0.3,3.,1.);
+	//d.AddCube (-1, x,0.3,3.,1.);
+    //
+    Vec3_t L(10.0,5.0,2.5);
+	d.AddRecBox (-1, x,L,0.3,1.);
+
     
     //d.Particles.Push(new DEM::Particle(-1, "duck2", 0.1, 3.0,10.0));
     //d.Particles[0]->Translate(x);
