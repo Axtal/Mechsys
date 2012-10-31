@@ -120,6 +120,7 @@ int main(int argc, char **argv) try
     double Dp = 0.1;
     double R  = 10.0;
     double w  = 0.001;
+    double ang= 0.0;
     double Tf = 40000.0;
     {
         infile >> ptype;        infile.ignore(200,'\n');
@@ -133,6 +134,7 @@ int main(int argc, char **argv) try
         infile >> Dp;           infile.ignore(200,'\n');
         infile >> R;            infile.ignore(200,'\n');
         infile >> w;            infile.ignore(200,'\n');
+        infile >> ang;          infile.ignore(200,'\n');
         infile >> Tf;           infile.ignore(200,'\n');
     }
     
@@ -159,11 +161,13 @@ int main(int argc, char **argv) try
         Quaternion_t q;
         NormalizeRotation(35.26*M_PI/180.0,OrthoSys::e1,q);
         Dom.Particles[0]->Rotate(q,Dom.Particles[0]->x);
+        NormalizeRotation(ang*M_PI/180.0,OrthoSys::e2,q);
+        Dom.Particles[0]->Rotate(q,Dom.Particles[0]->x);
     }
     else if  (ptype=="cube"  )
     {
         double e = pow(M_PI/6.0,1.0/3.0)*2*R;
-        Dom.AddCube(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*e,e,3.0,M_PI/4.0,&OrthoSys::e1);
+        Dom.AddCube(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),0.05*e,e,3.0,ang*M_PI/180.0,&OrthoSys::e2);
     }
     else
     {
