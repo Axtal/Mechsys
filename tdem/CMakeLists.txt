@@ -37,8 +37,7 @@ SET(EXES
   test_01
   test_02
   test_comm01
-  test_comm02
-  generate_hdf5)
+  test_comm02)
 
 SET(TESTS
   test_distances)
