@@ -9,7 +9,8 @@ sudo apt-get install \
     libboost-python-dev \
     python-tk python-numpy python-scipy python-matplotlib \
     libxml2-dev \
-    libmumps-dev libparmetis-dev libvtk5-dev
+    libmumps-dev libparmetis-dev libvtk5-dev \
+    libgtk2.0-dev libfltk1.3-dev libhdf5-serial-dev libxml2-dev
 
 # note: libxml2-dev is for igraph
 #       libmumps-dev will install libopenmpi-dev
