@@ -313,6 +313,12 @@ def read_table(filename, int_cols=[], make_maps=True):
     return dat
 
 
+# Read file with table
+# ====================
+def Read(filename, int_cols=[], make_maps=True):
+    return read_table(filename, int_cols, make_maps)
+
+
 # Read many files with tables
 # ===========================
 # filenames: list with file names
