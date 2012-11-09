@@ -25,6 +25,8 @@
 #include <map>
 
 // CGAL
+#include <CGAL/Kernel/global_functions_2.h>
+#include <CGAL/Kernel/global_functions_3.h>
 #include <CGAL/Alpha_shape_2.h>
 #include <CGAL/Alpha_shape_3.h>
 #include <CGAL/Delaunay_triangulation_2.h>
