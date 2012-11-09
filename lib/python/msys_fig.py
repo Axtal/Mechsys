@@ -252,7 +252,7 @@ def GetClr (idx=0, scheme=1): # color
 # =======================
 def GetLightClr (idx=0, scheme=1): # color
     #if scheme==1:
-    C = ['#64f1c1', '#d2e5ff', '#fff0d2', '#bdb6b9', '#a6c9b7', '#c7c9a6', '#a6a6c9', '#c9a6bf']
+    C = ['#64f1c1', '#d2e5ff', '#fff0d2', '#bdb6b9', '#a6c9b7', '#c7c9a6', '#a6a6c9', '#c9a6bf', '#de9700', '#89009d', '#7ad473', '#737ad4', '#d473ce', '#7e6322', '#462222', '#98acdd', '#37a3e8', 'yellow', 'blue', 'green', 'magenta', 'orange', 'red', 'cyan', 'black']
     return C[idx % len(C)]
 
 
