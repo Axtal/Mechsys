@@ -21,7 +21,8 @@ SET(PROGS_A # tests requiring FLTK
   )
 
 SET(PROGS_B # tests requiring CGAL
-  alphashape01)
+  alphashape01
+  tdelaunay3d)
 
 SET(PROGS_C # tests requiring GSL
   quadrature

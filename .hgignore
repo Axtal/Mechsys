@@ -31,6 +31,8 @@ test/test_paragrid
 test/test_readfiles
 test/test_root
 test/tlaexpr
+test/alphashape01
+test/tdelaunay3d
 tfem/arch
 tfem/beam01
 tfem/beam02

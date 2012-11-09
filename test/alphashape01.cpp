@@ -72,6 +72,7 @@ int main(int argc, char **argv) try
 	ma.AddCloudPoint (0.867, 0.580); // 40, 
     ma.Generate      (/*initial_alpha*/-1, /*regular*/true);
     ma.WriteVTU      ("alphashape01");
+    cout << " File <alphashape01.vtu> generated\n";
 	return 0;
 }
 MECHSYS_CATCH

@@ -312,7 +312,7 @@ endif(FLTK_FOUND AND A_USE_FLTK)
 
 # 20
 if(CGAL_FOUND AND A_USE_CGAL)
-    SET (LIBS ${LIBS} ${CGAL_LIBRARIES} "gfortran")
+    SET (LIBS ${LIBS} ${CGAL_LIBRARIES} "gfortran" boost_thread)
 	ADD_DEFINITIONS(-DHAS_CGAL -frounding-math)
 else(CGAL_FOUND AND A_USE_CGAL)
     if(A_USE_CGAL)
