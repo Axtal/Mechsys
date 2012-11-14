@@ -604,7 +604,6 @@ inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, doub
 #endif
 }
 
-
 inline Particle::~Particle()
 {
     for (size_t i=0; i<Verts .Size(); ++i) delete Verts[i];

@@ -29,10 +29,10 @@ using std::endl;
 int main(int argc, char **argv) try
 {
     Mesh::Delaunay mesh(3);
-    Array<double> X(6), Y(6), Z(6);
-    X = 0.0, 1.0, 1.0, 0.0, 0.5, 2.0;
-    Y = 0.0, 0.0, 1.0, 1.0, 0.5, 2.0;
-    Z = 1.0, 1.0, 1.0, 1.0, 0.5, 2.0;
+    Array<double> X(7), Y(7), Z(7);
+    X = 0.0, 1.0, 1.0, 0.0, 0.5, 2.0, 0.0;
+    Y = 0.0, 0.0, 1.0, 1.0, 0.5, 2.0, 2.0;
+    Z = 1.0, 1.0, 1.0, 1.0, 0.5, 2.0, 0.0;
     mesh.AddPoints (X, Y, Z);
     mesh.Generate  ();
     mesh.WriteVTU  ("tdelaunay3d");

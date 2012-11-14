@@ -46,7 +46,7 @@ public:
 
     // Methods
     virtual bool UpdateContacts   (double alpha) =0;    ///< Update contacts by verlet algorithm
-    virtual void CalcForce        (double dt = 0.0) =0; ///< Calculates the contact force between particles
+    virtual bool CalcForce        (double dt = 0.0) =0; ///< Calculates the contact force between particles
     virtual void UpdateParameters () =0;                ///< Update the parameters
 
     // Data
@@ -68,7 +68,7 @@ public:
 
     // Methods
     virtual bool UpdateContacts (double alpha);    ///< Update contacts by verlet algorithm
-    virtual void CalcForce      (double dt = 0.0); ///< Calculates the contact force between particles
+    virtual bool CalcForce      (double dt = 0.0); ///< Calculates the contact force between particles
     virtual void UpdateParameters ();              ///< Update the parameters
 
     // Data
@@ -104,7 +104,7 @@ public:
     FrictionMap_t  Fdcv;      ///< Static friction displacement for pair of cylinder-vertex
 protected:
     template<typename FeatureA_T, typename FeatureB_T>
-    void _update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, ListContacts_t & L, double dt);
+    bool _update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, ListContacts_t & L, double dt);
     template<typename FeatureA_T, typename FeatureB_T>
     void _update_contacts        (FeatureA_T & A, FeatureB_T & B, ListContacts_t & L, double alpha);
 };
@@ -115,7 +115,7 @@ public:
     // Methods 
     CInteractonSphere (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
     bool UpdateContacts (double alpha);                 ///< Update contacts by verlet algorithm
-    void CalcForce (double dt = 0.0);                   ///< Calculates the contact force between particles
+    bool CalcForce (double dt = 0.0);                   ///< Calculates the contact force between particles
     void UpdateParameters ();                           ///< Update the parameters
 
     // Data
@@ -136,7 +136,7 @@ public:
 
     // Methods
     bool UpdateContacts (double alpha);    ///< Update contacts by verlet algorithm
-    void CalcForce      (double dt = 0.0); ///< Calculates the contact force between particles
+    bool CalcForce      (double dt = 0.0); ///< Calculates the contact force between particles
     void UpdateParameters ();              ///< Update the parameters in case they change
 
     // Data
@@ -168,10 +168,12 @@ inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
     P2              = Pt2;
     I1              = P1->Index;
     I2              = P2->Index;
-    double r1       = pow(P1->Props.V,1.0/3.0);
-    double r2       = pow(P2->Props.V,1.0/3.0);
-    Kn              = (r1+r2)*ReducedValue(Pt1->Props.Kn,Pt2->Props.Kn);
-    Kt              = (r1+r2)*ReducedValue(Pt1->Props.Kt,Pt2->Props.Kt);
+    //double r1       = pow(P1->Props.V,1.0/3.0);
+    //double r2       = pow(P2->Props.V,1.0/3.0);
+    //Kn              = (r1+r2)*ReducedValue(Pt1->Props.Kn,Pt2->Props.Kn);
+    //Kt              = (r1+r2)*ReducedValue(Pt1->Props.Kt,Pt2->Props.Kt);
+    Kn              = ReducedValue(Pt1->Props.Kn,Pt2->Props.Kn);
+    Kt              = ReducedValue(Pt1->Props.Kt,Pt2->Props.Kt);
     Gn              = 2*ReducedValue(Pt1->Props.Gn,Pt2->Props.Gn)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
     Gt              = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
     //Mu              = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
@@ -213,8 +215,9 @@ inline bool CInteracton::UpdateContacts (double alpha)
     else return false;
 }
 
-inline void CInteracton::CalcForce (double dt)
+inline bool CInteracton::CalcForce (double dt)
 {
+    bool   overlap = false;
     Epot   = 0.0;
     dEvis  = 0.0;
     dEfric = 0.0;
@@ -224,13 +227,13 @@ inline void CInteracton::CalcForce (double dt)
     Fnet   = 0.0;
     Ftnet  = 0.0;
     Xc     = OrthoSys::O;
-    _update_disp_calc_force (P1->Edges     ,P2->Edges     ,Fdee,Lee,dt);
-    _update_disp_calc_force (P1->Verts     ,P2->Faces     ,Fdvf,Lvf,dt);
-    _update_disp_calc_force (P1->Faces     ,P2->Verts     ,Fdfv,Lfv,dt);
-    _update_disp_calc_force (P1->Verts     ,P2->Tori      ,Fdvt,Lvt,dt);
-    _update_disp_calc_force (P1->Tori      ,P2->Verts     ,Fdtv,Ltv,dt);
-    _update_disp_calc_force (P1->Verts     ,P2->Cylinders ,Fdvc,Lvc,dt);
-    _update_disp_calc_force (P1->Cylinders ,P2->Verts     ,Fdcv,Lcv,dt);
+    if (_update_disp_calc_force (P1->Edges     ,P2->Edges     ,Fdee,Lee,dt)) overlap = true;
+    if (_update_disp_calc_force (P1->Verts     ,P2->Faces     ,Fdvf,Lvf,dt)) overlap = true;
+    if (_update_disp_calc_force (P1->Faces     ,P2->Verts     ,Fdfv,Lfv,dt)) overlap = true;
+    if (_update_disp_calc_force (P1->Verts     ,P2->Tori      ,Fdvt,Lvt,dt)) overlap = true;
+    if (_update_disp_calc_force (P1->Tori      ,P2->Verts     ,Fdtv,Ltv,dt)) overlap = true;
+    if (_update_disp_calc_force (P1->Verts     ,P2->Cylinders ,Fdvc,Lvc,dt)) overlap = true;
+    if (_update_disp_calc_force (P1->Cylinders ,P2->Verts     ,Fdcv,Lcv,dt)) overlap = true;
 
     //If there is at least a contact, increase the coordination number of the particles
     if (Nc>0) 
@@ -252,6 +255,7 @@ inline void CInteracton::CalcForce (double dt)
         pthread_mutex_unlock(&P2->lck);
 #endif
     }
+    return overlap;
 }
 
 inline void CInteracton::UpdateParameters ()
@@ -264,7 +268,7 @@ inline void CInteracton::UpdateParameters ()
 }
 
 template<typename FeatureA_T, typename FeatureB_T>
-inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, ListContacts_t & L, double dt)
+inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, ListContacts_t & L, double dt)
 {
     // update
     for (size_t k=0; k<L.Size(); ++k)
@@ -277,14 +281,26 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
         double delta = P1->Props.R + P2->Props.R - dist;
         if (delta>0)
         {
-            if (delta > 0.4*(P1->Props.R+P2->Props.R))
+            if (delta > 0.4*std::min(P1->Props.R,P2->Props.R))
             {
-                std::cout << "Maximun overlap between " << P1->Index << " and " << P2->Index <<  std::endl; 
-                std::cout << "Particle's tags         " << P1->Tag   << " and " << P2->Tag   <<  std::endl; 
-                std::cout << "Memory address          " << P1        << " and " << P2        <<   " " << (P1==P2) << std::endl; 
-                std::cout << "Position particle 1     " << P1->x     << std::endl;
-                std::cout << "Position particle 2     " << P2->x     << std::endl;
-                throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
+                std::cout << "Maximun overlap between " << P1->Index         << " and " << P2->Index <<  std::endl; 
+                std::cout << "Overlap                 " << delta             <<  std::endl; 
+                std::cout << "Particle's tags         " << P1->Tag           << " and " << P2->Tag   <<  std::endl; 
+                std::cout << "Memory address          " << P1                << " and " << P2        <<   " " << (P1==P2) << std::endl; 
+                std::cout << "Position particle 1     " << P1->x             << std::endl;
+                std::cout << "Position particle 2     " << P2->x             << std::endl;
+                std::cout << "Velocity particle 1     " << P1->v             << std::endl;
+                std::cout << "Velocity particle 2     " << P2->v             << std::endl;
+                std::cout << "Ang Velocity particle 1 " << P1->w             << std::endl;
+                std::cout << "Ang Velocity particle 2 " << P2->w             << std::endl;
+                std::cout << "Mass particle 1         " << P1->Props.m       << std::endl;
+                std::cout << "Mass particle 2         " << P2->Props.m       << std::endl;
+                std::cout << "Diameter particle 1     " << P1->Dmax          << std::endl;
+                std::cout << "Diameter particle 2     " << P2->Dmax          << std::endl;
+                std::cout << "Sradius particle 1      " << P1->Props.R       << std::endl;
+                std::cout << "Sradius particle 2      " << P2->Props.R       << std::endl;
+                return true;
+                //throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
             }
             // Count a contact
             Nc++;
@@ -368,6 +384,7 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             Epot += 0.5*Kn*delta*delta+0.5*Kt*dot(FMap[p],FMap[p]);
         }
     }
+    return false;
 }
 
 template<typename FeatureA_T, typename FeatureB_T>
@@ -467,7 +484,7 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
 #endif
 }
 
-inline void CInteractonSphere::CalcForce(double dt)
+inline bool CInteractonSphere::CalcForce(double dt)
 {
     Epot   = 0.0;
     dEvis  = 0.0;
@@ -478,7 +495,8 @@ inline void CInteractonSphere::CalcForce(double dt)
     Fnet   = 0.0;
     Ftnet  = 0.0;
     Xc     = OrthoSys::O;
-    _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,Lvv,dt);
+    bool overlap;
+    overlap = _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,Lvv,dt);
     if (Epot>0.0) _update_rolling_resistance(dt);
 
 
@@ -502,6 +520,7 @@ inline void CInteractonSphere::CalcForce(double dt)
         pthread_mutex_unlock(&P2->lck);
 #endif
     }
+    return overlap;
 }
 
 inline bool CInteractonSphere::UpdateContacts (double alpha)
@@ -596,7 +615,7 @@ inline bool BInteracton::UpdateContacts (double alpha)
     return valid;
 }
 
-inline void BInteracton::CalcForce(double dt)
+inline bool BInteracton::CalcForce(double dt)
 {
     if (valid)
     {
@@ -677,6 +696,7 @@ inline void BInteracton::CalcForce(double dt)
             valid = false;
         }
     }
+    return false;
 }
 
 inline void BInteracton::UpdateParameters ()

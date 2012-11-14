@@ -89,6 +89,10 @@ public:
     void AddTorus    (int Tag, Vec3_t const & X, Vec3_t const & N, double Rmax, double R, double rho);                           ///< Add a single torus at position X with a normal N, circunference Rmax and spheroradius R
     void AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t const & X1, double R1, double R, double rho);                ///< Add a cylinder formed by the connection of two circles at positions X0 and X1 and radii R0 and R1
 
+
+    // 
+    //void AddParticle (DEM::Particle * Pa);                                                                                       ///< Add a particle as an exact copy of particle Pa
+
     // Methods
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
     void Initialize        (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
@@ -248,7 +252,13 @@ void * GlobalForce(void * Data)
     dat.ProcRank == dat.N_Proc-1 ? Fn = I->Size() : Fn = (dat.ProcRank+1)*Ni;
 	for (size_t i=In;i<Fn;i++)
 	{
-		(*I)[i]->CalcForce(dat.Dom->Dt);
+		if ((*I)[i]->CalcForce(dat.Dom->Dt))
+        {
+            dat.Dom->Save     ("error");
+            dat.Dom->WriteXDMF("error");
+            std::cout << "Maximun overlap detected between particles" << std::endl;
+            throw new Fatal("Maximun overlap detected between particles");
+        }
 	}
 }
 
@@ -448,7 +458,13 @@ void * GlobalPerForce(void * Data)
     dat.ProcRank == dat.N_Proc-1 ? Fn = I->Size() : Fn = (dat.ProcRank+1)*Ni;
 	for (size_t i=In;i<Fn;i++)
 	{
-		(*I)[i]->CalcForce(dat.Dom->Dt);
+		if ((*I)[i]->CalcForce(dat.Dom->Dt))
+        {
+            dat.Dom->Save     ("error");
+            dat.Dom->WriteXDMF("error");
+            std::cout << "Maximun overlap detected between particles" << std::endl;
+            throw new Fatal("Maximun overlap detected between particles");
+        }
 	}
 }
 
@@ -2772,6 +2788,7 @@ inline void Domain::Load (char const * FileKey)
     String fn(FileKey);
     fn.append(".hdf5");
     if (!Util::FileExists(fn)) throw new Fatal("File <%s> not found",fn.CStr());
+    printf("\n%s--- Loading file %s --------------------------------------------%s\n",TERM_CLR1,fn.CStr(),TERM_RST);
     hid_t file_id;
     file_id = H5Fopen(fn.CStr(), H5F_ACC_RDONLY, H5P_DEFAULT);
 
@@ -2905,7 +2922,7 @@ inline void Domain::Load (char const * FileKey)
 
 
     H5Fclose(file_id);
-
+    printf("\n%s--- Done --------------------------------------------%s\n",TERM_CLR2,TERM_RST);
 }
 
 #endif

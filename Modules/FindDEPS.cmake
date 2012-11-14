@@ -28,12 +28,12 @@ OPTION(A_MAKE_TERM_NOCOLORS "Don't use colors when printing to terminal ?"      
 OPTION(A_MAKE_STDVECTOR     "Use std::vector instead of own implemenatation ?"     OFF)
                                                                                    
 # Options                                                                          
-OPTION(A_USE_THREAD         "Use (p)Threads ?"                                     OFF)
+OPTION(A_USE_THREAD         "Use (p)Threads ?"                                     ON)
 OPTION(A_USE_MPI            "Use OpenMPI ?"                                        OFF)
 OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
 OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
 OPTION(A_USE_VTK            "Use VTK ?"                                            OFF)
-OPTION(A_USE_HDF5           "Use HDF5 ?"                                           OFF)
+OPTION(A_USE_HDF5           "Use HDF5 ?"                                           ON )
 OPTION(A_USE_SUPERLU        "Use SuperLU"                                          OFF)
 OPTION(A_USE_SUPERLUD       "Use SuperLUd"                                         OFF)
 OPTION(A_USE_FLTK           "Use FLTK"                                             OFF)
@@ -312,7 +312,7 @@ endif(FLTK_FOUND AND A_USE_FLTK)
 
 # 20
 if(CGAL_FOUND AND A_USE_CGAL)
-    SET (LIBS ${LIBS} ${CGAL_LIBRARIES} "gfortran" boost_thread)
+    SET (LIBS ${LIBS} ${CGAL_LIBRARIES} "gfortran" boost_thread gmp)
 	ADD_DEFINITIONS(-DHAS_CGAL -frounding-math)
 else(CGAL_FOUND AND A_USE_CGAL)
     if(A_USE_CGAL)
