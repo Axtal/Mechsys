@@ -35,8 +35,8 @@ SET(EXES
   brazil_test
   figure
   test_01
-  test_02
-  test_copy)
+  test_02)
+  #test_copy)
   #test_comm01
   #test_comm02)
 
