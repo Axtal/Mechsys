@@ -470,6 +470,18 @@ inline double SphereCube (Vec3_t & Xs, Vec3_t & Xc, double R, double dx) // Calc
     return len;
 }
 
+inline size_t Pt2idx(iVec3_t & iv, iVec3_t & Dim) // Calculates the index of the cell at coordinates iv for a cubic lattice of dimensions Dim
+{
+    return iv(0) + iv(1)*Dim(0) + iv(2)*Dim(0)*Dim(1);
+}
+
+inline void   idx2Pt(size_t n, iVec3_t & iv, iVec3_t & Dim)
+{
+    iv(0) = n%Dim(0);
+    iv(1) = n/Dim(0);
+    iv(2) = n/(Dim(0)*Dim(1));
+}
+
 }
 #endif //MECHSYS_DEM_SPECIAL_H
 

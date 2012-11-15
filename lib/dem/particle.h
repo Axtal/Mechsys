@@ -45,6 +45,8 @@ struct ParticleProps
     double  Bm;   ///< Spring constant for torque bonding
     double  Gn;   ///< Normal viscous coefficient
     double  Gt;   ///< Tangential viscous coefficient
+    double  Gv;   ///< Linear vleocity viscous coefficient
+    double  Gm;   ///< Viscous coefficient for the torque
     double  Mu;   ///< Microscopic coefficient of friction
     double  eps;  ///< Maximun strain supported before breaking
     double  Beta; ///< Rolling stiffness coeffcient
@@ -241,6 +243,8 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
     Props.Bm = 5.0e3;
     Props.Gn = 8.0;   
     Props.Gt = 0.0;   
+    Props.Gv = 0.0;   
+    Props.Gm = 0.0;   
     Props.Mu = 0.4;   
     Props.eps = 0.01;  
     Props.Beta = 0.12; 
@@ -292,6 +296,8 @@ inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, dou
     Props.Bm = 5.0e3;
     Props.Gn = 8.0;   
     Props.Gt = 0.0;   
+    Props.Gv = 0.0;   
+    Props.Gm = 0.0;   
     Props.Mu = 0.4;   
     Props.eps = 0.01;  
     Props.Beta = 0.12; 
@@ -447,6 +453,8 @@ inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, doub
     Props.Bm = 5.0e3;
     Props.Gn = 8.0;   
     Props.Gt = 0.0;   
+    Props.Gv = 0.0;   
+    Props.Gm = 0.0;   
     Props.Mu = 0.4;   
     Props.eps = 0.01;  
     Props.Beta = 0.12; 
@@ -643,6 +651,12 @@ inline void Particle::Rotate (double dt)
     if (wyf) T(1) = 0.0;
     if (wzf) T(2) = 0.0;
 
+    if (norm(w)>1.0e-12)
+    {
+        Vec3_t wn = w/norm(w);
+        T -= Props.Gm*w*Vec3_t(I(0)*wn(0)*wn(0),I(1)*wn(1)*wn(1),I(2)*wn(2)*wn(2));
+    }
+
     Vec3_t Td;
     Td(0)=(T(0)+(I(1)-I(2))*wb(1)*wb(2))/I(0);
     Td(1)=(T(1)+(I(2)-I(0))*wb(0)*wb(2))/I(1);
@@ -704,6 +718,9 @@ inline void Particle::Translate (double dt)
     if (vxf) Ft(0) = 0.0;
     if (vyf) Ft(1) = 0.0;
     if (vzf) Ft(2) = 0.0;
+
+    Ft -= Props.Gv*Props.m*v;
+
     if(Util::IsNan(norm(F))) 
     {
         throw new Fatal("Particle::Translate: The force is not a number %d(%d), try reducing the time step",Index,Tag);

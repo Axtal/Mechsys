@@ -31,8 +31,9 @@ int main(int argc, char **argv) try
     // add cube
 	Vec3_t x(-10,0,0);    // position
     Vec3_t w(0,M_PI/5,0); //  rot veloc
-    Vec3_t v(100.,0,0);     // veloc
+    Vec3_t v(0.,0,0);     // veloc
 	d.AddCube (-1, x,0.3,3.,1.);
+
     //
     //Vec3_t L(10.0,5.0,2.5);
 	//d.AddRecBox (-1, x,L,0.3,1.);
@@ -47,11 +48,17 @@ int main(int argc, char **argv) try
     // add tetrahedron
     x =  10 , 0 , 0;
     w =   0 , 0 , M_PI/10.;
-    v = -1. , 0 , 0;
+    v = -0. , 0 , 0;
     d.AddTetra (-2, x,0.5,5.,1.);
     d.Particles[1]->v      = v;
     d.Particles[1]->w      = w;
     d.Particles[1]->Eroded = true;
+//
+    //d.Particles[0]->Props.Gv = 0.1;
+    //d.Particles[0]->Props.Gm = 0.1;
+    //d.Particles[1]->Props.Gv = 0.1;
+    //d.Particles[1]->Props.Gm = 0.1;
+
     
 	//Vec3_t x(-10,0,0);    // position
     //Vec3_t v(1.,0,0);     // veloc
