@@ -709,6 +709,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
     }
     
     //Closing the file
+    H5Fflush(file_id,H5F_SCOPE_GLOBAL);
     H5Fclose(file_id);
 
 	// Writing xmf file

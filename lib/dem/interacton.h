@@ -227,6 +227,7 @@ inline bool CInteracton::CalcForce (double dt)
     Fnet   = 0.0;
     Ftnet  = 0.0;
     Xc     = OrthoSys::O;
+    if (norm(P1->x - P2->x) > P1->Dmax + P2->Dmax) return false;
     if (_update_disp_calc_force (P1->Edges     ,P2->Edges     ,Fdee,Lee,dt)) overlap = true;
     if (_update_disp_calc_force (P1->Verts     ,P2->Faces     ,Fdvf,Lvf,dt)) overlap = true;
     if (_update_disp_calc_force (P1->Faces     ,P2->Verts     ,Fdfv,Lfv,dt)) overlap = true;
@@ -288,7 +289,7 @@ inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
                 std::cout << "Maximun overlap between " << P1->Index         << " and " << P2->Index <<  std::endl; 
                 std::cout << "Overlap                 " << delta             <<  std::endl; 
                 std::cout << "Particle's tags         " << P1->Tag           << " and " << P2->Tag   <<  std::endl; 
-                std::cout << "Memory address          " << P1                << " and " << P2        <<   " " << (P1==P2) << std::endl; 
+                std::cout << "Memory address          " << P1                << " and " << P2        <<  std::endl; 
                 std::cout << "Position particle 1     " << P1->x             << std::endl;
                 std::cout << "Position particle 2     " << P2->x             << std::endl;
                 std::cout << "Velocity particle 1     " << P1->v             << std::endl;
@@ -301,6 +302,8 @@ inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
                 std::cout << "Diameter particle 2     " << P2->Dmax          << std::endl;
                 std::cout << "Sradius particle 1      " << P1->Props.R       << std::endl;
                 std::cout << "Sradius particle 2      " << P2->Props.R       << std::endl;
+                std::cout << "Number of faces  1      " << P1->Faces.Size()  << std::endl;
+                std::cout << "Number of faces  2      " << P2->Faces.Size()  << std::endl;
                 return true;
                 //throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
             }

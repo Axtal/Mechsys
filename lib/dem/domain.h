@@ -269,6 +269,7 @@ void * GlobalForce(void * Data)
             dat.Dom->Save     ("error");
             dat.Dom->WriteXDMF("error");
             std::cout << "Maximun overlap detected between particles" << std::endl;
+            sleep(1);
             throw new Fatal("Maximun overlap detected between particles");
         }
 	}
@@ -484,6 +485,7 @@ void * GlobalPerForce(void * Data)
             dat.Dom->Save     ("error");
             dat.Dom->WriteXDMF("error");
             std::cout << "Maximun overlap detected between particles" << std::endl;
+            sleep(1);
             throw new Fatal("Maximun overlap detected between particles");
         }
 	}
@@ -1908,10 +1910,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
     UpdateLinkedCells();
     //std::cout << LinkedCell.Size() << std::endl;
-
-
-
-     
     //std::cout << ListPosPairs.Size() << endl;
 
     //std::cout << "2 " << CInteractons.Size() << std::endl;
@@ -2041,7 +2039,11 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         {
             double Ekin,Epot;
             CalcEnergy(Ekin,Epot);
-            if (Ekin<minEkin&&Time>0.1*tf) break;
+            if (Ekin<minEkin&&Time>0.1*tf)
+            {
+                printf("\n%s--- Minimun energy reached ---------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+                break;
+            }
             if (BInteractons.Size()>0) Clusters();
             if (ptReport!=NULL) (*ptReport) ((*this), UserData);
             if (TheFileKey!=NULL)
@@ -2592,6 +2594,7 @@ inline void Domain::WriteXDMF (char const * FileKey)
 
 
     //Closing the file
+    H5Fflush(file_id,H5F_SCOPE_GLOBAL);
     H5Fclose(file_id);
     
 
@@ -2692,6 +2695,12 @@ inline void Domain::Save (char const * FileKey)
     // Opening the file for writing
     String fn(FileKey);
     fn.append(".hdf5");
+    if (Util::FileExists(fn))
+    {
+        String command;
+        command.Printf("rm %s",fn.CStr());
+        system(command.CStr());
+    }
     hid_t file_id;
     file_id = H5Fcreate(fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 
@@ -2839,10 +2848,10 @@ inline void Domain::Save (char const * FileKey)
         }
         
     }
-   
+
+    H5Fflush(file_id,H5F_SCOPE_GLOBAL);
     H5Fclose(file_id);
-
-
+    //sleep(5);
 }
 
 inline void Domain::Load (char const * FileKey)
@@ -3011,9 +3020,6 @@ inline void Domain::UpdateLinkedCells()
         ListPosPairs.Push(make_pair(FreePar[i],NoFreePar[j]));
     }
 
-
-
-
     for (size_t k=0;k<LCellDim(2);k++)
     for (size_t j=0;j<LCellDim(1);j++)
     for (size_t i=0;i<LCellDim(0);i++)
@@ -3028,7 +3034,8 @@ inline void Domain::UpdateLinkedCells()
         {
             size_t i1 = LinkedCell[idx][n];
             size_t i2 = LinkedCell[idx][m];
-            //std::cout << i1 << " " << i2 << " " << n << " " << m << std::endl;
+            if (i1==i2) continue;
+            //if (i1==i2) std::cout << i1 << " " << i2 << " " << n << " " << m << " " << idx << std::endl;
             ListPosPairs.Push(make_pair(i1,i2));
         }
         //std::cout << k << " " << std::min(LCellDim(0),k+1) << std::endl;;
@@ -3051,7 +3058,8 @@ inline void Domain::UpdateLinkedCells()
                         //size_t i2 = LinkedCell[idxnb][m];
                         size_t i1 = std::min(LinkedCell[idx  ][n],LinkedCell[idxnb][m]);
                         size_t i2 = std::max(LinkedCell[idx  ][n],LinkedCell[idxnb][m]);
-                        //std::cout << i1 << " " << i2 << " " << n << " " << m << " " << idx << " " << idxnb << std::endl;
+                        if (i1==i2) continue;
+                        //if (i1==i2) std::cout << i1 << " " << i2 << " " << n << " " << m << " " << idx << " " << idxnb << std::endl;
                         ListPosPairs.Push(make_pair(i1,i2));
                     }
                 }
