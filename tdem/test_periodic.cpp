@@ -52,11 +52,18 @@ void Report (DEM::Domain & dom, void *UD)
         String fs;
         fs.Printf("%s_walls.res",dom.FileKey.CStr());
         dat.oss_ss.open(fs.CStr());
-        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz \n";
+        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz" << Util::_8s << "Nc" << Util::_8s << "Nsc \n";
     }
     if (!dom.Finished) 
     {
-        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dat.Sig(0) << Util::_8s << dat.Sig(1) << Util::_8s << dat.Sig(2) << std::endl;
+        size_t Nc = 0;
+        size_t Nsc = 0;
+        for (size_t i=0; i<dom.CInteractons.Size(); i++)
+        {
+            Nc += dom.CInteractons[i]->Nc;
+            Nsc += dom.CInteractons[i]->Nsc;
+        }
+        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dat.Sig(0) << Util::_8s << dat.Sig(1) << Util::_8s << dat.Sig(2) << Util::_8s << Nc << Util::_8s << Nsc << std::endl;
     }
     else
     {
@@ -147,6 +154,7 @@ int main(int argc, char **argv) try
     DEM::Domain dom(&dat);
     dom.Alpha=verlet;
     dom.CamPos = Vec3_t(0.0, 1.0*(Lx+Ly+Lz), 0.15*Lz); // position of camera
+    dom.LCells = false;
 
     // particle
     if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction);

@@ -672,6 +672,7 @@ int main(int argc, char **argv) try
     dom.CamPos = Vec3_t(0.1*Lx, 0.7*(Lx+Ly+Lz), 0.15*Lz); // position of camera
     dat.dt = dt;
     dat.RenderVideo = (bool) RenderVideo;
+    dom.LCells = false;
 
     bool load = false;
     // particle

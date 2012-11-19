@@ -143,6 +143,7 @@ public:
     bool                                              Initialized;                 ///< System (particles and interactons) initialized ?
     bool                                              Finished;                    ///< Has the simulation finished
     bool                                              Dilate;                      ///< True if eroded particles should be dilated for visualization
+    bool                                              LCells;                      ///< True if Linked cells are used
     Array<size_t>                                     FreePar;                     ///< Particles that are free
     Array<size_t>                                     NoFreePar;                   ///< Particles that are not free
     Array<Particle*>                                  Particles;                   ///< All particles in domain
@@ -328,12 +329,12 @@ void * GlobalResetContacts1 (void * Data)
     {
         size_t i = dat.Dom->ListPosPairs[n].first;
         size_t j = dat.Dom->ListPosPairs[n].second;
-        //bool pi_has_vf = !dat.Dom->Particles[i]->IsFree();
-        //bool pj_has_vf = !dat.Dom->Particles[j]->IsFree();
+        bool pi_has_vf = !dat.Dom->Particles[i]->IsFree();
+        bool pj_has_vf = !dat.Dom->Particles[j]->IsFree();
 
         bool close = (Distance(dat.Dom->Particles[i]->x,dat.Dom->Particles[j]->x)<=dat.Dom->Particles[i]->Dmax+dat.Dom->Particles[j]->Dmax+2*dat.Dom->Alpha);
-        //if ((pi_has_vf && pj_has_vf) || !close) continue;
-        if (!close) continue;
+        if ((pi_has_vf && pj_has_vf) || !close) continue;
+        //if (!close) continue;
         
         // checking if the interacton exist for that pair of particles
         set<pair<Particle *, Particle *> >::iterator it = dat.Dom->Listofpairs.find(make_pair(dat.Dom->Particles[i],dat.Dom->Particles[j]));
@@ -496,7 +497,7 @@ void * GlobalPerForce(void * Data)
 // Constructor & Destructor
 
 inline Domain::Domain (void * UD)
-    :  Initialized(false), Dilate(false), Time(0.0), Alpha(0.05), Beta(1.0), UserData(UD)
+    :  Initialized(false), Dilate(false), Time(0.0), Alpha(0.05), Beta(1.0), LCells(true), UserData(UD)
 {
     Xmax = Xmin = 0.0;
     CamPos = 1.0, 2.0, 3.0;
@@ -1883,12 +1884,15 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         MTD[i].Dmx      = 0.0;
     }
     pthread_t thrs[Nproc];
-     
-    //for (size_t i=0; i<Particles.Size()-1; i++)
-    //for (size_t j=i+1; j<Particles.Size(); j++)
-    //{
-        //ListPosPairs.Push(make_pair(i,j));
-    //}
+    
+    if (!LCells)
+    {
+        for (size_t i=0; i<Particles.Size()-1; i++)
+        for (size_t j=i+1; j<Particles.Size(); j++)
+        {
+            ListPosPairs.Push(make_pair(i,j));
+        }
+    }
     LinkedCell.Resize(0);
     BoundingBox(LCxmin,LCxmax);
     LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
@@ -3012,7 +3016,8 @@ inline void Domain::UpdateLinkedCells()
         //}
         //std::cout << std::endl;
     //}
-
+    //
+    if (!LCells) return;
     ListPosPairs.Resize(0);
     for (size_t i=0;i<FreePar.Size();i++)
     for (size_t j=0;j<NoFreePar.Size();j++)

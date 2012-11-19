@@ -36,6 +36,10 @@ int main(int argc, char **argv) try
     mesh.AddPoints (X, Y, Z);
     mesh.Generate  ();
     mesh.WriteVTU  ("tdelaunay3d");
+
+    std::cout << mesh.Cells[2]->V[3]->ID << std::endl;
+    std::cout << mesh.Cells[2]->V[3]->C  << std::endl;
+
     cout << " File <tdelaunay3d.vtu> generated\n";
     return 0;
 }
