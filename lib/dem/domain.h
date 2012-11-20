@@ -310,6 +310,11 @@ void * GlobalResetDisplacement(void * Data)
         {
             iVec3_t idx = ((*P)[i]->x - dat.Dom->LCxmin)/(2.0*dat.Dom->Beta*dat.Dom->MaxDmax);
             dat.LLC.Push(make_pair(idx,i));
+            //if (i==345)
+            //{
+                //std::cout << idx << " " << (*P)[i]->x << " " << dat.Dom->Time << " " << dat.ProcRank << std::endl;
+                //std::cout << dat.LLC.Last().first << " " << dat.LLC.Last().second << std::endl;
+            //}
         }
     }
 }
@@ -2140,6 +2145,10 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_create(&thrs[i], NULL, GlobalResetDisplacement, &MTD[i]);
+            }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
                 for (size_t j=0;j<MTD[i].LLC.Size();j++)
                 {
                     size_t idx = Pt2idx(MTD[i].LLC[j].first,LCellDim);
@@ -2147,10 +2156,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
                 }
             }
             UpdateLinkedCells();
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_join(thrs[i], NULL);
-            }
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
@@ -3007,16 +3012,62 @@ inline void Domain::Load (char const * FileKey)
 inline void Domain::UpdateLinkedCells()
 {
     //std::cout << "a ) Updating linked cells "  << Time << std::endl;
-
-    //for (size_t i=0;i<LinkedCell.Size();i++)
-    //{
+    //
+    
+    size_t n = 0;
+    for (size_t i=0;i<LinkedCell.Size();i++)
+    {
         //for (size_t j=0;j<LinkedCell[i].Size();j++)
         //{
             //std::cout << LinkedCell[i][j] << " ";
         //}
         //std::cout << std::endl;
-    //}
-    //
+        n += LinkedCell[i].Size();
+    }
+
+    //std::cout << "Number of linked cells   " << LinkedCell.Size() << " " << LCellDim << std::endl;
+    //std::cout << "Limits                   " << LCxmin            << " " << LCxmax   << " " << MaxDmax << std::endl;
+    //std::cout << "Particles in linked cells" << n                 << std::endl;
+    //std::cout << "Free Particles           " << FreePar.Size()    << std::endl;
+    if (n!=FreePar.Size())
+    {
+        //ofstream lin("linked.txt");
+        //ofstream pos("position.txt");
+        //for (size_t i=0;i<LinkedCell.Size();i++)
+        //{
+            //lin << i << std::endl;
+            //for (size_t j=0;j<LinkedCell[i].Size();j++)
+            //{
+                //lin << LinkedCell[i][j] << " ";
+            //}
+            //lin << std::endl;
+        //}
+        //for (size_t i=0;i<Particles.Size();i++)
+        //{
+            //iVec3_t cell = (Particles[i]->x - LCxmin)/(2.0*Beta*MaxDmax);
+            //size_t  idx  = Pt2idx(cell,LCellDim);
+            //pos << i << " " << Particles[i]->x << " " << cell << " " << idx << std::endl;
+        //}
+        //lin.close();
+        //pos.close();
+        
+        //for (size_t i=0;i<FreePar.Size();i++)
+        //{
+            //bool found = false;
+            //for (size_t j=0;j<LinkedCell.Size();j++)
+            //{
+                //if (LinkedCell[j].Has(FreePar[i])) found = true;
+            //}
+            //if (!found) 
+            //{
+                //iVec3_t cell = (Particles[FreePar[i]]->x - LCxmin)/(2.0*Beta*MaxDmax);
+                //size_t  idx  = Pt2idx(cell,LCellDim);
+                //if (FreePar[i]==345) std::cout << FreePar[i] << " " << Particles[FreePar[i]]->x << " " << cell << " " << idx << " " << LinkedCell[idx].Size() <<  std::endl;
+            //}
+        //}
+        throw new Fatal("Domain::UpdateLinkedCells: Linked cells dont match");
+    }
+    
     if (!LCells) return;
     ListPosPairs.Resize(0);
     for (size_t i=0;i<FreePar.Size();i++)
