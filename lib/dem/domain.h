@@ -143,7 +143,6 @@ public:
     bool                                              Initialized;                 ///< System (particles and interactons) initialized ?
     bool                                              Finished;                    ///< Has the simulation finished
     bool                                              Dilate;                      ///< True if eroded particles should be dilated for visualization
-    bool                                              LCells;                      ///< True if Linked cells are used
     Array<size_t>                                     FreePar;                     ///< Particles that are free
     Array<size_t>                                     NoFreePar;                   ///< Particles that are not free
     Array<Particle*>                                  Particles;                   ///< All particles in domain
@@ -502,7 +501,7 @@ void * GlobalPerForce(void * Data)
 // Constructor & Destructor
 
 inline Domain::Domain (void * UD)
-    :  Initialized(false), Dilate(false), Time(0.0), Alpha(0.05), Beta(1.0), LCells(true), UserData(UD)
+    :  Initialized(false), Dilate(false), Time(0.0), Alpha(0.05), Beta(1.0), UserData(UD)
 {
     Xmax = Xmin = 0.0;
     CamPos = 1.0, 2.0, 3.0;
@@ -1890,14 +1889,11 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     }
     pthread_t thrs[Nproc];
     
-    if (!LCells)
-    {
-        for (size_t i=0; i<Particles.Size()-1; i++)
-        for (size_t j=i+1; j<Particles.Size(); j++)
-        {
-            ListPosPairs.Push(make_pair(i,j));
-        }
-    }
+    //for (size_t i=0; i<Particles.Size()-1; i++)
+    //for (size_t j=i+1; j<Particles.Size(); j++)
+    //{
+        //ListPosPairs.Push(make_pair(i,j));
+    //}
     LinkedCell.Resize(0);
     BoundingBox(LCxmin,LCxmax);
     LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
@@ -3068,7 +3064,6 @@ inline void Domain::UpdateLinkedCells()
         throw new Fatal("Domain::UpdateLinkedCells: Linked cells dont match");
     }
     
-    if (!LCells) return;
     ListPosPairs.Resize(0);
     for (size_t i=0;i<FreePar.Size();i++)
     for (size_t j=0;j<NoFreePar.Size();j++)
