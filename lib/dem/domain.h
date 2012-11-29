@@ -2558,6 +2558,7 @@ inline void Domain::WriteXDMF (char const * FileKey)
     float * Velvec = new float[3*Particles.Size()];
     float * Omevec = new float[3*Particles.Size()];
     int   * Tag    = new int  [  Particles.Size()];
+    float * Comp   = new float[  Particles.Size()];
     for (size_t i=0;i<Particles.Size();i++)
     {
         Vec3_t Ome;
@@ -2572,7 +2573,8 @@ inline void Domain::WriteXDMF (char const * FileKey)
         Omevec[3*i  ] = float(Ome(0));
         Omevec[3*i+1] = float(Ome(1)); 
         Omevec[3*i+2] = float(Ome(2)); 
-        Tag   [i]     = int(Particles[i]->Tag);  
+        Tag   [i]     = int  (Particles[i]->Tag);  
+        Comp  [i]     = float(Particles[i]->M(0,0) + Particles[i]->M(1,1) + Particles[i]->M(2,2));
     }
 
     hsize_t dims[1];
@@ -2589,6 +2591,8 @@ inline void Domain::WriteXDMF (char const * FileKey)
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Radius);
     dsname.Printf("PTag");
     H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,Tag   );
+    dsname.Printf("PComp");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Comp  );
 
 
     delete [] Radius;
@@ -2670,6 +2674,11 @@ inline void Domain::WriteXDMF (char const * FileKey)
     oss << "     <Attribute Name=\"Tag\" AttributeType=\"Scalar\" Center=\"Node\">\n";
     oss << "       <DataItem Dimensions=\"" << Particles.Size() << "\" NumberType=\"Int\" Format=\"HDF\">\n";
     oss << "        " << fn.CStr() <<":/PTag \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Compression\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << Particles.Size() << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/PComp \n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Node\">\n";

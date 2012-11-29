@@ -474,7 +474,8 @@ void Report (DEM::Domain & dom, void *UD)
         size_t n_inside = 0; // Number of particles not in contact with the boundaries
         for (size_t i=0; i<dom.Particles.Size(); i++)
         {
-            if (!dom.Particles[i]->Bdry&&dom.Particles[i]->IsFree())
+            //if (!dom.Particles[i]->Bdry&&dom.Particles[i]->IsFree())
+            if (dom.Particles[i]->IsFree())
             {
                 Cn += dom.Particles[i]->Cn;
                 n_inside++;
@@ -672,7 +673,6 @@ int main(int argc, char **argv) try
     dom.CamPos = Vec3_t(0.1*Lx, 0.7*(Lx+Ly+Lz), 0.15*Lz); // position of camera
     dat.dt = dt;
     dat.RenderVideo = (bool) RenderVideo;
-    dom.LCells = false;
 
     bool load = false;
     // particle
