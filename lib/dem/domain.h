@@ -101,6 +101,7 @@ public:
     void WritePOV          (char const * FileKey);                                                              ///< Write POV file
     void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
 #ifdef USE_HDF5    
+    void WriteBF           (char const * FileKey);                                                              ///< Save a h5 with branch and force information
     void WriteXDMF         (char const * FileKey);                                                              ///< Save a xdmf file for visualization
     void Save              (char const * FileKey);                                                              ///< Save the current domain
     void Load              (char const * FileKey);                                                              ///< Load the domain form a file
@@ -2408,6 +2409,79 @@ inline void Domain::WriteBPY (char const * FileKey)
 
 #ifdef USE_HDF5
 
+inline void Domain::WriteBF (char const * FileKey)
+{
+
+    size_t n_fn = 0;
+
+    for (size_t i=0;i<CInteractons.Size();i++)
+    {
+        if ((norm(CInteractons[i]->Fnet)>0.0)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree())) n_fn++;
+    }
+
+    if (n_fn==0) return;
+    
+    String fn(FileKey);
+    fn.append(".h5");
+    hid_t     file_id;
+    file_id = H5Fcreate(fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+    float  *  Fnnet = new float[3*n_fn];
+    float  *  Ftnet = new float[3*n_fn];
+    float  * Branch = new float[3*n_fn];
+    int    *    ID1 = new   int[  n_fn];
+    int    *    ID2 = new   int[  n_fn];
+
+    size_t idx = 0;
+
+    for (size_t i=0;i<CInteractons.Size();i++)
+    {
+        if ((norm(CInteractons[i]->Fnet)>0.0)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree()))
+        {
+            Fnnet [3*idx  ] = float(CInteractons[i]->Fnet  (0));
+            Fnnet [3*idx+1] = float(CInteractons[i]->Fnet  (1));
+            Fnnet [3*idx+2] = float(CInteractons[i]->Fnet  (2));
+            Ftnet [3*idx  ] = float(CInteractons[i]->Ftnet (0));
+            Ftnet [3*idx+1] = float(CInteractons[i]->Ftnet (1));
+            Ftnet [3*idx+2] = float(CInteractons[i]->Ftnet (2));
+            Branch[3*idx  ] = float(CInteractons[i]->P1->x(0)-CInteractons[i]->P2->x(0));
+            Branch[3*idx+1] = float(CInteractons[i]->P1->x(1)-CInteractons[i]->P2->x(1)); 
+            Branch[3*idx+2] = float(CInteractons[i]->P1->x(2)-CInteractons[i]->P2->x(2)); 
+            ID1   [idx]     = int  (CInteractons[i]->P1->Index);
+            ID2   [idx]     = int  (CInteractons[i]->P2->Index);
+            idx++;
+        }
+    }
+
+    hsize_t dims[1];
+    dims[0] = 3*n_fn;
+    String dsname;
+    dsname.Printf("Normal");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Fnnet );
+    dsname.Printf("Tangential");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Ftnet );
+    dsname.Printf("Branch");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Branch);
+    dims[0] = n_fn;
+    dsname.Printf("ID1");
+    H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,ID1   );
+    dsname.Printf("ID2");
+    H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,ID2   );
+
+
+    delete [] Fnnet;
+    delete [] Ftnet;
+    delete [] Branch;
+    delete [] ID1;
+    delete [] ID2;
+
+
+    //Closing the file
+    H5Fflush(file_id,H5F_SCOPE_GLOBAL);
+    H5Fclose(file_id);
+    
+
+}
 inline void Domain::WriteXDMF (char const * FileKey)
 {
     size_t N_Faces = 0;
