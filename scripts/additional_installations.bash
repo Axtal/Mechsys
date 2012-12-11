@@ -69,13 +69,32 @@ fi
 
 test -d $MECHSYS_ROOT/pkg || mkdir $MECHSYS_ROOT/pkg
 
-VER_BLITZ=0.9
-VER_TRIANGLE=1.6
-VER_TETGEN=1.4.3
-VER_VORO=0.3.1
-VER_IGRAPH=0.5.4
-VER_SOPLEX=1.6.0
-VER_WXWIDGETS=2.9.4
+VER_OPENMPI=1.6.2
+VER_PARMETIS=3.2.0 # 4.0.2 # MUMPS does not work with this one
+VER_SCALAPACK=1.0.2
+VER_MUMPS=4.10.0
+VER_VTK=5.10.0
+VER_VTK_MAJOR=5.10
+VER_SUPERLUMT=2.0
+
+compile_scalapack() {
+    INC_OPENMPI=/usr/local/lib/openmpi/include
+    LIB_LAPACK=/usr/lib/liblapack.so
+    LIB_BLAS=/usr/lib/libblas.so
+    LDIR=$MECHSYS_ROOT/pkg/scalapack_installer/lib
+    python setup.py --notesting --mpiincdir=$INC_OPENMPI --lapacklib=$LIB_LAPACK --blaslib=$LIB_BLAS
+}
+
+parmetis_links() {
+    LDIR=$MECHSYS_ROOT/pkg/parmetis-$VER_PARMETIS
+    MACH=`uname -m`
+    ln -s $LDIR/build/Linux-$MACH/libmetis/libmetis.a $LDIR/
+    ln -s $LDIR/build/Linux-$MACH/libparmetis/libparmetis.a $LDIR/
+}
+
+superlumt_rename() {
+    mv superlu_mt_$VER_SUPERLUMT.tar.gz SuperLU_MT_$VER_SUPERLUMT.tar.gz
+}
 
 error_message() {
     echo
@@ -101,47 +120,47 @@ download_and_compile() {
     DO_MAKE=1
     DO_MAKE_INST=0
     case "$1" in
-        blitz)
-            PKG=blitz-$VER_BLITZ
-            EXT=tar.gz
-            LOCATION=http://downloads.sourceforge.net/project/blitz/blitz/Blitz%2B%2B%20$VER_BLITZ/blitz-$VER_BLITZ.$EXT 
-            DO_CONF=1
-            DO_PATCH=1
-            ;;
-        triangle)
-            PKG=triangle$VER_TRIANGLE
-            LOCATION=http://mechsys.nongnu.org/software/$PKG.$EXT
-            DO_PATCH=1
-            ;;
-        tetgen)
-            PKG=tetgen$VER_TETGEN
-            LOCATION=http://mechsys.nongnu.org/software/$PKG.$EXT
-            DO_PATCH=1
-            ;;
-        voro)
-            PKG=voro++$VER_VORO
-            LOCATION=http://mechsys.nongnu.org/software/$PKG.$EXT
-            DO_PATCH=1
-            DO_MAKE=0
-            ;;
-        igraph)
-            PKG=igraph-$VER_IGRAPH
-            LOCATION=http://sourceforge.net/projects/igraph/files/C%20library/$VER_IGRAPH/$PKG.$EXT
-            DO_CONF=1
-            ;;
-        soplex)
-            PKG=soplex-$VER_SOPLEX
-            EXT=tgz
-            LOCATION=http://soplex.zib.de/download/$PKG.$EXT
-            #NPROCS=1 # it seems soples cannot be compiled in parallel...
-            ;;
-        wxwidgets)
-            PKG=wxWidgets-$VER_WXWIDGETS
+        openmpi)
+            PKG=openmpi-$VER_OPENMPI
             EXT=tar.bz2
-            LOCATION=http://downloads.sourceforge.net/project/wxwindows/$VER_WXWIDGETS/wxWidgets-$VER_WXWIDGETS.$EXT
+            LOCATION=http://www.open-mpi.org/software/ompi/v1.6/downloads/$PKG.$EXT
             DO_CONF=1
             DO_MAKE_INST=1
-            CONF_PRMS="-enable-monolithic --disable-compat26 --disable-compat28 --with-opengl"
+            ;;
+        parmetis)
+            #PKG=parmetis-$VER_PARMETIS  # for 4.0.2
+            #EXTRA_CONF="make config"    # for 4.0.2
+            #EXTRA_CMD=parmetis_links    # for 4.0.2
+            PKG=ParMetis-$VER_PARMETIS
+            LOCATION=http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/$PKG.$EXT
+            LOCATION=http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/OLD/$PKG.$EXT
+            ;;
+        scalapack)
+            PKG=scalapack_installer
+            PKG_DIR=scalapack_installer_$VER_SCALAPACK
+            EXT=tgz
+            LOCATION=http://www.netlib.org/scalapack/$PKG.$EXT
+            DO_MAKE=0
+            EXTRA_CMD=compile_scalapack
+            ;;
+        mumps)
+            PKG=MUMPS_$VER_MUMPS
+            #LOCATION=""
+            LOCATION=http://mumps.enseeiht.fr/$PKG.$EXT
+            DO_PATCH=1
+            ;;
+        vtk)
+            PKG=vtk-$VER_VTK
+            PKG_DIR=VTK
+            LOCATION=http://www.vtk.org/files/release/$VER_VTK_MAJOR/$PKG.$EXT
+            DO_CMAKECONF=1
+            DO_MAKE_INST=1
+            ;;
+        superlumt)
+            PKG=SuperLU_MT_$VER_SUPERLUMT
+            LOCATION=http://crd-legacy.lbl.gov/~xiaoye/SuperLU/superlu_mt_$VER_SUPERLUMT.$EXT
+            RENAME_PKG=superlumt_rename
+            DO_PATCH=1
             ;;
         *)
             error_message "download_and_compile: __Internal_error__"
@@ -274,13 +293,12 @@ download_and_compile() {
     echo "        . . . finished . . . . . "
 }
 
-download_and_compile blitz
-download_and_compile triangle
-download_and_compile tetgen
-download_and_compile voro
-download_and_compile igraph
-download_and_compile soplex
-download_and_compile wxwidgets
+download_and_compile openmpi
+download_and_compile parmetis
+download_and_compile scalapack
+download_and_compile mumps
+download_and_compile vtk
+download_and_compile superlumt
 
 echo
 echo "Finished ###################################################################"
