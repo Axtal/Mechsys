@@ -28,16 +28,16 @@ OPTION(A_MAKE_TERM_NOCOLORS "Don't use colors when printing to terminal ?"      
 OPTION(A_MAKE_STDVECTOR     "Use std::vector instead of own implemenatation ?"     OFF)
                                                                                    
 # Options                                                                          
-OPTION(A_USE_THREAD         "Use (p)Threads ?"                                     ON)
-OPTION(A_USE_MPI            "Use OpenMPI ?"                                        OFF)
+OPTION(A_USE_THREAD         "Use (p)Threads ?"                                     ON )
+OPTION(A_USE_MPI            "Use OpenMPI ?"                                        ON )
 OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
 OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
-OPTION(A_USE_VTK            "Use VTK ?"                                            OFF)
+OPTION(A_USE_VTK            "Use VTK ?"                                            ON )
 OPTION(A_USE_HDF5           "Use HDF5 ?"                                           ON )
 OPTION(A_USE_SUPERLU        "Use SuperLU"                                          OFF)
 OPTION(A_USE_SUPERLUD       "Use SuperLUd"                                         OFF)
-OPTION(A_USE_FLTK           "Use FLTK"                                             OFF)
-OPTION(A_USE_CGAL           "Use CGAL"                                             OFF)
+OPTION(A_USE_FLTK           "Use FLTK"                                             ON )
+OPTION(A_USE_CGAL           "Use CGAL"                                             ON )
 OPTION(A_USE_PARMETIS       "Use ParMETIS"                                         OFF)
 OPTION(A_USE_MUMPS          "Use MUMPS"                                            OFF)
 
@@ -99,7 +99,8 @@ ENABLE_LANGUAGE (Fortran)
 FIND_PACKAGE (wxWidgets COMPONENTS ${WXW_COMPONENTS})       #  1
 INCLUDE      (FindMPI)                                      #  2
 INCLUDE      (FindVTK)                                      #  3
-FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
+FIND_PACKAGE (HDF5 COMPONENTS     HL)                       #  4
+#FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
 #INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  4
 INCLUDE      (FindBoost)                                    #  5
 INCLUDE      (FindLAPACK)                                   #  6
@@ -119,7 +120,7 @@ INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindSUPERLUD.cmake ) # 18
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindFLTK.cmake     ) # 19
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindCGAL.cmake     ) # 20
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindPROC.cmake     ) # 21
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindSPHASH.cmake   ) # 22
+#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindSPHASH.cmake   ) # 22
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindTENSORS.cmake  ) # 23
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindIGRAPH.cmake   ) # 24
 INCLUDE (FindThreads)                                       # 25

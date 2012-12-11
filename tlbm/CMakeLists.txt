@@ -20,14 +20,14 @@ SET(PROGS
     bubble
     multicomp
     dam
-    test01
-    test02
-    test03
-    test04
-    test05
-    test06
-    test07
-    test08)
+    tlbm01
+    tlbm02
+    tlbm03
+    tlbm04
+    tlbm05
+    tlbm06
+    tlbm07
+    tlbm08)
 
 FOREACH(var ${PROGS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

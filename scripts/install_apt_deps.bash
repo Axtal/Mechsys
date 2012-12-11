@@ -10,8 +10,8 @@ sudo apt-get install \
     python-tk python-numpy python-scipy python-matplotlib \
     libxml2-dev \
     libmumps-dev libparmetis-dev libvtk5-dev \
-    libgtk-3-dev libfltk1.3-dev libhdf5-serial-dev libxml2-dev \
-    libcgal-dev
+    libgtk-3-dev libfltk1.3-dev libxml2-dev \
+    libcgal-dev libhdf5-openmpi-dev
 
 # note: libxml2-dev is for igraph
 #       libmumps-dev will install libopenmpi-dev
