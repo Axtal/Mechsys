@@ -2482,6 +2482,7 @@ inline void Domain::WriteBF (char const * FileKey)
     
 
 }
+
 inline void Domain::WriteXDMF (char const * FileKey)
 {
     size_t N_Faces = 0;

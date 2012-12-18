@@ -85,6 +85,7 @@ public:
     void   Rotate             (Quaternion_t & Q, Vec3_t & V);                                 ///< Apply rotation given by Quaternion Q at point v
     void   Translate          (double dt);                                                    ///< Apply translation once the total force is found
     void   Translate          (Vec3_t & t);                                                   ///< Apply translation by vector t
+    void   Shrink             (double factor);                                                ///< Shrink the particle around the center of mass 
     void   Position           (Vec3_t   V);                                                   ///< Position the particle at point V
     void   ResetDisplacements ();                                                             ///< Reset the displacements for the verlet algorithm
     double MaxDisplacement    ();                                                             ///< Maximun displacement for the verlet algorithm
@@ -755,6 +756,20 @@ inline void Particle::Position  (Vec3_t V)
 {
     Vec3_t DV = V - x;
     Translate(DV);
+}
+
+inline void Particle::Shrink (double factor)
+{
+    size_t nv = Verts.Size();
+    for (size_t i = 0; i < nv; i++)
+    {
+        *Verts[i] = factor*(*Verts[i] - x) + x;
+    }
+    Props.R *= factor;
+    Props.V *= pow(factor,3.0);
+    Props.m *= pow(factor,3.0);
+    Dmax    *= factor;
+    I       *= pow(factor,5.0);
 }
 
 inline void Particle::ResetDisplacements ()

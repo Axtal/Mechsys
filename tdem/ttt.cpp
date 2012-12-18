@@ -330,6 +330,9 @@ void Report (DEM::Domain & dom, void *UD)
     }
     if (dat.RenderVideo)
     {
+        String ff;
+        ff.Printf    ("%s_%04d_branchforce",dom.FileKey.CStr(), dom.idx_out);
+        dom.WriteBF (ff.CStr());
 
         //double R = 0.15*dat.L0(0);
         double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->Props.R-dom.Particles[dat.InitialIndex+1]->Props.R)*
