@@ -43,7 +43,7 @@ public:
     // Data
     Vec3_t * X0; ///< Left endpoint
     Vec3_t * X1; ///< Right endpoint
-    Vec3_t dL; ///< Delta(X) = X1 - X0. difference Vector
+    Vec3_t   dL; ///< Delta(X) = X1 - X0. difference Vector
 };
 
 

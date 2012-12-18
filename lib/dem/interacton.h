@@ -304,6 +304,8 @@ inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
                 std::cout << "Sradius particle 2      " << P2->Props.R       << std::endl;
                 std::cout << "Number of faces  1      " << P1->Faces.Size()  << std::endl;
                 std::cout << "Number of faces  2      " << P2->Faces.Size()  << std::endl;
+                P1->Tag = 10000;
+                P2->Tag = 10000;
                 return true;
                 //throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
             }

@@ -696,17 +696,14 @@ inline void Particle::Rotate (Quaternion_t & Q,Vec3_t & V)
         Rotation(xt,Q,*Verts[i]);
         *Verts[i] += V;
     }
-
     for (size_t i = 0; i < ne; i++)
     {
         Edges[i]->UpdatedL();
     }
-
     for (size_t i = 0; i < nf; i++)
     {
         Faces[i]->UpdatedL();
     }
-
     for (size_t i = 0; i < nc; i++)
     {
         Cylinders[i]->UpdatedL();
@@ -760,10 +757,22 @@ inline void Particle::Position  (Vec3_t V)
 
 inline void Particle::Shrink (double factor)
 {
-    size_t nv = Verts.Size();
+    size_t nv = Verts.Size(),ne = Edges.Size(),nf = Faces.Size(),nc = Cylinders.Size();
     for (size_t i = 0; i < nv; i++)
     {
         *Verts[i] = factor*(*Verts[i] - x) + x;
+    }
+    for (size_t i = 0; i < ne; i++)
+    {
+        Edges[i]->UpdatedL();
+    }
+    for (size_t i = 0; i < nf; i++)
+    {
+        Faces[i]->UpdatedL();
+    }
+    for (size_t i = 0; i < nc; i++)
+    {
+        Cylinders[i]->UpdatedL();
     }
     Props.R *= factor;
     Props.V *= pow(factor,3.0);
