@@ -2429,6 +2429,7 @@ inline void Domain::WriteBF (char const * FileKey)
     float  *  Fnnet = new float[3*n_fn];
     float  *  Ftnet = new float[3*n_fn];
     float  * Branch = new float[3*n_fn];
+    float  *   Orig = new float[3*n_fn];
     int    *    ID1 = new   int[  n_fn];
     int    *    ID2 = new   int[  n_fn];
 
@@ -2447,6 +2448,12 @@ inline void Domain::WriteBF (char const * FileKey)
             Branch[3*idx  ] = float(CInteractons[i]->P1->x(0)-CInteractons[i]->P2->x(0));
             Branch[3*idx+1] = float(CInteractons[i]->P1->x(1)-CInteractons[i]->P2->x(1)); 
             Branch[3*idx+2] = float(CInteractons[i]->P1->x(2)-CInteractons[i]->P2->x(2)); 
+            Orig  [3*idx  ] = float(CInteractons[i]->P1->x(0)+CInteractons[i]->P2->x(0));
+            Orig  [3*idx+1] = float(CInteractons[i]->P1->x(1)+CInteractons[i]->P2->x(1)); 
+            Orig  [3*idx+2] = float(CInteractons[i]->P1->x(2)+CInteractons[i]->P2->x(2)); 
+            //Orig  [3*idx  ] = float(CInteractons[i]->P2->x(0));
+            //Orig  [3*idx+1] = float(CInteractons[i]->P2->x(1)); 
+            //Orig  [3*idx+2] = float(CInteractons[i]->P2->x(2)); 
             ID1   [idx]     = int  (CInteractons[i]->P1->Index);
             ID2   [idx]     = int  (CInteractons[i]->P2->Index);
             idx++;
@@ -2462,6 +2469,8 @@ inline void Domain::WriteBF (char const * FileKey)
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Ftnet );
     dsname.Printf("Branch");
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Branch);
+    dsname.Printf("Position");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Orig);
     dims[0] = n_fn;
     dsname.Printf("ID1");
     H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,ID1   );
@@ -2472,6 +2481,7 @@ inline void Domain::WriteBF (char const * FileKey)
     delete [] Fnnet;
     delete [] Ftnet;
     delete [] Branch;
+    delete [] Orig;
     delete [] ID1;
     delete [] ID2;
 
@@ -2479,8 +2489,53 @@ inline void Domain::WriteBF (char const * FileKey)
     //Closing the file
     H5Fflush(file_id,H5F_SCOPE_GLOBAL);
     H5Fclose(file_id);
-    
 
+    std::ostringstream oss;
+    oss << "<?xml version=\"1.0\" ?>\n";
+    oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
+    oss << "<Xdmf Version=\"2.0\">\n";
+    oss << " <Domain>\n";
+    oss << "   <Grid Name=\"BranchForce\" GridType=\"Uniform\">\n";
+    oss << "     <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"" << n_fn << "\"/>\n";
+    oss << "     <Geometry GeometryType=\"XYZ\">\n";
+    oss << "       <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"4\" Dimensions=\"" << n_fn << " 3\" >\n";
+    oss << "        " << fn.CStr() <<":/Position \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Geometry>\n";
+    oss << "     <Attribute Name=\"Normal\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Normal \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Tangential\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Tangential \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Branch\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Branch \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"ID1\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/ID1 \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"ID2\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/ID2 \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "   </Grid>\n";
+    oss << " </Domain>\n";
+    oss << "</Xdmf>\n";
+    
+    fn = FileKey;
+    fn.append(".xmf");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
 }
 
 inline void Domain::WriteXDMF (char const * FileKey)
