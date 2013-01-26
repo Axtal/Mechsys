@@ -2,6 +2,7 @@
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
  * Copyright (C) 2009 Sergio Galindo                                    *
+ * Copyright (C) 2013 William Oquendo                                   *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -38,6 +39,21 @@
 
 // Voro++
 #include "src/voro++.cc"
+
+// VTK
+#ifdef USE_VTK
+#include <vtkSmartPointer.h>
+#include <vtkLine.h>
+#include <vtkLineSource.h>
+#include <vtkPolyData.h>
+#include <vtkVersion.h>
+#include <vtkCellArray.h>
+#include <vtkDoubleArray.h>
+#include <vtkPoints.h>
+#include <vtkXMLPolyDataWriter.h>
+#include <vtkCellData.h>
+#include <vtkPointData.h>
+#endif // USE_VTK
 
 // MechSys
 #include <mechsys/dem/interacton.h>
@@ -106,6 +122,11 @@ public:
     void Save              (char const * FileKey);                                                              ///< Save the current domain
     void Load              (char const * FileKey);                                                              ///< Load the domain form a file
 #endif
+
+#ifdef USE_VTK
+    void WriteVTKContacts  (char const * FileKey);                                                              ///< Save a vtk - vtp file for conatcs visualization
+#endif // USE_VTK
+
 #ifdef USE_THREAD
     void UpdateLinkedCells ();                                                                                  ///< Update the linked cells
 #endif
@@ -250,6 +271,7 @@ void * GlobalIni(void * Data)
         }
 
         // initialize the coordination (number of contacts per particle) number and the Bdry flag
+        (*P)[i]->Comp = 0.0;
         (*P)[i]->Cn   = 0.0;
         (*P)[i]->Bdry = false;
     }
@@ -2430,6 +2452,7 @@ inline void Domain::WriteBF (char const * FileKey)
     float  *  Ftnet = new float[3*n_fn];
     float  * Branch = new float[3*n_fn];
     float  *   Orig = new float[3*n_fn];
+    float  *    Fn  = new float[  n_fn];
     int    *    ID1 = new   int[  n_fn];
     int    *    ID2 = new   int[  n_fn];
 
@@ -2448,12 +2471,13 @@ inline void Domain::WriteBF (char const * FileKey)
             Branch[3*idx  ] = float(CInteractons[i]->P1->x(0)-CInteractons[i]->P2->x(0));
             Branch[3*idx+1] = float(CInteractons[i]->P1->x(1)-CInteractons[i]->P2->x(1)); 
             Branch[3*idx+2] = float(CInteractons[i]->P1->x(2)-CInteractons[i]->P2->x(2)); 
-            Orig  [3*idx  ] = float(CInteractons[i]->P1->x(0)+CInteractons[i]->P2->x(0));
-            Orig  [3*idx+1] = float(CInteractons[i]->P1->x(1)+CInteractons[i]->P2->x(1)); 
-            Orig  [3*idx+2] = float(CInteractons[i]->P1->x(2)+CInteractons[i]->P2->x(2)); 
-            //Orig  [3*idx  ] = float(CInteractons[i]->P2->x(0));
-            //Orig  [3*idx+1] = float(CInteractons[i]->P2->x(1)); 
-            //Orig  [3*idx+2] = float(CInteractons[i]->P2->x(2)); 
+            //Orig  [3*idx  ] = 0.5*float(CInteractons[i]->P1->x(0)+CInteractons[i]->P2->x(0));
+            //Orig  [3*idx+1] = 0.5*float(CInteractons[i]->P1->x(1)+CInteractons[i]->P2->x(1)); 
+            //Orig  [3*idx+2] = 0.5*float(CInteractons[i]->P1->x(2)+CInteractons[i]->P2->x(2)); 
+            Orig  [3*idx  ] = float(CInteractons[i]->P2->x(0));
+            Orig  [3*idx+1] = float(CInteractons[i]->P2->x(1)); 
+            Orig  [3*idx+2] = float(CInteractons[i]->P2->x(2)); 
+            Fn    [idx]     = float(norm(CInteractons[i]->Fnet));
             ID1   [idx]     = int  (CInteractons[i]->P1->Index);
             ID2   [idx]     = int  (CInteractons[i]->P2->Index);
             idx++;
@@ -2472,6 +2496,8 @@ inline void Domain::WriteBF (char const * FileKey)
     dsname.Printf("Position");
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Orig);
     dims[0] = n_fn;
+    dsname.Printf("Fn");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Fn);
     dsname.Printf("ID1");
     H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,ID1   );
     dsname.Printf("ID2");
@@ -2482,6 +2508,7 @@ inline void Domain::WriteBF (char const * FileKey)
     delete [] Ftnet;
     delete [] Branch;
     delete [] Orig;
+    delete [] Fn;
     delete [] ID1;
     delete [] ID2;
 
@@ -2515,6 +2542,11 @@ inline void Domain::WriteBF (char const * FileKey)
     oss << "     <Attribute Name=\"Branch\" AttributeType=\"Vector\" Center=\"Node\">\n";
     oss << "       <DataItem Dimensions=\"" << n_fn << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
     oss << "        " << fn.CStr() <<":/Branch \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Fn\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << "\" NumberType=\"Float\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Fn \n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     oss << "     <Attribute Name=\"ID1\" AttributeType=\"Scalar\" Center=\"Node\">\n";
@@ -2704,7 +2736,8 @@ inline void Domain::WriteXDMF (char const * FileKey)
         Omevec[3*i+1] = float(Ome(1)); 
         Omevec[3*i+2] = float(Ome(2)); 
         Tag   [i]     = int  (Particles[i]->Tag);  
-        Comp  [i]     = float(Particles[i]->M(0,0) + Particles[i]->M(1,1) + Particles[i]->M(2,2));
+        //Comp  [i]     = float(Particles[i]->M(0,0) + Particles[i]->M(1,1) + Particles[i]->M(2,2));
+        Comp[i]       = float(Particles[i]->Comp);
     }
 
     hsize_t dims[1];
@@ -3143,6 +3176,107 @@ inline void Domain::Load (char const * FileKey)
 }
 
 #endif
+
+
+#ifdef USE_VTK
+void Domain::WriteVTKContacts  (char const * FileKey)
+{
+    size_t ncontacts = 0;
+
+    for (size_t i=0;i<CInteractons.Size();i++)
+    {
+        if ((norm(CInteractons[i]->Fnet)>0.0)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree())) ncontacts++;
+    }
+
+    if (ncontacts==0) return;
+    
+    // Create a vtkPoints object and store the points in it
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    points->SetDataTypeToDouble(); // set the precision to double
+    // add the points     // WARNING: not considering periodic conditions or walls
+    for (size_t i=0;i<CInteractons.Size();i++)
+    {
+        if ((norm(CInteractons[i]->Fnet)>0.0)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree()))
+        {
+            Vec3_t R1 = CInteractons[i]->P1->x; 
+            Vec3_t R2 = CInteractons[i]->P2->x; 
+            points->InsertNextPoint(R1(0), R1(1), R1(2)); 
+            points->InsertNextPoint(R2(0), R2(1), R2(2)); 
+        }
+    } 
+    const auto npoints = points->GetNumberOfPoints();
+    
+    // Create a cell array to store the lines in and add the lines to it
+    vtkSmartPointer<vtkCellArray> lines = vtkSmartPointer<vtkCellArray>::New();
+    // create each line according to contact
+    for(int ip = 0; ip < npoints; ip += 2) 
+    {
+        vtkSmartPointer<vtkLine> line = vtkSmartPointer<vtkLine>::New();
+        line->GetPointIds()->SetId(0, ip);
+        line->GetPointIds()->SetId(1, ip+1);
+        lines->InsertNextCell(line);
+    }
+    
+    // Create a polydata to store everything in
+    vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New();
+    // Add the points to the dataset
+    polyData->SetPoints(points);
+    // Add the lines to the dataset
+    polyData->SetLines(lines);
+    
+    // ADD CELL DATA
+    // SEE: http://www.vtk.org/Wiki/VTK/Examples/Cxx/PolyData/MiscCellData
+    // SCALARS
+    /*// uid1
+    vtkSmartPointer<vtkIntArray> uid1 = 
+      vtkSmartPointer<vtkIntArray>::New();
+    uid1->SetNumberOfComponents(1); 
+    uid1->SetNumberOfTuples(ncontacts); 
+    uid1->SetName("uid1");
+    for (int ic = 0; ic < ncontacts; ++ic) {
+      uid1->SetValue(ic, contacts[ic].uid1_); 
+    }
+    polyData->GetCellData()->AddArray(uid1);*/
+    // VECTORS
+    // Normal
+    vtkSmartPointer<vtkDoubleArray> NormalForce = 
+    vtkSmartPointer<vtkDoubleArray>::New();
+    NormalForce->SetNumberOfComponents(1); 
+    NormalForce->SetNumberOfTuples(ncontacts); 
+    NormalForce->SetName("Normal Force");
+    size_t ic = 0;
+    for (size_t i=0;i<CInteractons.Size();i++)
+    {
+        if ((norm(CInteractons[i]->Fnet)>0.0)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree()))
+        {
+            Vec3_t P = CInteractons[i]->Fnet;
+            double data[1] = {norm(P)}; 
+            NormalForce->SetTupleValue(ic, data); 
+            ic++;
+        }
+    }
+    polyData->GetCellData()->AddArray(NormalForce);
+    
+    // Write the file
+    String fn(FileKey);
+    fn.append(".vtp");
+    vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+    writer->SetFileName(fn.CStr());
+#if VTK_MAJOR_VERSION <= 5
+    writer->SetInput(polyData);
+#else
+    writer->SetInputData(polydata);
+#endif
+    //// Optional - set the mode.
+    writer->SetDataModeToBinary(); // default
+    //writer->SetDataModeToAscii();
+    writer->SetCompressorTypeToZLib(); // or ToNone
+    // write
+    writer->Write();    
+}
+#endif // USE_VTK
+
+
 #ifdef USE_THREAD
 inline void Domain::UpdateLinkedCells()
 {

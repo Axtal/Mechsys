@@ -2,6 +2,7 @@
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
  * Copyright (C) 2009 Sergio Galindo                                    *
+ * Copyright (C) 2013 William Oquendo                                   *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -349,8 +350,10 @@ inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             //std::lock_guard<std::mutex> lk1(P1->mtex);
             //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
-            P1->F += -F;
-            P2->F +=  F;
+            P1->F    += -F;
+            P2->F    +=  F;
+            P1->Comp += norm(Fn);
+            P2->Comp += norm(Fn);
             dEvis += (Gn*dot(vrel-vt,vrel-vt)+Gt*dot(vt,vt))*dt;
             // torque
             Vec3_t T, Tt;

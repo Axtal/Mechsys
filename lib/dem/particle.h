@@ -2,6 +2,7 @@
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
  * Copyright (C) 2009 Sergio Galindo                                    *
+ * Copyright (C) 2013 William Oquendo                                   *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -123,6 +124,7 @@ public:
     double          Ekin;            ///< Kinetical energy of the particle
     double          Dmax;            ///< Maximal distance from the center of mass to the surface of the body
     double          Diam;            ///< Diameter of the parallelogram containing the particle
+    double          Comp;            ///< Compression over the particle
     double          Cn;              ///< Coordination number (number of contacts)
 
     Array<Vec3_t*>      Verts;       ///< Vertices

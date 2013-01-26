@@ -2,6 +2,7 @@
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
  * Copyright (C) 2009 Sergio Galindo                                    *
+ * Copyright (C) 2013 William Oquendo                                   *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -10,7 +11,7 @@
  *                                                                      *
  * This program is distributed in the hope that it will be useful,      *
  * but WITHOUT ANY WARRANTY; without even the implied warranty of       *
- * MERCHANTABILITY or finNESS FOR A PARTICULAR PURPOSE. See the         *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the         *
  * GNU General Public License for more details.                         *
  *                                                                      *
  * You should have received a copy of the GNU General Public License    *

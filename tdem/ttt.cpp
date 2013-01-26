@@ -2,6 +2,7 @@
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
  * Copyright (C) 2009 Sergio Galindo                                    *
+ * Copyright (C) 2013 William Oquendo                                   *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -42,7 +43,6 @@ struct UserData
     bVec3_t            pSig;         ///< Prescribed stress ?
     Vec3_t             L0;           ///< Initial length of the packing
     std::ofstream      oss_ss;       ///< file for stress strain data
-    std::ofstream      oss_sc;       ///< file for the 2d stress data
 
     //Constructor
     UserData() {Sig = 0.0,0.0,0.0;}     
@@ -324,115 +324,12 @@ void Report (DEM::Domain & dom, void *UD)
         dat.oss_ss <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez";
         dat.oss_ss << Util::_8s   << "e"    << Util::_8s << "Cn" << Util::_8s << "Nc" << Util::_8s << "Nsc";         
         dat.oss_ss <<                                               Util::_8s << "Nb" << Util::_8s << "Nbb" << "\n";
-        fs.Printf("%s_branch.res",dom.FileKey.CStr());
-        dat.oss_sc.open(fs.CStr());
-        dat.oss_sc << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "Tan(2A)" << Util::_8s << "s1" << Util::_8s << "s2" << Util::_8s << "s3 \n";
     }
     if (dat.RenderVideo)
     {
         String ff;
-        ff.Printf    ("%s_%04d_branchforce",dom.FileKey.CStr(), dom.idx_out);
-        dom.WriteBF (ff.CStr());
-
-        //double R = 0.15*dat.L0(0);
-        double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->Props.R-dom.Particles[dat.InitialIndex+1]->Props.R)*
-                                 (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->Props.R-dom.Particles[dat.InitialIndex+3]->Props.R)*
-                                 (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->Props.R-dom.Particles[dat.InitialIndex+5]->Props.R);
-        //volumecontainer = M_PI*R*R;
-        
-        double frsind = 0.0;
-        double frsina = 0.0;
-        double frcosd = 0.0;
-        double frcosa = 0.0;
-        double ftsind = 0.0;
-        double ftsina = 0.0;
-        double ftcosd = 0.0;
-        double ftcosa = 0.0;
-        Mat3_t S;
-        for (size_t m=0;m<3;m++)
-        {
-            for (size_t n=0;n<3;n++)
-            {
-                S(m,n)=0.0;
-            }
-        }
-        for (size_t i=0; i<dom.CInteractons.Size(); i++)
-        {
-            DEM::CInteracton * CI = dom.CInteractons[i];
-            Vec3_t x = 0.5*(CI->P1->x + CI->P2->x);
-            //if (CI->Nc>0&&CI->P1->IsFree()&&CI->P2->IsFree()&&(norm(x)<R))
-            if (CI->Nc>0&&CI->P1->IsFree()&&CI->P2->IsFree())
-            if (CI->Nc>0)
-            {
-                //CI->P2->Tag = 1;
-                //CI->P1->Tag = 1;
-                Vec3_t branch    = CI->P2->x - CI->P1->x;
-                double nbranch   = norm(branch);
-                double angbv     = atan2(CI->Fnet(1),CI->Fnet(0));
-                double angtv     = 0.5*M_PI + angbv;
-                double fr        = norm(CI->Fnet);
-                double ft        = dot(OrthoSys::e2,cross(CI->Fnet,CI->Ftnet))/fr;
-
-                frsind += nbranch*fr*sin(angtv-angbv);
-                frsina += nbranch*fr*sin(angtv+angbv);
-                frcosd += nbranch*fr*cos(angtv-angbv);
-                frcosa += nbranch*fr*cos(angtv+angbv);
-                ftsind += nbranch*ft*sin(angtv-angbv);
-                ftsina += nbranch*ft*sin(angtv+angbv);
-                ftcosd += nbranch*ft*cos(angtv-angbv);
-                ftcosa += nbranch*ft*cos(angtv+angbv);
-
-                for (size_t m=0;m<3;m++)
-                {
-                    for (size_t n=0;n<3;n++)
-                    {
-                        S(m,n) += (CI->Fnet(m) + CI->Ftnet(m))*branch(n)/volumecontainer;
-                    }
-                }
-
-            }
-        }
-
-        //double s1ps2 = (frsind + ftcosd)/(M_PI*pow(0.15*dat.L0(0),2));
-        //double s1ms2 = sqrt(pow(frsina+ftcosa,2) + pow(frcosd-frcosa+ftsina-ftsind,2))/(M_PI*pow(0.15*dat.L0(0),2));
-        double s1ps2 = (frsind + ftcosd)/volumecontainer;
-        double s1ms2 = sqrt(pow(frsina+ftcosa,2) + pow(frcosd-frcosa+ftsina-ftsind,2))/volumecontainer;
-        double s1    = 0.5*(s1ps2 + s1ms2);
-        double s2    = 0.5*(s1ps2 - s1ms2);
-        double tan2a = (frcosd - frcosa + ftsina - ftsind)/(frsina + ftcosa);
-        //for (size_t i=0; i<dom.Particles.Size(); i++)
-        //{
-            //for (size_t m=0;m<3;m++)
-            //{
-                //for (size_t n=0;n<3;n++)
-                //{
-                    //if (dom.Particles[i]->IsFree())
-                    //{
-                    //S(m,n)+=dom.Particles[i]->M(m,n)/volumecontainer;
-                    //}
-                //}
-            //}
-        //}
-        Vec3_t xp,yp,zp,E;
-        Eig(S,E,xp,yp,zp);
-        //double e1 = E(0);
-        //if (fabs(E(1)-s1)<fabs(e1-s1)) e1 = E(1);
-        //if (fabs(E(2)-s1)<fabs(e1-s1)) e1 = E(2);
-        //double e2 = E(0);
-        //if (fabs(E(1)-s2)<fabs(e2-s2)) e2 = E(1);
-        //if (fabs(E(2)-s2)<fabs(e2-s2)) e2 = E(2);
-        //double e3 = E(0);
-        //if (fabs(E(1))<fabs(e3)) e3 = E(1);
-        //if (fabs(E(2))<fabs(e3)) e3 = E(2);
-        
-        double doubs[] = {E(0),E(1),E(2)};
-        vector<double> ds(doubs,doubs+3);
-        sort(ds.begin(),ds.begin()+3);
-        
-        double e1 = ds[0];
-        double e2 = ds[1];
-        double e3 = ds[2];
-        dat.oss_sc << Util::_10_6 << dom.Time << Util::_8s << s1 << Util::_8s << s2 << Util::_8s << tan2a << Util::_8s << e1 << Util::_8s << e2 << Util::_8s << e3 << std::endl;
+        ff.Printf    ("%s_bf_%04d",dom.FileKey.CStr(), dom.idx_out);
+        dom.WriteVTKContacts (ff.CStr());
     }
     if (!dom.Finished) 
     {
@@ -493,7 +390,6 @@ void Report (DEM::Domain & dom, void *UD)
     else
     {
         dat.oss_ss.close();
-        dat.oss_sc.close();
         String fn;
         fn.Printf("%s_forces.res",dom.FileKey.CStr());
         std::ofstream OF(fn.CStr());
