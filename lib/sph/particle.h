@@ -26,8 +26,11 @@
 // MechSys
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/dem/special_functions.h>
+#include <mechsys/dem/basic_functions.h>
 
 namespace SPH {
+
+using DEM::Distance
 
 class Particle
 {

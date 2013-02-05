@@ -1888,8 +1888,9 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     // info
     Util::Stopwatch stopwatch;
     printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    printf("%s  Total mass   of free particles   = %g%s\n",TERM_CLR4, Ms, TERM_RST);
-    printf("%s  Total volume of free particles   = %g%s\n",TERM_CLR4, Vs, TERM_RST);
+    printf("%s  Total mass   of free particles   = %g%s\n",TERM_CLR4, Ms              , TERM_RST);
+    printf("%s  Total volume of free particles   = %g%s\n",TERM_CLR4, Vs              , TERM_RST);
+    printf("%s  Total number of particles        = %d%s\n",TERM_CLR2, Particles.Size(), TERM_RST);
 
     // solve
     double t0   = Time;     // initial time
@@ -2600,6 +2601,7 @@ inline void Domain::WriteXDMF (char const * FileKey)
         int    * Clus    = new int   [  N_Faces];
         float  * Vel     = new float [  N_Faces];
         float  * Ome     = new float [  N_Faces];
+        float  * FComp   = new float [  N_Faces];
         //float  * Stress  = new float [9*N_Faces];
 
         size_t n_verts = 0;
@@ -2654,10 +2656,11 @@ inline void Domain::WriteXDMF (char const * FileKey)
                     FaceCon[n_faces++] = int(n_refv + nen);
 
                     //Writing the attributes
-                    Tags[n_attrs] = int(Pa->Tag);
-                    Clus[n_attrs] = size_t(Pa->Cluster);
-                    Vel [n_attrs] = float(norm(Pa->v));
-                    Ome [n_attrs] = float(norm(Pa->w));
+                    Tags  [n_attrs] = int(Pa->Tag);
+                    Clus  [n_attrs] = size_t(Pa->Cluster);
+                    Vel   [n_attrs] = float(norm(Pa->v));
+                    Ome   [n_attrs] = float(norm(Pa->w));
+                    FComp [n_attrs] = float(Pa->Comp);
                     n_attrs++;
 
                     //Vel [n_attrv  ] = (float) Pa->v(0);
@@ -2700,6 +2703,9 @@ inline void Domain::WriteXDMF (char const * FileKey)
         dims[0] = N_Faces;
         dsname.Printf("AngVelocity");
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Ome);
+        dims[0] = N_Faces;
+        dsname.Printf("FaceComp");
+        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,FComp);
         //dims[0] = 9*N_Faces;
         //dsname.Printf("Stress");
         //H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Stress);
@@ -2711,6 +2717,7 @@ inline void Domain::WriteXDMF (char const * FileKey)
         delete [] Clus;
         delete [] Vel;
         delete [] Ome;
+        delete [] FComp;
         //delete [] Stress;
     }
     // Storing center of mass data
@@ -2807,6 +2814,11 @@ inline void Domain::WriteXDMF (char const * FileKey)
     oss << "     <Attribute Name=\"AngVelocity\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
     oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Float\" Format=\"HDF\">\n";
     oss << "        " << fn.CStr() <<":/AngVelocity \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"FaceComp\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+    oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Float\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/FaceComp \n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     //oss << "     </Attribute>\n";
@@ -3400,6 +3412,7 @@ inline void Domain::UpdateLinkedCells()
 
 inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
 {
+    if (Particles.Size()==0) throw new Fatal("DEM::Domain::BoundingBox: There are no particles to build the bounding box");
     minX = Vec3_t(Particles[0]->MinX(), Particles[0]->MinY(), Particles[0]->MinZ());
     maxX = Vec3_t(Particles[0]->MaxX(), Particles[0]->MaxY(), Particles[0]->MaxZ());
     for (size_t i=1; i<Particles.Size(); i++)

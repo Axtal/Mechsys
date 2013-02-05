@@ -717,6 +717,8 @@ inline void BInteracton::UpdateParameters ()
     Gn              = 2*ReducedValue(P1->Props.Gn,P2->Props.Gn)*ReducedValue(P1->Props.m,P2->Props.m);
     Gt              = 2*ReducedValue(P1->Props.Gt,P2->Props.Gt)*ReducedValue(P1->Props.m,P2->Props.m);
     eps             = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
+    I1              = P1->Index;
+    I2              = P2->Index;
 }
 
 }
