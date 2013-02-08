@@ -330,6 +330,7 @@ void Report (DEM::Domain & dom, void *UD)
         String ff;
         ff.Printf    ("%s_bf_%04d",dom.FileKey.CStr(), dom.idx_out);
         dom.WriteVTKContacts (ff.CStr());
+        dom.WriteBF(ff.CStr());
     }
     if (!dom.Finished) 
     {
@@ -413,7 +414,8 @@ void Report (DEM::Domain & dom, void *UD)
         for (size_t i=0; i<dom.CInteractons.Size(); i++)
         {
             DEM::CInteracton * CI = dom.CInteractons[i];
-            if (CI->Nc>0)
+            //if (CI->Nc>0)
+            if (CI->Nc>0&&CI->P1->IsFree()&&CI->P2->IsFree())
             {
                 Vec3_t branch    = CI->P2->x - CI->P1->x;
                 for (size_t m=0;m<3;m++)

@@ -2439,7 +2439,8 @@ inline void Domain::WriteBF (char const * FileKey)
 
     for (size_t i=0;i<CInteractons.Size();i++)
     {
-        if ((norm(CInteractons[i]->Fnet)>0.0)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree())) n_fn++;
+        if ((norm(CInteractons[i]->Fnet)>1.0e-12)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree())) n_fn++;
+        //if (norm(CInteractons[i]->Fnet)>1.0e-12) n_fn++;
     }
 
     if (n_fn==0) return;
@@ -2461,7 +2462,8 @@ inline void Domain::WriteBF (char const * FileKey)
 
     for (size_t i=0;i<CInteractons.Size();i++)
     {
-        if ((norm(CInteractons[i]->Fnet)>0.0)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree()))
+        if ((norm(CInteractons[i]->Fnet)>1.0e-12)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree()))
+        //if (norm(CInteractons[i]->Fnet)>1.0e-12)
         {
             Fnnet [3*idx  ] = float(CInteractons[i]->Fnet  (0));
             Fnnet [3*idx+1] = float(CInteractons[i]->Fnet  (1));

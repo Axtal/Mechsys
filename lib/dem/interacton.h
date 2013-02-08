@@ -178,7 +178,7 @@ inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
     Gn              = 2*ReducedValue(Pt1->Props.Gn,Pt2->Props.Gn)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
     Gt              = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
     //Mu              = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
-    if (Pt1->Props.Mu>0.0||Pt2->Props.Mu>0.0)
+    if (Pt1->Props.Mu>1.0e-12&&Pt2->Props.Mu>1.0e-12)
     {
         Mu          = std::max(Pt1->Props.Mu,Pt2->Props.Mu);
     }
@@ -187,6 +187,7 @@ inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
         Mu          = 0.0;
     }
     CalcForce(0.0);
+
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
 #endif
@@ -225,8 +226,8 @@ inline bool CInteracton::CalcForce (double dt)
     Nc     = 0;
     Nsc    = 0;
     Nr     = 0;
-    Fnet   = 0.0;
-    Ftnet  = 0.0;
+    Fnet   = OrthoSys::O;
+    Ftnet  = OrthoSys::O;
     Xc     = OrthoSys::O;
     if (norm(P1->x - P2->x) > P1->Dmax + P2->Dmax) return false;
     if (_update_disp_calc_force (P1->Edges     ,P2->Edges     ,Fdee,Lee,dt)) overlap = true;
@@ -238,6 +239,8 @@ inline bool CInteracton::CalcForce (double dt)
     if (_update_disp_calc_force (P1->Cylinders ,P2->Verts     ,Fdcv,Lcv,dt)) overlap = true;
 
     //If there is at least a contact, increase the coordination number of the particles
+    //
+    //std::cout << norm(Ftnet) << std::endl;
     if (Nc>0) 
     {
 #ifdef USE_THREAD
@@ -342,6 +345,9 @@ inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             }
             Ftnet += Kt*FMap[p];
             Vec3_t F = Fn + Kt*FMap[p] + Gn*dot(n,vrel)*n + Gt*vt;
+
+
+
             if (dot(F,n)<0) F-=dot(F,n)*n;
 #ifdef USE_THREAD
             //pthread_mutex_lock(&lck);
@@ -426,7 +432,7 @@ inline CInteractonSphere::CInteractonSphere (Particle * Pt1, Particle * Pt2)
     Gn   = 2*ReducedValue(Pt1->Props.Gn,Pt2->Props.Gn)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
     Gt   = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
     //Mu   = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
-    if (Pt1->Props.Mu>0.0||Pt2->Props.Mu>0.0)
+    if (Pt1->Props.Mu>1.0e-12&&Pt2->Props.Mu>1.0e-12)
     {
         Mu          = std::max(Pt1->Props.Mu,Pt2->Props.Mu);
     }
@@ -502,8 +508,8 @@ inline bool CInteractonSphere::CalcForce(double dt)
     Nc     = 0;
     Nsc    = 0;
     Nr     = 0;
-    Fnet   = 0.0;
-    Ftnet  = 0.0;
+    Fnet   = OrthoSys::O;
+    Ftnet  = OrthoSys::O;
     Xc     = OrthoSys::O;
     bool overlap;
     overlap = _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,Lvv,dt);
