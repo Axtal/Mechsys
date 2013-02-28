@@ -183,7 +183,13 @@ void * GlobalForce(void * Data)
     dat.ProcRank == dat.N_Proc-1 ? Fn = I->Size() : Fn = (dat.ProcRank+1)*Ni;
 	for (size_t i=In;i<Fn;i++)
 	{
-		(*I)[i]->CalcForce(dat.dt);
+		if ((*I)[i]->CalcForce(dat.dt))
+        {
+            dat.Dom->WriteXDMF("error");
+            std::cout << "Maximun overlap detected between particles" << std::endl;
+            sleep(1);
+            throw new Fatal("Maximun overlap detected between particles");
+        }
 	}
 }
 

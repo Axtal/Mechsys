@@ -186,6 +186,7 @@ inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
     {
         Mu          = 0.0;
     }
+    //std::cout << Mu << " " << Pt1->Tag << " " << Pt2->Tag << std::endl;
     CalcForce(0.0);
 
 #ifdef USE_THREAD
@@ -446,6 +447,7 @@ inline CInteractonSphere::CInteractonSphere (Particle * Pt1, Particle * Pt2)
     Nsc = 0;
     //std::cout << Kn << " " << Kt << " " << Gn << " " << Gt << " " << Mu << " " << eta << " " << beta << std::endl;
 
+    //std::cout << Mu << " " << Pt1->Tag << " " << Pt2->Tag << std::endl;
     Epot = 0.0;
     Fdr  = 0.0, 0.0, 0.0;
     Lvv.Push(std::make_pair(0,0));

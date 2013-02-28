@@ -29,6 +29,7 @@ struct UserData
 {
     Array<Cell *> Left;
     Array<Cell *> Right;
+    Array<double> Vel;
     double        vmax;
     double        rho;
 };
@@ -47,10 +48,11 @@ void Setup (LBM::Domain & dom, void * UD)
 	{
 		Cell * c = dat.Left[i];
 		if (c->IsSolid) continue;
-		double rho = (c->F[0]+c->F[2]+c->F[4] + 2.0*(c->F[3]+c->F[6]+c->F[7]))/(1.0-c->VelBC(0));
-		c->F[1] = c->F[3] + (2.0/3.0)*rho*c->VelBC(0);
-		c->F[5] = c->F[7] + (1.0/6.0)*rho*c->VelBC(0) + 0.5*rho*c->VelBC[1] - 0.5*(c->F[2]-c->F[4]);
-		c->F[8] = c->F[6] + (1.0/6.0)*rho*c->VelBC(0) - 0.5*rho*c->VelBC[1] + 0.5*(c->F[2]-c->F[4]);
+		double rho = (c->F[0]+c->F[2]+c->F[4] + 2.0*(c->F[3]+c->F[6]+c->F[7]))/(1.0-dat.Vel[i]);
+		c->F[1] = c->F[3] + (2.0/3.0)*rho*dat.Vel[i];
+		c->F[5] = c->F[7] + (1.0/6.0)*rho*dat.Vel[i] - 0.5*(c->F[2]-c->F[4]);
+		c->F[8] = c->F[6] + (1.0/6.0)*rho*dat.Vel[i] + 0.5*(c->F[2]-c->F[4]);
+        c->Rho = c->VelDen(c->Vel);
 	}
 
 	// Cells with prescribed density
@@ -62,6 +64,7 @@ void Setup (LBM::Domain & dom, void * UD)
 		c->F[3] = c->F[1] - (2.0/3.0)*c->RhoBC*vx; 
 		c->F[7] = c->F[5] - (1.0/6.0)*c->RhoBC*vx + 0.5*(c->F[2]-c->F[4]);
 		c->F[6] = c->F[8] - (1.0/6.0)*c->RhoBC*vx - 0.5*(c->F[2]-c->F[4]);
+        c->Rho = c->VelDen(c->Vel);
 	}
 }
 
@@ -70,12 +73,12 @@ int main(int argc, char **argv) try
     size_t Nproc = 1; 
     if (argc==2) Nproc=atoi(argv[1]);
     double u_max  = 0.1;                // Poiseuille's maximum velocity
-    double Re     = 10;                  // Reynold's number
+    double Re     = 100;                  // Reynold's number
     size_t nx = 400;
     size_t ny = 100;
     int radius = ny/10 + 1;           // radius of inner circle (obstacle)
-    //double nu     = u_max*(2*radius)/Re; // viscocity
-    double nu     = 1.0/6.0; // viscocity
+    double nu     = u_max*(2*radius)/Re; // viscocity
+    //double nu     = 1.0/6.0; // viscocity
     LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
     UserData dat;
     Dom.UserData = &dat;
@@ -91,12 +94,9 @@ int main(int argc, char **argv) try
         double L  = ny - 2;                       // channel width in cell units
         double yp = i - 1.5;                      // ordinate of cell
         double vx = dat.vmax*4/(L*L)*(L*yp - yp*yp); // horizontal velocity
-        double vy = 0.0;                          // vertical velocity
-		Vec3_t v(vx, vy, 0.0);                    // velocity vector
-        dat.Left [i]->VelBC = v;
+        dat.Vel.Push(vx);
         dat.Left [i]->RhoBC = 1.0;
         //dat.Right[i]->VelBC = 0.08,0.0,0.0;
-        dat.Right[i]->VelBC = v;
         dat.Right[i]->RhoBC = 1.0;
 
     }
@@ -138,7 +138,7 @@ int main(int argc, char **argv) try
 
     //Solving
     Dom.Time = 0.0;
-    Dom.Solve(10000.0,20.0,Setup,NULL,"test01",true,Nproc);
+    Dom.Solve(10000.0,20.0,Setup,NULL,"tlbm01",true,Nproc);
  
 }
 MECHSYS_CATCH

@@ -640,6 +640,8 @@ inline void Particle::InitializeVelocity (double dt)
     // initialize the particle for the Verlet algorithm
     xb = x-v*dt;
     wb = w;
+    Ekin = 0.5*Props.m*dot(v,v);
+    Erot = 0.5*(I(0)*w(0)*w(0)+I(1)*w(1)*w(1)+I(2)*w(2)*w(2));
 }
 
 inline void Particle::Rotate (double dt)
@@ -650,9 +652,11 @@ inline void Particle::Rotate (double dt)
     q2 = 0.5*Q(2);
     q3 = 0.5*Q(3);
 
-    if (wxf) T(0) = 0.0;
-    if (wyf) T(1) = 0.0;
-    if (wzf) T(2) = 0.0;
+    Vec3_t Tt = T;
+
+    if (wxf) Tt(0) = 0.0;
+    if (wyf) Tt(1) = 0.0;
+    if (wzf) Tt(2) = 0.0;
 
     if (norm(w)>1.0e-12)
     {
@@ -661,9 +665,9 @@ inline void Particle::Rotate (double dt)
     }
 
     Vec3_t Td;
-    Td(0)=(T(0)+(I(1)-I(2))*wb(1)*wb(2))/I(0);
-    Td(1)=(T(1)+(I(2)-I(0))*wb(0)*wb(2))/I(1);
-    Td(2)=(T(2)+(I(0)-I(1))*wb(1)*wb(0))/I(2);
+    Td(0)=(Tt(0)+(I(1)-I(2))*wb(1)*wb(2))/I(0);
+    Td(1)=(Tt(1)+(I(2)-I(0))*wb(0)*wb(2))/I(1);
+    Td(2)=(Tt(2)+(I(0)-I(1))*wb(1)*wb(0))/I(2);
     w = wb+0.5*dt*Td;
     wx = w(0);
     wy = w(1);

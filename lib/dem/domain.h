@@ -291,7 +291,7 @@ void * GlobalForce(void * Data)
         {
             dat.Dom->Save     ("error");
             dat.Dom->WriteXDMF("error");
-            std::cout << "Maximun overlap detected between particles" << std::endl;
+            std::cout << "Maximun overlap detected between particles at time " << dat.Dom->Time << std::endl;
             sleep(1);
             throw new Fatal("Maximun overlap detected between particles");
         }
@@ -624,6 +624,10 @@ inline void Domain::GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1
                 for (size_t i = 0; i < nx; i++)
                 {
                     X += Vec3_t(2*R,0.0,0.0);
+                    //std::cout << X << X0 << X1 << std::endl;
+                    if ((X(0)<X0(0))||(X(0)>X1(0))) continue;
+                    if ((X(1)<X0(1))||(X(1)>X1(1))) continue;
+                    if ((X(2)<X0(2))||(X(2)>X1(2))) continue;
                     if (rand()<fraction*RAND_MAX) AddSphere (Tag,X,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
                 }
             }
@@ -2083,7 +2087,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
                 if (VOut==2||VOut==3)    WriteXDMF    (fn.CStr());
 #endif
                 if (VOut==1||VOut==3)    WritePOV     (fn.CStr());
-                EnergyOutput (idx_out, oss_energy);
+                //EnergyOutput (idx_out, oss_energy);
             }
             idx_out++;
             tout += dtOut;
@@ -2373,14 +2377,14 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     if (ptReport!=NULL) (*ptReport) ((*this), UserData);
 
     // save energy data
-    if (TheFileKey!=NULL)
-    {
-        String fn;
-        fn.Printf("%s_energy.res",TheFileKey);
-        std::ofstream fe(fn.CStr());
-        fe << oss_energy.str();
-        fe.close();
-    }
+    //if (TheFileKey!=NULL)
+    //{
+        //String fn;
+        //fn.Printf("%s_energy.res",TheFileKey);
+        //std::ofstream fe(fn.CStr());
+        //fe << oss_energy.str();
+        //fe.close();
+    //}
 
     // info
     double Ekin, Epot, Etot;
