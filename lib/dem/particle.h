@@ -723,10 +723,12 @@ inline void Particle::Translate (double dt)
     if (vyf) Ft(1) = 0.0;
     if (vzf) Ft(2) = 0.0;
 
+    //std::cout << "1" << std::endl;
     Ft -= Props.Gv*Props.m*v;
 
     if(Util::IsNan(norm(F))) 
     {
+        printf("Particle::Translate: The force is not a number %d(%d), try reducing the time step \n",Index,Tag);
         throw new Fatal("Particle::Translate: The force is not a number %d(%d), try reducing the time step",Index,Tag);
     }
     Vec3_t temp,xa;
@@ -737,11 +739,13 @@ inline void Particle::Translate (double dt)
     x    = xa;
     Ekin = 0.5*Props.m*dot(v,v);
 
+    //std::cout << "2" << std::endl;
     size_t nv = Verts.Size();
     for (size_t i = 0; i < nv; i++)
     {
         *Verts[i] += temp;
     }
+    //std::cout << "3" << std::endl;
 }
 
 inline void Particle::Translate (Vec3_t & V)

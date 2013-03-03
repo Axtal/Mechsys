@@ -309,8 +309,11 @@ void * GlobalMove(void * Data)
     dat.Dmx = 0.0;
 	for (size_t i=In;i<Fn;i++)
 	{
+        //std::cout << "1" << std::endl;
 		(*P)[i]->Translate(dat.Dom->Dt);
+        //std::cout << "2" << std::endl;
 		(*P)[i]->Rotate(dat.Dom->Dt);
+        //std::cout << "3" << std::endl;
         if ((*P)[i]->MaxDisplacement()>dat.Dmx) dat.Dmx = (*P)[i]->MaxDisplacement();
 	}
 }
@@ -2104,7 +2107,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             pthread_join(thrs[i], NULL);
         }
 
-        //std::cout << "2" << std::endl;
         //Calculate forces
         for (size_t i=0;i<Nproc;i++)
         {
@@ -2143,6 +2145,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             }
         }
 
+        //std::cout << "2" << std::endl;
         // tell the user function to update its data
         if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
 
@@ -2157,8 +2160,8 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             pthread_join(thrs[i], NULL);
             if (maxdis<MTD[i].Dmx) maxdis = MTD[i].Dmx;
         }
-
         //std::cout << "3" << std::endl;
+
         if (maxdis>Alpha)
         {
             LinkedCell.Resize(0);
@@ -3724,6 +3727,10 @@ inline void Domain::DelParticles (Array<int> const & Tags)
     }
     if (idxs.Size()<1) throw new Fatal("Domain::DelParticles: Could not find any particle to be deleted");
     Particles.DelItems (idxs);
+    for (size_t i=0; i<Particles.Size(); ++i)
+    {
+        Particles[i]->Index = i;
+    }
 }
 
 inline Particle * Domain::GetParticle (int Tag, bool Check)
