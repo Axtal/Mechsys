@@ -132,6 +132,7 @@ public:
 #endif
     void BoundingBox       (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
     void Center            (Vec3_t C = Vec3_t(0.0,0.0,0.0));                                                    ///< Centers the domain around C
+    void ClearInteractons  ();                                                                                  ///< Reset the interactons
     void ResetInteractons  ();                                                                                  ///< Reset the interactons
     void ResetDisplacements();                                                                                  ///< Reset the displacements
     double MaxDisplacement ();                                                                                  ///< Calculate maximun displacement
@@ -515,7 +516,7 @@ void * GlobalPerForce(void * Data)
         {
             dat.Dom->Save     ("error");
             dat.Dom->WriteXDMF("error");
-            std::cout << "Maximun overlap detected between particles" << std::endl;
+            std::cout << "Maximun overlap detected between particles at Time" << dat.Dom->Time << std::endl;
             sleep(1);
             throw new Fatal("Maximun overlap detected between particles");
         }
@@ -3200,6 +3201,7 @@ inline void Domain::Load (char const * FileKey)
 
 
 #ifdef USE_VTK
+
 void Domain::WriteVTKContacts  (char const * FileKey)
 {
     size_t ncontacts = 0;
@@ -3295,10 +3297,12 @@ void Domain::WriteVTKContacts  (char const * FileKey)
     // write
     writer->Write();    
 }
+
 #endif // USE_VTK
 
 
 #ifdef USE_THREAD
+
 inline void Domain::UpdateLinkedCells()
 {
     //std::cout << "a ) Updating linked cells "  << Time << std::endl;
@@ -3417,6 +3421,7 @@ inline void Domain::UpdateLinkedCells()
         //std::cout << ListPosPairs[i].first << " " << ListPosPairs[i].second << std::endl;
     //}
 }
+
 #endif
 
 inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
@@ -3442,6 +3447,31 @@ inline void Domain::Center(Vec3_t C)
     Vec3_t Transport(-0.5*(maxX+minX));
     Transport += C;
     for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Translate(Transport);
+}
+
+inline void Domain::ClearInteractons()
+{
+    // delete old interactors
+    for (size_t i=0; i<CInteractons.Size(); ++i)
+    {
+        if (CInteractons[i]!=NULL) delete CInteractons[i];
+    }
+    CInteractons.Resize(0);
+    for (size_t i=0; i<BInteractons.Size(); ++i)
+    {
+        if (BInteractons[i]!=NULL) delete BInteractons[i];
+    }
+    BInteractons.Resize(0);
+    Interactons.Resize(0);
+    Listofpairs.clear();
+
+    for (size_t i=0; i<CPInteractons.Size(); ++i)
+    {
+        if (CPInteractons[i]!=NULL) delete CPInteractons[i];
+    }
+    CPInteractons.Resize(0);
+    PInteractons.Resize(0);
+    PListofpairs.clear();
 }
 
 inline void Domain::ResetInteractons()

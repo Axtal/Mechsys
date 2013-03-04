@@ -186,7 +186,7 @@ void * GlobalForce(void * Data)
 		if ((*I)[i]->CalcForce(dat.dt))
         {
             dat.Dom->WriteXDMF("error");
-            std::cout << "Maximun overlap detected between particles" << std::endl;
+            std::cout << "Maximun overlap detected between particles at time " << dat.dom->Time << std::endl;
             sleep(1);
             throw new Fatal("Maximun overlap detected between particles");
         }
