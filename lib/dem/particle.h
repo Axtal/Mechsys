@@ -237,7 +237,7 @@ std::ostream & operator<< (std::ostream & os, Particle const & P)
 // Constructor and destructor
 
 inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & Fa, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
-    : Tag(TheTag), PropsReady(false), Eroded(false), v(v0), w(w0), Cluster(0)
+    : Tag(TheTag), Cluster(0), PropsReady(false), Eroded(false), v(v0), w(w0)
 {
     Props.Kn = 1.0e4;   
     Props.Kt = 5.0e3;   
@@ -290,7 +290,7 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
 }
 
 inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, double TheRho)
-    : Tag(TheTag), PropsReady(false), Eroded(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0)), Cluster(0)
+    : Tag(TheTag), Cluster(0), PropsReady(false), Eroded(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0))
 {
     Props.Kn = 1.0e4;   
     Props.Kt = 5.0e3;   
@@ -393,7 +393,7 @@ inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, dou
 }
 
 inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, double TheRho, double scale)
-    : Tag(TheTag), PropsReady(false), Eroded(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0)), Cluster(0)
+    : Tag(TheTag), Cluster(0), PropsReady(false), Eroded(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0))
 {
     String fnv(TheFileKey); fnv.append("_verts.mesh");
     String fnf(TheFileKey); fnf.append("_faces.mesh");
@@ -728,8 +728,8 @@ inline void Particle::Translate (double dt)
 
     if(Util::IsNan(norm(F))) 
     {
-        printf("Particle::Translate: The force is not a number %d(%d), try reducing the time step \n",Index,Tag);
-        throw new Fatal("Particle::Translate: The force is not a number %d(%d), try reducing the time step",Index,Tag);
+        printf("Particle::Translate: The force is not a number %zd(%d), try reducing the time step \n",Index,Tag);
+        throw new Fatal("Particle::Translate: The force is not a number %zd(%d), try reducing the time step",Index,Tag);
     }
     Vec3_t temp,xa;
     xa    = 2*x - xb + Ft*(dt*dt/Props.m);

@@ -30,6 +30,7 @@
 #include <fstream>
 #include <set>
 #include <list>
+#include <utility> // for std::pair
 
 // Hdf5
 #ifdef USE_HDF5
@@ -38,7 +39,12 @@
 #endif
 
 // Voro++
-#include "src/voro++.cc"
+#include "src/voro++.cc" // old
+/*
+#include "voro++.hh" // new
+using namespace voro;
+using namespace std;
+*/
 
 // VTK
 #ifdef USE_VTK
@@ -276,6 +282,7 @@ void * GlobalIni(void * Data)
         (*P)[i]->Cn   = 0.0;
         (*P)[i]->Bdry = false;
     }
+    return NULL;
 }
 
 void * GlobalForce(void * Data)
@@ -297,6 +304,7 @@ void * GlobalForce(void * Data)
             throw new Fatal("Maximun overlap detected between particles");
         }
 	}
+    return NULL;
 }
 
 void * GlobalMove(void * Data)
@@ -317,6 +325,7 @@ void * GlobalMove(void * Data)
         //std::cout << "3" << std::endl;
         if ((*P)[i]->MaxDisplacement()>dat.Dmx) dat.Dmx = (*P)[i]->MaxDisplacement();
 	}
+    return NULL;
 }
 
 void * GlobalResetDisplacement(void * Data)
@@ -343,6 +352,7 @@ void * GlobalResetDisplacement(void * Data)
             //}
         }
     }
+    return NULL;
 }
 
 void * GlobalResetContacts1 (void * Data)
@@ -375,6 +385,7 @@ void * GlobalResetContacts1 (void * Data)
         }
         dat.LC.Push(make_pair(i,j));
     }
+    return NULL;
 }
 
 void * GlobalResetContacts2 (void * Data)
@@ -397,6 +408,7 @@ void * GlobalResetContacts2 (void * Data)
     {
         if(dat.Dom->BInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LCB.Push(n);
     }
+    return NULL;
 }
 
 void * GlobalResetBoundaries1 (void * Data)
@@ -426,6 +438,7 @@ void * GlobalResetBoundaries1 (void * Data)
             dat.LBP.Push(i);
         }
     }
+    return NULL;
 }
 
 void * GlobalResetBoundaries2 (void * Data)
@@ -456,6 +469,7 @@ void * GlobalResetBoundaries2 (void * Data)
             dat.LPC.Push(make_pair(i,j));
         }
     }
+    return NULL;
 }
 
 void * GlobalResetBoundaries3 (void * Data)
@@ -470,6 +484,7 @@ void * GlobalResetBoundaries3 (void * Data)
     {
         if(dat.Dom->CPInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LPCI.Push(n);
     }
+    return NULL;
 }
 
 void * GlobalPerTranslate(void * Data)
@@ -485,6 +500,7 @@ void * GlobalPerTranslate(void * Data)
     {
         (*P)[i]->Translate(v);
     }
+    return NULL;
 }
 
 void * GlobalPerTranslateBack(void * Data)
@@ -500,6 +516,7 @@ void * GlobalPerTranslateBack(void * Data)
     {
         (*P)[i]->Translate(v);
     }
+    return NULL;
 }
 
 void * GlobalPerForce(void * Data)
@@ -521,6 +538,7 @@ void * GlobalPerForce(void * Data)
             throw new Fatal("Maximun overlap detected between particles");
         }
 	}
+    return NULL;
 }
 
 #endif
@@ -1009,9 +1027,10 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
         }
     }
 
-    fpoint x,y,z,px,py,pz;
+    double x,y,z,px,py,pz;
     container *cp = & con;
     voropp_loop l1(cp);
+    //c_loop_all l1(con); // new: trying to get new voro working
     int q,s;
     voronoicell_neighbor c;
     s=l1.init(con.ax,con.bx,con.ay,con.by,con.az,con.bz,px,py,pz);
@@ -1898,7 +1917,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     printf("%s  Total mass   of free particles   = %g%s\n",TERM_CLR4, Ms              , TERM_RST);
     printf("%s  Total volume of free particles   = %g%s\n",TERM_CLR4, Vs              , TERM_RST);
-    printf("%s  Total number of particles        = %d%s\n",TERM_CLR2, Particles.Size(), TERM_RST);
+    printf("%s  Total number of particles        = %zd%s\n",TERM_CLR2, Particles.Size(), TERM_RST);
 
     // solve
     double t0   = Time;     // initial time
