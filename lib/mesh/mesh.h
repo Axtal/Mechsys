@@ -335,6 +335,7 @@ std::ostream & operator<< (std::ostream & os, Generic const & M)
             k++;
         }
         os << "}";
+        os << ", " << Util::_4 << M.Cells[i]->PartID;
         os << ", {";
         for (Neighs_t::const_iterator p=M.Cells[i]->Neighs.begin(); p!=M.Cells[i]->Neighs.end(); ++p)
         {
@@ -347,7 +348,6 @@ std::ostream & operator<< (std::ostream & os, Generic const & M)
             os << "[" << p->second.first << "," << p->second.second->ID << "]";
         }
         os << "}";
-        os << ", " << Util::_4 << M.Cells[i]->PartID;
         if (i==M.Cells.Size()-1) os << "]]\n";
         else                     os << "],\n   ";
     }
