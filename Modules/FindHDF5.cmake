@@ -23,13 +23,15 @@ SET(HDF5_INCLUDE_SEARCH_PATH
   $ENV{HOME}/pkg/szip-2.1/src
 #  $ENV{HOME}/pkg/zlib-1.2.5
   $ENV{HOME}/pkg/hdf5-1.8.8/src
-  $ENV{HOME}/pkg/hdf5-1.8.8/hl/src)
+  $ENV{HOME}/pkg/hdf5-1.8.8/hl/src
+  /usr/include)
 
 SET(HDF5_LIBRARY_SEARCH_PATH
   $ENV{HOME}/pkg/szip-2.1/src/.libs
 #  $ENV{HOME}/pkg/zlib-1.2.5
   $ENV{HOME}/pkg/hdf5-1.8.8/src/.libs
-  $ENV{HOME}/pkg/hdf5-1.8.8/hl/src/.libs)
+  $ENV{HOME}/pkg/hdf5-1.8.8/hl/src/.libs
+  /usr/lib)
 
 FIND_PATH(HDF5_H    hdf5.h    ${HDF5_INCLUDE_SEARCH_PATH})
 FIND_PATH(HDF5_HL_H hdf5_hl.h ${HDF5_INCLUDE_SEARCH_PATH})

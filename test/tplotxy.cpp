@@ -20,15 +20,14 @@
 #include <iostream>
 #include <cmath>
 
-// FLTK
-#include <FL/Fl.H>
-#include <FL/Fl_Double_Window.H>
-
-#define USE_FLTK
-
 // MechSys
 #include <mechsys/util/array.h>
 #include <mechsys/util/fatal.h>
+
+// FLTK /////////////////////////// TODO:
+#include <FL/Fl.H>                // check why these cannot be included before array.h/fatal.h
+#include <FL/Fl_Double_Window.H>  // perhaps these define some variables...
+#define USE_FLTK                  // NOTE: the probem seems to happen when MPI is on
 #include <mechsys/gui/plotxy.h>
 
 using std::cout;

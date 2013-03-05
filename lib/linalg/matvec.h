@@ -37,7 +37,7 @@
 
 // Tensors
 #ifdef HAS_TENSORS
-  #include <tensors/tensoperators.h>
+  #include <tensors/operators.h>
   #include <tensors/tensor1.h>
   #include <tensors/tensor2.h>
   #include <tensors/tensor3.h>

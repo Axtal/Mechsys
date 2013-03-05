@@ -86,6 +86,22 @@ tfem/smith_griffiths/fig_11_04
 tfem/smith_griffiths/fig_11_19
 tfem/verification/sap1-001
 test/graph/cluster01
+tdem/brazil_test
+tdem/cylinder_test
+tdem/figure
+tdem/nonconvex
+tdem/test_01
+tdem/test_02
+tdem/test_beam
+tdem/test_distances
+tdem/test_domain
+tdem/test_dynamics
+tdem/test_periodic
+tdem/test_read
+tdem/test_tetrahedra
+tdem/test_write
+tdem/ttt
+test/tplotxy
 
 
 
@@ -97,6 +113,8 @@ CMakeFiles
 Makefile
 cmake_install.cmake
 install_manifest.txt
+*.xmf
+*.h5
 *.hdf5
 *.blend
 *.swp

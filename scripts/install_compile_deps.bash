@@ -76,6 +76,7 @@ VER_VORO=0.3.1
 VER_IGRAPH=0.5.4
 VER_SOPLEX=1.6.0
 VER_WXWIDGETS=2.9.4
+VER_SZIP=2.1
 
 error_message() {
     echo
@@ -142,6 +143,13 @@ download_and_compile() {
             DO_CONF=1
             DO_MAKE_INST=1
             CONF_PRMS="-enable-monolithic --disable-compat26 --disable-compat28 --with-opengl"
+            ;;
+        szip)
+            PKG=szip-$VER_SZIP
+            EXT=tar.gz
+            LOCATION=http://www.hdfgroup.org/ftp/lib-external/szip/$VER_SZIP/src/szip-$VER_SZIP.$EXT
+            DO_CONF=1
+            DO_MAKE=1
             ;;
         *)
             error_message "download_and_compile: __Internal_error__"
@@ -274,13 +282,14 @@ download_and_compile() {
     echo "        . . . finished . . . . . "
 }
 
-download_and_compile blitz
-download_and_compile triangle
-download_and_compile tetgen
-download_and_compile voro
-download_and_compile igraph
-download_and_compile soplex
-download_and_compile wxwidgets
+#download_and_compile blitz
+#download_and_compile triangle
+#download_and_compile tetgen
+#download_and_compile voro
+#download_and_compile igraph
+#download_and_compile soplex
+#download_and_compile wxwidgets
+download_and_compile szip
 
 echo
 echo "Finished ###################################################################"
