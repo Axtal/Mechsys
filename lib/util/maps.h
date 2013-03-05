@@ -68,6 +68,8 @@ public:
     double ValOrZero (char const   * Key) const;     ///< Returns value for Key if Key exists, otherwise returns zero
     double ValOrZero (String const & Key) const { return ValOrZero(Key.CStr()); }
     bool   HasKey    (char const   * Key) const;
+    bool   HasKeyLen (char const   * Key, int KeyLen) const;
+    void   GetSubKeys(char const   * Key, int KeyLen, Array<String> & SubKeys) const;
     bool   HasKey    (String const & Key) const;
     long   IdxKey    (String const & Key) const { return Keys.Find(Key); } ///< Returns the index of key if found, otherwise returns -1
     void   Val2Key   (double Val, String & Key, double Tol=1.0e-15) const;
@@ -408,6 +410,39 @@ inline bool SDPair::HasKey (char const * Key) const
 {
     StrDbl_t::const_iterator p = this->find(Key);
     return (p!=this->end());
+}
+
+inline bool SDPair::HasKeyLen (char const * Key, int KeyLen) const
+{
+    for (StrDbl_t::const_iterator p=this->begin(); p!=this->end(); ++p)
+    {
+        if (p->first.substr(0, KeyLen) == Key)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+// example: "mainkey_subkey1_subkey2" => SubKeys = [subkey1, subkey2]
+inline void SDPair::GetSubKeys (char const * MainKey, int MainKeyLen, Array<String> & SubKeys) const
+{
+    for (StrDbl_t::const_iterator p=this->begin(); p!=this->end(); ++p)
+    {
+        if (p->first.substr(0, MainKeyLen) == MainKey)
+        {
+            std::stringstream subkeys(p->first.substr(MainKeyLen));
+            std::string item;
+            while (std::getline(subkeys, item, '_'))
+            {
+                if (item.size() > 0)
+                {
+                    SubKeys.Push(item);
+                }
+            }
+            return;
+        }
+    }
 }
 
 inline bool SDPair::HasKey (String const & Key) const

@@ -594,20 +594,15 @@ inline void Domain::SetBCs (Dict const & BCs)
                 if (AllFKeys.Has(bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the Element", bcs.Keys[k].CStr(), btag);
 
 
-                printf("\n\n");
-                for (size_t ib=0; ib<bcs.Keys.Size(); ++ib)
-                {
-                    printf("[1;35m%s  =>  %g[0m\n", bcs.Keys[ib].CStr(), bcs(bcs.Keys[ib]));
+                // debug
+                if (false) {
+                    printf("\n\n");
+                    for (size_t ib=0; ib<bcs.Keys.Size(); ++ib)
+                    {
+                        printf("[1;35m%s  =>  %g[0m\n", bcs.Keys[ib].CStr(), bcs(bcs.Keys[ib]));
+                    }
+                    printf("\n\n");
                 }
-                printf("\n\n");
-
-
-
-
-
-
-
-
 
 
 
@@ -618,15 +613,8 @@ inline void Domain::SetBCs (Dict const & BCs)
 
                 // TODO: 'deactivate' and 'gravity' must be together
                 //       currently this code is splitting them => major rewrite needed
-
-
-
-
-
-
-
-
-
+                //
+                // temporary hack: using key 'deactivate_with_gravity'
 
 
 

@@ -30,6 +30,8 @@ using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
 
+#undef USE_HDF5
+
 int main(int argc, char **argv) try
 {
     // to debug: mpirun -np 2 xterm -e gdb --args ./activation01 1
@@ -311,7 +313,7 @@ int main(int argc, char **argv) try
         bcs.clear();
         bcs.Set      (-10, "uy", 0.0);
         bcs.Set      (-40, "ux", 0.0);
-        bcs.Set      (-2, "deactivate gravity", 1., 10.0);
+        bcs.Set      (-2, "deactivate_with_gravity", 10.0);
         dom.SetBCs   (bcs);
         sol.Solve    (nincs);
         dom.WriteVTU (buf.CStr());

@@ -166,13 +166,16 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
 inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BCF)
 {
     // deactivate/activate commands
-    if (BCs.HasKey("deactivate"))
+    //if (BCs.HasKey("deactivate"))
+    if (BCs.HasKey("deactivate_with_gravity")) // temporary hack since domain keeps splitting 
+                                               // deactivate and gravity that must be together all times
     {
         // check
-        if (!Active) throw new Fatal("EquilibElem::SetBCs: 'deactivate' command failed: Element # %d is already inactive",Cell.ID);
+        if (!Active) throw new Fatal("EquilibElem::SetBCs: 'deactivate_with_gravity' command failed: Element # %d is already inactive",Cell.ID);
 
         // calc force to be applied after removal of element
-        double gra = (BCs.HasKey("gravity") ? BCs("gravity") : 0.0);
+        //double gra = (BCs.HasKey("gravity") ? BCs("gravity") : 0.0);
+        double gra = BCs("deactivate_with_gravity");
         double detJ, coef;
         Mat_t  C, B;
         Vec_t  Fi(NDu), Fb(NDu);

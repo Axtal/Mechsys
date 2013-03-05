@@ -96,8 +96,6 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BC
     bool has_qx  = BCs.HasKey("qx");  // x component of distributed loading
     bool has_qy  = BCs.HasKey("qy");  // y component of distributed loading
     bool has_qn  = BCs.HasKey("qn");  // normal distributed loading
-    bool has_qnl = BCs.HasKey("qnl"); // normal distributed loading (left)
-    bool has_qnr = BCs.HasKey("qnr"); // normal distributed loading (right)
     bool has_qt  = BCs.HasKey("qt");  // tangential distributed loading (2D only)
 
     // loads
@@ -130,15 +128,8 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BC
         HasQn = true;
         */
     }
-    else if (has_qn || has_qnl || has_qnr || has_qt)
+    else if (has_qn || has_qt)
     {
-        if (has_qnl || has_qnr)
-        {
-            qnl = (has_qnl ? BCs("qnl") : 0.0);
-            qnr = (has_qnr ? BCs("qnr") : 0.0);
-            if (qnl*qnr<0.0) throw new Fatal("Beam::SetBCs: qnl=%g and qnr=%g must have the same sign",qnl,qnr);
-        }
-        else
         {
             double qn = (has_qn ? BCs("qn") : 0.0);
             qnl = qn;
@@ -147,6 +138,20 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BC
         qt    = (has_qt ? BCs("qt") : 0.0);
         HasQn = true;
 
+    }
+    else if (BCs.HasKeyLen("qnl_qnr", 7))
+    {
+        Array<String> subkeys;
+        BCs.GetSubKeys("qnl_qnr", 7, subkeys);
+        qnl = atof(subkeys[0].CStr());
+        qnr = atof(subkeys[1].CStr());
+        if (qnl*qnr<0.0) throw new Fatal("Beam::SetBCs: qnl=%g and qnr=%g must have the same sign",qnl,qnr);
+        HasQn = true;
+    }
+
+    // set equivalent forces at nodes
+    if (HasQn)
+    {
         // is node 0 leftmost ?
         bool n0_is_left = true;
         if (fabs(Con[1]->Vert.C[0]-Con[0]->Vert.C[0])<1.0e-7) { // vertical segment
@@ -159,11 +164,7 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, BCFuncs * BC
             qnr *= -1.; 
             qt  *= -1.;
         }
-    }
 
-    // set equivalent forces at nodes
-    if (HasQn)
-    {
         // local and global forces
         Vec_t Fe(6);
         Fe = qt*l/2.0, l*(7.0*qnl+3.0*qnr)/20.0,  l*l*(3.0*qnl+2.0*qnr)/60.0,

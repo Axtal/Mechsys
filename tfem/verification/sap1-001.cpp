@@ -112,8 +112,8 @@ int main(int argc, char **argv) try
     BC[3].Set (-2, "qn", -2.0);
 
     // 4) trapezoidal load on elements 0 and 1
-    BC[4].Set (-1, "qnl qnr", -0.9984, -0.3744);
-    BC[4].Set (-2, "qnl qnr", -0.3744, 0.0);
+    BC[4].Set (-1, "qnl_qnr_-0.9984_-0.3744", 1.);
+    BC[4].Set (-2, "qnl_qnr_-0.3744_0.0", 1.);
 
     // solve
     double errors = 0.0;
