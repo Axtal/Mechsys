@@ -476,10 +476,10 @@ inline size_t Pt2idx(iVec3_t & iv, iVec3_t & Dim) // Calculates the index of the
     return iv(0) + iv(1)*Dim(0) + iv(2)*Dim(0)*Dim(1);
 }
 
-inline void   idx2Pt(size_t n, iVec3_t & iv, iVec3_t & Dim)
+inline void   idx2Pt(size_t n, iVec3_t & iv, iVec3_t & Dim) // Calculates the coordinates form the index
 {
     iv(0) = n%Dim(0);
-    iv(1) = n/Dim(0);
+    iv(1) = (n/Dim(0))%(Dim(1));
     iv(2) = n/(Dim(0)*Dim(1));
 }
 

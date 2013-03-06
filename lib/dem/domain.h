@@ -158,7 +158,7 @@ public:
 
 #ifdef USE_THREAD
     pthread_mutex_t lck;                                                           ///< to protect variables in multithreading
-    Array<std::pair<size_t, size_t> >                      ListPosPairs;                ///< List of all possible particles pairs
+    Array<std::pair<size_t, size_t> >                 ListPosPairs;                ///< List of all possible particles pairs
     iVec3_t                                           LCellDim;                    ///< Dimensions of the linked cell array
     Array<Array <size_t> >                            LinkedCell;                  ///< Linked Cell array for optimization.
     Vec3_t                                            LCxmin;                      ///< Bounding box low   limit for the linked cell array
@@ -194,8 +194,8 @@ public:
     void *                                            UserData;                    ///< Some user data
     String                                            FileKey;                     ///< File Key for output files
     size_t                                            idx_out;                     ///< Index of output
-    std::set<std::pair<Particle *, Particle *> >                Listofpairs;                 ///< List of pair of particles associated per interacton for memory optimization
-    std::set<std::pair<Particle *, Particle *> >                PListofpairs;                ///< List of pair of particles associated per interacton for memory optimization under periodic boundary conditions
+    std::set<std::pair<Particle *, Particle *> >      Listofpairs;                 ///< List of pair of particles associated per interacton for memory optimization
+    std::set<std::pair<Particle *, Particle *> >      PListofpairs;                ///< List of pair of particles associated per interacton for memory optimization under periodic boundary conditions
     Array<Array <int> >                               Listofclusters;              ///< List of particles belonging to bounded clusters (applies only for cohesion simulations)
     
     
@@ -239,17 +239,18 @@ public:
 
 struct MtData   /// A structure for the multi-thread data
 {
-    size_t                  ProcRank; ///< Rank of the thread
-    size_t                    N_Proc; ///< Total number of threads
-    DEM::Domain *                Dom; ///< Pointer to the lbm domain
-    double                       Dmx; ///< Maximun displacement
+    size_t                       ProcRank; ///< Rank of the thread
+    size_t                         N_Proc; ///< Total number of threads
+    DEM::Domain *                     Dom; ///< Pointer to the lbm domain
+    double                            Dmx; ///< Maximun displacement
     Array<std::pair<size_t,size_t> >   LC; ///< A temporal list of new contacts
-    Array<size_t>                LCI; ///< A temporal array of posible Cinteractions
-    Array<size_t>                LCB; ///< A temporal array of posible Binteractions
+    Array<size_t>                     LCI; ///< A temporal array of posible Cinteractions
+    Array<size_t>                     LCB; ///< A temporal array of posible Binteractions
     Array<std::pair<size_t,size_t> >  LPC; ///< A temporal list of new contacts for periodic boundary conditions
-    Array<size_t>               LPCI; ///< A temporal array of posible Cinteractions for periodic boundary conditions
-    Array<size_t>                LBP; ///< A temporal array of possible boundary particles
+    Array<size_t>                    LPCI; ///< A temporal array of posible Cinteractions for periodic boundary conditions
+    Array<size_t>                     LBP; ///< A temporal array of possible boundary particles
     Array<std::pair<iVec3_t,size_t> > LLC; ///< A temporal array of possible linked cells locations
+    Array<std::pair<size_t,size_t> >  LPP; ///< A temporal array of possible partcle types
 };
 
 void * GlobalIni(void * Data)
@@ -350,6 +351,63 @@ void * GlobalResetDisplacement(void * Data)
             //}
         }
     }
+    return NULL;
+}
+
+void * GlobalUpdateLinkedCells(void * Data)
+{
+    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
+	size_t Ni = dat.Dom->FreePar.Size()/dat.N_Proc;
+    size_t In = dat.ProcRank*Ni;
+    size_t Fn;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->FreePar.Size() : Fn = (dat.ProcRank+1)*Ni;
+    dat.LPP.Resize(0);
+    for (size_t i=In;i<Fn;i++)
+    for (size_t j=0;j<dat.Dom->NoFreePar.Size();j++)
+    {
+        dat.LPP.Push(std::make_pair(dat.Dom->FreePar[i],dat.Dom->NoFreePar[j]));
+    }
+	Ni = dat.Dom->LinkedCell.Size()/dat.N_Proc;
+    In = dat.ProcRank*Ni;
+    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->LinkedCell.Size() : Fn = (dat.ProcRank+1)*Ni;
+    for (size_t idx=In;idx<Fn;idx++)
+    {
+        if (dat.Dom->LinkedCell[idx].Size()==0) continue;
+        iVec3_t index;
+        idx2Pt(idx,index,dat.Dom->LCellDim);
+        for (size_t n=0  ;n<dat.Dom->LinkedCell[idx].Size()-1;n++)
+        for (size_t m=n+1;m<dat.Dom->LinkedCell[idx].Size()  ;m++)
+        {
+            size_t i1 = dat.Dom->LinkedCell[idx][n];
+            size_t i2 = dat.Dom->LinkedCell[idx][m];
+            if (i1==i2) continue;
+            dat.LPP.Push(std::make_pair(i1,i2));
+        }
+        size_t i = index(0);
+        size_t j = index(1);
+        size_t k = index(2);
+        for (size_t knb=std::max(0,int(k)-1);knb<=std::min(dat.Dom->LCellDim(2)-1,k+1);knb++)
+        for (size_t jnb=std::max(0,int(j)-1);jnb<=std::min(dat.Dom->LCellDim(1)-1,j+1);jnb++)
+        for (size_t inb=std::max(0,int(i)-1);inb<=std::min(dat.Dom->LCellDim(0)-1,i+1);inb++)
+        {
+            iVec3_t Ptnb(inb,jnb,knb);
+            size_t idxnb = Pt2idx(Ptnb,dat.Dom->LCellDim);
+            if (idxnb>idx)
+            {
+                for (size_t n=0;n<dat.Dom->LinkedCell[idx].Size()  ;n++)
+                {
+                    for (size_t m=0;m<dat.Dom->LinkedCell[idxnb].Size()  ;m++)
+                    {
+                        size_t i1 = std::min(dat.Dom->LinkedCell[idx  ][n],dat.Dom->LinkedCell[idxnb][m]);
+                        size_t i2 = std::max(dat.Dom->LinkedCell[idx  ][n],dat.Dom->LinkedCell[idxnb][m]);
+                        if (i1==i2) continue;
+                        dat.LPP.Push(std::make_pair(i1,i2));
+                    }
+                }
+            }
+        }
+    }
+    //std::cout << "Im finished " << dat.ProcRank << std::endl;
     return NULL;
 }
 
@@ -1881,14 +1939,20 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     NoFreePar.Resize(0);
     Vs = 0.0;
     Ms = 0.0;
-    MaxDmax = 0.0;
+    MaxDmax = Particles[0]->Dmax;
+    double MinDmax = Particles[0]->Dmax;
+    double MinMass = Particles[0]->Props.m;
+    double MaxKn   = Particles[0]->Props.Kn;
     for (size_t i=0; i<Particles.Size(); i++) 
     { 
         if (Particles[i]->IsFree())
         {
             Vs += Particles[i]->Props.V;
             Ms += Particles[i]->Props.m;
-            if (Particles[i]->Dmax>MaxDmax) MaxDmax = Particles[i]->Dmax;
+            if (Particles[i]->Dmax     > MaxDmax) MaxDmax = Particles[i]->Dmax;
+            if (Particles[i]->Dmax     < MinDmax) MinDmax = Particles[i]->Dmax;
+            if (Particles[i]->Props.m  < MinMass) MinMass = Particles[i]->Props.m;
+            if (Particles[i]->Props.Kn > MaxKn  ) MaxKn   = Particles[i]->Props.Kn;
             FreePar.Push(i);
         }
         else NoFreePar.Push(i);
@@ -1897,9 +1961,11 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     // info
     Util::Stopwatch stopwatch;
     printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    printf("%s  Total mass   of free particles   =  %g%s\n",TERM_CLR4, Ms              , TERM_RST);
-    printf("%s  Total volume of free particles   =  %g%s\n",TERM_CLR4, Vs              , TERM_RST);
-    printf("%s  Total number of particles        = %zd%s\n",TERM_CLR2, Particles.Size(), TERM_RST);
+    printf("%s  Total mass   of free particles   =  %g%s\n"       ,TERM_CLR4, Ms                                   , TERM_RST);
+    printf("%s  Total volume of free particles   =  %g%s\n"       ,TERM_CLR4, Vs                                   , TERM_RST);
+    printf("%s  Total number of particles        =  %zd%s\n"      ,TERM_CLR2, Particles.Size()                     , TERM_RST);
+    printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/MaxKn)              , TERM_RST);
+    printf("%s  Suggested Verlet distance        =  %g or %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
 
     // solve
     double t0   = Time;     // initial time
@@ -1932,6 +1998,10 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
     LinkedCell.Resize(LCellDim(0)*LCellDim(1)*LCellDim(2));
     //std::cout << LCellDim << std::endl;
+    //iVec3_t iv;
+    //idx2Pt(16,iv,LCellDim);
+    //std::cout << iv << std::endl;
+
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_create(&thrs[i], NULL, GlobalResetDisplacement, &MTD[i]);
@@ -1946,9 +2016,28 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         }
     }
 
-    UpdateLinkedCells();
-    //std::cout << LinkedCell.Size() << std::endl;
-    //std::cout << ListPosPairs.Size() << endl;
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_create(&thrs[i], NULL, GlobalUpdateLinkedCells, &MTD[i]);
+    }
+
+    size_t Npp = 0;
+    for (size_t i=0;i<Nproc;i++)
+    {
+        pthread_join(thrs[i], NULL);
+        Npp += MTD[i].LPP.Size();
+    }
+    ListPosPairs.Resize(Npp);
+    size_t idx = 0;
+    for (size_t i=0;i<Nproc;i++)
+    {
+        for (size_t j=0;j<MTD[i].LPP.Size();j++)
+        {
+            ListPosPairs[idx] = MTD[i].LPP[j];
+            idx++;
+        }
+    }
+    //UpdateLinkedCells();
 
     //std::cout << "2 " << CInteractons.Size() << std::endl;
     for (size_t i=0;i<Nproc;i++)
@@ -2185,8 +2274,28 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
                     LinkedCell[idx].Push(MTD[i].LLC[j].second);
                 }
             }
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_create(&thrs[i], NULL, GlobalUpdateLinkedCells, &MTD[i]);
+            }
             //std::cout << "3 " << CInteractons.Size() << std::endl;
-            UpdateLinkedCells();
+            Npp = 0;
+            for (size_t i=0;i<Nproc;i++)
+            {
+                pthread_join(thrs[i], NULL);
+                Npp += MTD[i].LPP.Size();
+            }
+            ListPosPairs.Resize(Npp);
+            idx = 0;
+            for (size_t i=0;i<Nproc;i++)
+            {
+                for (size_t j=0;j<MTD[i].LPP.Size();j++)
+                {
+                    ListPosPairs[idx] = MTD[i].LPP[j];
+                    idx++;
+                }
+            }
+            //UpdateLinkedCells();
             //std::cout << "4 " << CInteractons.Size() << std::endl;
             for (size_t i=0;i<Nproc;i++)
             {
