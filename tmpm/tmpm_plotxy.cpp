@@ -22,14 +22,14 @@
 #include <iostream>
 #include <cmath>
 
-// FLTK
-#include <FL/Fl.H>
-#include <FL/Fl_Double_Window.H>
-
 // Local
 #include <mechsys/util/array.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/mpm/plotxy.h>
+
+// FLTK
+#include <FL/Fl.H>
+#include <FL/Fl_Double_Window.H>
 
 using std::cout;
 using std::endl;

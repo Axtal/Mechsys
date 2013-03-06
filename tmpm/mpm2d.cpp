@@ -25,17 +25,6 @@
 #include <cfloat> // for DBL_EPSILON
 #include <ctime>  // for std::clock()
 
-// FLTK
-#include <FL/Fl.H>
-#include <FL/Fl_Group.H>
-#include <FL/Fl_Choice.H>
-#include <FL/Fl_Box.H>
-#include <FL/Fl_Button.H>
-#include <FL/Fl_Round_Button.H>
-#include <FL/Fl_Check_Button.H>
-#include <FL/Fl_Input.H>
-#include <FL/Fl_Double_Window.H>
-
 // MechSys
 #include <mechsys/util/array.h>
 #include <mechsys/util/fatal.h>
@@ -48,6 +37,17 @@
 #include <mechsys/mpm/infobox.h>
 #include <mechsys/mpm/tiled.h>
 #include <mechsys/mpm/output.h>
+
+// FLTK
+#include <FL/Fl.H>
+#include <FL/Fl_Group.H>
+#include <FL/Fl_Choice.H>
+#include <FL/Fl_Box.H>
+#include <FL/Fl_Button.H>
+#include <FL/Fl_Round_Button.H>
+#include <FL/Fl_Check_Button.H>
+#include <FL/Fl_Input.H>
+#include <FL/Fl_Double_Window.H>
 
 using std::cout;
 using std::endl;

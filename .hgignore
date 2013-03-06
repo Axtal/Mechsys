@@ -102,6 +102,22 @@ tdem/test_tetrahedra
 tdem/test_write
 tdem/ttt
 test/tplotxy
+tdoc/doc_vtk1
+test/models/fcrit
+test/models/invariants04
+test/models/smp
+test/vtk/arrows
+test/vtk/isosurf01
+test/vtk/isosurf02
+test/vtk/objects
+test/vtk/sgridarrows
+test/vtk/triangulation01
+test/vtk/triangulation02
+test/vtk/vtk_temperature
+tmpm/mpm2d
+tmpm/tmpm_chull2d
+tmpm/tmpm_plotxy
+tmpm/tmpm_tensors
 
 
 
