@@ -72,7 +72,8 @@ test -d $MECHSYS_ROOT/pkg || mkdir $MECHSYS_ROOT/pkg
 VER_BLITZ=0.9
 VER_TRIANGLE=1.6
 VER_TETGEN=1.4.3
-VER_VORO=0.3.1
+#VER_VORO=0.3.1
+VER_VORO=0.4.5
 VER_IGRAPH=0.5.4
 VER_SOPLEX=1.6.0
 VER_WXWIDGETS=2.9.4
@@ -120,10 +121,10 @@ download_and_compile() {
             DO_PATCH=1
             ;;
         voro)
-            PKG=voro++$VER_VORO
-            LOCATION=http://mechsys.nongnu.org/software/$PKG.$EXT
-            DO_PATCH=1
-            DO_MAKE=0
+            PKG=voro++-$VER_VORO
+            LOCATION=http://math.lbl.gov/voro++/download/dir/voro++-$VER_VORO.$EXT
+            #DO_PATCH=1
+            DO_MAKE=1
             ;;
         igraph)
             PKG=igraph-$VER_IGRAPH

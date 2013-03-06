@@ -100,9 +100,9 @@ ENABLE_LANGUAGE (Fortran)
 FIND_PACKAGE (wxWidgets COMPONENTS ${WXW_COMPONENTS})       #  1
 INCLUDE      (FindMPI)                                      #  2
 INCLUDE      (FindVTK)                                      #  3
-#FIND_PACKAGE (HDF5 COMPONENTS     HL)                       #  4
+FIND_PACKAGE (HDF5 COMPONENTS     HL)                       #  4
 #FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  4
+#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  4
 INCLUDE      (FindBoost)                                    #  5
 INCLUDE      (FindLAPACK)                                   #  6
 #INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindLocLAPACK.cmake) #  6
@@ -223,6 +223,7 @@ endif(MTL_FOUND AND A_USE_MTL4)
 # 10
 if(VORO_FOUND)
 	INCLUDE_DIRECTORIES (${VORO_INCLUDE_DIRS})
+    SET (LIBS ${LIBS} ${VORO_LIBRARIES})
 else(VORO_FOUND)
     SET (MISSING "${MISSING} Voro++")
 endif(VORO_FOUND)

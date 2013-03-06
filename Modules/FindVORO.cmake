@@ -20,20 +20,31 @@
 #####################################################################################
 
 SET(VORO_INCLUDE_SEARCH_PATH
-  $ENV{MECHSYS_ROOT}/pkg/voro++0.3.1
-  $ENV{HOME}/pkg/voro++0.3.1
+  #$ENV{MECHSYS_ROOT}/pkg/voro++0.3.1
+  #$ENV{HOME}/pkg/voro++0.3.1
+  $ENV{MECHSYS_ROOT}/pkg/voro++-0.4.5/src
+  $ENV{HOME}/pkg/voro++-0.4.5/src
   /usr/include
   /usr/local/include)
 
-FIND_PATH(VORO_VORO_CC src/voro++.cc ${VORO_INCLUDE_SEARCH_PATH})
+SET(VORO_LIBRARY_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/pkg/voro++-0.4.5/src
+  $ENV{HOME}/pkg/voro++-0.4.5/src
+  /usr/lib
+  /usr/local/lib)
+
+FIND_PATH(VORO_VORO_H voro++.hh ${VORO_INCLUDE_SEARCH_PATH})
+
+FIND_LIBRARY(VORO_VORO NAMES voro++ PATHS ${VORO_LIBRARY_SEARCH_PATH})
 
 SET(VORO_FOUND 1)
-FOREACH(var VORO_VORO_CC)
+FOREACH(var VORO_VORO_H VORO_VORO)
   IF(NOT ${var})
 	SET(VORO_FOUND 0)
   ENDIF(NOT ${var})
 ENDFOREACH(var)
 
 IF(VORO_FOUND)
-  SET(VORO_INCLUDE_DIRS ${VORO_VORO_CC})
+    SET(VORO_INCLUDE_DIRS ${VORO_VORO_H})
+    SET(VORO_LIBRARIES ${VORO_VORO})
 ENDIF(VORO_FOUND)

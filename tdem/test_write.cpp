@@ -29,10 +29,10 @@ using DEM::Domain;
 int main( void )
 {
     Domain dom;
-    dom.AddVoroPack (-1, 0.1, 10.0, 10.0, 10.0, 10, 10, 10, 1.0, true, 1200, 1.0,1.0);
+    dom.AddVoroPack (-1, 0.05, 10.0, 10.0, 10.0, 10, 10, 20, 1.0, true, 1200, 1.0,1.0);
     dom.Initialize();
     dom.Save("domainwrite");
-    dom.WritePOV("domainwrite");
+    dom.WriteXDMF("domainwrite");
     
     return 0;
 }

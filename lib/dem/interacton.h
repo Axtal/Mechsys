@@ -186,7 +186,7 @@ inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
     {
         Mu          = 0.0;
     }
-    //std::cout << Mu << " " << Pt1->Tag << " " << Pt2->Tag << std::endl;
+    //if (Pt2->Tag<-1) std::cout << Mu << " " << Pt1->Tag << " " << Pt2->Tag << std::endl;
     CalcForce(0.0);
 
 #ifdef USE_THREAD
