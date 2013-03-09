@@ -55,6 +55,10 @@ public:
     Particle     * P2;        ///< Second particle
     size_t         I1;        ///< Index of the first particle
     size_t         I2;        ///< Index of the second particle
+    Vec3_t         F1;        ///< Provisional force  for particle 1
+    Vec3_t         F2;        ///< Provisional force  for particle 2
+    Vec3_t         T1;        ///< Provisional torque for particle 1
+    Vec3_t         T2;        ///< Provisional torque for particle 2
 #ifdef USE_THREAD
     pthread_mutex_t lck;              ///< to protect variables in multithreading
 #endif
@@ -141,8 +145,8 @@ public:
     void UpdateParameters ();              ///< Update the parameters in case they change
 
     // Data
-    size_t F1;                             ///< Index of the shared face for particle 1
-    size_t F2;                             ///< Index of the shared face for particle 2
+    size_t IF1;                            ///< Index of the shared face for particle 1
+    size_t IF2;                            ///< Index of the shared face for particle 2
     double Area;                           ///< Area of the shared side
     double Bn;                             ///< Elastic normal constant for the cohesion
     double Bt;                             ///< Elastic tangential constant for the cohesion
@@ -230,6 +234,10 @@ inline bool CInteracton::CalcForce (double dt)
     Fnet   = OrthoSys::O;
     Ftnet  = OrthoSys::O;
     Xc     = OrthoSys::O;
+    F1     = OrthoSys::O;
+    F2     = OrthoSys::O;
+    T1     = OrthoSys::O;
+    T2     = OrthoSys::O;
     if (norm(P1->x - P2->x) > P1->Dmax + P2->Dmax) return false;
     if (_update_disp_calc_force (P1->Edges     ,P2->Edges     ,Fdee,Lee,dt)) overlap = true;
     if (_update_disp_calc_force (P1->Verts     ,P2->Faces     ,Fdvf,Lvf,dt)) overlap = true;
@@ -246,19 +254,19 @@ inline bool CInteracton::CalcForce (double dt)
     {
 #ifdef USE_THREAD
         //pthread_mutex_lock(&lck);
-        pthread_mutex_lock(&P1->lck);
-        pthread_mutex_lock(&P2->lck);
+        //pthread_mutex_lock(&P1->lck);
+        //pthread_mutex_lock(&P2->lck);
         //std::lock_guard<std::mutex> lk1(P1->mtex);
         //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
-        P1->Cn++;
-        P2->Cn++;
+        //P1->Cn++;
+        //P2->Cn++;
         if (!P1->IsFree()) P2->Bdry = true;
         if (!P2->IsFree()) P1->Bdry = true;
 #ifdef USE_THREAD
         //pthread_mutex_unlock(&lck);
-        pthread_mutex_unlock(&P1->lck);
-        pthread_mutex_unlock(&P2->lck);
+        //pthread_mutex_unlock(&P1->lck);
+        //pthread_mutex_unlock(&P2->lck);
 #endif
     }
     return overlap;
@@ -352,15 +360,17 @@ inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             if (dot(F,n)<0) F-=dot(F,n)*n;
 #ifdef USE_THREAD
             //pthread_mutex_lock(&lck);
-            pthread_mutex_lock(&P1->lck);
-            pthread_mutex_lock(&P2->lck);
+            //pthread_mutex_lock(&P1->lck);
+            //pthread_mutex_lock(&P2->lck);
             //std::lock_guard<std::mutex> lk1(P1->mtex);
             //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
-            P1->F    += -F;
-            P2->F    +=  F;
-            P1->Comp += norm(Fn);
-            P2->Comp += norm(Fn);
+            //P1->F    += -F;
+            //P2->F    +=  F;
+            //P1->Comp += norm(Fn);
+            //P2->Comp += norm(Fn);
+            F1   += -F;
+            F2   +=  F;
             dEvis += (Gn*dot(vrel-vt,vrel-vt)+Gt*dot(vt,vt))*dt;
             // torque
             Vec3_t T, Tt;
@@ -368,32 +378,34 @@ inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             Quaternion_t q;
             Conjugate (P1->Q,q);
             Rotation  (Tt,q,T);
-            P1->T -= T;
+            //P1->T -= T;
+            T1 -= T;
             Tt = cross (x2,F);
             Conjugate (P2->Q,q);
             Rotation  (Tt,q,T);
-            P2->T += T;
+            //P2->T += T;
+            T2 += T;
             //Transfering the branch vector information
             Vec3_t nor = n;
             Vec3_t dif = P2->x - P1->x;
             //if (P1->IsFree()&&P2->IsFree())
             //{
-                for (size_t m=0;m<3;m++)
-                {
-                    for (size_t n=0;n<3;n++)
-                    {
-                        P1->M(m,n)  -= F(m)*x1(n);
-                        P2->M(m,n)  += F(m)*x2(n);
-                        P1->B(m,n)  += nor(m)*nor(n);
-                        P2->B(m,n)  += nor(m)*nor(n);
-                        this->B(m,n) = nor(m)*nor(n);
-                    }
-                }
+                //for (size_t m=0;m<3;m++)
+                //{
+                    //for (size_t n=0;n<3;n++)
+                    //{
+                        //P1->M(m,n)  -= F(m)*x1(n);
+                        //P2->M(m,n)  += F(m)*x2(n);
+                        //P1->B(m,n)  += nor(m)*nor(n);
+                        //P2->B(m,n)  += nor(m)*nor(n);
+                        //this->B(m,n) = nor(m)*nor(n);
+                    //}
+                //}
             //}
 #ifdef USE_THREAD
             //pthread_mutex_unlock(&lck);
-            pthread_mutex_unlock(&P1->lck);
-            pthread_mutex_unlock(&P2->lck);
+            //pthread_mutex_unlock(&P1->lck);
+            //pthread_mutex_unlock(&P2->lck);
 #endif
     //std::cout << P1->Index << " " << P2->Index << std::endl;
 
@@ -417,7 +429,6 @@ inline void CInteracton::_update_contacts (FeatureA_T & A, FeatureB_T & B, ListC
             L.Push(p);
         }
     }
-
 }
 
 //Collision interacton for spheres
@@ -481,24 +492,26 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
     Vec3_t T;
 #ifdef USE_THREAD
     //pthread_mutex_lock(&lck);
-    pthread_mutex_lock(&P1->lck);
-    pthread_mutex_lock(&P2->lck);
+    //pthread_mutex_lock(&P1->lck);
+    //pthread_mutex_lock(&P2->lck);
     //std::lock_guard<std::mutex> lk1(P1->mtex);
     //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
     Quaternion_t q;
     Conjugate (P1->Q,q);
     Rotation  (Tt,q,T);
-    P1->T += T;
+    //P1->T += T;
+    T1 += T;
 
     Tt = P2->Props.R*cross(Normal,Ft);
     Conjugate (P2->Q,q);
     Rotation  (Tt,q,T);
-    P2->T -= T;
+    //P2->T -= T;
+    T2 -= T;
 #ifdef USE_THREAD
     //pthread_mutex_unlock(&lck);
-    pthread_mutex_unlock(&P1->lck);
-    pthread_mutex_unlock(&P2->lck);
+    //pthread_mutex_unlock(&P1->lck);
+    //pthread_mutex_unlock(&P2->lck);
 #endif
 }
 
@@ -513,6 +526,10 @@ inline bool CInteractonSphere::CalcForce(double dt)
     Fnet   = OrthoSys::O;
     Ftnet  = OrthoSys::O;
     Xc     = OrthoSys::O;
+    F1     = OrthoSys::O;
+    F2     = OrthoSys::O;
+    T1     = OrthoSys::O;
+    T2     = OrthoSys::O;
     bool overlap;
     overlap = _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,Lvv,dt);
     if (Epot>0.0) _update_rolling_resistance(dt);
@@ -523,19 +540,19 @@ inline bool CInteractonSphere::CalcForce(double dt)
     {
 #ifdef USE_THREAD
         //pthread_mutex_lock(&lck);
-        pthread_mutex_lock(&P1->lck);
-        pthread_mutex_lock(&P2->lck);
+        //pthread_mutex_lock(&P1->lck);
+        //pthread_mutex_lock(&P2->lck);
         //std::lock_guard<std::mutex> lk1(P1->mtex);
         //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
-        P1->Cn++;
-        P2->Cn++;
+        //P1->Cn++;
+        //P2->Cn++;
         if (!P1->IsFree()) P2->Bdry = true;
         if (!P2->IsFree()) P1->Bdry = true;
 #ifdef USE_THREAD
         //pthread_mutex_unlock(&lck);
-        pthread_mutex_unlock(&P1->lck);
-        pthread_mutex_unlock(&P2->lck);
+        //pthread_mutex_unlock(&P1->lck);
+        //pthread_mutex_unlock(&P2->lck);
 #endif
     }
     return overlap;
@@ -567,13 +584,13 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     F1              = Fi1;
     if (Fi2>=P2->Faces.Size())
     {
-        F2 = P2->Faces.Size()-1;
-        Area            = P1->Faces[F1]->Area();
+        IF2 = P2->Faces.Size()-1;
+        Area            = P1->Faces[IF1]->Area();
     }
     else
     {
-        F2 = Fi2;
-        Area            = 0.5*(P1->Faces[F1]->Area()+P2->Faces[F2]->Area());
+        IF2 = Fi2;
+        Area            = 0.5*(P1->Faces[IF1]->Area()+P2->Faces[IF2]->Area());
     }
     I1              = P1->Index;
     I2              = P2->Index;
@@ -585,18 +602,18 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     eps             = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
 
     Vec3_t n1,n2;
-    P1->Faces[F1]->Normal(n1);
-    P2->Faces[F2]->Normal(n2);
+    P1->Faces[IF1]->Normal(n1);
+    P2->Faces[IF2]->Normal(n2);
     Vec3_t c1,c2;
     An         = 0.0;
     valid      = true;
-    P1->Faces[F1]->Centroid(c1);
-    P2->Faces[F2]->Centroid(c2);
+    P1->Faces[IF1]->Centroid(c1);
+    P2->Faces[IF2]->Centroid(c2);
     L0         = dot(n1,c2-c1);
     if (Fi2>=P2->Faces.Size()) c2 = c1;
     Vec3_t V   = 0.5*(c1+c2);
 
-    Face * F   = P1->Faces[F1];
+    Face * F   = P1->Faces[IF1];
     double a   = dot(*F->Edges[0]->X0-V , F->Edges[0]->dL);
     double b   = dot(F->Edges[0]->dL    , F->Edges[0]->dL);
     double c   = dot(F->Edges[0]->dL    , F->Edges[1]->dL);
@@ -607,7 +624,7 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     
     Vec3_t p1  = -s1*F->Edges[0]->dL - t1*F->Edges[1]->dL;
 
-    F          = P2->Faces[F2];
+    F          = P2->Faces[IF2];
     a          = dot(*F->Edges[0]->X0-V , F->Edges[0]->dL);
     b          = dot(F->Edges[0]->dL    , F->Edges[0]->dL);
     c          = dot(F->Edges[0]->dL    , F->Edges[1]->dL);
@@ -635,19 +652,23 @@ inline bool BInteracton::UpdateContacts (double alpha)
 
 inline bool BInteracton::CalcForce(double dt)
 {
+    F1 = OrthoSys::O;
+    F2 = OrthoSys::O;
+    T1 = OrthoSys::O;
+    T2 = OrthoSys::O;
     if (valid)
     {
         // Calculate the normal vector and centroid of the contact face
         Vec3_t n1,n2,n;
-        P1->Faces[F1]->Normal(n1);
-        P2->Faces[F2]->Normal(n2);
+        P1->Faces[IF1]->Normal(n1);
+        P2->Faces[IF2]->Normal(n2);
         n = 0.5*(n1-n2);
         n/=norm(n);
 
-        Face * F    = P1->Faces[F1];
+        Face * F    = P1->Faces[IF1];
         Vec3_t pro1 = *F->Edges[0]->X0 + s1*F->Edges[0]->dL + t1*F->Edges[1]->dL;
         Vec3_t p1   = -s1*F->Edges[0]->dL - t1*F->Edges[1]->dL;
-        F           = P2->Faces[F2];
+        F           = P2->Faces[IF2];
         Vec3_t pro2 = *F->Edges[0]->X0 + s2*F->Edges[0]->dL + t2*F->Edges[1]->dL;
         Vec3_t p2   = -s2*F->Edges[0]->dL - t2*F->Edges[1]->dL;
 
@@ -670,26 +691,30 @@ inline bool BInteracton::CalcForce(double dt)
 
 #ifdef USE_THREAD
         //pthread_mutex_lock(&lck);
-        pthread_mutex_lock(&P1->lck);
-        pthread_mutex_lock(&P2->lck);
+        //pthread_mutex_lock(&P1->lck);
+        //pthread_mutex_lock(&P2->lck);
         //std::lock_guard<std::mutex> lk1(P1->mtex);
         //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
         //Adding forces and torques
         Fnet   = Fn+Ft;
-        P1->F -= Fnet;
-        P2->F += Fnet;
+        //P1->F -= Fnet;
+        //P2->F += Fnet;
+        F1 -= Fnet;
+        F2 += Fnet;
         Vec3_t T, Tt;
         Tt = cross (x1,Fnet);
         Quaternion_t q1;
         Conjugate (P1->Q,q1);
         Rotation  (Tt,q1,T);
-        P1->T -= T;
+        //P1->T -= T;
+        T1 -= T;
         Tt = cross (x2,Fnet);
         Quaternion_t q2;
         Conjugate (P2->Q,q2);
         Rotation  (Tt,q2,T);
-        P2->T += T;
+        //P2->T += T;
+        T2 += T;
 
         //Torque
         double arg = dot(p1,p2)/(norm(p1)*norm(p2));
@@ -699,13 +724,15 @@ inline bool BInteracton::CalcForce(double dt)
         if (dot(cross(p1,p2),n)<0) Ant = -Ant;
         Tt         = -Bm*(Ant-An)*n/L0;
         Rotation  (Tt,q1,T);
-        P1->T -= T;
+        //P1->T -= T;
+        T1 -= T;
         Rotation  (Tt,q2,T);
-        P2->T += T;
+        //P2->T += T;
+        T2 += T;
 #ifdef USE_THREAD
         //pthread_mutex_unlock(&lck);
-        pthread_mutex_unlock(&P1->lck);
-        pthread_mutex_unlock(&P2->lck);
+        //pthread_mutex_unlock(&P1->lck);
+        //pthread_mutex_unlock(&P2->lck);
 #endif
 
         //Breaking point

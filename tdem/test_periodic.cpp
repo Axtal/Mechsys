@@ -51,6 +51,7 @@ void Setup1 (DEM::Domain & dom, void * UD)
     dom.GetParticle(-6)->Ff = Vec3_t(0.0          ,0.0          ,-dat.p0*Areaz);
     dom.GetParticle(-7)->Ff = Vec3_t(0.0          ,0.0          , dat.p0*Areaz);
 }
+
 void Setup2 (DEM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
@@ -60,6 +61,53 @@ void Setup2 (DEM::Domain & dom, void * UD)
     dom.GetParticle(-7)->Translate(trans);
     double Area = (dom.Xmax-dom.Xmin)*(dom.GetParticle(-4)->x(1)-dom.GetParticle(-5)->x(1));
     dat.Sig = (dom.GetParticle(-6)->F-dom.GetParticle(-7)->F)/Area;
+}
+
+void AddSawPlate(DEM::Domain & dom, int Tag,  Vec3_t & X, double Lx, double Ly, size_t Ntooth, double depth, double rho, double R)
+{
+     Array<Vec3_t>        V(4*Ntooth+2);
+     Array<Array <int> >  E(2*Ntooth+1);
+     Array<Array <int> >  F(2*Ntooth);
+     double step = Lx/Ntooth;
+     for (size_t i=0;i<Ntooth+1;i++)
+     {
+         V[i             ] = Vec3_t(i*step,-0.5*Ly,0.0);
+         V[i + Ntooth + 1] = Vec3_t(i*step, 0.5*Ly,0.0);
+         E[i].Push(i);
+         E[i].Push(i+Ntooth+1);
+     }
+     //std::cout << "1" << std::endl;
+     for (size_t i=0;i<Ntooth;i++)
+     {
+         V[i + 2*Ntooth + 2] = Vec3_t(i*step+0.5*step,-0.5*Ly,depth);
+         V[i + 3*Ntooth + 2] = Vec3_t(i*step+0.5*step, 0.5*Ly,depth);
+         E[i + Ntooth + 1].Push(i + 2*Ntooth + 2);
+         E[i + Ntooth + 1].Push(i + 3*Ntooth + 2);
+         F[2*i  ].Push(i               );
+         F[2*i  ].Push(i +   Ntooth + 1);
+         F[2*i  ].Push(i + 3*Ntooth + 2);
+         F[2*i  ].Push(i + 2*Ntooth + 2);
+         F[2*i+1].Push(i + 1           );
+         F[2*i+1].Push(i +   Ntooth + 2);
+         F[2*i+1].Push(i + 3*Ntooth + 2);
+         F[2*i+1].Push(i + 2*Ntooth + 2);
+     }
+     //std::cout << "2" << std::endl;
+     dom.Particles.Push(new DEM::Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+     //std::cout << "3" << std::endl;
+     dom.Particles[dom.Particles.Size()-1]->Q          = 1.0,0.0,0.0,0.0;
+     dom.Particles[dom.Particles.Size()-1]->Props.V    = Lx*Ly*R;
+     dom.Particles[dom.Particles.Size()-1]->Props.m    = rho*Lx*Ly*R;
+     dom.Particles[dom.Particles.Size()-1]->I          = 1.0,1.0,1.0;
+     dom.Particles[dom.Particles.Size()-1]->I         *= dom.Particles[dom.Particles.Size()-1]->Props.m;
+     dom.Particles[dom.Particles.Size()-1]->x          = Vec3_t(0.5*Lx,0.0,depth);
+     dom.Particles[dom.Particles.Size()-1]->Ekin       = 0.0;
+     dom.Particles[dom.Particles.Size()-1]->Erot       = 0.0;
+     dom.Particles[dom.Particles.Size()-1]->Dmax       = sqrt(Lx*Lx+Ly*Ly+depth*depth)+R;
+     dom.Particles[dom.Particles.Size()-1]->PropsReady = true;
+     dom.Particles[dom.Particles.Size()-1]->Index      = dom.Particles.Size()-1;
+
+     dom.Particles[dom.Particles.Size()-1]->Position(X);
 }
 
 void Report (DEM::Domain & dom, void *UD)
@@ -104,7 +152,8 @@ int main(int argc, char **argv) try
     
     double verlet;      // Verlet distance for optimization
     String ptype;       // Particle type 
-    size_t  RenderVideo; // Decide is video should be render
+    String test;        // Particle type 
+    size_t  RenderVideo;// Decide is video should be render
     bool   Cohesion;    // Decide if coheison is going to be simulated
     double fraction;    // Fraction of particles to be generated
     double Kn;          // Normal stiffness
@@ -136,6 +185,7 @@ int main(int argc, char **argv) try
     {
         infile >> verlet;       infile.ignore(200,'\n');
         infile >> ptype;        infile.ignore(200,'\n');
+        infile >> test;         infile.ignore(200,'\n');
         infile >> RenderVideo;  infile.ignore(200,'\n');
         infile >> Cohesion;     infile.ignore(200,'\n');
         infile >> fraction;     infile.ignore(200,'\n');
@@ -174,9 +224,20 @@ int main(int argc, char **argv) try
     dom.CamPos = Vec3_t(0.0, 1.0*(Lx+Ly+Lz), 0.15*Lz); // position of camera
     dat.p0 = p0;
 
+    bool load = false;
     // particle
     if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction);
-    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, Cohesion, !Cohesion, seed, fraction);
+    else if (ptype=="sphereboxhcp") 
+    {
+        Vec3_t Xmin(-0.5*Lx,-0.5*Ly,-0.5*Lz);
+        Vec3_t Xmax = -Xmin;
+        dom.GenSpheresBox (-1, Xmin, Xmax, R, rho, "HCP",    seed, fraction, Eps);
+    }
+    else if (ptype=="voronoi")
+    {
+        if (ny==1) dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, Cohesion, bVec3_t(true,false,true), seed, fraction, Vec3_t(0.0,1.0,0.0));
+        else       dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, Cohesion, bVec3_t(true,true ,true), seed, fraction, Vec3_t(0.0,0.0,0.0));
+    }
     else if (ptype=="tetra")
     {
         Mesh::Unstructured mesh(/*NDim*/3);
@@ -184,81 +245,163 @@ int main(int argc, char **argv) try
         dom.GenFromMesh (mesh,/*R*/R,/*rho*/rho,Cohesion,false);
     }
     else if (ptype=="rice") dom.GenRice(-1,Lx,nx,R,rho,seed,fraction);
-    else throw new Fatal("Packing for particle type not implemented yet");
-    dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3,Cohesion);
-    dom.GetParticle(-2)->FixVeloc();
-    dom.GetParticle(-3)->FixVeloc();
-    dom.GetParticle(-4)->FixVeloc();
-    dom.GetParticle(-5)->FixVeloc();
-    dom.GetParticle(-6)->FixVeloc();
-    dom.GetParticle(-7)->FixVeloc();
+    else 
+    {
+        dom.Load(ptype.CStr());
+        load = true;
+    }
 
-    dom.GetParticle(-2)->vxf = false;
-    dom.GetParticle(-3)->vxf = false;
-    dom.GetParticle(-4)->vyf = false;
-    dom.GetParticle(-5)->vyf = false;
-    dom.GetParticle(-6)->vzf = false;
-    dom.GetParticle(-7)->vzf = false;
+    if (test=="normal")
+    {
+        if (!load) dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3,Cohesion);
+        dom.GetParticle(-2)->FixVeloc();
+        dom.GetParticle(-3)->FixVeloc();
+        dom.GetParticle(-4)->FixVeloc();
+        dom.GetParticle(-5)->FixVeloc();
+        dom.GetParticle(-6)->FixVeloc();
+        dom.GetParticle(-7)->FixVeloc();
 
-    // properties of particles prior the triaxial test
-    Dict B1;
-    B1.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt ,Mu     ,Beta,Eta,Bn,Bt ,Bm ,     Eps);
-    B1.Set(-2,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    B1.Set(-3,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    B1.Set(-4,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    B1.Set(-5,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    B1.Set(-6,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    B1.Set(-7,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    dom.SetProps(B1);
+        dom.GetParticle(-2)->vxf = false;
+        dom.GetParticle(-3)->vxf = false;
+        dom.GetParticle(-4)->vyf = false;
+        dom.GetParticle(-5)->vyf = false;
+        dom.GetParticle(-6)->vzf = false;
+        dom.GetParticle(-7)->vzf = false;
 
-    // stage 1: isotropic compresssion  //////////////////////////////////////////////////////////////////////
-    String fkey_a  (filekey+"_a");
-    String fkey_b  (filekey+"_b");
-    String fkey_c  (filekey+"_c");
-    String fkeybf_a(filekey+"bf_a");
-    String fkeybf_b(filekey+"bf_b");
-    String fkeybf_c(filekey+"bf_c");
+        // properties of particles prior the triaxial test
+        Dict B1;
+        B1.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt ,Mu     ,Beta,Eta,Bn,Bt ,Bm ,     Eps);
+        B1.Set(-2,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B1.Set(-3,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B1.Set(-4,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B1.Set(-5,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B1.Set(-6,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B1.Set(-7,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        dom.SetProps(B1);
 
-    dom.Solve (/*tf*/0.5*T0, /*dt*/dt, /*dtOut*/dtOut, &Setup1, NULL, fkey_a.CStr(),RenderVideo,Nproc);
-    dom.WriteXDMF(fkey_a.CStr());
-    dom.WriteBF(fkeybf_a.CStr());
+        // stage 1: isotropic compresssion  //////////////////////////////////////////////////////////////////////
+        String fkey_a  (filekey+"_a");
+        String fkey_b  (filekey+"_b");
+        String fkey_c  (filekey+"_c");
+        String fkeybf_a(filekey+"bf_a");
+        String fkeybf_b(filekey+"bf_b");
+        String fkeybf_c(filekey+"bf_c");
+
+        dom.Solve (/*tf*/0.5*T0, /*dt*/dt, /*dtOut*/dtOut, &Setup1, NULL, fkey_a.CStr(),RenderVideo,Nproc);
+        dom.WriteXDMF(fkey_a.CStr());
+        dom.WriteBF(fkeybf_a.CStr());
 
 
-    dom.GetParticle(-4)->vyf = true;
-    dom.GetParticle(-5)->vyf = true;
-    dom.GetParticle(-4)->v = OrthoSys::O;
-    dom.GetParticle(-5)->v = OrthoSys::O;
+        dom.GetParticle(-4)->vyf = true;
+        dom.GetParticle(-5)->vyf = true;
+        dom.GetParticle(-4)->v = OrthoSys::O;
+        dom.GetParticle(-5)->v = OrthoSys::O;
 
-    dom.Xmax = dom.GetParticle(-2)->x(0) - dom.GetParticle(-2)->Props.R;
-    dom.Xmin = dom.GetParticle(-3)->x(0) + dom.GetParticle(-3)->Props.R;
+        dom.Xmax = dom.GetParticle(-2)->x(0) - dom.GetParticle(-2)->Props.R;
+        dom.Xmin = dom.GetParticle(-3)->x(0) + dom.GetParticle(-3)->Props.R;
 
-    dom.ClearInteractons();
+        dom.ClearInteractons();
 
-    Array<int> idxs(2);
-    idxs[0] = -2; idxs[1] = -3;
-    dom.DelParticles(idxs);
-    
-    dom.Solve (/*tf*/   T0, /*dt*/dt, /*dtOut*/dtOut, NULL, NULL, fkey_b.CStr(),RenderVideo,Nproc);
-    dom.WriteXDMF(fkey_b.CStr());
-    dom.WriteBF(fkeybf_b.CStr());
+        Array<int> idxs(2);
+        idxs[0] = -2; idxs[1] = -3;
+        dom.DelParticles(idxs);
+        
+        dom.Solve (/*tf*/   T0, /*dt*/dt, /*dtOut*/dtOut, NULL, NULL, fkey_b.CStr(),RenderVideo,Nproc);
+        dom.WriteXDMF(fkey_b.CStr());
+        dom.WriteBF(fkeybf_b.CStr());
 
-    Dict B2;
-    B2.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt ,Mu     ,Beta,Eta,Bn,Bt ,Bm ,     Eps);
-    B2.Set(-4,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    B2.Set(-5,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    B2.Set(-6,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,50.0*Mu,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    B2.Set(-7,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,50.0*Mu,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-    dom.SetProps(B2);
+        Dict B2;
+        B2.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt ,Mu     ,Beta,Eta,Bn,Bt ,Bm ,     Eps);
+        B2.Set(-4,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B2.Set(-5,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B2.Set(-6,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,50.0*Mu,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B2.Set(-7,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,50.0*Mu,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        dom.SetProps(B2);
 
-    double vel = 0.5*str*(dom.GetParticle(-6)->x(2)-dom.GetParticle(-7)->x(2));
-    dom.GetParticle(-6)->v = Vec3_t( vel,0.0,0.0);
-    dom.GetParticle(-7)->v = Vec3_t(-vel,0.0,0.0);
+        double vel = 0.5*str*(dom.GetParticle(-6)->x(2)-dom.GetParticle(-7)->x(2));
+        dom.GetParticle(-6)->v = Vec3_t( vel,0.0,0.0);
+        dom.GetParticle(-7)->v = Vec3_t(-vel,0.0,0.0);
 
-    // stage 2: shearing stage         //////////////////////////////////////////////////////////////////////
-    dom.Solve (/*tf*/T0+Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup2, &Report, fkey_c.CStr(),RenderVideo,Nproc);
-    dom.WriteXDMF(fkey_c.CStr());
-    dom.WriteBF(fkeybf_c.CStr());
+        // stage 2: shearing stage         //////////////////////////////////////////////////////////////////////
+        dom.Solve (/*tf*/T0+Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup2, &Report, fkey_c.CStr(),RenderVideo,Nproc);
+        dom.WriteXDMF(fkey_c.CStr());
+        dom.WriteBF(fkeybf_c.CStr());
+    }
+    else if (test=="sawtooth")
+    {
+        if (!load)
+        {    
+            Vec3_t Xmin,Xmax;
+            dom.BoundingBox(Xmin,Xmax);
 
+            Vec3_t X0(0.0,Xmax(1)+2*R,0.0);
+            Vec3_t X1(0.0,Xmin(1)-2*R,0.0);
+            dom.AddPlane(-2,X0,R,1.3*Lx,1.3*Lz,3.0,0.5*M_PI,&OrthoSys::e0);
+            dom.AddPlane(-3,X1,R,1.3*Lx,1.3*Lz,3.0,0.5*M_PI,&OrthoSys::e0);
+
+            X0 = Vec3_t(0.0,0.0,Xmin(2)-2*R);
+            X1 = Vec3_t(0.0,0.0,Xmax(2)+2*R);
+            //dom.AddPlane(-4,X0,R,1.3*Lx,1.3*Ly,3.0,0.0,&OrthoSys::e0);
+            //dom.AddPlane(-5,X1,R,1.3*Lx,1.3*Ly,3.0,0.0,&OrthoSys::e0);
+            AddSawPlate(dom,-4,X0,(Lx*(nx+8))/nx,2.0*Ly,0.25*nx+2,2.5*Lz/nz,3.0,R);
+            AddSawPlate(dom,-5,X1,(Lx*(nx+8))/nx,2.0*Ly,0.25*nx+2,2.5*Lz/nz,3.0,R);
+            Quaternion_t q;
+            NormalizeRotation (M_PI,OrthoSys::e1,q);
+            dom.GetParticle(-5)->Rotate(q,dom.GetParticle(-5)->x);
+        }
+
+        dom.Xmax =  0.5*Lx;
+        dom.Xmin = -0.5*Lx;
+
+        Dict B1;
+        B1.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt ,0.1*Mu ,Beta,Eta,Bn,Bt ,Bm ,     Eps);
+        B1.Set(-2,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B1.Set(-3,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B1.Set(-4,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B1.Set(-5,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        dom.SetProps(B1);
+
+        dom.GetParticle(-2)->FixVeloc();
+        dom.GetParticle(-3)->FixVeloc();
+        dom.GetParticle(-4)->FixVeloc();
+        dom.GetParticle(-5)->FixVeloc();
+        dom.GetParticle(-4)->vzf = false;
+        dom.GetParticle(-5)->vzf = false;
+
+        double Areaz = (dom.GetParticle(-2)->x(1)-dom.GetParticle(-3)->x(1))*Lx;
+        dom.GetParticle(-4)->Ff = p0*Areaz;
+        dom.GetParticle(-5)->Ff =-p0*Areaz;
+
+        String fkey_a  (filekey+"_a");
+        String fkey_b  (filekey+"_b");
+        String fkeybf_a(filekey+"bf_a");
+        String fkeybf_b(filekey+"bf_b");
+
+        dom.Solve (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, NULL, NULL, fkey_a.CStr(),RenderVideo,Nproc);
+        dom.Save(fkey_a.CStr());
+        dom.WriteXDMF(fkey_a.CStr());
+        dom.WriteBF(fkeybf_a.CStr());
+
+        Dict B2;
+        B2.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt ,Mu     ,Beta,Eta,Bn,Bt ,Bm ,     Eps);
+        B2.Set(-2,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B2.Set(-3,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B2.Set(-4,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,Mu     ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        B2.Set(-5,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,Mu     ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        dom.SetProps(B2);
+
+        //dom.GetParticle(-4)->vzf = true;
+        //dom.GetParticle(-5)->vzf = true;
+
+        double vel = 0.5*str*(dom.GetParticle(-4)->x(2)-dom.GetParticle(-5)->x(2));
+        dom.GetParticle(-4)->v = Vec3_t( vel,0.0,0.0);
+        dom.GetParticle(-5)->v = Vec3_t(-vel,0.0,0.0);
+
+        dom.Solve (/*tf*/T0+Tf, /*dt*/dt, /*dtOut*/dtOut, NULL, NULL, fkey_b.CStr(),RenderVideo,Nproc);
+        dom.Save(fkey_b.CStr());
+        dom.WriteXDMF(fkey_b.CStr());
+        dom.WriteBF(fkeybf_b.CStr());
+    }
     return 0;
 }
 MECHSYS_CATCH

@@ -84,10 +84,11 @@ public:
     void AddPlane      (int Tag, Vec3_t const & X, double R, double Lx,double Ly , double rho, double Angle=0, Vec3_t * Axis=NULL);                    ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void GenBox        (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, double rho, bool Cohesion=false);                        ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenFromMesh   (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);                           ///< Generate particles from a FEM mesh generator
-    void AddVoroCell   (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode, Vec3_t nv = iVec3_t(1.0,1.0,1.0));                       ///< Add a single voronoi cell, it should be built before tough
-    void AddVoroPack   (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
-    double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                                              ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
-    
+    void AddVoroCell (int Tag, voro::voronoicell & VC, double R, double rho, bool Erode, Vec3_t nv = iVec3_t(1.0,1.0,1.0));   ///< Add a single voronoi cell, it should be built before tough
+    void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
+    double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                        ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
+    void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
+    double rho, bool Cohesion, bVec3_t Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                     ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni, Periodic conditions are chosen for each particle
     // Access methods
     DEM::Particle       * GetParticle  (int Tag, bool Check=true);       ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
     DEM::Particle const & GetParticle  (int Tag, bool Check=true) const; ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
@@ -165,12 +166,14 @@ void * GlobalIni(void * Data)
         (*P)[i]->F = (*P)[i]->Ff;
         (*P)[i]->T = (*P)[i]->Tf;
     }
+    return NULL;
 }
 
 void * GlobalImprint(void * Data)
 {
     LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
     dat.Dom->ImprintLattice(dat.ProcRank, dat.N_Proc);
+    return NULL;
 }
 
 void * GlobalForce(void * Data)
@@ -186,11 +189,26 @@ void * GlobalForce(void * Data)
 		if ((*I)[i]->CalcForce(dat.dt))
         {
             dat.Dom->WriteXDMF("error");
-            std::cout << "Maximun overlap detected between particles at time " << dat.dom->Time << std::endl;
+            std::cout << "Maximun overlap detected between particles at time " << dat.Dom->Time << std::endl;
             sleep(1);
             throw new Fatal("Maximun overlap detected between particles");
         }
+#ifdef USE_THREAD
+        pthread_mutex_lock  (&(*I)[i]->P1->lck);
+#endif
+        (*I)[i]->P1->F += (*I)[i]->F1;
+        (*I)[i]->P1->T += (*I)[i]->T1;
+#ifdef USE_THREAD
+        pthread_mutex_unlock(&(*I)[i]->P1->lck);
+        pthread_mutex_lock  (&(*I)[i]->P2->lck);
+#endif
+        (*I)[i]->P2->F += (*I)[i]->F2;
+        (*I)[i]->P2->T += (*I)[i]->T2;
+#ifdef USE_THREAD
+        pthread_mutex_unlock(&(*I)[i]->P2->lck);
+#endif
 	}
+    return NULL;
 }
 
 void * GlobalMove(void * Data)
@@ -208,6 +226,7 @@ void * GlobalMove(void * Data)
 		(*P)[i]->Rotate   (dat.dt);
         if ((*P)[i]->MaxDisplacement()>dat.Dmx) dat.Dmx = (*P)[i]->MaxDisplacement();
 	}
+    return NULL;
 }
 
 void * GlobalApplyForce (void * Data)
@@ -219,12 +238,14 @@ void * GlobalApplyForce (void * Data)
         if (fabs(dat.Dom->Lat[0].G)<1.0e-9&&fabs(dat.Dom->Lat[1].G)<1.0e-9) MC = true;
     }
     dat.Dom->ApplyForce(dat.ProcRank, dat.N_Proc, MC);
+    return NULL;
 }
 
 void * GlobalCollide (void * Data)
 {
     LBM::MtData & dat = (*static_cast<LBM::MtData *>(Data));
     dat.Dom->Collide(dat.ProcRank, dat.N_Proc);
+    return NULL;
 }
 
 void * GlobalBounceBack (void * Data)
@@ -234,6 +255,7 @@ void * GlobalBounceBack (void * Data)
     {
         dat.Dom->Lat[i].BounceBack(dat.ProcRank, dat.N_Proc);
     }
+    return NULL;
 }
 
 void * GlobalStream (void * Data)
@@ -243,6 +265,7 @@ void * GlobalStream (void * Data)
     {
         dat.Dom->Lat[i].Stream(dat.ProcRank, dat.N_Proc);
     }
+    return NULL;
 }
 
 void * GlobalStream1 (void * Data)
@@ -252,6 +275,7 @@ void * GlobalStream1 (void * Data)
     {
         dat.Dom->Lat[i].Stream1(dat.ProcRank, dat.N_Proc);
     }
+    return NULL;
 }
 
 void * GlobalStream2 (void * Data)
@@ -261,6 +285,7 @@ void * GlobalStream2 (void * Data)
     {
         dat.Dom->Lat[i].Stream2(dat.ProcRank, dat.N_Proc);
     }
+    return NULL;
 }
 
 void * GlobalResetDisplacement(void * Data)
@@ -276,6 +301,7 @@ void * GlobalResetDisplacement(void * Data)
     {
         (*P)[i]->ResetDisplacements();
     }
+    return NULL;
 }
 
 void * GlobalResetContacts1 (void * Data)
@@ -389,6 +415,7 @@ void * GlobalResetContacts1 (void * Data)
             }
         }
     }
+    return NULL;
 }
 
 void * GlobalResetContacts2 (void * Data)
@@ -411,6 +438,7 @@ void * GlobalResetContacts2 (void * Data)
     {
         if(dat.Dom->BInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LCB.Push(n);
     }
+    return NULL;
 }
 
 #endif
@@ -473,8 +501,6 @@ inline void Domain::WriteXDMF(char const * FileKey)
         for (size_t l=0;l<Lat[0].Ndim(1);l+=Step)
         for (size_t n=0;n<Lat[0].Ndim(0);n+=Step)
         {
-
-            Cell * c = Lat[j].GetCell(iVec3_t(n,l,m));
             double rho    = 0.0;
             double gamma  = 0.0;
             Vec3_t vel    = OrthoSys::O;
@@ -2077,7 +2103,7 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
     printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
-inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode, Vec3_t nv)
+inline void Domain::AddVoroCell (int Tag, voro::voronoicell & VC, double R, double rho, bool Erode, Vec3_t nv)
 {
     Array<Vec3_t> V(VC.p);
     Array<Array <int> > E;
@@ -2128,7 +2154,7 @@ inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, d
             }
         }
     }
-    VC.reset_edges();
+    //VC.reset_edges();
     double vol; // volume of the polyhedron
     Vec3_t CM;  // Center of mass of the polyhedron
     Mat3_t It;  // Inertia tensor of the polyhedron
@@ -2136,6 +2162,7 @@ inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, d
     if (Erode) DEM::Erosion(V,E,F,R);
     // add particle
     Particles.Push (new DEM::Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    if (Erode) Particles[Particles.Size()-1]->Eroded = true;
     Particles[Particles.Size()-1]->x       = CM;
     Particles[Particles.Size()-1]->Props.V = vol;
     Particles[Particles.Size()-1]->Props.m = vol*rho;
@@ -2165,20 +2192,17 @@ inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, d
 }
 
 inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho
-                                 , bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t qin)
+                                 , bool Cohesion, bVec3_t Periodic,size_t Randomseed, double fraction, Vec3_t qin)
 {
     // info
     Util::Stopwatch stopwatch;
     printf("\n%s--- Adding Voronoi particles packing --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
 
     srand(Randomseed);
-    //const double x_min=-(nx*Lx/2.0), x_max=nx*Lx/2.0;
-    //const double y_min=-(ny*Ly/2.0), y_max=ny*Ly/2.0;
-    //const double z_min=-(nz*Lz/2.0), z_max=nz*Lz/2.0;
     const double x_min=-(nx/2.0), x_max=nx/2.0;
     const double y_min=-(ny/2.0), y_max=ny/2.0;
     const double z_min=-(nz/2.0), z_max=nz/2.0;
-    container con(x_min,x_max,y_min,y_max,z_min,z_max,nx,ny,nz, Periodic,Periodic,Periodic,8);
+    voro::container con(x_min,x_max,y_min,y_max,z_min,z_max,nx,ny,nz, Periodic(0),Periodic(1),Periodic(2),8);
     int n = 0;
     for (size_t i=0; i<nx; i++)
     {
@@ -2195,36 +2219,24 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
         }
     }
 
-    fpoint x,y,z,px,py,pz;
-    container *cp = & con;
-    voropp_loop l1(cp);
-    int q,s;
-    voronoicell_neighbor c;
-    s=l1.init(con.ax,con.bx,con.ay,con.by,con.az,con.bz,px,py,pz);
-
     Array<Array <size_t> > ListBpairs(n);
     size_t IIndex = Particles.Size();
-    do 
+    voro::c_loop_all vl(con);
+    voro::voronoicell c;
+    if(vl.start()) do if(con.compute_cell(c,vl)) 
     {
-        for(q=0;q<con.co[s];q++) 
         {
-            x=con.p[s][con.sz*q]+px;y=con.p[s][con.sz*q+1]+py;z=con.p[s][con.sz*q+2]+pz;
-            if(x>con.ax&&x<con.bx&&y>con.ay&&y<con.by&&z>con.az&&z<con.bz) 
+            if (rand()<fraction*RAND_MAX)
             {
-                if(con.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) 
-                {
-
-                    if (rand()<fraction*RAND_MAX)
-                    {
-                        AddVoroCell(Tag,c,R,rho,true,Vec3_t(Lx/nx,Ly/ny,Lz/nz));
-                        Vec3_t trans(Lx*x/nx,Ly*y/ny,Lz*z/nz);
-                        DEM::Particle * P = Particles[Particles.Size()-1];
-                        P->Translate(trans);
-                    }
-                }
+                AddVoroCell(Tag,c,R,rho,true,Vec3_t(Lx/nx,Ly/ny,Lz/nz));
+                double *pp = con.p[vl.ijk]+3*vl.q;
+                Vec3_t trans(Lx*pp[0]/nx,Ly*pp[1]/ny,Lz*pp[2]/nz);
+                DEM::Particle * P = Particles[Particles.Size()-1];
+                P->Translate(trans);
             }
         }
-    } while((s=l1.inc(px,py,pz))!=-1);
+    } while(vl.inc());
+
 
     // info
     printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
@@ -2275,6 +2287,12 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
             }
         }
     }
+}
+
+inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho
+                                 , bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t qin)
+{
+    AddVoroPack(Tag,R,Lx,Ly,Lz,nx,ny,nz,rho,Cohesion,bVec3_t(Periodic,Periodic,Periodic),Randomseed,fraction,qin);
 }
 
 //Particle access methods

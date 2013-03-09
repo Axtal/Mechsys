@@ -95,6 +95,8 @@ public:
     void GenFromMesh     (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);   ///< Generate particles from a FEM mesh generator
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
     double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                        ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
+    void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
+    double rho, bool Cohesion, bVec3_t Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                     ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni, Periodic conditions are chosen for each particle
     // Single particle addition
     void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
     void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a cube at position X with spheroradius R, side of length L and density rho
@@ -103,7 +105,6 @@ public:
     void AddDrill    (int Tag, Vec3_t const & X, double R, double Lt, double Ll, double rho);                                    ///< A drill made as a combination of a cube and a pyramid.
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
-    //void AddVoroCell (int Tag, voro::voronoicell_neighbor & VC, double R, double rho, bool Erode, Vec3_t nv = iVec3_t(1.0,1.0,1.0));   ///< Add a single voronoi cell, it should be built before tough
     void AddVoroCell (int Tag, voro::voronoicell & VC, double R, double rho, bool Erode, Vec3_t nv = iVec3_t(1.0,1.0,1.0));   ///< Add a single voronoi cell, it should be built before tough
     void AddTorus    (int Tag, Vec3_t const & X, Vec3_t const & N, double Rmax, double R, double rho);                           ///< Add a single torus at position X with a normal N, circunference Rmax and spheroradius R
     void AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t const & X1, double R1, double R, double rho);                ///< Add a cylinder formed by the connection of two circles at positions X0 and X1 and radii R0 and R1
@@ -301,6 +302,20 @@ void * GlobalForce(void * Data)
             sleep(1);
             throw new Fatal("Maximun overlap detected between particles");
         }
+#ifdef USE_THREAD
+        pthread_mutex_lock  (&(*I)[i]->P1->lck);
+#endif
+        (*I)[i]->P1->F += (*I)[i]->F1;
+        (*I)[i]->P1->T += (*I)[i]->T1;
+#ifdef USE_THREAD
+        pthread_mutex_unlock(&(*I)[i]->P1->lck);
+        pthread_mutex_lock  (&(*I)[i]->P2->lck);
+#endif
+        (*I)[i]->P2->F += (*I)[i]->F2;
+        (*I)[i]->P2->T += (*I)[i]->T2;
+#ifdef USE_THREAD
+        pthread_mutex_unlock(&(*I)[i]->P2->lck);
+#endif
 	}
     //std::cout << "Im finished " << dat.ProcRank << std::endl
     return NULL;
@@ -593,6 +608,20 @@ void * GlobalPerForce(void * Data)
             sleep(1);
             throw new Fatal("Maximun overlap detected between particles");
         }
+#ifdef USE_THREAD
+        pthread_mutex_lock  (&(*I)[i]->P1->lck);
+#endif
+        (*I)[i]->P1->F += (*I)[i]->F1;
+        (*I)[i]->P1->T += (*I)[i]->T1;
+#ifdef USE_THREAD
+        pthread_mutex_unlock(&(*I)[i]->P1->lck);
+        pthread_mutex_lock  (&(*I)[i]->P2->lck);
+#endif
+        (*I)[i]->P2->F += (*I)[i]->F2;
+        (*I)[i]->P2->T += (*I)[i]->T2;
+#ifdef USE_THREAD
+        pthread_mutex_unlock(&(*I)[i]->P2->lck);
+#endif
 	}
     return NULL;
 }
@@ -1053,7 +1082,7 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
 }
 
 inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho
-                                 , bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t qin)
+                                 , bool Cohesion, bVec3_t Periodic,size_t Randomseed, double fraction, Vec3_t qin)
 {
     // info
     Util::Stopwatch stopwatch;
@@ -1063,7 +1092,7 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
     const double x_min=-(nx/2.0), x_max=nx/2.0;
     const double y_min=-(ny/2.0), y_max=ny/2.0;
     const double z_min=-(nz/2.0), z_max=nz/2.0;
-    voro::container con(x_min,x_max,y_min,y_max,z_min,z_max,nx,ny,nz, Periodic,Periodic,Periodic,8);
+    voro::container con(x_min,x_max,y_min,y_max,z_min,z_max,nx,ny,nz, Periodic(0),Periodic(1),Periodic(2),8);
     int n = 0;
     for (size_t i=0; i<nx; i++)
     {
@@ -1150,6 +1179,11 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
     }
 }
 
+inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho
+                                 , bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t qin)
+{
+    AddVoroPack(Tag,R,Lx,Ly,Lz,nx,ny,nz,rho,Cohesion,bVec3_t(Periodic,Periodic,Periodic),Randomseed,fraction,qin);
+}
 // Sihgle particle addition
 
 inline void Domain::AddSphere (int Tag,Vec3_t const & X, double R, double rho)

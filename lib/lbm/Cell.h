@@ -126,13 +126,16 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
     for (size_t k=0;k<Nneigh;k++)
     {
         //iVec3_t nindex = Index + C[k];
-        blitz::TinyVector<int,3>   nindex = Index + C[k];
-        if (nindex[0]==        -1) nindex[0] = TheNdim[0]-1;
-        if (nindex[0]==TheNdim[0]) nindex[0] = 0;
-        if (nindex[1]==        -1) nindex[1] = TheNdim[1]-1;
-        if (nindex[1]==TheNdim[1]) nindex[1] = 0;
-        if (nindex[2]==        -1) nindex[2] = TheNdim[2]-1;
-        if (nindex[2]==TheNdim[2]) nindex[2] = 0;
+        blitz::TinyVector<int,3>   nindex;
+        nindex[0] = static_cast<int>(Index[0])+ C[k][0];
+        nindex[1] = static_cast<int>(Index[1])+ C[k][1];
+        nindex[2] = static_cast<int>(Index[2])+ C[k][2];
+        if (nindex[0]==                          -1) nindex[0] = TheNdim[0]-1;
+        if (nindex[0]==static_cast<int>(TheNdim[0])) nindex[0] = 0;
+        if (nindex[1]==                          -1) nindex[1] = TheNdim[1]-1;
+        if (nindex[1]==static_cast<int>(TheNdim[1])) nindex[1] = 0;
+        if (nindex[2]==                          -1) nindex[2] = TheNdim[2]-1;
+        if (nindex[2]==static_cast<int>(TheNdim[2])) nindex[2] = 0;
 
         Neighs[k] =  nindex[0] + nindex[1]*TheNdim[0] + nindex[2]*TheNdim[0]*TheNdim[1];
     }
