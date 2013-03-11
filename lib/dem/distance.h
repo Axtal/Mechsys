@@ -29,6 +29,9 @@
 namespace DEM
 {
 
+/// The Distance functions evaluate the distance between different goemetric features. They give the points Xi and Xf os the points of minimun
+/// distance between the geometric features
+
 inline void Distance (Vec3_t const & V, Edge const & E, Vec3_t & Xi, Vec3_t & Xf)
 {
     double t = (dot(V,E.dL)-dot((*E.X0),E.dL))/(dot(E.dL,E.dL));
@@ -212,6 +215,8 @@ inline void Distance (Cylinder const & C1, Vec3_t const & V0, Vec3_t & Xi, Vec3_
     Distance (V0,C1,Xf,Xi);
 }
 
+/// The following Distance functions return only the distance as a number without the positions of the vectors
+
 inline double Distance (Edge const & E, Vec3_t const & V)
 {
     Vec3_t Xi,Xf;
@@ -274,6 +279,69 @@ inline double Distance (Cylinder const & C1, Vec3_t const & V0)
     Vec3_t Xi,Xf;
     Distance (C1,V0,Xi,Xf);
     return norm(Xf-Xi);
+}
+
+/// The Overlap functions evaluate if two geometric features are close enough to overlap
+
+inline bool Overlap (Vec3_t & V0, Vec3_t & V1, double R0, double R1)
+{
+    return true;
+}
+
+inline bool Overlap (Vec3_t & V0, Edge   & E1, double R0, double R1)
+{
+    double dist = norm(V0 - 0.5*(*E1.X0 + *E1.X1));
+    return (dist < R0 + R1 + E1.Dmax);
+}
+
+inline bool Overlap (Edge   & E0, Vec3_t & V1, double R0, double R1)
+{
+    return (Overlap(V1,E0,R1,R0));
+}
+
+inline bool Overlap (Edge   & E0, Edge   & E1, double R0, double R1)
+{
+    double dist = norm(0.5*(*E0.X0 + *E0.X1) - 0.5*(*E1.X0 + *E1.X1));
+    return (dist < R0 + R1 + E0.Dmax + E1.Dmax);
+}
+
+inline bool Overlap (Vec3_t & V0, Face   & F1, double R0, double R1)
+{
+    Vec3_t C = OrthoSys::O;
+    for (size_t i=0; i<F1.Edges.Size(); i++)
+    {
+        C += *F1.Edges[i]->X0;
+    }
+    C/=F1.Edges.Size();
+    double dist = norm(C - V0);
+    return (dist < R0 + R1 + F1.Dmax);
+}
+
+inline bool Overlap (Face   & F0, Vec3_t & V1, double R0, double R1)
+{
+    return (Overlap(V1,F0,R1,R0));
+}
+
+inline bool Overlap (Vec3_t & V0, Torus  & T1, double R0, double R1)
+{
+    double dist = norm(V0 - *T1.X0);
+    return (dist < R0 + R1 + T1.R);
+}
+
+inline bool Overlap (Torus  & T0, Vec3_t & V1, double R0, double R1)
+{
+    return (Overlap(V1,T0,R1,R0));
+}
+
+inline bool Overlap (Vec3_t & V0, Cylinder & C1, double R0, double R1)
+{
+    double dist = norm(V0 - 0.5*(*C1.T0->X0 + *C1.T1->X0));
+    return (dist < R0 + R1 + C1.Dmax);
+}
+
+inline bool Overlap (Cylinder & C0, Vec3_t & V1, double R0, double R1)
+{
+    return (Overlap(V1,C0,R1,R0));
 }
 
 }

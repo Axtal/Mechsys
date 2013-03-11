@@ -48,6 +48,7 @@ public:
     Vec3_t const *Y1; ///< Lower point of the first torus
     Vec3_t        X0; ///< Center of the first  torus
     Vec3_t        X1; ///< Center of the second torus
+    double      Dmax;
 };
 
 
@@ -63,6 +64,7 @@ inline Cylinder::Cylinder (Torus * TheT0, Torus * TheT1, Vec3_t const * TheY0, V
     Y1 = TheY1;
     T0->X0 = &X0;
     T1->X0 = &X1;
+    Dmax = sqrt(0.25*dot(X0 - X1,X0 - X1) + pow(std::max(T0->R,T1->R),2));
 }
 
 inline Cylinder::Cylinder (Torus & TheT0, Torus & TheT1, Vec3_t const & TheY0, Vec3_t const & TheY1)
@@ -74,6 +76,7 @@ inline Cylinder::Cylinder (Torus & TheT0, Torus & TheT1, Vec3_t const & TheY0, V
     Y1 = &TheY1;
     T0->X0 = &X0;
     T1->X0 = &X1;
+    Dmax = sqrt(0.25*dot(X0 - X1,X0 - X1) + pow(std::max(T0->R,T1->R),2));
 }
 
 inline void Cylinder::UpdatedL ()

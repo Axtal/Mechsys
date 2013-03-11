@@ -53,18 +53,24 @@ public:
     bool RayIntersect               (Vec3_t & XO, Vec3_t & X1);     ///< Check if a ray starting at X0 going trough X1 intersects the face
 
     // Data
-    Array<Edge*> Edges; ///< Edges
+    Array<Edge*> Edges;    ///< Edges
     bool         Allocate; ///< It allocates memory or not
+    double       Dmax;     ///< Maximun length from face centre
 };
 
-
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
-
 
 inline Face::Face (Array<Edge *> E)
 {
     Edges = E;
     Allocate = false;
+    Vec3_t C;
+    Centroid (C);
+    Dmax = 0.0;
+    for (size_t i=0; i<Edges.Size(); i++)
+    {
+        if (norm(C - *Edges[i]->X0)>Dmax) Dmax = norm(C - *Edges[i]->X0);
+    }
 }
 
 inline Face::Face (Array<Vec3_t> & V)
@@ -74,6 +80,13 @@ inline Face::Face (Array<Vec3_t> & V)
         Edges.Push(new Edge(&V[i],&V[(i+1)%V.Size()]));
     }
     Allocate = true;
+    Vec3_t C;
+    Centroid (C);
+    Dmax = 0.0;
+    for (size_t i=0; i<Edges.Size(); i++)
+    {
+        if (norm(C - *Edges[i]->X0)>Dmax) Dmax = norm(C - *Edges[i]->X0);
+    }
 }
 
 inline Face::Face(Array<Vec3_t*> & V)
@@ -83,6 +96,13 @@ inline Face::Face(Array<Vec3_t*> & V)
         Edges.Push(new Edge(V[i],V[(i+1)%V.Size()]));
     }
     Allocate = true;
+    Vec3_t C;
+    Centroid (C);
+    Dmax = 0.0;
+    for (size_t i=0; i<Edges.Size(); i++)
+    {
+        if (norm(C - *Edges[i]->X0)>Dmax) Dmax = norm(C - *Edges[i]->X0);
+    }
 }
 
 inline Face::~Face ()

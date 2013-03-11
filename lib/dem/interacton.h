@@ -289,6 +289,7 @@ inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
     {
         size_t i = L[k].first;
         size_t j = L[k].second;
+        if (!Overlap((*A[i]), (*B[j]),P1->Props.R,P2->Props.R)) continue;
         Vec3_t xi, xf;
         Distance ((*A[i]), (*B[j]), xi, xf);
         double dist  = norm(xf-xi);
@@ -422,6 +423,7 @@ inline void CInteracton::_update_contacts (FeatureA_T & A, FeatureB_T & B, ListC
     for (size_t i=0; i<A.Size(); ++i)
     for (size_t j=0; j<B.Size(); ++j)
     {
+        if (!Overlap ((*A[i]), (*B[j]),P1->Props.R + alpha,P2->Props.R + alpha)) continue;
         if (Distance ((*A[i]), (*B[j]))<=P1->Props.R+P2->Props.R+2*alpha)
         {
             std::pair<int,int> p;

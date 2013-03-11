@@ -44,7 +44,7 @@ public:
     Vec3_t const * X0; ///< Center of the Torus
     Vec3_t const * X1; ///< Right vector of the torus
     Vec3_t const * X2; ///< Left vector of the torus
-    double          R;  ///< Internal radius of the torus
+    double          R; ///< Internal radius of the torus
 };
 
 

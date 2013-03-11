@@ -45,20 +45,21 @@ public:
     Vec3_t * X0; ///< Left endpoint
     Vec3_t * X1; ///< Right endpoint
     Vec3_t   dL; ///< Delta(X) = X1 - X0. difference Vector
+    double Dmax; ///< Maximun length from edge centre
 };
 
-
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
-
 
 inline Edge::Edge (Vec3_t * TheX0, Vec3_t * TheX1)
     : X0(TheX0), X1(TheX1), dL(*X1-*X0)
 {
+    Dmax = 0.5*norm(dL);
 }
 
 inline Edge::Edge (Vec3_t & TheX0, Vec3_t & TheX1)
     : X0(&TheX0), X1(&TheX1), dL(*X1-*X0)
 {
+    Dmax = 0.5*norm(dL);
 }
 
 inline void Edge::UpdatedL()
