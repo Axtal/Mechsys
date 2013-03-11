@@ -419,7 +419,7 @@ int main(int argc, char **argv) try
         dom.GetParticle(-4)->v = Vec3_t( vel,0.0,0.0);
         dom.GetParticle(-5)->v = Vec3_t(-vel,0.0,0.0);
 
-        dom.Solve (/*tf*/T0+Tf, /*dt*/dt, /*dtOut*/dtOut, NULL, NULL, fkey_b.CStr(),RenderVideo,Nproc);
+        dom.Solve (/*tf*/T0+Tf, /*dt*/dt, /*dtOut*/dtOut, NULL, &ReportSaw, fkey_b.CStr(),RenderVideo,Nproc);
         dom.Save(fkey_b.CStr());
         dom.WriteXDMF(fkey_b.CStr());
         dom.WriteBF(fkeybf_b.CStr());
