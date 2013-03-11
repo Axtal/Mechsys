@@ -23,6 +23,7 @@
 
 // Std lib
 #include <iostream>
+#include <ifstream>
 #ifdef USE_THREAD
     #include <pthread.h>
 #endif
@@ -33,6 +34,8 @@
 #include <mechsys/util/array.h>
 #include <mechsys/numerical/montecarlo.h>
 #include <mechsys/mesh/mesh.h>
+
+using std::ifstream;
 
 namespace DEM
 {
