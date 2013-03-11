@@ -23,7 +23,7 @@
 
 // Std lib
 #include <iostream>
-#include <ifstream>
+#include <fstream>
 #ifdef USE_THREAD
     #include <pthread.h>
 #endif
