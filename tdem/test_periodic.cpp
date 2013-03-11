@@ -137,6 +137,28 @@ void Report (DEM::Domain & dom, void *UD)
     }
 }
 
+void ReportSaw (DEM::Domain & dom, void *UD)
+{
+    UserData & dat = (*static_cast<UserData *>(UD));
+    if (dom.idx_out==0)
+    {
+        String fs;
+        fs.Printf("%s_walls.res",dom.FileKey.CStr());
+        dat.oss_ss.open(fs.CStr());
+        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "sx \n";
+    }
+    if (!dom.Finished) 
+    {
+        double Areaz = (dom.GetParticle(-2)->x(1)-dom.GetParticle(-3)->x(1))*(dom.Xmax - dom.Xmin);
+        double Sx    = 0.5*(dom.GetParticle(-4)->F(0) - dom.GetParticle(-5)->F(0))/Areaz;
+        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << Sx << std::endl;
+    }
+    else
+    {
+        dat.oss_ss.close();
+    }
+}
+
 int main(int argc, char **argv) try
 {
     // set the simulation domain ////////////////////////////////////////////////////////////////////////////
