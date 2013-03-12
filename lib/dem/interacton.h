@@ -583,7 +583,7 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
 {
     P1              = Pt1;
     P2              = Pt2;
-    F1              = Fi1;
+    IF1             = Fi1;
     if (Fi2>=P2->Faces.Size())
     {
         IF2 = P2->Faces.Size()-1;
