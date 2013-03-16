@@ -553,6 +553,19 @@ inline void Domain::WriteXDMF(char const * FileKey)
             dsname.Printf("Velocity_%d",j);
             H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vvec    );
         }
+        dims[0] = 1;
+        int N[1];
+        N[0] = Nx;
+        dsname.Printf("Nx");
+        H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,N);
+        dims[0] = 1;
+        N[0] = Ny;
+        dsname.Printf("Ny");
+        H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,N);
+        dims[0] = 1;
+        N[0] = Nz;
+        dsname.Printf("Nz");
+        H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,N);
 
         delete [] Density ;
         delete [] Gamma   ;
@@ -939,13 +952,15 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
             Vec3_t  BF = -G*psi*nb_psi*c->W[vec]*c->C[vec];
 
 #ifdef USE_THREAD
-            pthread_mutex_lock(&c ->lck);
-            pthread_mutex_lock(&nb->lck);
+            pthread_mutex_lock  (&c ->lck);
 #endif
             c ->BForce += BF;
-            nb->BForce -= BF;
 #ifdef USE_THREAD
             pthread_mutex_unlock(&c ->lck);
+            pthread_mutex_lock  (&nb->lck);
+#endif
+            nb->BForce -= BF;
+#ifdef USE_THREAD
             pthread_mutex_unlock(&nb->lck);
 #endif
 
@@ -967,13 +982,15 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
             BF = -G*psi*nb_psi*c->W[vec]*c->C[vec];
 
 #ifdef USE_THREAD
-            pthread_mutex_lock(&c ->lck);
-            pthread_mutex_lock(&nb->lck);
+            pthread_mutex_lock  (&c ->lck);
 #endif
             c ->BForce += BF;
-            nb->BForce -= BF;
 #ifdef USE_THREAD
             pthread_mutex_unlock(&c ->lck);
+            pthread_mutex_lock  (&nb->lck);
+#endif
+            nb->BForce -= BF;
+#ifdef USE_THREAD
             pthread_mutex_unlock(&nb->lck);
 #endif
         }
@@ -1018,14 +1035,16 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
                         BF += -Gmix*c->Rho*nb->Rho*c->W[vec]*c->C[vec];
                     }
 #ifdef USE_THREAD
-                    pthread_mutex_lock(&c ->lck);
-                    pthread_mutex_lock(&nb->lck);
+                pthread_mutex_lock  (&c ->lck);
 #endif
-                    c ->BForce += BF;
-                    nb->BForce -= BF;
+                c ->BForce += BF;
 #ifdef USE_THREAD
-                    pthread_mutex_unlock(&c ->lck);
-                    pthread_mutex_unlock(&nb->lck);
+                pthread_mutex_unlock(&c ->lck);
+                pthread_mutex_lock  (&nb->lck);
+#endif
+                nb->BForce -= BF;
+#ifdef USE_THREAD
+                pthread_mutex_unlock(&nb->lck);
 #endif
                 }
             }
