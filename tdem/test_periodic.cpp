@@ -31,6 +31,7 @@ using std::endl;
 struct UserData
 {
     double p0;
+    double L0;
     Vec3_t Sig;
     std::ofstream      oss_ss;       ///< file for stress strain data
 };
@@ -145,13 +146,14 @@ void ReportSaw (DEM::Domain & dom, void *UD)
         String fs;
         fs.Printf("%s_walls.res",dom.FileKey.CStr());
         dat.oss_ss.open(fs.CStr());
-        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "sx \n";
+        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "ey \n";
     }
     if (!dom.Finished) 
     {
         double Areaz = (dom.GetParticle(-2)->x(1)-dom.GetParticle(-3)->x(1))*(dom.Xmax - dom.Xmin);
         double Sx    = 0.5*(dom.GetParticle(-4)->F(0) - dom.GetParticle(-5)->F(0))/Areaz;
-        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << Sx << std::endl;
+        double Ey    = (dom.GetParticle(-5)->x(2) - dom.GetParticle(-4)->x(2) - dat.L0)/dat.L0;
+        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << Sx << Util::_8s << Ey << std::endl;
     }
     else
     {
@@ -372,6 +374,8 @@ int main(int argc, char **argv) try
             dom.GetParticle(-5)->Rotate(q,dom.GetParticle(-5)->x);
         }
 
+
+
         dom.Xmax =  0.5*Lx;
         dom.Xmin = -0.5*Lx;
 
@@ -418,6 +422,8 @@ int main(int argc, char **argv) try
         double vel = 0.5*str*(dom.GetParticle(-4)->x(2)-dom.GetParticle(-5)->x(2));
         dom.GetParticle(-4)->v = Vec3_t( vel,0.0,0.0);
         dom.GetParticle(-5)->v = Vec3_t(-vel,0.0,0.0);
+
+        dat.L0 = dom.GetParticle(-5)->x(2) - dom.GetParticle(-4)->x(2);
 
         dom.Solve (/*tf*/T0+Tf, /*dt*/dt, /*dtOut*/dtOut, NULL, &ReportSaw, fkey_b.CStr(),RenderVideo,Nproc);
         dom.Save(fkey_b.CStr());
