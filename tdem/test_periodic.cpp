@@ -367,8 +367,8 @@ int main(int argc, char **argv) try
             X1 = Vec3_t(0.0,0.0,Xmax(2)+2*R);
             //dom.AddPlane(-4,X0,R,1.3*Lx,1.3*Ly,3.0,0.0,&OrthoSys::e0);
             //dom.AddPlane(-5,X1,R,1.3*Lx,1.3*Ly,3.0,0.0,&OrthoSys::e0);
-            AddSawPlate(dom,-4,X0,(Lx*(3.0))/2.0,2.0*Ly,6,Lx/4.0,3.0,R);
-            AddSawPlate(dom,-5,X1,(Lx*(3.0))/2.0,2.0*Ly,6,Lx/4.0,3.0,R);
+            AddSawPlate(dom,-4,X0,Lx*2.0,2.0*Ly,8,Lx/4.0,3.0,R);
+            AddSawPlate(dom,-5,X1,Lx*2.0,2.0*Ly,8,Lx/4.0,3.0,R);
             Quaternion_t q;
             NormalizeRotation (M_PI,OrthoSys::e1,q);
             dom.GetParticle(-5)->Rotate(q,dom.GetParticle(-5)->x);
