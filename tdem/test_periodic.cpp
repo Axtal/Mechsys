@@ -32,6 +32,8 @@ struct UserData
 {
     double p0;
     double L0;
+    double x0;
+    double sawL;
     Vec3_t Sig;
     std::ofstream      oss_ss;       ///< file for stress strain data
 };
@@ -135,6 +137,18 @@ void Report (DEM::Domain & dom, void *UD)
     else
     {
         dat.oss_ss.close();
+    }
+}
+
+void SetupSaw (DEM::Domain & dom, void * UD)
+{
+    UserData & dat = (*static_cast<UserData *>(UD));
+    if (dom.GetParticle(-5)->x(0)>dat.x0 + dat.sawL)
+    {
+        Vec3_t trans1(-dat.sawL,0.0,0.0);
+        Vec3_t trans2( dat.sawL,0.0,0.0);
+        dom.GetParticle(-5)->Translate(trans1);
+        dom.GetParticle(-4)->Translate(trans2);
     }
 }
 
@@ -423,9 +437,11 @@ int main(int argc, char **argv) try
         dom.GetParticle(-4)->v = Vec3_t( vel,0.0,0.0);
         dom.GetParticle(-5)->v = Vec3_t(-vel,0.0,0.0);
 
-        dat.L0 = dom.GetParticle(-5)->x(2) - dom.GetParticle(-4)->x(2);
+        dat.L0   = dom.GetParticle(-5)->x(2) - dom.GetParticle(-4)->x(2);
+        dat.x0   = dom.GetParticle(-5)->x(0);
+        dat.sawL = Lx/4.0;
 
-        dom.Solve (/*tf*/T0+Tf, /*dt*/dt, /*dtOut*/dtOut, NULL, &ReportSaw, fkey_b.CStr(),RenderVideo,Nproc);
+        dom.Solve (/*tf*/T0+Tf, /*dt*/dt, /*dtOut*/dtOut, &SetupSaw, &ReportSaw, fkey_b.CStr(),RenderVideo,Nproc);
         dom.Save(fkey_b.CStr());
         dom.WriteXDMF(fkey_b.CStr());
         dom.WriteBF(fkeybf_b.CStr());
