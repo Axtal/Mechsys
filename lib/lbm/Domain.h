@@ -1086,14 +1086,17 @@ void Domain::Collide (size_t n, size_t Np)
             double alphal = 1.0;
             double alphat = 1.0;
             size_t num  = 0;
+            double newrho = 0.0;
             while (valid)
             {
+                newrho = 0.0;
                 valid = false;
                 alphal  = alphat;
                 for (size_t k=0;k<c->Nneigh;k++)
                 {
                     double FDeqn = c->Feq(k,DV,rho);
                     c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
+                    newrho += c->Ftemp[k];
                     if (c->Ftemp[k]<0.0&&num<1)
                     {
                         double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
@@ -1118,7 +1121,8 @@ void Domain::Collide (size_t n, size_t Np)
                     std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << std::endl;
                     throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
                 }
-                c->F[k] = fabs(c->Ftemp[k]);
+                c->F[k] = fabs(c->Ftemp[k])*c->Rho/newrho;
+                //std::cout << newrho << std::endl;
             }
         }
     }   

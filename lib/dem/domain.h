@@ -2929,6 +2929,7 @@ inline void Domain::WriteXDMF (char const * FileKey)
     delete [] Velvec;
     delete [] Omevec;
     delete [] Tag;
+    delete [] Comp;
 
 
     //Closing the file
