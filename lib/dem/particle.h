@@ -90,6 +90,7 @@ public:
     void   Translate          (double dt);                                                    ///< Apply translation once the total force is found
     void   Translate          (Vec3_t & t);                                                   ///< Apply translation by vector t
     void   Shrink             (double factor);                                                ///< Shrink the particle around the center of mass 
+    void   Erode              (double R);                                                     ///< Erode the particle by a quantity R
     void   Position           (Vec3_t   V);                                                   ///< Position the particle at point V
     void   ResetDisplacements ();                                                             ///< Reset the displacements for the verlet algorithm
     double MaxDisplacement    ();                                                             ///< Maximun displacement for the verlet algorithm
@@ -130,8 +131,8 @@ public:
     double          Comp;            ///< Compression over the particle
     double          Cn;              ///< Coordination number (number of contacts)
 
-    Array<Vec3_t*>      Verts;       ///< Vertices
     ParticleProps       Props;       ///< Properties
+    Array<Vec3_t*>      Verts;       ///< Vertices
     Array<Vec3_t*>      Vertso;      ///< Original postion of the Vertices
     Array<Array <int> > EdgeCon;     ///< Conectivity of Edges 
     Array<Array <int> > FaceCon;     ///< Conectivity of Faces 
@@ -792,6 +793,37 @@ inline void Particle::Shrink (double factor)
     Props.m *= pow(factor,3.0);
     Dmax    *= factor;
     I       *= pow(factor,5.0);
+}
+
+inline void Particle::Erode (double R)
+{
+    Array<Vec3_t> V(Verts.Size());
+    for (size_t i=0; i<Verts.Size(); i++)
+    {
+        V[i] = *Verts[i];
+    }
+    for (size_t i=0; i<Verts .Size(); ++i) delete Verts[i];
+    for (size_t i=0; i<Vertso.Size(); ++i) delete Vertso[i];
+    for (size_t i=0; i<Edges .Size(); ++i) delete Edges[i];
+    for (size_t i=0; i<Faces .Size(); ++i) delete Faces[i];
+    Erosion(V,EdgeCon,FaceCon,R);
+    Verts.Resize(0);
+    Vertso.Resize(0);
+    Faces.Resize(0);
+    Edges.Resize(0);
+    for (size_t i=0; i<V.Size(); i++)
+    {
+        Verts.Push (new Vec3_t(V[i]));
+        Vertso.Push (new Vec3_t(V[i]));
+    }
+    for (size_t i=0; i<FaceCon.Size(); i++)
+    {
+        Array<Vec3_t*> verts(FaceCon[i].Size());
+        for (size_t j=0; j<FaceCon[i].Size(); ++j) verts[j] = Verts[FaceCon[i][j]];
+        Faces.Push (new Face(verts));
+    }
+    
+    for (size_t i=0; i<EdgeCon.Size(); i++) Edges.Push (new Edge((*Verts[EdgeCon[i][0]]), (*Verts[EdgeCon[i][1]])));
 }
 
 inline void Particle::ResetDisplacements ()

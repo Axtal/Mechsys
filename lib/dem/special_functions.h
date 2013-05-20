@@ -300,7 +300,7 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
     }
 }
 
-inline void Dilation(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int> > & F, Array<Vec3_t> & Vresult, double R) // Mathematical morphology erosion
+inline void Dilation(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int> > & F, Array<Vec3_t> & Vresult, double R) // Mathematical morphology dilation 
 {
     if (F.Size()<=3) throw new Fatal("special_functions.h::Dilation There are no enough faces to work with");
 
@@ -476,7 +476,7 @@ inline size_t Pt2idx(iVec3_t & iv, iVec3_t & Dim) // Calculates the index of the
     return iv(0) + iv(1)*Dim(0) + iv(2)*Dim(0)*Dim(1);
 }
 
-inline void   idx2Pt(size_t n, iVec3_t & iv, iVec3_t & Dim) // Calculates the coordinates form the index
+inline void   idx2Pt(size_t n, iVec3_t & iv, iVec3_t & Dim) // Calculates the coordinates from the index
 {
     iv(0) = n%Dim(0);
     iv(1) = (n/Dim(0))%(Dim(1));

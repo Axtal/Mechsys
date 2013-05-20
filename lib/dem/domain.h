@@ -1648,7 +1648,6 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
     if (!ThereisanAxis) delete Axis;
 }
 
-//inline void Domain::AddVoroCell (int Tag, voronoicell_neighbor & VC, double R, double rho, bool Erode, Vec3_t nv)
 inline void Domain::AddVoroCell (int Tag, voro::voronoicell & VC, double R, double rho, bool Erode, Vec3_t nv)
 {
     Array<Vec3_t> V(VC.p);
