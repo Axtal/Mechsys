@@ -41,7 +41,7 @@ inline double GradKernel(double r, double h)
 {
     double C = 1.0/(h*h*h*M_PI);
     double q = r/h;
-    if ((q>=0.0)&&(q<1)) return C*(1-3.0*q+(9.0/4.0)*q*q);
+    if ((q>=0.0)&&(q<1)) return C*(3.0*q+(9.0/4.0)*q*q);
     else if (q<=2)       return C*(-(3.0/4.0)*(2-q)*(2-q));
     else                 return 0.0;
 }
