@@ -109,7 +109,7 @@ class DrawMesh:
              p_vids={}, p_cids={}, only_lin_cells=False,
              with_grid=True, rotateIds=False, jointsR=None, lineedgeLws={},
              vert_tags=True, edge_tags=True, cell_tags=True, xy_labels=False,
-             show_verts=False, show_parts=True):
+             show_verts=False, show_parts=False):
 
         # get figure
         ax = gca()
