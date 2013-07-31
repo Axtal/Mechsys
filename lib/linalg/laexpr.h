@@ -814,8 +814,8 @@ public:
     template <class t_exp1, class t_exp2, class t_res>
     static t_res & Apply(t_exp1 const & A, t_exp2 const & B, t_res & R) 
     { 
-            typedef typename res_type<t_exp1>::T_res t_res1;
-            typedef typename res_type<t_exp2>::T_res t_res2;
+            //typedef typename res_type<t_exp1>::T_res t_res1;
+            //typedef typename res_type<t_exp2>::T_res t_res2;
             _prodt(A, B, R);
             return R;
     }
@@ -827,8 +827,8 @@ public:
     template <class t_exp1, class t_exp2, class t_res>
     static t_res & Apply(t_exp1 const & A, t_exp2 const & B, t_res & R) 
     { 
-            typedef typename res_type<t_exp1>::T_res t_res1;
-            typedef typename res_type<t_exp2>::T_res t_res2;
+            //typedef typename res_type<t_exp1>::T_res t_res1;
+            //typedef typename res_type<t_exp2>::T_res t_res2;
             _prod_t(A, B, R);
             return R;
     }
@@ -840,8 +840,8 @@ public:
     template <class t_exp1, class t_exp2, class t_res>
     static t_res & Apply(t_exp1 const & A, t_exp2 const & B, t_res & R) 
     { 
-            typedef typename res_type<t_exp1>::T_res t_res1;
-            typedef typename res_type<t_exp2>::T_res t_res2;
+            //typedef typename res_type<t_exp1>::T_res t_res1;
+            //typedef typename res_type<t_exp2>::T_res t_res2;
             _prodtt(A, B, R);
             return R;
     }
