@@ -450,7 +450,7 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     printf("\n%s--- Initializing LBM Domain --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     if (nu.Size()==0) throw new Fatal("LBM::Domain: Declare at leat one fluid please");
     if (Ndim(2) >1&&Method==D2Q9)  throw new Fatal("LBM::Domain: D2Q9 scheme does not allow for a third dimension, please set Ndim(2)=1 or change to D3Q15");
-    if (Ndim(2)==1&&Method==D3Q15) throw new Fatal("LBM::Domain: Ndim(2) is 1. Either change the method to D2Q9 or increse the z-dimension");
+    if (Ndim(2)==1&&Method==D3Q15) throw new Fatal("LBM::Domain: Ndim(2) is 1. Either change the method to D2Q9 or increase the z-dimension");
     for (size_t i=0;i<nu.Size();i++)
     {
         Lat.Push(Lattice(Method,nu[i],Ndim,dx,Thedt));
@@ -460,7 +460,7 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     Alpha  = 10.0;
     Step   = 1;
     PrtVec = true;
-    printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Size()*Lat[0].Cells.Size(),TERM_RST);
+    printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Size()*Lat[0].Ncells,TERM_RST);
 }
 
 inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, double Thedt)
@@ -476,7 +476,7 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     Alpha  = 10.0;
     Step   = 1;
     PrtVec = true;
-    printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Size()*Lat[0].Cells.Size(),TERM_RST);
+    printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Size()*Lat[0].Ncells,TERM_RST);
 }
 
 #ifdef USE_HDF5
@@ -1054,10 +1054,10 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
 
 void Domain::Collide (size_t n, size_t Np)
 {
-	size_t Ni = Lat[0].Cells.Size()/Np;
+	size_t Ni = Lat[0].Ncells/Np;
     size_t In = n*Ni;
     size_t Fn;
-    n == Np-1 ? Fn = Lat[0].Cells.Size() : Fn = (n+1)*Ni;
+    n == Np-1 ? Fn = Lat[0].Ncells : Fn = (n+1)*Ni;
     for (size_t i=In;i<Fn;i++)
     {
         Vec3_t num(0.0,0.0,0.0);
@@ -1076,53 +1076,61 @@ void Domain::Collide (size_t n, size_t Np)
         {
             Cell * c = Lat[j].Cells[i];
             double rho = c->Rho;
-            if (c->IsSolid||rho<1.0e-12) continue;
+            //if (c->IsSolid||rho<1.0e-12) continue;
             if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
             //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
-            double Tau = Lat[j].Tau;
-            Vec3_t DV  = Vmix + c->BForce*dt/rho;
-            double Bn  = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
-            bool valid  = true;
-            double alphal = 1.0;
-            double alphat = 1.0;
-            size_t num  = 0;
-            double newrho = 0.0;
-            while (valid)
+            if (!c->IsSolid)
             {
-                newrho = 0.0;
-                valid = false;
-                alphal  = alphat;
-                for (size_t k=0;k<c->Nneigh;k++)
+                double Tau = Lat[j].Tau;
+                Vec3_t DV  = Vmix + c->BForce*dt/rho;
+                double Bn  = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
+                bool valid  = true;
+                double alphal = 1.0;
+                double alphat = 1.0;
+                size_t num  = 0;
+                double newrho = 0.0;
+                while (valid)
                 {
-                    double FDeqn = c->Feq(k,DV,rho);
-                    c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
-                    newrho += c->Ftemp[k];
-                    if (c->Ftemp[k]<0.0&&num<1)
+                    newrho = 0.0;
+                    valid = false;
+                    alphal  = alphat;
+                    for (size_t k=0;k<c->Nneigh;k++)
                     {
-                        double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
-                        if (temp<alphat) alphat = temp;
-                        valid = true;
+                        double FDeqn = c->Feq(k,DV,rho);
+                        c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
+                        newrho += c->Ftemp[k];
+                        if (c->Ftemp[k]<0.0&&num<1)
+                        {
+                            double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
+                            if (temp<alphat) alphat = temp;
+                            valid = true;
+                        }
+                    }
+                    num++;
+                    if (num>2) 
+                    {
+                        throw new Fatal("Domain::Collide: Redefine your time step, the current value ensures unstability");
                     }
                 }
-                num++;
-                if (num>2) 
+                for (size_t k=0;k<c->Nneigh;k++)
                 {
-                    throw new Fatal("Domain::Collide: Redefine your time step, the current value ensures unstability");
+                    if (std::isnan(c->Ftemp[k]))
+                    {
+                        c->Gamma = 2.0;
+                        #ifdef USE_HDF5
+                        WriteXDMF("error");
+                        #endif
+                        std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << std::endl;
+                        throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
+                    }
+                    c->F[k] = fabs(c->Ftemp[k])*c->Rho/newrho;
+                    //std::cout << newrho << std::endl;
                 }
             }
-            for (size_t k=0;k<c->Nneigh;k++)
+            else
             {
-                if (std::isnan(c->Ftemp[k]))
-                {
-                    c->Gamma = 2.0;
-                    #ifdef USE_HDF5
-                    WriteXDMF("error");
-                    #endif
-                    std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << std::endl;
-                    throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
-                }
-                c->F[k] = fabs(c->Ftemp[k])*c->Rho/newrho;
-                //std::cout << newrho << std::endl;
+                for (size_t j = 1;j<c->Nneigh;j++) c->Ftemp[j] = c->F[j];
+                for (size_t j = 1;j<c->Nneigh;j++) c->F[j]     = c->Ftemp[c->Op[j]];
             }
         }
     }   
@@ -1278,6 +1286,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
 
         for (size_t j=0;j<Lat.Size();j++)
         {
+            double Tau = Lat[j].Tau;
             cell = Lat[j].Cells[ParCellPairs[i].ICell];
             cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
             //if (fabs(cell->Gamma-1.0)<1.0e-12)
@@ -1290,7 +1299,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
             Rotation(Pa->w,Pa->Q,tmp);
             Vec3_t VelP   = Pa->v + cross(tmp,B);
             double rho = cell->Rho;
-            double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
+            double Bn  = (cell->Gamma*(Tau-0.5))/((1.0-cell->Gamma)+(Tau-0.5));
             for (size_t k=0;k<cell->Nneigh;k++)
             {
                 double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
@@ -2415,7 +2424,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     Initialize (dt);
 
     // Creates pair of cells to speed up body force calculation
-    for (size_t i=0;i<Lat[0].Cells.Size();i++)
+    for (size_t i=0;i<Lat[0].Ncells;i++)
     {
         Cell * c = Lat[0].Cells[i];
         for (size_t j=1;j<c->Nneigh;j++)
@@ -2449,6 +2458,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             ListPosPairs.Push(make_pair(i,j));
         }
     }
+    //GlobalResetDisplacement
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_create(&thrs[i], NULL, GlobalResetDisplacement, &MTD[i]);
@@ -2458,6 +2468,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         pthread_join(thrs[i], NULL);
     }
     ParCellPairs.Resize(0);
+    //GlobalResetContacts1
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
@@ -2487,6 +2498,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         MTD[i].LPC.Resize(0);
     }
     Interactons.Resize(0);
+    //GlobalResetContacts2
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_create(&thrs[i], NULL, GlobalResetContacts2, &MTD[i]);
@@ -2504,6 +2516,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         }
     }
     //std::cout << "1" << std::endl;
+    //GlobalImprint
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_create(&thrs[i], NULL, GlobalImprint, &MTD[i]);
@@ -2525,9 +2538,6 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     ResetDisplacements();
 
 #endif
-    
-    
-    
     double tout = Time;
     while (Time < Tf)
     {
@@ -2555,6 +2565,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
 
 #ifdef USE_THREAD
+        //GlobalIni
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_create(&thrs[i], NULL, GlobalIni, &MTD[i]);
@@ -2564,6 +2575,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             pthread_join(thrs[i], NULL);
         }
         //std::cout << "1" <<std::endl;
+        //GlobalImprint
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_create(&thrs[i], NULL, GlobalImprint, &MTD[i]);
@@ -2573,6 +2585,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             pthread_join(thrs[i], NULL);
         }
         //std::cout << "2" <<std::endl;
+        //GlobalForce
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_create(&thrs[i], NULL, GlobalForce, &MTD[i]);
@@ -2583,6 +2596,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         }
         double maxdis = 0.0;
         //std::cout << "3" <<std::endl;
+        //GlobalMove
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_create(&thrs[i], NULL, GlobalMove, &MTD[i]);
@@ -2594,6 +2608,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         }
         if (maxdis>Alpha)
         {
+            //GlobalResetDisplacement
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_create(&thrs[i], NULL, GlobalResetDisplacement, &MTD[i]);
@@ -2603,6 +2618,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
                 pthread_join(thrs[i], NULL);
             }
             ParCellPairs.Resize(0);
+            //GlobalResetContacts1
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
@@ -2631,6 +2647,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
                 }
                 MTD[i].LPC.Resize(0);
             }
+            //GlobalResetContacts2
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_create(&thrs[i], NULL, GlobalResetContacts2, &MTD[i]);
@@ -2652,6 +2669,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         //std::cout << "4" <<std::endl;
         if (Lat.Size()>1||fabs(Lat[0].G)>1.0e-12)
         {
+            //GlobalApplyForce
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_create(&thrs[i], NULL, GlobalApplyForce, &MTD[i]);
@@ -2661,6 +2679,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
                 pthread_join(thrs[i], NULL);
             }
         }
+        //GlobalCollide
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_create(&thrs[i], NULL, GlobalCollide, &MTD[i]);
@@ -2669,14 +2688,16 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         {
             pthread_join(thrs[i], NULL);
         }
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_create(&thrs[i], NULL, GlobalBounceBack, &MTD[i]);
-        }
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_join(thrs[i], NULL);
-        }
+        //GlobalBounceBack
+        //for (size_t i=0;i<Nproc;i++)
+        //{
+            //pthread_create(&thrs[i], NULL, GlobalBounceBack, &MTD[i]);
+        //}
+        //for (size_t i=0;i<Nproc;i++)
+        //{
+            //pthread_join(thrs[i], NULL);
+        //}
+        //GlobalStream1
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_create(&thrs[i], NULL, GlobalStream1, &MTD[i]);
@@ -2685,6 +2706,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         {
             pthread_join(thrs[i], NULL);
         }
+        //GlobalStream2
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_create(&thrs[i], NULL, GlobalStream2, &MTD[i]);

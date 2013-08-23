@@ -38,7 +38,7 @@ struct UserData
 void Setup(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
-    for (size_t i=0;i<dom.Lat[0].Cells.Size();i++)
+    for (size_t i=0;i<dom.Lat[0].Ncells;i++)
     {
         Cell * c = dom.Lat[0].Cells[i];
         c->BForcef = c->Density()*dat.g;

@@ -66,6 +66,7 @@ public:
 
     //Data
     size_t                                    idx_out;          // The discrete time step
+    size_t                                    Ncells;           // Number of cells per lattice
     double                                    Time;             // The current time
     double                                    G;                // Interaction strength
     double                                    Gs;               // Interaction strength
@@ -76,8 +77,9 @@ public:
     double                                    Tau;              // Relaxation time
     double                                    Rhoref;           // Values for th intermolecular force
     double                                    Psiref;           // 
-    Array<Cell *>                             Cells;            // Array of pointer cells
-    Array<std::pair<Cell *, Cell*> >          CellPairs;        // Array of pairs of cells for interaction
+    //Array<Cell *>                             Cells;            // Array of pointer cells
+    Cell                                   ** Cells;            // Array of pointer cells
+    //Array<std::pair<Cell *, Cell*> >          CellPairs;        // Array of pairs of cells for interaction
     void *                                    UserData;         // User Data
 };
 
@@ -92,37 +94,40 @@ inline Lattice::Lattice(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, doubl
     Psiref = 4.0;
     G      = 0.0;
 
-    Cells.Resize(Ndim[0]*Ndim[1]*Ndim[2]);
+    //Cells.Resize(Ndim[0]*Ndim[1]*Ndim[2]);
+    Cells = new Cell * [Ndim[0]*Ndim[1]*Ndim[2]];
+    Ncells = Ndim[0]*Ndim[1]*Ndim[2];
     size_t n = 0;
     for (size_t k=0;k<Ndim[2];k++)
     for (size_t j=0;j<Ndim[1];j++)
     for (size_t i=0;i<Ndim[0];i++)
     {
-        Cells[n] =  new Cell(n,TheMethod,iVec3_t(i,j,k),Ndim,dx/dt,Tau);
+        //Cells[n] =  new Cell(n,TheMethod,iVec3_t(i,j,k),Ndim,dx/dt,Tau);
+        Cells[n] = new Cell(n,TheMethod,iVec3_t(i,j,k),Ndim,dx/dt,Tau);
         n++;
     } 
-    for (size_t i=0;i<Cells.Size();i++)
-    {
-        Cell * c = Cells[i];
-        for (size_t j=1;j<c->Nneigh;j++)
-        {
-            Cell * nb     = Cells[c->Neighs[j]];
-            if (nb->ID>c->ID)
-            {
-                std::pair<Cell *, Cell*> p;
-                p = std::make_pair(c,nb);
-                CellPairs.Push(p);
-            }
-        }
-    }
+    //for (size_t i=0;i<Ndim[0]*Ndim[1]*Ndim[2];i++)
+    //{
+        //Cell * c = Cells[i];
+        //for (size_t j=1;j<c->Nneigh;j++)
+        //{
+            //Cell * nb     = Cells[c->Neighs[j]];
+            //if (nb->ID>c->ID)
+            //{
+                //std::pair<Cell *, Cell*> p;
+                //p = std::make_pair(c,nb);
+                //CellPairs.Push(p);
+            //}
+        //}
+    //}
 }
 
 inline void Lattice::Stream(size_t n, size_t Np)
 {
-	size_t Ni = Cells.Size()/Np;
+	size_t Ni = Ncells/Np;
     size_t In = n*Ni;
     size_t Fn;
-    n == Np-1 ? Fn = Cells.Size() : Fn = (n+1)*Ni;
+    n == Np-1 ? Fn = Ncells : Fn = (n+1)*Ni;
     // Assign temporal distributions
     for (size_t i=In;i<Fn;i++)
     for (size_t j=1;j<Cells[i]->Nneigh;j++)
@@ -143,10 +148,10 @@ inline void Lattice::Stream(size_t n, size_t Np)
 
 inline void Lattice::Stream1(size_t n, size_t Np)
 {
-	size_t Ni = Cells.Size()/Np;
+	size_t Ni = Ncells/Np;
     size_t In = n*Ni;
     size_t Fn;
-    n == Np-1 ? Fn = Cells.Size() : Fn = (n+1)*Ni;
+    n == Np-1 ? Fn = Ncells : Fn = (n+1)*Ni;
     // Assign temporal distributions
     for (size_t i=In;i<Fn;i++)
     for (size_t j=1;j<Cells[i]->Nneigh;j++)
@@ -157,17 +162,20 @@ inline void Lattice::Stream1(size_t n, size_t Np)
 
 inline void Lattice::Stream2(size_t n, size_t Np)
 {
-	size_t Ni = Cells.Size()/Np;
+	size_t Ni = Ncells/Np;
     size_t In = n*Ni;
     size_t Fn;
-    n == Np-1 ? Fn = Cells.Size() : Fn = (n+1)*Ni;
+    n == Np-1 ? Fn = Ncells : Fn = (n+1)*Ni;
     //Swap the distribution values
     for (size_t i=In;i<Fn;i++)
     {
-        for (size_t j=1;j<Cells[i]->Nneigh;j++)
-        {
-            Cells[i]->F[j] = Cells[i]->Ftemp[j];
-        }
+        double * Ftemp   = Cells[i]->F;
+        Cells[i]->F      = Cells[i]->Ftemp;
+        Cells[i]->Ftemp  = Ftemp;
+        //for (size_t j=1;j<Cells[i]->Nneigh;j++)
+        //{
+            //Cells[i]->F[j] = Cells[i]->Ftemp[j];
+        //}
         Cells[i]->Rho = Cells[i]->VelDen(Cells[i]->Vel);
     }
 }
@@ -189,10 +197,10 @@ inline void Lattice::SolidDisk(Vec3_t const & X, double R)
 
 inline void Lattice::SetZeroGamma(size_t n, size_t Np)
 {
-	size_t Ni = Cells.Size()/Np;
+	size_t Ni = Ncells/Np;
     size_t In = n*Ni;
     size_t Fn;
-    n == Np-1 ? Fn = Cells.Size() : Fn = (n+1)*Ni;
+    n == Np-1 ? Fn = Ncells : Fn = (n+1)*Ni;
     for (size_t i=In;i<Fn;i++)
     {
         Cells[i]->Gamma  = 0.0;
@@ -214,11 +222,11 @@ inline double Lattice::Psi(double rho)
 inline double Lattice::SolidFraction()
 {
     double Sf = 0.0;
-    for (size_t i=0; i<Cells.Size(); i++)
+    for (size_t i=0; i<Ncells; i++)
     {
         if (Cells[i]->IsSolid||Cells[i]->Gamma>0.0) Sf+=1.0;
     }
-    return Sf/Cells.Size();
+    return Sf/(Ncells);
 }
 
 inline void Lattice::ApplyForce()
@@ -242,7 +250,7 @@ inline void Lattice::ApplyForce()
         //}
     //}
 
-    for (size_t i=0;i<Cells.Size();i++)
+    for (size_t i=0;i<Ncells;i++)
     {
         Cell * c = Cells[i];
         double psi = Psi(c->Rho);
@@ -265,7 +273,7 @@ inline void Lattice::ApplyForce()
 inline void Lattice::Collide()
 {
     double ome = 1.0/Tau;
-    for (size_t i=0;i<Cells.Size()    ;i++)
+    for (size_t i=0;i<Ncells    ;i++)
     {
         Cell * c = Cells[i];
         if (c->IsSolid) continue;
@@ -285,7 +293,7 @@ inline void Lattice::Collide()
 inline void Lattice::CollideAlt()
 {
     double ome = 1.0/Tau;
-    for (size_t i=0;i<Cells.Size()    ;i++)
+    for (size_t i=0;i<Ncells    ;i++)
     {
         Cell * c = Cells[i];
         if (c->IsSolid) continue;
@@ -344,10 +352,10 @@ inline void Lattice::CollideAlt()
 
 inline void Lattice::BounceBack(size_t n, size_t Np)
 {
-	size_t Ni = Cells.Size()/Np;
+	size_t Ni = Ncells/Np;
     size_t In = n*Ni;
     size_t Fn;
-    n == Np-1 ? Fn = Cells.Size() : Fn = (n+1)*Ni;
+    n == Np-1 ? Fn = Ncells : Fn = (n+1)*Ni;
     for (size_t i=In;i<Fn;i++)
     {
         if (!Cells[i]->IsSolid) continue;
@@ -365,13 +373,13 @@ inline void Lattice::WriteXDMF(char const * FileKey)
     file_id = H5Fcreate(fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 
     // Creating data sets
-    float *Density   = new float[Ndim[0]*Ndim[1]*Ndim[2]];
-    float *Gamma     = new float[Ndim[0]*Ndim[1]*Ndim[2]];
-    float *Velocity  = new float[Ndim[0]*Ndim[1]*Ndim[2]];
-    float *MassFlux  = new float[Ndim[0]*Ndim[1]*Ndim[2]];
+    float *Density   = new float[Ncells];
+    float *Gamma     = new float[Ncells];
+    float *Velocity  = new float[Ncells];
+    float *MassFlux  = new float[Ncells];
 
 
-    for (size_t i=0;i<Cells.Size();i++)
+    for (size_t i=0;i<Ncells;i++)
     {
         double rho;
         Vec3_t vel;
@@ -384,7 +392,7 @@ inline void Lattice::WriteXDMF(char const * FileKey)
 
     //Write the data
     hsize_t dims[1];
-    dims[0] = Ndim(0)*Ndim(1)*Ndim(2);
+    dims[0] = Ncells;
     H5LTmake_dataset_float(file_id,"Density" ,1,dims,Density );
     H5LTmake_dataset_float(file_id,"Gamma"   ,1,dims,Gamma   );
     H5LTmake_dataset_float(file_id,"Velocity",1,dims,Velocity);
@@ -455,12 +463,12 @@ inline void Lattice::WriteVTK(char const * FileKey)
 	oss << "DIMENSIONS " << Ndim[0] << " " << Ndim[1] << " " << Ndim[2] << "\n";
 	oss << "ORIGIN "     << 0       << " " << 0       << " " << 0       << "\n";
 	oss << "SPACING "    << 1       << " " << 1       << " " << 1       << "\n";
-	oss << "POINT_DATA " << Cells.Size()   << "\n";
+	oss << "POINT_DATA " << Ndim[0]*Ndim[1]*Ndim[2]   << "\n";
 
 	// Solid cells
 	oss << "SCALARS Geom float 1\n";
 	oss << "LOOKUP_TABLE default\n";
-	for (size_t i=0; i<Cells.Size(); ++i)
+	for (size_t i=0; i<Ncells; ++i)
 	{
 		if (Cells[i]->IsSolid) oss << "1.0\n";
 		else                   oss << "0.0\n";
@@ -469,23 +477,23 @@ inline void Lattice::WriteVTK(char const * FileKey)
 	// Density field
 	oss << "SCALARS Density float 1\n";
 	oss << "LOOKUP_TABLE default\n";
-	for (size_t i=0; i<Cells.Size(); i++)
+	for (size_t i=0; i<Ncells; i++)
 		oss << Cells[i]->Rho << "\n";
 
 	// Density field
 	oss << "SCALARS Gamma float 1\n";
 	oss << "LOOKUP_TABLE default\n";
-	for (size_t i=0; i<Cells.Size(); i++)
+	for (size_t i=0; i<Ncells; i++)
 		oss << Cells[i]->Gamma << "\n";
 
 	oss << "VECTORS Velocity float\n";
-	for (size_t i=0; i<Cells.Size(); ++i)
+	for (size_t i=0; i<Ncells; ++i)
 	{
 		Vec3_t v;  Cells[i]->Velocity(v);
 		oss << v(0) << " " << v(1) << " " << v(2) << "\n";
 	}
 	oss << "VECTORS Mass_flux float\n";
-	for (size_t i=0; i<Cells.Size(); ++i)
+	for (size_t i=0; i<Ncells; ++i)
 	{
 		Vec3_t v; Cells[i]->Velocity(v);
 		v *= Cells[i]->Rho;

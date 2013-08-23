@@ -35,7 +35,7 @@ struct UserData
 void Setup(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
-    for (size_t i=0;i<dom.Lat[0].Cells.Size();i++)
+    for (size_t i=0;i<dom.Lat[0].Ncells;i++)
     {
         Cell * c   = dom.Lat[0].Cells[i];
         c->BForcef = c->Rho*dat.acc;
@@ -80,7 +80,7 @@ void Report(LBM::Domain & dom, void * UD)
         double Vx   = 0.0;
         size_t nc   = 0;
         Vec3_t Flux = OrthoSys::O;
-        for (size_t i=0;i<dom.Lat[0].Cells.Size();i++)
+        for (size_t i=0;i<dom.Lat[0].Ncells;i++)
         {
             Cell * c = dom.Lat[0].Cells[i];
             if (c->IsSolid||c->Gamma>1.0e-8) continue;
@@ -89,7 +89,7 @@ void Report(LBM::Domain & dom, void * UD)
             M    += c->Rho;
             nc++;
         }
-        Vx  /=dom.Lat[0].Cells.Size();
+        Vx  /=dom.Lat[0].Ncells;
         Flux/=M;
         dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dom.Particles[0]->F(0) << Util::_8s << dom.Particles[0]->F(1) << Util::_8s << dom.Particles[0]->F(2) << Util::_8s << dom.Particles[0]->T(0) << Util::_8s << dom.Particles[0]->T(1) << Util::_8s << dom.Particles[0]->T(2) << Util::_8s << Vx << Util::_8s << Flux(0) << Util::_8s << norm(Flux) << Util::_8s << M/nc << std::endl;
     }
