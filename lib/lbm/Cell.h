@@ -34,6 +34,7 @@ enum LBMethod
 {
     D2Q9,     ///< 2D 9 velocities
     D3Q15,    ///< 3D 15 velocities
+    D3Q19,    ///< 3D 15 velocities
     D3Q27     ///< 3D 27 velocities
 };
 
@@ -42,12 +43,15 @@ class Cell
 public:
 	static const double   WEIGHTSD2Q9   [ 9]; ///< Weights for the equilibrium distribution functions (D2Q9)
 	static const double   WEIGHTSD3Q15  [15]; ///< Weights for the equilibrium distribution functions (D3Q15)
+	static const double   WEIGHTSD3Q19  [19]; ///< Weights for the equilibrium distribution functions (D3Q15)
 	//static const double   WEIGHTSD3Q27  [27]; ///< Weights for the equilibrium distribution functions (D3Q27)
 	static const Vec3_t   LVELOCD2Q9    [ 9]; ///< Local velocities (D2Q9) 
 	static const Vec3_t   LVELOCD3Q15   [15]; ///< Local velocities (D3Q15)
+	static const Vec3_t   LVELOCD3Q19   [19]; ///< Local velocities (D3Q15)
 	//static const Vec3_t   LVELOCD3Q27   [27]; ///< Local velocities (D3Q27)
 	static const size_t   OPPOSITED2Q9  [ 9]; ///< Opposite directions (D2Q9) 
 	static const size_t   OPPOSITED3Q15 [15]; ///< Opposite directions (D3Q15)
+	static const size_t   OPPOSITED3Q19 [19]; ///< Opposite directions (D3Q15)
 	//static const size_t   OPPOSITED3Q27 [27]; ///< Opposite directions (D3Q27)
    
     //Constructor
@@ -119,6 +123,13 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
         W      = WEIGHTSD3Q15;
         C      = LVELOCD3Q15;
         Op     = OPPOSITED3Q15;
+    }
+    if (TheMethod==D3Q19)
+    {
+        Nneigh = 19;
+        W      = WEIGHTSD3Q19;
+        C      = LVELOCD3Q19;
+        Op     = OPPOSITED3Q19;
     }
     //F.     Resize(Nneigh);
     //Ftemp. Resize(Nneigh);
@@ -207,14 +218,23 @@ inline void Cell::BounceBack()
 
 const double Cell::WEIGHTSD2Q9   [ 9] = { 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36., 1./36., 1./36. };
 const double Cell::WEIGHTSD3Q15  [15] = { 2./9., 1./9., 1./9., 1./9., 1./9.,  1./9.,  1./9., 1./72., 1./72. , 1./72., 1./72., 1./72., 1./72., 1./72., 1./72.};
-const size_t Cell::OPPOSITED2Q9  [ 9] = { 0, 3, 4, 1, 2, 7, 8, 5, 6 };                       ///< Opposite directions (D2Q9) 
-const size_t Cell::OPPOSITED3Q15 [15] = { 0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13}; ///< Opposite directions (D3Q15)
+const double Cell::WEIGHTSD3Q19  [19] = { 1./3., 1./18., 1./18., 1./18., 1./18., 1./18., 1./18., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36.};
+const size_t Cell::OPPOSITED2Q9  [ 9] = { 0, 3, 4, 1, 2, 7, 8, 5, 6 };                                           ///< Opposite directions (D2Q9) 
+const size_t Cell::OPPOSITED3Q15 [15] = { 0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13};                     ///< Opposite directions (D3Q15)
+const size_t Cell::OPPOSITED3Q19 [19] = { 0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17};     ///< Opposite directions (D3Q19)
 const Vec3_t Cell::LVELOCD2Q9  [ 9] = { {0,0,0}, {1,0,0}, {0,1,0}, {-1,0,0}, {0,-1,0}, {1,1,0}, {-1,1,0}, {-1,-1,0}, {1,-1,0} };
 const Vec3_t Cell::LVELOCD3Q15 [15] =
 {
 	{ 0, 0, 0}, { 1, 0, 0}, {-1, 0, 0}, { 0, 1, 0}, { 0,-1, 0}, 
 	{ 0, 0, 1}, { 0, 0,-1}, { 1, 1, 1}, {-1,-1,-1}, { 1, 1,-1}, 
 	{-1,-1, 1}, { 1,-1, 1}, {-1, 1,-1}, { 1,-1,-1}, {-1, 1, 1} 
+};
+const Vec3_t Cell::LVELOCD3Q19 [19] =
+{
+	{ 0, 0, 0}, 
+    { 1, 0, 0}, {-1, 0, 0}, { 0, 1, 0}, { 0,-1, 0}, { 0, 0, 1}, { 0, 0,-1}, 
+    { 1, 1, 0}, {-1,-1, 0}, { 1,-1, 0}, {-1, 1, 0}, { 1, 0, 1}, {-1, 0,-1},
+    { 1, 0,-1}, {-1, 0, 1}, { 0, 1, 1}, { 0,-1,-1}, { 0, 1,-1}, { 0,-1, 1}
 };
 
 /*TODO: Go back to the previous version since this is not nice
