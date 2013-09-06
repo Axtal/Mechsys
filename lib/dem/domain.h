@@ -708,8 +708,9 @@ inline void Domain::GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1
         for (size_t j = 0; j < ny; j++)
         for (size_t k = 0; k < nz; k++)
         {
-            Vec3_t pos(-(X1(0)-X0(0))/2.0+R, -(X1(1)-X0(1))/2.0+R, -(X1(2)-X0(2))/2.0+R);
-            pos += Vec3_t(2.0*i*R, 2.0*j*R, 2.0*k*R) + X0;
+            //Vec3_t pos(-(X1(0)-X0(0))/2.0+R, -(X1(1)-X0(1))/2.0+R, -(X1(2)-X0(2))/2.0+R);
+            Vec3_t pos(X0(0)+R,X0(1)+R,X0(2)+R);
+            pos += Vec3_t(2.0*i*R, 2.0*j*R, 2.0*k*R);
             if (rand()<fraction*RAND_MAX) AddSphere (Tag,pos,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
         }
     }
