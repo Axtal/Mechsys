@@ -156,6 +156,7 @@ inline void Lattice::Stream1(size_t n, size_t Np)
     for (size_t i=In;i<Fn;i++)
     for (size_t j=1;j<Cells[i]->Nneigh;j++)
     {
+        //std::cout << i << " " << j << " " << Cells[i]->Neighs[j] << " " <<  Cells[i]->IsSolid << std::endl;
         Cells[Cells[i]->Neighs[j]]->Ftemp[j] = Cells[i]->F[j];
     }
 }

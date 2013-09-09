@@ -14,7 +14,7 @@ hold on;
 filename = 'ttt_b_bf_0000.h5';
 Info = hdf5info(filename);                                %   read particle information from data
 Fnormal = hdf5read(Info.GroupHierarchy.Datasets(5));       %   Normal force vector
-N = Info1.GroupHierarchy.Datasets(5).Dims/3;
+N = Info.GroupHierarchy.Datasets(5).Dims/3;
 Fnx=zeros(N,1);
 Fny=zeros(N,1);
 Fnz=zeros(N,1);
@@ -54,6 +54,7 @@ thetap = theta(1:end-1,1:end-1)+0.5*deltatheta;
 phip   = phi  (1:end-1,1:end-1)+0.5*deltaphi;
 
 spherobar(R,thetap,phip);
+axis square;
 
 
 % x=R.*sin(thetap).*cos(phip);

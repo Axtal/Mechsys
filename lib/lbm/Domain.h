@@ -2423,6 +2423,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     // initialize particles
     Initialize (dt);
 
+    //std::cout << "1" << std::endl;
     // Creates pair of cells to speed up body force calculation
     for (size_t i=0;i<Lat[0].Ncells;i++)
     {
@@ -2436,7 +2437,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             }
         }
     }
-
+    //std::cout << "2" << std::endl;
     
 #ifdef USE_THREAD
     LBM::MtData MTD[Nproc];
@@ -2688,6 +2689,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         {
             pthread_join(thrs[i], NULL);
         }
+        //std::cout << "5" <<std::endl;
         //GlobalBounceBack
         //for (size_t i=0;i<Nproc;i++)
         //{
@@ -2706,6 +2708,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         {
             pthread_join(thrs[i], NULL);
         }
+        //std::cout << "6" <<std::endl;
         //GlobalStream2
         for (size_t i=0;i<Nproc;i++)
         {
