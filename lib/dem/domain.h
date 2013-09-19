@@ -1863,6 +1863,14 @@ inline void Domain::SetProps (Dict & D)
                 {
                     Particles[i]->Props.Gt = p("Gt");
                 }
+                if (p.HasKey("Gv"))
+                {
+                    Particles[i]->Props.Gv = p("Gv");
+                }
+                if (p.HasKey("Gm"))
+                {
+                    Particles[i]->Props.Gm = p("Gm");
+                }
                 if (p.HasKey("Kn"))
                 {
                     Particles[i]->Props.Kn = p("Kn");
