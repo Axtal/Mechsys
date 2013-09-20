@@ -2009,6 +2009,12 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/MaxKn)              , TERM_RST);
     printf("%s  Suggested Verlet distance        =  %g or %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
 
+    if (Alpha > MaxDmax)
+    {
+        Alpha = MaxDmax;
+        printf("%s  Verlet distance changed to       =  %g%s\n"   ,TERM_CLR2, Alpha                                    , TERM_RST);
+    }
+
     // solve
     double t0   = Time;     // initial time
     double tout = t0; // time position for output

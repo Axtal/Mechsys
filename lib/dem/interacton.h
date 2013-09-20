@@ -77,6 +77,7 @@ public:
     virtual void UpdateParameters ();              ///< Update the parameters
 
     // Data
+    bool        First;        ///< Is it the first collision?
     double         Kn;        ///< Normal stiffness
     double         Kt;        ///< Tengential stiffness
     double         Gn;        ///< Normal viscous coefficient
@@ -169,6 +170,7 @@ public:
 
 inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
 {
+    First           = true;
     P1              = Pt1;
     P2              = Pt2;
     I1              = P1->Index;
@@ -179,8 +181,17 @@ inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
     //Kt              = (r1+r2)*ReducedValue(Pt1->Props.Kt,Pt2->Props.Kt);
     Kn              = ReducedValue(Pt1->Props.Kn,Pt2->Props.Kn);
     Kt              = ReducedValue(Pt1->Props.Kt,Pt2->Props.Kt);
-    Gn              = 2*ReducedValue(Pt1->Props.Gn,Pt2->Props.Gn)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
-    Gt              = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
+    double me       = ReducedValue(Pt1->Props.m ,Pt2->Props.m );
+    Gn              = 2*ReducedValue(Pt1->Props.Gn,Pt2->Props.Gn);
+    Gt              = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt);
+    if (Gn < -0.001)
+    {
+        if (fabs(Gn)>1.0) throw new Fatal("CInteracton the restitution coefficient is greater than 1");
+        Gn = 2.0*sqrt((pow(log(-Gn),2.0)*(Kn/me))/(M_PI*M_PI+pow(log(-Gn),2.0)));
+        Gt = 0.0;
+    }
+    Gn *= me;
+    Gt *= me;
     //Mu              = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
     if (Pt1->Props.Mu>1.0e-12&&Pt2->Props.Mu>1.0e-12)
     {
@@ -301,6 +312,7 @@ inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             {
                 std::cout << std::endl; 
                 std::cout << "Maximun overlap between " << P1->Index         << " and " << P2->Index <<  std::endl; 
+                std::cout << "Is the first collision? " << First             << std::endl; 
                 std::cout << "Overlap                 " << delta             <<  std::endl; 
                 std::cout << "Particle's tags         " << P1->Tag           << " and " << P2->Tag   <<  std::endl; 
                 std::cout << "Memory address          " << P1                << " and " << P2        <<  std::endl; 
@@ -325,6 +337,7 @@ inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             }
             // Count a contact
             Nc++;
+            First = false;
 
             // update force
             Vec3_t n = (xf-xi)/dist;
@@ -437,14 +450,24 @@ inline void CInteracton::_update_contacts (FeatureA_T & A, FeatureB_T & B, ListC
 
 inline CInteractonSphere::CInteractonSphere (Particle * Pt1, Particle * Pt2)
 {
+    First           = true;
     P1   = Pt1;
     P2   = Pt2;
     I1 = P1->Index;
     I2 = P2->Index;
     Kn   = 2*ReducedValue(Pt1->Props.Kn,Pt2->Props.Kn);
     Kt   = 2*ReducedValue(Pt1->Props.Kt,Pt2->Props.Kt);
-    Gn   = 2*ReducedValue(Pt1->Props.Gn,Pt2->Props.Gn)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
-    Gt   = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
+    double me       = ReducedValue(Pt1->Props.m ,Pt2->Props.m );
+    Gn              = 2*ReducedValue(Pt1->Props.Gn,Pt2->Props.Gn);
+    Gt              = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt);
+    if (Gn < -0.001)
+    {
+        if (fabs(Gn)>1.0) throw new Fatal("CInteractonSphere the restitution coefficient is greater than 1");
+        Gn = 2.0*sqrt((pow(log(-Gn),2.0)*(Kn/me))/(M_PI*M_PI+pow(log(-Gn),2.0)));
+        Gt = 0.0;
+    }
+    Gn *= me;
+    Gt *= me;
     //Mu   = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
     if (Pt1->Props.Mu>1.0e-12&&Pt2->Props.Mu>1.0e-12)
     {
