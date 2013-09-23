@@ -380,7 +380,9 @@ void * GlobalUpdateLinkedCells(void * Data)
     for (size_t i=In;i<Fn;i++)
     for (size_t j=0;j<dat.Dom->NoFreePar.Size();j++)
     {
-        dat.LPP.Push(std::make_pair(dat.Dom->FreePar[i],dat.Dom->NoFreePar[j]));
+        size_t i1 = std::min(dat.Dom->FreePar[i],dat.Dom->NoFreePar[j]);
+        size_t i2 = std::max(dat.Dom->FreePar[i],dat.Dom->NoFreePar[j]);
+        dat.LPP.Push(std::make_pair(i1,i2));
     }
 	Ni = dat.Dom->LinkedCell.Size()/dat.N_Proc;
     In = dat.ProcRank*Ni;
@@ -1981,10 +1983,10 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     NoFreePar.Resize(0);
     Vs = 0.0;
     Ms = 0.0;
-    MaxDmax = Particles[0]->Dmax;
-    double MinDmax = Particles[0]->Dmax;
-    double MinMass = Particles[0]->Props.m;
-    double MaxKn   = Particles[0]->Props.Kn;
+    MaxDmax        =  0.0;
+    double MaxKn   =  0.0;
+    double MinDmax = -1.0;
+    double MinMass = -1.0;
     for (size_t i=0; i<Particles.Size(); i++) 
     { 
         if (Particles[i]->IsFree())
@@ -1992,9 +1994,9 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             Vs += Particles[i]->Props.V;
             Ms += Particles[i]->Props.m;
             if (Particles[i]->Dmax     > MaxDmax) MaxDmax = Particles[i]->Dmax;
-            if (Particles[i]->Dmax     < MinDmax) MinDmax = Particles[i]->Dmax;
-            if (Particles[i]->Props.m  < MinMass) MinMass = Particles[i]->Props.m;
             if (Particles[i]->Props.Kn > MaxKn  ) MaxKn   = Particles[i]->Props.Kn;
+            if (Particles[i]->Dmax     < MinDmax||(MinDmax<0.0)) MinDmax = Particles[i]->Dmax;
+            if (Particles[i]->Props.m  < MinMass||(MinMass<0.0)) MinMass = Particles[i]->Props.m;
             FreePar.Push(i);
         }
         else NoFreePar.Push(i);
@@ -2045,7 +2047,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     BoundingBox(LCxmin,LCxmax);
     LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
     LinkedCell.Resize(LCellDim(0)*LCellDim(1)*LCellDim(2));
-    //std::cout << LCellDim << std::endl;
+    //std::cout << LCellDim << " " << MaxDmax << std::endl;
     //iVec3_t iv;
     //idx2Pt(16,iv,LCellDim);
     //std::cout << iv << std::endl;
@@ -2064,11 +2066,11 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         }
     }
 
+    //std::cout << "2 " << CInteractons.Size() << std::endl;
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_create(&thrs[i], NULL, GlobalUpdateLinkedCells, &MTD[i]);
     }
-
     size_t Npp = 0;
     for (size_t i=0;i<Nproc;i++)
     {
@@ -2087,7 +2089,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     }
     //UpdateLinkedCells();
 
-    //std::cout << "2 " << CInteractons.Size() << std::endl;
+    //std::cout << "3 " << CInteractons.Size() << std::endl;
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
@@ -2113,7 +2115,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         }
     }
     //std::cout << ListPosPairs.Size() << endl;
-    //std::cout << "2 " << CInteractons.Size() << std::endl;
+    //std::cout << "4 " << CInteractons.Size() << std::endl;
     for (size_t i=0;i<Nproc;i++)
     {
         pthread_create(&thrs[i], NULL, GlobalResetContacts2, &MTD[i]);
@@ -3348,7 +3350,8 @@ inline void Domain::Load (char const * FileKey)
         Particles[Particles.Size()-1]->Dmax = dat[0];
         int datint[1];
         H5LTread_dataset_int(group_id,"Index",datint);
-        Particles[Particles.Size()-1]->Index = datint[0];
+        //Particles[Particles.Size()-1]->Index = datint[0];
+        Particles[Particles.Size()-1]->Index = Particles.Size()-1;
         int tag[1];
         H5LTread_dataset_int(group_id,"Tag",tag);
         Particles[Particles.Size()-1]->Tag = tag[0];
