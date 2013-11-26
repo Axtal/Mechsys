@@ -125,11 +125,13 @@ public:
     void UpdateParameters ();                           ///< Update the parameters
 
     // Data
-    FrictionMap_t  Fdvv;                                ///< Static Friction displacement for the vertex vertex pair
-    ListContacts_t Lvv;                                 ///< List of vertices
-    Vec3_t         Fdr;                                 ///< Rolling displacement 
-    double         beta;                                ///< Rolling stiffness coefficient
-    double         eta;                                 ///< Plastic moment coefficient
+    Vec3_t         Fdvv;                           ///< Static Friction displacement for the vertex vertex pair
+    Vec3_t         Fdr;                            ///< Rolling displacement 
+    double         beta;                           ///< Rolling stiffness coefficient
+    double         eta;                            ///< Plastic moment coefficient
+    double         Bn;                             ///< Elastic normal constant for the cohesion
+    double         Bt;                             ///< Elastic tangential constant for the cohesion
+    double         eps;                            ///< Maximun strain before fracture
 
 protected:
     void _update_rolling_resistance(double dt);               ///< Calculates the rolling resistance torque
@@ -479,6 +481,9 @@ inline CInteractonSphere::CInteractonSphere (Particle * Pt1, Particle * Pt2)
     }
     beta = 2*ReducedValue(Pt1->Props.Beta,Pt2->Props.Beta);
     eta  = 2*ReducedValue(Pt1->Props.Eta,Pt2->Props.Eta);
+    Bn   = 2*ReducedValue(P1->Props.Bn,P2->Props.Bn);
+    Bt   = 2*ReducedValue(P1->Props.Bt,P2->Props.Bt);
+    eps  = 0.0;
     Nc = 0;
     Nsc = 0;
     //std::cout << Kn << " " << Kt << " " << Gn << " " << Gt << " " << Mu << " " << eta << " " << beta << std::endl;
@@ -486,7 +491,6 @@ inline CInteractonSphere::CInteractonSphere (Particle * Pt1, Particle * Pt2)
     //std::cout << Mu << " " << Pt1->Tag << " " << Pt2->Tag << std::endl;
     Epot = 0.0;
     Fdr  = 0.0, 0.0, 0.0;
-    Lvv.Push(std::make_pair(0,0));
 
     CalcForce(0.0);
 #ifdef USE_THREAD
@@ -555,32 +559,150 @@ inline bool CInteractonSphere::CalcForce(double dt)
     F2     = OrthoSys::O;
     T1     = OrthoSys::O;
     T2     = OrthoSys::O;
-    bool overlap;
-    overlap = _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,Lvv,dt);
-    if (Epot>0.0) _update_rolling_resistance(dt);
+    //bool overlap;
+    //overlap = _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,Lvv,dt);
+    //if (Epot>0.0) _update_rolling_resistance(dt);
 
+    Vec3_t xi = P1->x;
+    Vec3_t xf = P2->x;
+    double dist = norm(P1->x - P2->x);
+    double delta = P1->Props.R + P2->Props.R - dist;
+
+    if (delta>0)
+    {
+        //if (delta > 0.4*std::min(P1->Props.R,P2->Props.R))
+        if (delta > 0.1*(P1->Props.R+P2->Props.R))
+        {
+            std::cout << std::endl; 
+            std::cout << "Maximun overlap between " << P1->Index         << " and " << P2->Index <<  std::endl; 
+            std::cout << "Is the first collision? " << First             << std::endl; 
+            std::cout << "Overlap                 " << delta             <<  std::endl; 
+            std::cout << "Particle's tags         " << P1->Tag           << " and " << P2->Tag   <<  std::endl; 
+            std::cout << "Memory address          " << P1                << " and " << P2        <<  std::endl; 
+            std::cout << "Position particle 1     " << P1->x             << std::endl;
+            std::cout << "Position particle 2     " << P2->x             << std::endl;
+            std::cout << "Velocity particle 1     " << P1->v             << std::endl;
+            std::cout << "Velocity particle 2     " << P2->v             << std::endl;
+            std::cout << "Ang Velocity particle 1 " << P1->w             << std::endl;
+            std::cout << "Ang Velocity particle 2 " << P2->w             << std::endl;
+            std::cout << "Mass particle 1         " << P1->Props.m       << std::endl;
+            std::cout << "Mass particle 2         " << P2->Props.m       << std::endl;
+            std::cout << "Diameter particle 1     " << P1->Dmax          << std::endl;
+            std::cout << "Diameter particle 2     " << P2->Dmax          << std::endl;
+            std::cout << "Sradius particle 1      " << P1->Props.R       << std::endl;
+            std::cout << "Sradius particle 2      " << P2->Props.R       << std::endl;
+            std::cout << "Number of faces  1      " << P1->Faces.Size()  << std::endl;
+            std::cout << "Number of faces  2      " << P2->Faces.Size()  << std::endl;
+            P1->Tag = 10000;
+            P2->Tag = 10000;
+            return true;
+            //throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
+        }
+        // Count a contact
+        Nc++;
+        First = false;
+
+        // update force
+        Vec3_t n = (xf-xi)/dist;
+        Vec3_t x = xi+n*((P1->Props.R*P1->Props.R-P2->Props.R*P2->Props.R+dist*dist)/(2*dist));
+        Xc += x;
+        Vec3_t t1,t2,x1,x2;
+        Rotation(P1->w,P1->Q,t1);
+        Rotation(P2->w,P2->Q,t2);
+        x1 = x - P1->x;
+        x2 = x - P2->x;
+        Vec3_t vrel = -((P2->v-P1->v)+cross(t2,x2)-cross(t1,x1));
+        Vec3_t vt = vrel - dot(n,vrel)*n;
+        
+        //Cohesion law
+        if (delta>eps)
+        {
+            Fn  = Kn*delta*n;
+            eps = delta;
+        }
+        else
+        {
+            double delta0 = (1.0-Kn/Bn)*eps;
+            double deltam = (Bn-Kn)*eps/(Bn+Bt);
+            if (delta>deltam)
+            {
+                Fn  = Bn*(delta-delta0)*n;
+                //std::cout << delta << " " << delta0 << " " << Fn << std::endl;
+            }
+            else 
+            {
+                deltam = delta;
+                eps    = (Bn+Bt)*delta/(Bn-Kn);
+                Fn     = -Bt*delta*n;
+                //std::cout << delta << " " << delta0 << " " << deltam << " " << Fn << std::endl;
+            }
+        }
+        
+        Fnet += Fn;
+        Fdvv += vt*dt;
+        Fdvv -= dot(Fdvv,n)*n;
+        Vec3_t tan = Fdvv;
+        if (norm(tan)>0.0) tan/=norm(tan);
+        if (norm(Fdvv)>Mu*norm(Fn)/Kt)
+        {
+            // Count a sliding contact
+            Nsc++;
+            Fdvv = Mu*norm(Fn)/Kt*tan;
+            dEfric += Kt*dot(Fdvv,vt)*dt;
+        }
+        Ftnet += Kt*Fdvv;
+        
+        // Calculating the rolling resistance torque
+        Vec3_t Vr = P1->Props.R*P2->Props.R*cross(Vec3_t(t1 - t2),n)/(P1->Props.R+P2->Props.R);
+        Fdr += Vr*dt;
+        Fdr -= dot(Fdr,n)*n;
+        
+        tan = Fdr;
+        if (norm(tan)>0.0) tan/=norm(tan);
+        double Kr = beta*Kt;
+        if (norm(Fdr)>eta*Mu*norm(Fn)/Kr)
+        {
+            Fdr = eta*Mu*norm(Fn)/Kr*tan;
+            Nr++;
+        }
+
+        Vec3_t Ft = -Kr*Fdr;
+        
+
+
+        Vec3_t F = Fn + Kt*Fdvv + Gn*dot(n,vrel)*n + Gt*vt;
+
+
+
+        //if (dot(F,n)<0) F-=dot(F,n)*n;
+        F1   += -F;
+        F2   +=  F;
+        dEvis += (Gn*dot(vrel-vt,vrel-vt)+Gt*dot(vt,vt))*dt;
+        // torque
+        Vec3_t T, Tt;
+        Tt = cross (x1,F) - P1->Props.R*cross(n,Ft);
+        Quaternion_t q;
+        Conjugate (P1->Q,q);
+        Rotation  (Tt,q,T);
+        T1 -= T;
+        Tt = cross (x2,F) - P2->Props.R*cross(n,Ft);
+        Conjugate (P2->Q,q);
+        Rotation  (Tt,q,T);
+        T2 += T;
+        //Transfering the branch vector information
+        Vec3_t nor = n;
+        Vec3_t dif = P2->x - P1->x;
+    }
 
     //If there is at least a contact, increase the coordination number of the particles
     if (Nc>0) 
     {
-#ifdef USE_THREAD
-        //pthread_mutex_lock(&lck);
-        //pthread_mutex_lock(&P1->lck);
-        //pthread_mutex_lock(&P2->lck);
-        //std::lock_guard<std::mutex> lk1(P1->mtex);
-        //std::lock_guard<std::mutex> lk2(P2->mtex);
-#endif
         //P1->Cn++;
         //P2->Cn++;
         if (!P1->IsFree()) P2->Bdry = true;
         if (!P2->IsFree()) P1->Bdry = true;
-#ifdef USE_THREAD
-        //pthread_mutex_unlock(&lck);
-        //pthread_mutex_unlock(&P1->lck);
-        //pthread_mutex_unlock(&P2->lck);
-#endif
     }
-    return overlap;
+    return false;
 }
 
 inline bool CInteractonSphere::UpdateContacts (double alpha)
@@ -598,6 +720,9 @@ inline void CInteractonSphere::UpdateParameters ()
     Mu   = 2*ReducedValue(P1->Props.Mu,P2->Props.Mu);
     beta = 2*ReducedValue(P1->Props.Beta,P2->Props.Beta);
     eta  = 2*ReducedValue(P1->Props.Eta,P2->Props.Eta);
+    Bn   = 2*ReducedValue(P1->Props.Bn,P2->Props.Bn);
+    Bt   = 2*ReducedValue(P1->Props.Bt,P2->Props.Bt);
+    eps  = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
 }
 
 //Cohesion interacton
