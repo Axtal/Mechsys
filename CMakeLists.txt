@@ -22,13 +22,13 @@ ENABLE_TESTING         ()
 
 # Features                                                                         
 OPTION(A_WITH_PYTHON_MODULE "Create python module (mechsys)" OFF)
-OPTION(A_WITH_TEST          "Compile general tests"          ON )
-OPTION(A_WITH_TFEM          "Compile FEM tests"              ON )
+OPTION(A_WITH_TEST          "Compile general tests"          OFF)
+OPTION(A_WITH_TFEM          "Compile FEM tests"              OFF)
 OPTION(A_WITH_TLBM          "Compile LBM tests"              ON )
 OPTION(A_WITH_TDEM          "Compile DEM tests"              ON )
-OPTION(A_WITH_TSPH          "Compile SPH tests"              ON )
-OPTION(A_WITH_TMPM          "Compile MPM tests"              ON )
-OPTION(A_WITH_TDOC          "Compile documentation tests"    ON )
+OPTION(A_WITH_TSPH          "Compile SPH tests"              OFF)
+OPTION(A_WITH_TMPM          "Compile MPM tests"              OFF)
+OPTION(A_WITH_TDOC          "Compile documentation tests"    OFF)
 
 # needed when building Debian package
 IF(NOT INSTALL_ROOT)

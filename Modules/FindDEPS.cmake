@@ -22,10 +22,11 @@ OPTION(A_MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                    
 OPTION(A_MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                         OFF)
 OPTION(A_MAKE_PROFILING     "Make with profiling information (-pg)"                OFF)
 OPTION(A_MAKE_OPTIMIZED     "Make optimized (-O3)"                                 ON )
-OPTION(A_MAKE_WXW_MONO      "Use wxWidgets monolithic libraries ?"                 ON )
+OPTION(A_MAKE_WXW_MONO      "Use wxWidgets monolithic libraries ?"                 OFF)
 OPTION(A_MAKE_TERM_WHITEBG  "Select colors for terminal with white background ?"   OFF)
 OPTION(A_MAKE_TERM_NOCOLORS "Don't use colors when printing to terminal ?"         OFF)
-OPTION(A_MAKE_STDVECTOR     "Use std::vector instead of own implemenatation ?"     OFF)
+OPTION(A_MAKE_STDVECTOR     "Use std::vector instead of own implemenatation ?"     ON )
+OPTION(A_MAKE_CHECK_OVERLAP "Check for maximun overlapping in DEM simulations"     ON )
                                                                                    
 # Options                                                                          
 OPTION(A_USE_THREAD         "Use (p)Threads ?"                                     ON )
@@ -36,8 +37,8 @@ OPTION(A_USE_VTK            "Use VTK ?"                                         
 OPTION(A_USE_HDF5           "Use HDF5 ?"                                           ON )
 OPTION(A_USE_SUPERLU        "Use SuperLU"                                          OFF)
 OPTION(A_USE_SUPERLUD       "Use SuperLUd"                                         OFF)
-OPTION(A_USE_FLTK           "Use FLTK"                                             ON )
-OPTION(A_USE_CGAL           "Use CGAL"                                             ON )
+OPTION(A_USE_FLTK           "Use FLTK"                                             OFF)
+OPTION(A_USE_CGAL           "Use CGAL"                                             OFF)
 OPTION(A_USE_PARMETIS       "Use ParMETIS"                                         OFF)
 OPTION(A_USE_MUMPS          "Use MUMPS"                                            OFF)
 
@@ -86,6 +87,10 @@ ENDIF(A_MAKE_TERM_NOCOLORS)
 IF(A_MAKE_STDVECTOR)
     ADD_DEFINITIONS (-DUSE_STDVECTOR)
 ENDIF(A_MAKE_STDVECTOR)
+
+IF(A_MAKE_CHECK_OVERLAP)
+    ADD_DEFINITIONS (-DUSE_CHECK_OVERLAP)
+ENDIF(A_MAKE_CHECK_OVERLAP)
 
 ### FIND DEPENDENCIES AND SET FLAGS AND LIBRARIES #######################################################
 

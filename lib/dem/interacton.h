@@ -125,6 +125,8 @@ public:
     void UpdateParameters ();                           ///< Update the parameters
 
     // Data
+    //ListContacts_t Lvv;                            ///< List of edge-edge contacts 
+    //FrictionMap_t  Fdvv;      ///< Static friction displacement for pair of edges
     Vec3_t         Fdvv;                           ///< Static Friction displacement for the vertex vertex pair
     Vec3_t         Fdr;                            ///< Rolling displacement 
     double         beta;                           ///< Rolling stiffness coefficient
@@ -132,6 +134,7 @@ public:
     double         Bn;                             ///< Elastic normal constant for the cohesion
     double         Bt;                             ///< Elastic tangential constant for the cohesion
     double         eps;                            ///< Maximun strain before fracture
+    bool           cohesion;                       ///< A flag to determine if cohesion must be used for spheres or not
 
 protected:
     void _update_rolling_resistance(double dt);               ///< Calculates the rolling resistance torque
@@ -309,6 +312,7 @@ inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
         double delta = P1->Props.R + P2->Props.R - dist;
         if (delta>0)
         {
+#ifdef USE_CHECK_OVERLAP
             //if (delta > 0.4*std::min(P1->Props.R,P2->Props.R))
             if (delta > 0.4*(P1->Props.R+P2->Props.R))
             {
@@ -337,6 +341,7 @@ inline bool CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
                 return true;
                 //throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
             }
+#endif
             // Count a contact
             Nc++;
             First = false;
@@ -483,14 +488,28 @@ inline CInteractonSphere::CInteractonSphere (Particle * Pt1, Particle * Pt2)
     eta  = 2*ReducedValue(Pt1->Props.Eta,Pt2->Props.Eta);
     Bn   = 2*ReducedValue(P1->Props.Bn,P2->Props.Bn);
     Bt   = 2*ReducedValue(P1->Props.Bt,P2->Props.Bt);
-    eps  = 0.0;
+    eps  = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
+
+    if (eps<0.0)
+    {
+        cohesion = true;
+        if (Bn<Kn) throw new Fatal("CInteractonSphere::CInteractonSphere if cohesion is applied, Bn must be larger than Kn");
+    }
+    else
+    {
+        cohesion = false;
+    }
+    
     Nc = 0;
     Nsc = 0;
-    //std::cout << Kn << " " << Kt << " " << Gn << " " << Gt << " " << Mu << " " << eta << " " << beta << std::endl;
 
-    //std::cout << Mu << " " << Pt1->Tag << " " << Pt2->Tag << std::endl;
     Epot = 0.0;
-    Fdr  = 0.0, 0.0, 0.0;
+    Fdr  = OrthoSys::O;
+    Fdvv = OrthoSys::O;
+
+    //std::pair<int,int> p;
+    //p = std::make_pair(0,0);
+    //Lvv.Push(p);
 
     CalcForce(0.0);
 #ifdef USE_THREAD
@@ -570,8 +589,8 @@ inline bool CInteractonSphere::CalcForce(double dt)
 
     if (delta>0)
     {
-        //if (delta > 0.4*std::min(P1->Props.R,P2->Props.R))
-        if (delta > 0.1*(P1->Props.R+P2->Props.R))
+#ifdef USE_CHECK_OVERLAP
+        if (delta > 0.8*(P1->Props.R+P2->Props.R))
         {
             std::cout << std::endl; 
             std::cout << "Maximun overlap between " << P1->Index         << " and " << P2->Index <<  std::endl; 
@@ -596,13 +615,13 @@ inline bool CInteractonSphere::CalcForce(double dt)
             P1->Tag = 10000;
             P2->Tag = 10000;
             return true;
-            //throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
         }
-        // Count a contact
+#endif
+        //Count a contact
         Nc++;
         First = false;
 
-        // update force
+        //update force
         Vec3_t n = (xf-xi)/dist;
         Vec3_t x = xi+n*((P1->Props.R*P1->Props.R-P2->Props.R*P2->Props.R+dist*dist)/(2*dist));
         Xc += x;
@@ -615,27 +634,32 @@ inline bool CInteractonSphere::CalcForce(double dt)
         Vec3_t vt = vrel - dot(n,vrel)*n;
         
         //Cohesion law
-        if (delta>eps)
+        if (cohesion)
+        {
+            if (delta>eps)
+            {
+                Fn  = Kn*delta*n;
+                eps = delta;
+            }
+            else
+            {
+                double delta0 = (1.0-Kn/Bn)*eps;
+                double deltam = (Bn-Kn)*eps/(Bn+Bt);
+                if (delta>deltam)
+                {
+                    Fn  = Bn*(delta-delta0)*n;
+                }
+                else 
+                {
+                    deltam = delta;
+                    eps    = (Bn+Bt)*delta/(Bn-Kn);
+                    Fn     = -Bt*delta*n;
+                }
+            }
+        }
+        else 
         {
             Fn  = Kn*delta*n;
-            eps = delta;
-        }
-        else
-        {
-            double delta0 = (1.0-Kn/Bn)*eps;
-            double deltam = (Bn-Kn)*eps/(Bn+Bt);
-            if (delta>deltam)
-            {
-                Fn  = Bn*(delta-delta0)*n;
-                //std::cout << delta << " " << delta0 << " " << Fn << std::endl;
-            }
-            else 
-            {
-                deltam = delta;
-                eps    = (Bn+Bt)*delta/(Bn-Kn);
-                Fn     = -Bt*delta*n;
-                //std::cout << delta << " " << delta0 << " " << deltam << " " << Fn << std::endl;
-            }
         }
         
         Fnet += Fn;
@@ -645,14 +669,14 @@ inline bool CInteractonSphere::CalcForce(double dt)
         if (norm(tan)>0.0) tan/=norm(tan);
         if (norm(Fdvv)>Mu*norm(Fn)/Kt)
         {
-            // Count a sliding contact
+             //Count a sliding contact
             Nsc++;
             Fdvv = Mu*norm(Fn)/Kt*tan;
             dEfric += Kt*dot(Fdvv,vt)*dt;
         }
         Ftnet += Kt*Fdvv;
         
-        // Calculating the rolling resistance torque
+        //Calculating the rolling resistance torque
         Vec3_t Vr = P1->Props.R*P2->Props.R*cross(Vec3_t(t1 - t2),n)/(P1->Props.R+P2->Props.R);
         Fdr += Vr*dt;
         Fdr -= dot(Fdr,n)*n;
@@ -674,11 +698,10 @@ inline bool CInteractonSphere::CalcForce(double dt)
 
 
 
-        //if (dot(F,n)<0) F-=dot(F,n)*n;
         F1   += -F;
         F2   +=  F;
         dEvis += (Gn*dot(vrel-vt,vrel-vt)+Gt*dot(vt,vt))*dt;
-        // torque
+        //torque
         Vec3_t T, Tt;
         Tt = cross (x1,F) - P1->Props.R*cross(n,Ft);
         Quaternion_t q;
@@ -689,9 +712,6 @@ inline bool CInteractonSphere::CalcForce(double dt)
         Conjugate (P2->Q,q);
         Rotation  (Tt,q,T);
         T2 += T;
-        //Transfering the branch vector information
-        Vec3_t nor = n;
-        Vec3_t dif = P2->x - P1->x;
     }
 
     //If there is at least a contact, increase the coordination number of the particles
@@ -702,6 +722,7 @@ inline bool CInteractonSphere::CalcForce(double dt)
         if (!P1->IsFree()) P2->Bdry = true;
         if (!P2->IsFree()) P1->Bdry = true;
     }
+    //return overlap;
     return false;
 }
 
