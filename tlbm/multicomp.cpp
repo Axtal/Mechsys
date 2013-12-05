@@ -35,12 +35,11 @@ void Setup(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     for (size_t j=0;j<dom.Lat.Size();j++)
-    for (size_t i=0;i<dom.Lat[j].Cells.Size();i++)
+    for (size_t i=0;i<dom.Lat[j].Ncells;i++)
     {
         Cell * c = dom.Lat[j].Cells[i];
         c->BForcef = c->Density()*dat.g;
     }
-
 }
 
 
@@ -66,13 +65,6 @@ int main(int argc, char **argv) try
         Dom.Lat[1].GetCell(iVec3_t(i,0   ,0))->IsSolid = true;
         Dom.Lat[1].GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
     }
-    //for (size_t i=0;i<ny;i++)
-    //{
-        //Dom.Lat[0].GetCell(iVec3_t(0   ,i,0))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(nx-1,i,0))->IsSolid = true;
-        //Dom.Lat[1].GetCell(iVec3_t(0   ,i,0))->IsSolid = true;
-        //Dom.Lat[1].GetCell(iVec3_t(nx-1,i,0))->IsSolid = true;
-    //}
 
     // Set inner drop
     int obsX = nx/2, obsY = ny/2;
@@ -84,25 +76,23 @@ int main(int argc, char **argv) try
 		Vec3_t V;  V = 0.0, 0.0, 0.0;
 		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
 		{
-            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
-            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
-            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
-            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(100.0,V);
+            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
+            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
+            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
+            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(100.0,V);
 		}
 		else
 		{
-            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
-            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(100.0,V);
-            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
-            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
+            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
+            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(100.0,V);
+            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
+            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
 		}
     }
 
     // Set parameters
     Dom.Lat[0].G = -200.0;
-    Dom.Lat[0].Gs= -600.0;
-    //Dom.Lat[0].G = -0.0;
-    //Dom.Lat[0].Gs= -0.0;
+    Dom.Lat[0].Gs= -200.0;
     Dom.Lat[1].G =  0.0;
     Dom.Lat[1].Gs=  0.0;
     Dom.Gmix     =  0.001;
