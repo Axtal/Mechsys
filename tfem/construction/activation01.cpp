@@ -30,7 +30,7 @@ using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
 
-#undef USE_HDF5
+//#undef USE_HDF5
 
 int main(int argc, char **argv) try
 {
@@ -98,6 +98,7 @@ int main(int argc, char **argv) try
     buf = fkey + "_mesh";
     mesh.WriteMPY (buf.CStr());
     mesh.WriteVTU (buf.CStr());
+    mesh.WriteJSON (buf.CStr());
 
     // initial values
     Dict inis;

@@ -143,7 +143,7 @@ int main(int argc, char **argv) try
 
     // error tolerance
     SDPair nod_tol, ele_tol;
-    nod_tol.Set("hh Rhh", 1.0e-13,1.0e-13);
+    nod_tol.Set("hh Rhh", 1.0e-13,1.0e-12);
     ele_tol.Set("gx gy",  1.0e-12,1.0e-12);
 
     // return error flag

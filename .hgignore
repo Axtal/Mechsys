@@ -101,6 +101,8 @@ tdem/test_read
 tdem/test_tetrahedra
 tdem/test_write
 tdem/ttt
+tdem/viewbucket
+tdem/viewbucket.py
 test/tplotxy
 tdoc/doc_vtk1
 test/models/fcrit
