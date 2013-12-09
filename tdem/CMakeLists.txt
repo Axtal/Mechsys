@@ -35,10 +35,9 @@ SET(EXES
   brazil_test
   figure
   test_01
-  test_02)
-  #test_copy)
-  #test_comm01
-  #test_comm02)
+  test_02
+  viewbucket
+)
 
 SET(TESTS
   test_distances)

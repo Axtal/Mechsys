@@ -81,32 +81,35 @@ inline void POVDrawPolygon (Array<Vec3_t> const & V, std::ostream & os, char con
 
 inline void BPYHeader (std::ostream & os)
 {
-    os << "from Blender import *\n";
-    os << "from bpy import *\n";
-    os << "from Blender import Mathutils\n";
-    os << "from Blender.Mathutils import *\n";
-    os << "s = data.scenes.active\n";
+    os << "import bpy\n";
+    os << "import mathutils\n";
 }
 
 inline void BPYDrawVert (Vec3_t const & V, std::ostream & os, double Radius=1.0)
 {
-    os << "m = Mesh.Primitives.UVsphere(32,32,"<<Radius*2.0<<")\n";
-    os << "o = s.objects.new(m,'Sphere')\n";
-    os << "o.setLocation("<<V(0)<<","<<V(1)<<","<<V(2)<<")\n";
+	os << "bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, size="<<Radius<<", location=("<<V(0)<<","<<V(1)<<","<<V(2)<<"))\n";
 }
 
 inline void BPYDrawPolygon (Array<Vec3_t> const & V, std::ostream & os)
 {
-    size_t N = V.Size();
-    Vec3_t mid;
-    mid = 0.0, 0.0, 0.0;
-    for (size_t i=0; i<V.Size(); i++) mid += V[i];
-    mid /= V.Size();
-    for (size_t i=0; i<N; i++) 
+	os << "v = [";
+    for (size_t i=0; i<V.Size(); i++)
     {   
-        os << "m = data.meshes.new('Face') \no = s.objects.new(m,'Face') \nv = [["<<V[i](0)<<","<<V[i](1)<<","<<V[i](2)<<"],["<<V[(i+1)%N](0)<<","<<V[(i+1)%N](1)<<","<<V[(i+1)%N](2)<<"],["<<mid(0)<<","<<mid(1)<<","<<mid(2)<<"]]\n";
-        os << "f = [[0,1,2]] \nm.verts.extend(v) \nm.faces.extend(f) \n";
+    	os << "("<<V[i](0)<<","<<V[i](1)<<","<<V[i](2)<<"),";
     }
+	os << "]\n";
+	os << "f = [(";
+	for (size_t i=0; i<V.Size(); i++)
+	{
+		os << i <<",";
+	}
+	os << "0)]\n";
+    os << "m = bpy.data.meshes.new(\"o\")\n";
+    os << "o = bpy.data.objects.new(\"o\", m)\n";
+    os << "o.location = bpy.context.scene.cursor_location\n";
+    os << "bpy.context.scene.objects.link(o)\n";
+    os << "m.from_pydata(v,[],f)\n";
+    os << "m.update(calc_edges=True)\n";
 }
 
 }

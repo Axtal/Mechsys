@@ -856,9 +856,54 @@ inline void Particle::Draw (std::ostream & os, char const * Color, bool BPY)
     {
         Edges[i]->Draw(os,Props.R,Color,BPY);
     }
-    for (size_t i=0; i<Faces.Size(); ++i)
+    if (BPY)
     {
-        Faces[i]->Draw(os,Props.R,Color,BPY);
+        Vec3_t x, n;
+        os << "v" << Index << " = [";
+        std::ostringstream oss;
+        for (size_t i=0; i<Faces.Size(); ++i)
+        {
+            n = cross(Faces[i]->Edges[0]->dL, Faces[i]->Edges[1]->dL);
+            n = n/norm(n);
+            for (size_t j=0; j<Faces[i]->Edges.Size(); j++)
+            {
+                x = *(Faces[i]->Edges[j]->X0) - Props.R * n;
+                os << "("<<x(0)<<","<<x(1)<<","<<x(2)<<"),";
+                x = *(Faces[i]->Edges[j]->X0) + Props.R * n;
+                oss << "("<<x(0)<<","<<x(1)<<","<<x(2)<<"),";
+            }
+        }
+        os << oss.str() << "]\n";
+        os << "f" << Index << " = [";
+        size_t stride = 0;
+        for (size_t k=0; k<2; ++k)
+        {
+            for (size_t i=0; i<Faces.Size(); ++i)
+            {
+                os << "(";
+                for (size_t j=0; j<Faces[i]->Edges.Size(); j++)
+                {
+                    os << stride + j << ",";
+                }
+                //os << stride << "),";
+                os << "),";
+                stride += Faces[i]->Edges.Size();
+            }
+        }
+        os << "]\n";
+        os << "m" << Index << " = bpy.data.meshes.new(\"p" << Index << "\")\n";
+        os << "o" << Index << " = bpy.data.objects.new(\"p" << Index << "\", m" << Index << ")\n";
+        os << "bpy.context.scene.objects.link(o" << Index << ")\n";
+        os << "m" << Index << ".from_pydata(v" << Index << ",[],f" << Index << ")\n";
+        os << "m" << Index << ".update(calc_edges=True)\n";
+        os << "\n";
+    }
+    else
+    {
+        for (size_t i=0; i<Faces.Size(); ++i)
+        {
+            Faces[i]->Draw(os,Props.R,Color,BPY);
+        }
     }
     for (size_t i=0; i<Tori.Size(); ++i)
     {
