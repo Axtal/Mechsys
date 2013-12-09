@@ -29,7 +29,7 @@ using DEM::Domain;
 int main( void )
 {
     Domain dom;
-    dom.AddVoroPack (-1, 0.05, 10.0, 10.0, 10.0, 10, 10, 20, 1.0, true, 1200, 1.0,1.0);
+    dom.AddVoroPack (-1, 0.1, 10.0, 10.0, 10.0, 3, 3, 3, 1.0, true, 1200, 1.0,1.0);
     //dom.AddCube(-1,Vec3_t(0.0,0.0,-3.0),0.1,1.0,3.0,0.0,&OrthoSys::e0);
     //dom.AddCube(-2,Vec3_t(0.0,0.0, 3.0),0.1,1.0,3.0,0.0,&OrthoSys::e0);
     //dom.AddTetra(-1,Vec3_t(0.0,0.0,-3.0),0.1,1.0,3.0,0.0,&OrthoSys::e0);
@@ -40,6 +40,7 @@ int main( void )
     dom.Initialize();
     dom.Save("domainwrite");
     dom.WriteXDMF("domainwrite");
+    dom.WriteBPY("domainwrite");
     
     return 0;
 }

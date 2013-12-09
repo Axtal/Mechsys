@@ -53,7 +53,7 @@ int main(int argc, char **argv) try
     size_t ncp = size(sig);
 
     Vec3_t L, v0,v1,v2, dpdL, dqdL;
-    Vec3_t dtdL;
+    Vec3_t dtdL(0, 0, 0);
     Vec3_t dev_L, Ii(1.0,1.0,1.0), Lb;
     Vec_t  dev_sig(ncp), dI1(ncp),dI2(ncp),dI3(ncp), P0,P1,P2;
     double s1,s2,s3, p,q,t, p1,q1,q2,q3,t1;
