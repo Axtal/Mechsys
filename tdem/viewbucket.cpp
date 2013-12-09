@@ -41,10 +41,15 @@ int main(int argc, char **argv) try
     Vec3_t ex (-10,0.0,0.0);
     d.Particles.Push(new DEM::Particle(-2,"Rawbucket",R,3.0,10.0));// Changed tag to -2
 
-    std::ofstream of("viewbucket.py", std::ios::out);
-    DEM::BPYHeader(of);
-    d.Particles[0]->Draw(of, "Blue", true);
-    of.close();
+    std::ofstream of1("viewbucket.py", std::ios::out);
+    DEM::BPYHeader(of1);
+    d.Particles[0]->Draw(of1, "Red", true);
+    of1.close();
+
+    std::ofstream of2("viewbucket.pov", std::ios::out);
+    DEM::POVHeader(of2);
+    d.Particles[0]->Draw(of2, "Red", false);
+    of2.close();
 
     bool showvert = true;
     bool showedge = true;
