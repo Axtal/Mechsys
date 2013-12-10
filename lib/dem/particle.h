@@ -28,6 +28,12 @@
     #include <pthread.h>
 #endif
 
+// boost => to read json files
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/foreach.hpp>
+
 // MechSys
 #include <mechsys/dem/face.h>
 #include <mechsys/dem/special_functions.h>
@@ -81,6 +87,9 @@ public:
 
     // Destructor
     ~Particle ();
+
+    // Extra constructor methods
+    void ConstructFromJson (int Tag, char const * Filename, double R, double rho=1.0, double scale=1.0); ///< Reads from .msh (json) file format
 
     // Methods
     void   Initialize         (size_t i=0, size_t NCalls=5000);                               ///< Initialize this particle
@@ -625,6 +634,86 @@ inline Particle::~Particle()
     for (size_t i=0; i<Vertso.Size(); ++i) delete Vertso[i];
     for (size_t i=0; i<Edges .Size(); ++i) delete Edges[i];
     for (size_t i=0; i<Faces .Size(); ++i) delete Faces[i];
+}
+
+inline void Particle::ConstructFromJson (int TheTag, char const * Filename, double TheR, double TheRho, double scale)
+{
+    Tag        = TheTag;
+    Cluster    = 0;
+    PropsReady = false;
+    Eroded     = false;
+    v          = 0.0,0.0,0.0;
+    w          = 0.0,0.0,0.0;
+
+    Props.Kn = 1.0e4;   
+    Props.Kt = 5.0e3;   
+    Props.Bn = 1.0e4;   
+    Props.Bt = 5.0e3;   
+    Props.Bm = 5.0e3;
+    Props.Gn = 8.0;   
+    Props.Gt = 0.0;   
+    Props.Gv = 0.0;   
+    Props.Gm = 0.0;   
+    Props.Mu = 0.4;   
+    Props.eps = 0.01;  
+    Props.Beta = 0.12; 
+    Props.Eta = 1.0;  
+    Props.R = TheR;    
+    Props.rho = TheRho;  
+
+    vxf = false;
+    vyf = false;
+    vzf = false;
+
+    wxf = false;
+    wyf = false;
+    wzf = false;
+
+    F  = 0.0,0.0,0.0;
+    Ff = 0.0,0.0,0.0;
+    Tf = 0.0,0.0,0.0;
+
+    try {
+        boost::property_tree::ptree pt;
+        boost::property_tree::read_json(Filename, pt);
+        BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("verts")) {
+            Vec3_t coords;
+            int i = 0;
+            BOOST_FOREACH(boost::property_tree::ptree::value_type & b, a.second.get_child("c")) {
+                coords[i] = scale * boost::lexical_cast<double>(b.second.data());
+                i++;
+            }
+            Verts .Push(new Vec3_t(coords));
+            Vertso.Push(new Vec3_t(coords));
+        }
+        BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("edges")) {
+            Array<int> vids(2);
+            int i = 0;
+            BOOST_FOREACH(boost::property_tree::ptree::value_type & b, a.second.get_child("verts")) {
+                vids[i] = boost::lexical_cast<int>(b.second.data());
+                i++;
+            }
+            Edges.Push(new Edge((*Verts[vids[0]]), (*Verts[vids[1]])));
+            EdgeCon.Push(vids);
+        }
+        BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("faces")) {
+            Array<int>     vids;
+            Array<Vec3_t*> verts;
+            BOOST_FOREACH(boost::property_tree::ptree::value_type & b, a.second.get_child("verts")) {
+                int vid = boost::lexical_cast<int>(b.second.data());
+                vids .Push(vid);
+                verts.Push(Verts[vid]);
+            }
+            Faces.Push(new Face(verts));
+            FaceCon.Push(vids);
+        }
+        printf("[1;32mparticle.h: ConstructFromJson: finished[0m\n");
+    } catch (std::exception & e) {
+        throw new Fatal("particle.h: ConstructFromJson failed:\n\t%s", e.what());
+    }
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
 }
 
 // Methods
