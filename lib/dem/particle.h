@@ -70,6 +70,10 @@ struct ParticleProps
 class Particle
 {
 public:
+    // Additional auxiliary methods
+    void init_default_values (int tag=-1, double r=0.1, double rho=1.0); ///< Initialises default values
+    void poly_calc_props     (Array<Vec3_t> & V);                        ///< Calculates properties for polyhedra
+
     // Constructor
     Particle() {}
     Particle(int                         Tag,      ///< Tag of the particle
@@ -249,30 +253,34 @@ std::ostream & operator<< (std::ostream & os, Particle const & P)
 
 // Constructor and destructor
 
-inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & Fa, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
-    : Tag(TheTag), Cluster(0), PropsReady(false), Eroded(false), v(v0), w(w0)
+inline void Particle::init_default_values(int tag, double r, double rho)
 {
-    Props.Kn = 1.0e4;   
-    Props.Kt = 5.0e3;   
-    Props.Bn = 1.0e4;   
-    Props.Bt = 5.0e3;   
-    Props.Bm = 5.0e3;
-    Props.Gn = 8.0;   
-    Props.Gt = 0.0;   
-    Props.Gv = 0.0;   
-    Props.Gm = 0.0;   
-    Props.Mu = 0.4;   
-    Props.eps = 0.01;  
-    Props.Beta = 0.12; 
-    Props.Eta = 1.0;  
-    Props.R = TheR;    
-    Props.rho = TheRho;  
+    Tag        = tag;
+    Cluster    = 0;
+    PropsReady = false;
+    Eroded     = false;
+    v          = 0.0,0.0,0.0;
+    w          = 0.0,0.0,0.0;
 
+    Props.Kn   = 1.0e4;
+    Props.Kt   = 5.0e3;
+    Props.Bn   = 1.0e4;
+    Props.Bt   = 5.0e3;
+    Props.Bm   = 5.0e3;
+    Props.Gn   = 8.0;
+    Props.Gt   = 0.0;
+    Props.Gv   = 0.0;
+    Props.Gm   = 0.0;
+    Props.Mu   = 0.4;
+    Props.eps  = 0.01;
+    Props.Beta = 0.12;
+    Props.Eta  = 1.0;
+    Props.R    = r;
+    Props.rho  = rho;
 
     vxf = false;
     vyf = false;
     vzf = false;
-
     wxf = false;
     wyf = false;
     wzf = false;
@@ -280,6 +288,46 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
     F  = 0.0,0.0,0.0;
     Ff = 0.0,0.0,0.0;
     Tf = 0.0,0.0,0.0;
+}
+
+inline void Particle::poly_calc_props(Array<Vec3_t> & V)
+{
+    double vol; // volume of the polyhedron
+    Vec3_t CM;  // Center of mass of the polyhedron
+    Mat3_t It;  // Inertia tensor of the polyhedron
+    PolyhedraMP(V,FaceCon,vol,CM,It); // Calculate the mass properties of the polyhedron
+    x       = CM;
+    Props.V = vol;
+    Props.m = vol*Props.rho;
+
+    //Quaternion_t Q; // TODO: why redeclaring this one? there is a member Q already!!! <<<<<<<<<<<<<<<<<<<<<<<<<<
+
+    Vec3_t xp,yp,zp;
+    Eig(It,I,xp,yp,zp);
+    I *= Props.rho;
+    CheckDestroGiro(xp,yp,zp);
+    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+    Q(1) = (yp(2)-zp(1))/(4*Q(0));
+    Q(2) = (zp(0)-xp(2))/(4*Q(0));
+    Q(3) = (xp(1)-yp(0))/(4*Q(0));
+
+    Q = Q/norm(Q); // TODO: the other piece of code normalises Q, so I've added it here as well <<<<<<<<<<<<<<<<<
+
+    Dmax = Distance(CM,V[0])+Props.R;
+    for (size_t i=1; i<Verts.Size(); ++i)
+    {
+        if (Distance(CM,*Verts[i])+Props.R > Dmax) Dmax = Distance(CM,*Verts[i])+Props.R;
+    }
+    Ekin       = 0.0;
+    Erot       = 0.0;
+    PropsReady = true;
+}
+
+inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & Fa, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
+    : Tag(TheTag), Cluster(0), PropsReady(false), Eroded(false), v(v0), w(w0)
+{
+    // default values
+    init_default_values(TheTag, TheR, TheRho);
 
     EdgeCon = E;
     FaceCon = Fa;
@@ -305,24 +353,8 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
 inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, double TheRho)
     : Tag(TheTag), Cluster(0), PropsReady(false), Eroded(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0))
 {
-    Props.Kn = 1.0e4;   
-    Props.Kt = 5.0e3;   
-    Props.Bn = 1.0e4;   
-    Props.Bt = 5.0e3;   
-    Props.Bm = 5.0e3;
-    Props.Gn = 8.0;   
-    Props.Gt = 0.0;   
-    Props.Gv = 0.0;   
-    Props.Gm = 0.0;   
-    Props.Mu = 0.4;   
-    Props.eps = 0.01;  
-    Props.Beta = 0.12; 
-    Props.Eta = 1.0;  
-    Props.R = TheR;    
-    Props.rho = TheRho;  
-
-    Ff = 0.0,0.0,0.0;
-    Tf = 0.0,0.0,0.0;
+    // default values
+    init_default_values(TheTag, TheR, TheRho);
 
     // check if mesh is Shell
     if (!M.IsShell) throw new Fatal("Particle::Particle: Mesh must be of Shell type");
@@ -377,28 +409,8 @@ inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, dou
         Faces.Push (new Face(verts));
     }
 
-    double vol; // volume of the polyhedron
-    Vec3_t CM;  // Center of mass of the polyhedron
-    Mat3_t It;  // Inertia tensor of the polyhedron
-    PolyhedraMP(V,FaceCon,vol,CM,It); // Calculate the mass properties of the polyhedron
-    x       = CM;
-    Props.V = vol;
-    Props.m = vol*TheRho;
-    Quaternion_t Q;
-    Vec3_t xp,yp,zp;
-    Eig(It,I,xp,yp,zp);
-    I *= TheRho;
-    CheckDestroGiro(xp,yp,zp);
-    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
-    Q(1) = (yp(2)-zp(1))/(4*Q(0));
-    Q(2) = (zp(0)-xp(2))/(4*Q(0));
-    Q(3) = (xp(1)-yp(0))/(4*Q(0));
-    Dmax = Distance(CM,V[0])+TheR;
-    for (size_t i=1; i<V.Size(); ++i)
-    {
-        if (Distance(CM,V[i])+TheR > Dmax) Dmax = Distance(CM,V[i])+TheR;
-    }
-    PropsReady = true;
+    // calculate properties
+    poly_calc_props(V);
 
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
@@ -408,6 +420,9 @@ inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, dou
 inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, double TheRho, double scale)
     : Tag(TheTag), Cluster(0), PropsReady(false), Eroded(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0))
 {
+    // default values
+    init_default_values(TheTag, TheR, TheRho);
+
     String fnv(TheFileKey); fnv.append("_verts.mesh");
     String fnf(TheFileKey); fnf.append("_faces.mesh");
     ifstream fnvf(fnv.CStr());
@@ -459,36 +474,6 @@ inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, doub
         //}
         //std::cout << std::endl;
     //}
-
-
-
-    Props.Kn = 1.0e4;   
-    Props.Kt = 5.0e3;   
-    Props.Bn = 1.0e4;   
-    Props.Bt = 5.0e3;   
-    Props.Bm = 5.0e3;
-    Props.Gn = 8.0;   
-    Props.Gt = 0.0;   
-    Props.Gv = 0.0;   
-    Props.Gm = 0.0;   
-    Props.Mu = 0.4;   
-    Props.eps = 0.01;  
-    Props.Beta = 0.12; 
-    Props.Eta = 1.0;  
-    Props.R = TheR;    
-    Props.rho = TheRho;  
-
-    vxf = false;
-    vyf = false;
-    vzf = false;
-
-    wxf = false;
-    wyf = false;
-    wzf = false;
-
-    F  = 0.0,0.0,0.0;
-    Ff = 0.0,0.0,0.0;
-    Tf = 0.0,0.0,0.0;
 
     VFlist.Resize(V.Size());
 
@@ -580,30 +565,8 @@ inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, doub
     EdgeCon = E;
     FaceCon = Fa;
 
-    double vol; // volume of the polyhedron
-    Vec3_t CM;  // Center of mass of the polyhedron
-    Mat3_t It;  // Inertia tensor of the polyhedron
-    PolyhedraMP(V,Fa,vol,CM,It);  //Calculate the mass properties
-    x       = CM;
-    Props.V = vol;
-    Props.m = vol*TheRho;
-    Vec3_t xp,yp,zp;
-    Eig(It,I,xp,yp,zp);
-    CheckDestroGiro(xp,yp,zp);
-    I *= TheRho;
-    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
-    Q(1) = (yp(2)-zp(1))/(4*Q(0));
-    Q(2) = (zp(0)-xp(2))/(4*Q(0));
-    Q(3) = (xp(1)-yp(0))/(4*Q(0));
-    Q = Q/norm(Q);
-    Dmax = Distance(CM,V[0])+TheR;
-    for (size_t i=1; i<V.Size(); ++i)
-    {
-        if (Distance(CM,V[i])+TheR > Dmax) Dmax = Distance(CM,V[i])+TheR;
-    }
-    Ekin = 0.0;
-    Erot = 0.0;
-    PropsReady = true;
+    // calculate properties
+    poly_calc_props(V);
 
     //for (size_t i=0;i<Faces.Size();i++)
     //{
@@ -636,43 +599,13 @@ inline Particle::~Particle()
     for (size_t i=0; i<Faces .Size(); ++i) delete Faces[i];
 }
 
-inline void Particle::ConstructFromJson (int TheTag, char const * Filename, double TheR, double TheRho, double scale)
+inline void Particle::ConstructFromJson (int Tag, char const * Filename, double R, double Rho, double scale)
 {
-    Tag        = TheTag;
-    Cluster    = 0;
-    PropsReady = false;
-    Eroded     = false;
-    v          = 0.0,0.0,0.0;
-    w          = 0.0,0.0,0.0;
+    // default values
+    init_default_values(Tag, R, Rho);
 
-    Props.Kn = 1.0e4;   
-    Props.Kt = 5.0e3;   
-    Props.Bn = 1.0e4;   
-    Props.Bt = 5.0e3;   
-    Props.Bm = 5.0e3;
-    Props.Gn = 8.0;   
-    Props.Gt = 0.0;   
-    Props.Gv = 0.0;   
-    Props.Gm = 0.0;   
-    Props.Mu = 0.4;   
-    Props.eps = 0.01;  
-    Props.Beta = 0.12; 
-    Props.Eta = 1.0;  
-    Props.R = TheR;    
-    Props.rho = TheRho;  
-
-    vxf = false;
-    vyf = false;
-    vzf = false;
-
-    wxf = false;
-    wyf = false;
-    wzf = false;
-
-    F  = 0.0,0.0,0.0;
-    Ff = 0.0,0.0,0.0;
-    Tf = 0.0,0.0,0.0;
-
+    // read json file
+    Array<Vec3_t> V;
     try {
         boost::property_tree::ptree pt;
         boost::property_tree::read_json(Filename, pt);
@@ -685,6 +618,7 @@ inline void Particle::ConstructFromJson (int TheTag, char const * Filename, doub
             }
             Verts .Push(new Vec3_t(coords));
             Vertso.Push(new Vec3_t(coords));
+            V.Push(coords);
         }
         BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("edges")) {
             Array<int> vids(2);
@@ -711,6 +645,10 @@ inline void Particle::ConstructFromJson (int TheTag, char const * Filename, doub
     } catch (std::exception & e) {
         throw new Fatal("particle.h: ConstructFromJson failed:\n\t%s", e.what());
     }
+
+    // calculate properties
+    poly_calc_props(V);
+
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
 #endif
