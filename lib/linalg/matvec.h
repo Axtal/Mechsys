@@ -547,6 +547,33 @@ typedef blitz::TinyVector<double,3> Vec3_t;
 typedef blitz::TinyVector<size_t,3> iVec3_t;
 typedef blitz::TinyVector<bool,3>   bVec3_t;
 
+Mat3_t operator * ( double a, const Mat3_t & A)
+{
+    Mat3_t M;
+    M(0,0)=A(0,0)*a;  M(0,1)=A(0,1)*a;  M(0,2)=A(0,2)*a;
+    M(1,0)=A(1,0)*a;  M(1,1)=A(1,1)*a;  M(1,2)=A(1,2)*a;
+    M(2,0)=A(2,0)*a;  M(2,1)=A(2,1)*a;  M(2,2)=A(2,2)*a;
+    return M;
+}
+
+Mat3_t operator + (const Mat3_t & A, const Mat3_t & B)
+{
+    Mat3_t M;
+    M(0,0)=A(0,0)+B(0,0);  M(0,1)=A(0,1)+B(0,0);  M(0,2)=A(0,2)+B(0,0);
+    M(1,0)=A(1,0)+B(1,0);  M(1,1)=A(1,1)+B(1,0);  M(1,2)=A(1,2)+B(1,0);
+    M(2,0)=A(2,0)+B(2,0);  M(2,1)=A(2,1)+B(2,0);  M(2,2)=A(2,2)+B(2,0);
+    return M;
+}
+
+Mat3_t operator - (const Mat3_t & A, const Mat3_t & B)
+{
+    Mat3_t M;
+    M(0,0)=A(0,0)-B(0,0);  M(0,1)=A(0,1)-B(0,0);  M(0,2)=A(0,2)-B(0,0);
+    M(1,0)=A(1,0)-B(1,0);  M(1,1)=A(1,1)-B(1,0);  M(1,2)=A(1,2)-B(1,0);
+    M(2,0)=A(2,0)-B(2,0);  M(2,1)=A(2,1)-B(2,0);  M(2,2)=A(2,2)-B(2,0);
+    return M;
+}
+
 /** Print vector. */
 inline String PrintVector (Vec3_t const & V, char const * Fmt="%13g", double Tol=1.0e-13)
 {
@@ -782,6 +809,14 @@ inline void Mult (Vec3_t const & A, Mat3_t const & M, Vec3_t & B)
     B(0) = A(0)*M(0,0) + A(1)*M(1,0) + A(2)*M(2,0);
     B(1) = A(0)*M(0,1) + A(1)*M(1,1) + A(2)*M(2,1);
     B(2) = A(0)*M(0,2) + A(1)*M(1,2) + A(2)*M(2,2);
+}
+
+/** Right multiplication. {B} = [M]*{A}.  */
+inline void Mult (Mat3_t const & M, Vec3_t const & A, Vec3_t & B)
+{
+    B(0) = A(0)*M(0,0) + A(1)*M(0,1) + A(2)*M(0,2);
+    B(1) = A(0)*M(1,0) + A(1)*M(1,1) + A(2)*M(1,2);
+    B(2) = A(0)*M(2,0) + A(1)*M(2,1) + A(2)*M(2,2);
 }
 
 /** Matrix multiplication. */

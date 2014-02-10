@@ -133,11 +133,6 @@ int main(int argc, char **argv) try
         }
     }
 
-    //Dom.AddSphere(-1,Vec3_t(0.58*nx*dx,0.65*ny*dx,0.58*nz*dx),0.1*ny,0.4*rho);
-    //Dom.AddSphere(-2,Vec3_t(0.57*nx*dx,0.85*ny*dx,0.57*nz*dx),0.1*ny,rho    );
-    //Dom.AddSphere(-3,Vec3_t(0.43*nx*dx,0.65*ny*dx,0.42*nz*dx),0.1*ny,rho    );
-    //Dom.AddSphere(-4,Vec3_t(0.36*nx*dx,0.85*ny*dx,0.63*nz*dx),0.1*ny,0.3*rho);
-    //Dom.AddSphere(-5,Vec3_t(0.70*nx*dx,0.65*ny*dx,0.40*nz*dx),0.1*ny,0.6*rho);
     Dom.GenBox(-6,1.02*nx,1.02*ny,1.02*nz,1.0,1.1,rho);
     Dom.Center(Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx));
     Dom.GetParticle( -6)->FixVeloc();
@@ -151,14 +146,20 @@ int main(int argc, char **argv) try
     deltag.Push(-8);
     Dom.DelParticles(deltag);
 
+    Dom.AddSphere(-1,Vec3_t(0.58*nx*dx,0.65*ny*dx,0.58*nz*dx),0.1*ny,0.4*rho);
+    Dom.AddSphere(-2,Vec3_t(0.57*nx*dx,0.85*ny*dx,0.57*nz*dx),0.1*ny,rho    );
+    Dom.AddSphere(-3,Vec3_t(0.43*nx*dx,0.65*ny*dx,0.42*nz*dx),0.1*ny,rho    );
+    Dom.AddSphere(-4,Vec3_t(0.36*nx*dx,0.85*ny*dx,0.63*nz*dx),0.1*ny,0.3*rho);
+    Dom.AddSphere(-5,Vec3_t(0.70*nx*dx,0.65*ny*dx,0.40*nz*dx),0.1*ny,0.6*rho);
+
     //
 
-    DEM::Particle * Pa = new DEM::Particle(-1, "duck2", 1.0, 0.2*rho,50.0);
+    //DEM::Particle * Pa = new DEM::Particle(-1, "duck2", 1.0, 0.2*rho,50.0);
     //DEM::Particle * Pa = new DEM::Particle(-1, "dolphin", 0.7, 0.3*rho,0.85);
-    Vec3_t t(0.5*nx,0.75*ny,0.5*nz);
+    //Vec3_t t(0.5*nx,0.75*ny,0.5*nz);
     //Vec3_t t(0.5*nx,0.90*ny,0.5*nz);
-    Dom.Particles.Push(Pa);
-    Pa->Position(t);
+    //Dom.Particles.Push(Pa);
+    //Pa->Position(t);
     //Vec3_t w = Vec3_t(0.005,0.0,0.0),wb;
     //Quaternion_t q;
     //Conjugate (Pa->Q,q);
