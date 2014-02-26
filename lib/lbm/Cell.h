@@ -194,7 +194,7 @@ inline void Cell::Velocity(Vec3_t & V)
 
 inline double Cell::VelDen(Vec3_t & V)
 {
-    V = 0.0, 0.0, 0.0;
+    V = OrthoSys::O;
     if (IsSolid) return 0.0;
     double rho = 0.0;
     for (size_t k=0;k<Nneigh;k++)
@@ -202,8 +202,17 @@ inline double Cell::VelDen(Vec3_t & V)
         V   += F[k]*C[k];
         rho += F[k];
     }
-    if (rho<1.0e-12) return 0.0;
+    //if (rho<1.0e-12)
+    //{
+       //V = OrthoSys::O;
+       //return 0.0;
+    //}
     V *= Cs/rho;
+    if(isnan(rho))
+    { 
+        std::cout << "NaN found in cell: " << Index << std::endl;
+        throw new Fatal("NaN found in one of the cells");
+    }
     return rho;
 }
 

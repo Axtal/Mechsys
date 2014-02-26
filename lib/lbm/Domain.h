@@ -1107,10 +1107,10 @@ void Domain::Collide (size_t n, size_t Np)
                         }
                     }
                     num++;
-                    if (num>2) 
-                    {
-                        throw new Fatal("Domain::Collide: Redefine your time step, the current value ensures unstability");
-                    }
+                    //if (num>2) 
+                    //{
+                        //throw new Fatal("Domain::Collide: Redefine your time step, the current value ensures unstability");
+                    //}
                 }
                 for (size_t k=0;k<c->Nneigh;k++)
                 {
@@ -1123,13 +1123,26 @@ void Domain::Collide (size_t n, size_t Np)
                         std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << std::endl;
                         throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
                     }
-                    c->F[k] = fabs(c->Ftemp[k])*c->Rho/newrho;
+                    c->F[k] = fabs(c->Ftemp[k]);
+                    //c->F[k] = fabs(c->Ftemp[k])*c->Rho/newrho;
                     //std::cout << newrho << std::endl;
                 }
             }
             else
             {
-                for (size_t j = 1;j<c->Nneigh;j++) c->Ftemp[j] = c->F[j];
+                for (size_t j = 1;j<c->Nneigh;j++)
+                {
+                    c->Ftemp[j] = c->F[j];
+                    if (std::isnan(c->Ftemp[j]))
+                    {
+                        c->Gamma = 2.0;
+                        #ifdef USE_HDF5
+                        WriteXDMF("error");
+                        #endif
+                        std::cout << c->Density() << " " << c->BForce << " " << num << " " << c->Index << " " << c->IsSolid << " " << j << std::endl;
+                        throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
+                    }
+                }
                 for (size_t j = 1;j<c->Nneigh;j++) c->F[j]     = c->Ftemp[c->Op[j]];
             }
         }
