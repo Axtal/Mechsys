@@ -302,20 +302,20 @@ void * GlobalForce(void * Data)
             sleep(1);
             throw new Fatal("Maximun overlap detected between particles");
         }
-#ifdef USE_THREAD
-        pthread_mutex_lock  (&(*I)[i]->P1->lck);
-#endif
-        (*I)[i]->P1->F += (*I)[i]->F1;
-        (*I)[i]->P1->T += (*I)[i]->T1;
-#ifdef USE_THREAD
-        pthread_mutex_unlock(&(*I)[i]->P1->lck);
-        pthread_mutex_lock  (&(*I)[i]->P2->lck);
-#endif
-        (*I)[i]->P2->F += (*I)[i]->F2;
-        (*I)[i]->P2->T += (*I)[i]->T2;
-#ifdef USE_THREAD
-        pthread_mutex_unlock(&(*I)[i]->P2->lck);
-#endif
+//#ifdef USE_THREAD
+        //pthread_mutex_lock  (&(*I)[i]->P1->lck);
+//#endif
+        //(*I)[i]->P1->F += (*I)[i]->F1;
+        //(*I)[i]->P1->T += (*I)[i]->T1;
+//#ifdef USE_THREAD
+        //pthread_mutex_unlock(&(*I)[i]->P1->lck);
+        //pthread_mutex_lock  (&(*I)[i]->P2->lck);
+//#endif
+        //(*I)[i]->P2->F += (*I)[i]->F2;
+        //(*I)[i]->P2->T += (*I)[i]->T2;
+//#ifdef USE_THREAD
+        //pthread_mutex_unlock(&(*I)[i]->P2->lck);
+//#endif
 	}
     //std::cout << "Im finished " << dat.ProcRank << std::endl
     return NULL;
@@ -1986,6 +1986,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     Ms = 0.0;
     MaxDmax        =  0.0;
     double MaxKn   =  0.0;
+    double MaxBn   =  0.0;
     double MinDmax = -1.0;
     double MinMass = -1.0;
     for (size_t i=0; i<Particles.Size(); i++) 
@@ -2002,6 +2003,12 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         }
         else NoFreePar.Push(i);
     }
+    for (size_t i=0; i<BInteractons.Size(); i++)
+    {
+        double pbn = BInteractons[i]->Bn/BInteractons[i]->L0;
+        if (pbn > MaxBn) MaxBn = pbn;
+    }
+
 
     // info
     Util::Stopwatch stopwatch;
@@ -2009,7 +2016,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     printf("%s  Total mass   of free particles   =  %g%s\n"       ,TERM_CLR4, Ms                                   , TERM_RST);
     printf("%s  Total volume of free particles   =  %g%s\n"       ,TERM_CLR4, Vs                                   , TERM_RST);
     printf("%s  Total number of particles        =  %zd%s\n"      ,TERM_CLR2, Particles.Size()                     , TERM_RST);
-    printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/MaxKn)              , TERM_RST);
+    printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
     printf("%s  Suggested Verlet distance        =  %g or %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
 
     if (Alpha > MaxDmax)
@@ -2257,6 +2264,13 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_join(thrs[i], NULL);
+        }
+        for (size_t i=0;i<Interactons.Size();i++)
+        {
+            Interactons[i]->P1->F += Interactons[i]->F1;
+            Interactons[i]->P1->T += Interactons[i]->T1;
+            Interactons[i]->P2->F += Interactons[i]->F2;
+            Interactons[i]->P2->T += Interactons[i]->T2;
         }
 
         if (Xmax-Xmin>Alpha)

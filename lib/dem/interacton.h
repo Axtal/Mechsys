@@ -162,7 +162,7 @@ public:
     double L0;                             ///< Equilibrium distance
     double An;                             ///< Angular displacement
     double eps;                            ///< Maximun strain before fracture
-    bool valid;                            ///< Check if the bound has not been broken
+    bool   valid;                          ///< Check if the bound has not been broken
     double s1,t1;                          ///< Planar coordinates for face F1
     double s2,t2;                          ///< Planar coordinates for face F2
     Vec3_t Fnet;                           ///< Net force excerted by the interacton
