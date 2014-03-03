@@ -122,6 +122,7 @@ public:
     void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
 #ifdef USE_HDF5    
     void WriteBF           (char const * FileKey);                                                              ///< Save a h5 with branch and force information
+    void WriteFrac         (char const * FileKey);                                                              ///< Save a xdmf file for fracture visualization
     void WriteXDMF         (char const * FileKey);                                                              ///< Save a xdmf file for visualization
     void Save              (char const * FileKey);                                                              ///< Save the current domain
     void Load              (char const * FileKey);                                                              ///< Load the domain form a file
@@ -3067,6 +3068,45 @@ inline void Domain::WriteXDMF (char const * FileKey)
     std::ofstream of(fn.CStr(), std::ios::out);
     of << oss.str();
     of.close();
+}
+
+inline void Domain::WriteFrac (char const * FileKey)
+{
+    // Counting the number of non valid cohesive interactons
+    size_t N_Faces = 0;
+    size_t N_Verts = 0;
+    size_t nvbi = 0;
+    for (size_t i=0;i<BInteractons.Size();i++)
+    {
+        if (!BInteractons[i]->valid) 
+        {
+            Particle * P1 = BInteractons[i]->P1;
+            Particle * P2 = BInteractons[i]->P2;
+            Face     * F1 = P1->Faces[BInteractons[i]->IF1];
+            Face     * F2 = P2->Faces[BInteractons[i]->IF2];
+            nvbi++;
+            N_Faces += F1->Edges.Size();
+            N_Faces += F2->Edges.Size();
+            N_Verts += F1->Edges.Size() + 1;
+            N_Verts += F2->Edges.Size() + 1;
+        }
+    }
+
+    if (nvbi==0) return;
+
+    //Geometric information
+    float  * Verts   = new float [3*N_Verts];
+    int    * FaceCon = new int   [3*N_Faces];
+       
+    for (size_t i=0;i<BInteractons.Size();i++)
+    {
+        Particle * P1 = BInteractons[i]->P1;
+        Particle * P2 = BInteractons[i]->P2;
+        Face     * F1 = P1->Faces[BInteractons[i]->IF1];
+        Face     * F2 = P2->Faces[BInteractons[i]->IF2];
+        
+    }
+
 }
 
 inline void Domain::Save (char const * FileKey)
