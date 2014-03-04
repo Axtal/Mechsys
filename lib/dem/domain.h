@@ -3026,7 +3026,7 @@ inline void Domain::WriteXDMF (char const * FileKey)
     //oss << "     </Attribute>\n";
     oss << "   </Grid>\n";
     }
-    oss << "   <Grid Name=\"CMCenter\" GridType=\"Uniform\">\n";
+    oss << "   <Grid Name=\"DEM_Center\" GridType=\"Uniform\">\n";
     oss << "     <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"" << Particles.Size() << "\"/>\n";
     oss << "     <Geometry GeometryType=\"XYZ\">\n";
     oss << "       <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"4\" Dimensions=\"" << Particles.Size() << " 3\" >\n";
@@ -3072,6 +3072,7 @@ inline void Domain::WriteXDMF (char const * FileKey)
 
 inline void Domain::WriteFrac (char const * FileKey)
 {
+
     // Counting the number of non valid cohesive interactons
     size_t N_Faces = 0;
     size_t N_Verts = 0;
@@ -3092,33 +3093,172 @@ inline void Domain::WriteFrac (char const * FileKey)
         }
     }
 
+    //std::cout << "1 " << nvbi << std::endl;
+
     if (nvbi==0) return;
 
     //Geometric information
     float  * Verts   = new float [3*N_Verts];
     int    * FaceCon = new int   [3*N_Faces];
+
+    //Atributes
+    int    * Tags    = new int   [  N_Faces];
        
+    size_t n_verts = 0;
+    size_t n_faces = 0;
+    size_t n_attrs = 0;
     for (size_t i=0;i<BInteractons.Size();i++)
     {
+        if (BInteractons[i]->valid) continue;
         Particle * P1 = BInteractons[i]->P1;
         Particle * P2 = BInteractons[i]->P2;
-        Face     * F1 = P1->Faces[BInteractons[i]->IF1];
-        Face     * F2 = P2->Faces[BInteractons[i]->IF2];
-        Array<Vec3_t> Vtemp(Pa->Verts.Size());
-        Array<Vec3_t> Vres (Pa->Verts.Size());
-        for (size_t j=0;j<P1->Verts.Size();j++)
-        {
-            Vtemp[j] = *P1->Verts[j];
-            Vres [j] = *P1->Verts[j];
-        }
-        double multiplier = 0.0;
-        if (P1->Eroded&&P1->Faces.Size()>=4)
-        {
-            DEM::Dilation(Vtemp,P1->EdgeCon,P1->FaceCon,Vres,P1->Props.R);
-            multiplier = 1.0;
-        }
+        size_t    IF1 = BInteractons[i]->IF1;
+        size_t    IF2 = BInteractons[i]->IF2;
+        //std::cout << P1 << " " << P2 <<std::endl;
 
+        //For P1
+        {
+            size_t n_refv = n_verts/3;
+            Array<Vec3_t> Vtemp(P1->Verts.Size());
+            Array<Vec3_t> Vres (P1->Verts.Size());
+            for (size_t j=0;j<P1->Verts.Size();j++)
+            {
+                Vtemp[j] = *P1->Verts[j];
+                Vres [j] = *P1->Verts[j];
+            }
+            double multiplier = 0.0;
+            if (P1->Eroded&&P1->Faces.Size()>=4)
+            {
+                DEM::Dilation(Vtemp,P1->EdgeCon,P1->FaceCon,Vres,P1->Props.R);
+                multiplier = 1.0;
+            }
+            for (size_t j=0;j<P1->FaceCon[IF1].Size();j++)
+            {
+                size_t k = P1->FaceCon[IF1][j];
+                Verts[n_verts++] = float(Vres[k](0));
+                Verts[n_verts++] = float(Vres[k](1));
+                Verts[n_verts++] = float(Vres[k](2));
+            }
+            size_t n_reff = n_verts/3;
+            Vec3_t C,N;
+            P1->Faces[IF1]->Centroid(C);
+            P1->Faces[IF1]->Normal(N);
+            Verts[n_verts++] = float(C(0) + multiplier*P1->Props.R*N(0));
+            Verts[n_verts++] = float(C(1) + multiplier*P1->Props.R*N(1));
+            Verts[n_verts++] = float(C(2) + multiplier*P1->Props.R*N(2));
+            for (size_t j=0;j<P1->FaceCon[IF1].Size();j++)
+            {
+                FaceCon[n_faces++] = int(n_reff);  
+                FaceCon[n_faces++] = int(n_refv + j);
+                FaceCon[n_faces++] = int(n_refv + (j+1)%(P1->FaceCon[IF1].Size()));
+                Tags   [n_attrs]   = int(P1->Tag);
+                n_attrs++;
+            }
+        }
+        //std::cout << "2" << std::endl;
+        //For P2
+        {
+            size_t n_refv = n_verts/3;
+            Array<Vec3_t> Vtemp(P2->Verts.Size());
+            Array<Vec3_t> Vres (P2->Verts.Size());
+            for (size_t j=0;j<P2->Verts.Size();j++)
+            {
+                Vtemp[j] = *P2->Verts[j];
+                Vres [j] = *P2->Verts[j];
+            }
+            //std::cout << "3" << std::endl;
+            double multiplier = 0.0;
+            if (P2->Eroded&&P2->Faces.Size()>=4)
+            {
+                DEM::Dilation(Vtemp,P2->EdgeCon,P2->FaceCon,Vres,P2->Props.R);
+                multiplier = 1.0;
+            }
+            //std::cout << "4" << std::endl;
+            for (size_t j=0;j<P2->FaceCon[IF2].Size();j++)
+            {
+                size_t k = P2->FaceCon[IF2][j];
+                Verts[n_verts++] = float(Vres[k](0));
+                Verts[n_verts++] = float(Vres[k](1));
+                Verts[n_verts++] = float(Vres[k](2));
+            }
+            //std::cout << "5" << std::endl;
+            size_t n_reff = n_verts/3;
+            Vec3_t C,N;
+            P2->Faces[IF2]->Centroid(C);
+            P2->Faces[IF2]->Normal(N);
+            Verts[n_verts++] = float(C(0) + multiplier*P2->Props.R*N(0));
+            Verts[n_verts++] = float(C(1) + multiplier*P2->Props.R*N(1));
+            Verts[n_verts++] = float(C(2) + multiplier*P2->Props.R*N(2));
+            //std::cout << "6" << std::endl;
+            for (size_t j=0;j<P2->FaceCon[IF2].Size();j++)
+            {
+                FaceCon[n_faces++] = int(n_reff);  
+                FaceCon[n_faces++] = int(n_refv + j);
+                FaceCon[n_faces++] = int(n_refv + (j+1)%(P2->FaceCon[IF2].Size()));
+                Tags   [n_attrs]   = int(P2->Tag);
+                n_attrs++;
+            }
+            //std::cout << "7" << std::endl;
+        }
     }
+    //std::cout << n_faces << " " << N_Faces << std::endl;
+    //Write the data
+    String fn(FileKey);
+    fn.append(".h5");
+    hid_t     file_id;
+    file_id = H5Fcreate(fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    hsize_t dims[1];
+    String dsname;
+    dims[0] = 3*N_Verts;
+    dsname.Printf("Verts");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Verts);
+    dims[0] = 3*N_Faces;
+    dsname.Printf("FaceCon");
+    H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,FaceCon);
+    dims[0] = N_Faces;
+    dsname.Printf("Tag");
+    H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,Tags   );
+
+    //Erasing the data
+    delete [] Verts;
+    delete [] FaceCon;
+    delete [] Tags;
+
+    //Closing the file
+    H5Fflush(file_id,H5F_SCOPE_GLOBAL);
+    H5Fclose(file_id);
+
+    //Writing xmf file
+    std::ostringstream oss;
+    oss << "<?xml version=\"1.0\" ?>\n";
+    oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
+    oss << "<Xdmf Version=\"2.0\">\n";
+    oss << " <Domain>\n";
+    oss << "   <Grid Name=\"DEM_Faces\">\n";
+    oss << "     <Topology TopologyType=\"Triangle\" NumberOfElements=\"" << N_Faces << "\">\n";
+    oss << "       <DataItem Format=\"HDF\" DataType=\"Int\" Dimensions=\"" << N_Faces << " 3\">\n";
+    oss << "        " << fn.CStr() <<":/FaceCon \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Topology>\n";
+    oss << "     <Geometry GeometryType=\"XYZ\">\n";
+    oss << "       <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"4\" Dimensions=\"" << N_Verts << " 3\" >\n";
+    oss << "        " << fn.CStr() <<":/Verts \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Geometry>\n";
+    oss << "     <Attribute Name=\"Tag\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+    oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Tag \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "   </Grid>\n";
+    oss << " </Domain>\n";
+    oss << "</Xdmf>\n";
+
+    fn = FileKey;
+    fn.append(".xmf");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
 
 }
 
