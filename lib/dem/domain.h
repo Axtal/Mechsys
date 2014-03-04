@@ -2649,6 +2649,7 @@ inline void Domain::WriteBF (char const * FileKey)
 
     size_t idx = 0;
 
+    // Saving Collision forces
     for (size_t i=0;i<CInteractons.Size();i++)
     {
         //if ((norm(CInteractons[i]->Fnet)>1.0e-12)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree()))
@@ -2704,6 +2705,61 @@ inline void Domain::WriteBF (char const * FileKey)
     delete [] ID1;
     delete [] ID2;
 
+    //Saving Cohesive forces
+    if (BInteractons.Size()>0)
+    {
+    float  *  Bnnet = new float[3*BInteractons.Size()];
+    float  *  Btnet = new float[3*BInteractons.Size()];
+    float  *  BOrig = new float[3*BInteractons.Size()];
+    int    *  BVal  = new   int[  BInteractons.Size()];
+    int    *  BID1  = new   int[  BInteractons.Size()];
+    int    *  BID2  = new   int[  BInteractons.Size()];
+
+    idx = 0;
+    for (size_t i=0;i<BInteractons.Size();i++)
+    {
+        Bnnet [3*idx  ] = float(BInteractons[i]->Fnet  (0));
+        Bnnet [3*idx+1] = float(BInteractons[i]->Fnet  (1));
+        Bnnet [3*idx+2] = float(BInteractons[i]->Fnet  (2));
+        Btnet [3*idx  ] = float(BInteractons[i]->Ftnet (0));
+        Btnet [3*idx+1] = float(BInteractons[i]->Ftnet (1));
+        Btnet [3*idx+2] = float(BInteractons[i]->Ftnet (2));
+        BOrig [3*idx  ] = float(BInteractons[i]->xnet(0));
+        BOrig [3*idx+1] = float(BInteractons[i]->xnet(1)); 
+        BOrig [3*idx+2] = float(BInteractons[i]->xnet(2)); 
+        BVal  [idx]     = int  (BInteractons[i]->valid);
+        BID1  [idx]     = int  (BInteractons[i]->P1->Index);
+        BID2  [idx]     = int  (BInteractons[i]->P2->Index);
+        idx++;
+
+    }
+    hsize_t dims[1];
+    dims[0] = 3*BInteractons.Size();
+    String dsname;
+    dsname.Printf("BNormal");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Bnnet );
+    dsname.Printf("BTangential");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Btnet );
+    dsname.Printf("BPosition");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,BOrig );
+    dims[0] = BInteractons.Size();
+    dsname.Printf("BVal");
+    H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,BVal  );
+    dsname.Printf("BID1");
+    H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,BID1  );
+    dsname.Printf("BID2");
+    H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,BID2  );
+
+    delete [] Bnnet;
+    delete [] Btnet;
+    delete [] BOrig;
+    delete [] BVal ;
+    delete [] BID1 ;
+    delete [] BID2 ;
+
+
+    }
+
 
     //Closing the file
     H5Fflush(file_id,H5F_SCOPE_GLOBAL);
@@ -2752,6 +2808,42 @@ inline void Domain::WriteBF (char const * FileKey)
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     oss << "   </Grid>\n";
+    if (BInteractons.Size()>0)
+    {
+    oss << "   <Grid Name=\"CohesiveForce\" GridType=\"Uniform\">\n";
+    oss << "     <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"" << BInteractons.Size() << "\"/>\n";
+    oss << "     <Geometry GeometryType=\"XYZ\">\n";
+    oss << "       <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"4\" Dimensions=\"" << BInteractons.Size() << " 3\" >\n";
+    oss << "        " << fn.CStr() <<":/BPosition \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Geometry>\n";
+    oss << "     <Attribute Name=\"BNormal\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << BInteractons.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/BNormal \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"BTangential\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << BInteractons.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/BTangential \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"BVal\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << BInteractons.Size() << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/BVal \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"BID1\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << BInteractons.Size() << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/BID1 \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"BID2\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << BInteractons.Size() << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/BID2 \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "   </Grid>\n";
+    }
     oss << " </Domain>\n";
     oss << "</Xdmf>\n";
     

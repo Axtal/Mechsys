@@ -165,7 +165,9 @@ public:
     bool   valid;                          ///< Check if the bound has not been broken
     double s1,t1;                          ///< Planar coordinates for face F1
     double s2,t2;                          ///< Planar coordinates for face F2
-    Vec3_t Fnet;                           ///< Net force excerted by the interacton
+    Vec3_t Fnet;                           ///< Net Normal force excerted by the interacton
+    Vec3_t Ftnet;                          ///< Net Tangential force excerted by the interacton
+    Vec3_t xnet;                           ///< Position where the force is applied
 
 };
 
@@ -845,22 +847,23 @@ inline bool BInteracton::CalcForce(double dt)
         Vec3_t pro2 = *F->Edges[0]->X0 + s2*F->Edges[0]->dL + t2*F->Edges[1]->dL;
         Vec3_t p2   = -s2*F->Edges[0]->dL - t2*F->Edges[1]->dL;
 
-        // Normal force
+        // force
         double delta = (dot(pro2-pro1,n)-L0)/L0;
         if (delta<0.0) delta = 0.0;
 
-        // Tangential Force
-        Vec3_t x = 0.5*(pro1+pro2);
+        xnet        = 0.5*(pro1+pro2);
         Vec3_t t1,t2,x1,x2;
         Rotation(P1->w,P1->Q,t1);
         Rotation(P2->w,P2->Q,t2);
-        x1 = x - P1->x;
-        x2 = x - P2->x;
-        Vec3_t vrel = -((P2->v-P1->v)+cross(t2,x2)-cross(t1,x1));
-        Vec3_t vt   = vrel - dot(n,vrel)*n;
+        x1 = xnet - P1->x;
+        x2 = xnet - P2->x;
         Vec3_t td   = pro2-pro1-dot(pro2-pro1,n)*n;
-        Vec3_t Fn   = (-Bn*(delta) - Gn*dot(n,vrel))*n;
-        Vec3_t Ft   = -Bt*td/L0 - Gt*vt;
+        //Vec3_t vrel = -((P2->v-P1->v)+cross(t2,x2)-cross(t1,x1));
+        //Vec3_t vt   = vrel - dot(n,vrel)*n;
+        //Fnet        = -Bn*(delta)*n - Gn*dot(n,vrel)*n;
+        //Ftnet       = -Bt*td/L0 - Gt*vt;
+        Fnet        = -Bn*(delta)*n;
+        Ftnet       = -Bt*td/L0;
 
 #ifdef USE_THREAD
         //pthread_mutex_lock(&lck);
@@ -870,19 +873,19 @@ inline bool BInteracton::CalcForce(double dt)
         //std::lock_guard<std::mutex> lk2(P2->mtex);
 #endif
         //Adding forces and torques
-        Fnet   = Fn+Ft;
         //P1->F -= Fnet;
         //P2->F += Fnet;
-        F1 -= Fnet;
-        F2 += Fnet;
+        Vec3_t FT = Fnet + Ftnet;
+        F1 -= FT;
+        F2 += FT;
         Vec3_t T, Tt;
-        Tt = cross (x1,Fnet);
+        Tt = cross (x1,FT);
         Quaternion_t q1;
         Conjugate (P1->Q,q1);
         Rotation  (Tt,q1,T);
         //P1->T -= T;
         T1 -= T;
-        Tt = cross (x2,Fnet);
+        Tt = cross (x2,FT);
         Quaternion_t q2;
         Conjugate (P2->Q,q2);
         Rotation  (Tt,q2,T);

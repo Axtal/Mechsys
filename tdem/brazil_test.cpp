@@ -71,6 +71,11 @@ void Report (DEM::Domain & dom, void *UD)
     }
     if (!dom.Finished) 
     {
+        String ff;
+        ff.Printf    ("%s_bf_%04d",dom.FileKey.CStr(), dom.idx_out);
+        dom.WriteBF  (ff.CStr());
+        ff.Printf    ("%s_frac_%04d",dom.FileKey.CStr(), dom.idx_out);
+        dom.WriteFrac(ff.CStr());
         dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << fabs(dat.force(0)) << Util::_8s << fabs(dat.force(1)) << Util::_8s << fabs(dat.force(2)) << Util::_8s << dat.S << Util::_8s << dom.Listofclusters.Size() << std::endl;
     }
     else
@@ -199,15 +204,16 @@ int main(int argc, char **argv) try
     mesh.Generate();
     d.GenFromMesh(mesh,0.1*sqrt(Amax/10),3.0,true,false,thickness);
     d.Alpha = 0.5*sqrt(Amax/10);
+    d.Dilate = true;
     d.Center();
     Vec3_t Xmin,Xmax;
     d.BoundingBox(Xmin,Xmax);
-    //Vec3_t velocity;
+    Vec3_t velocity;
     if (angle<1.0e-3)
     {
         d.AddPlane(-2, Vec3_t(0.0,Xmin(1)-0.5*sqrt(Amax/10),0.0), 0.5*sqrt(Amax/10), width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
         d.AddPlane(-3, Vec3_t(0.0,Xmax(1)+0.5*sqrt(Amax/10),0.0), 0.5*sqrt(Amax/10), width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
-        //velocity = Vec3_t(0.0,strf*radius/Tf,0.0);
+        velocity = Vec3_t(0.0,strf*radius/Tf,0.0);
     }
     else
     {
@@ -215,14 +221,14 @@ int main(int argc, char **argv) try
         CreateContact(d,-3,angle,angle0+180.0,n_divisions*angle/360.0,1.0*radius,SR,thickness);
         //CreateContact(d,-2,angle,angle0      ,20.0*angle/60.0,radius,SR,thickness);
         //CreateContact(d,-3,angle,angle0+180.0,20.0*angle/60.0,radius,SR,thickness);
-        //velocity = -strf*radius/Tf*Vec3_t(sin(angle0),cos(angle0),0.0);
+        velocity = -strf*radius/Tf*Vec3_t(sin(angle0),cos(angle0),0.0);
     }
     DEM::Particle * p1 = d.GetParticle(-2);
     DEM::Particle * p2 = d.GetParticle(-3);
     p1->FixVeloc();
-    //p1->v =  velocity;
+    p1->v =  velocity;
     p2->FixVeloc();
-    //p2->v = -velocity;
+    p2->v = -velocity;
 
     dat.p1     = p1;
     dat.p2     = p2;
@@ -244,7 +250,8 @@ int main(int argc, char **argv) try
     B.Set(-3,"Bn Bt Bm Gn Gt Eps Kn Kt Mu",Bn,Bt,Bm,Gn,Gt,eps,Kn,Kt,0.0);
     d.SetProps(B);
 
-    d.Solve(Tf, dt, dtOut, &Setup, &Report, filekey.CStr(),Render,Nproc);
+    //d.Solve(Tf, dt, dtOut, &Setup, &Report, filekey.CStr(),Render,Nproc);
+    d.Solve(Tf, dt, dtOut, NULL, &Report, filekey.CStr(),Render,Nproc);
 
 
     return 0;
