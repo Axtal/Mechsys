@@ -634,33 +634,35 @@ inline bool CInteractonSphere::CalcForce(double dt)
         Vec3_t vt = vrel - dot(n,vrel)*n;
         
         //Cohesion law
-        if (cohesion)
-        {
-            if (delta>eps)
-            {
-                Fn  = Kn*delta*n;
-                eps = delta;
-            }
-            else
-            {
-                double delta0 = (1.0-Kn/Bn)*eps;
-                double deltam = (Bn-Kn)*eps/(Bn+Bt);
-                if (delta>deltam)
-                {
-                    Fn  = Bn*(delta-delta0)*n;
-                }
-                else 
-                {
-                    deltam = delta;
-                    eps    = (Bn+Bt)*delta/(Bn-Kn);
-                    Fn     = -Bt*delta*n;
-                }
-            }
-        }
-        else 
-        {
-            Fn  = Kn*delta*n;
-        }
+        //if (cohesion)
+        //{
+            //if (delta>eps)
+            //{
+                //Fn  = Kn*delta*n;
+                //eps = delta;
+            //}
+            //else
+            //{
+                //double delta0 = (1.0-Kn/Bn)*eps;
+                //double deltam = (Bn-Kn)*eps/(Bn+Bt);
+                //if (delta>deltam)
+                //{
+                    //Fn  = Bn*(delta-delta0)*n;
+                //}
+                //else 
+                //{
+                    //deltam = delta;
+                    //eps    = (Bn+Bt)*delta/(Bn-Kn);
+                    //Fn     = -Bt*delta*n;
+                //}
+            //}
+        //}
+        //else 
+        //{
+            //Fn  = Kn*delta*n;
+        //}
+
+        Fn  = Kn*delta*n;
         
         Fnet += Fn;
         Fdvv += vt*dt;

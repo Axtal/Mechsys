@@ -3104,7 +3104,20 @@ inline void Domain::WriteFrac (char const * FileKey)
         Particle * P2 = BInteractons[i]->P2;
         Face     * F1 = P1->Faces[BInteractons[i]->IF1];
         Face     * F2 = P2->Faces[BInteractons[i]->IF2];
-        
+        Array<Vec3_t> Vtemp(Pa->Verts.Size());
+        Array<Vec3_t> Vres (Pa->Verts.Size());
+        for (size_t j=0;j<P1->Verts.Size();j++)
+        {
+            Vtemp[j] = *P1->Verts[j];
+            Vres [j] = *P1->Verts[j];
+        }
+        double multiplier = 0.0;
+        if (P1->Eroded&&P1->Faces.Size()>=4)
+        {
+            DEM::Dilation(Vtemp,P1->EdgeCon,P1->FaceCon,Vres,P1->Props.R);
+            multiplier = 1.0;
+        }
+
     }
 
 }
