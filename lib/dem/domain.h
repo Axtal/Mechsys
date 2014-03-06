@@ -303,22 +303,22 @@ void * GlobalForce(void * Data)
             sleep(1);
             throw new Fatal("Maximun overlap detected between particles");
         }
-//#ifdef USE_THREAD
-        //pthread_mutex_lock  (&(*I)[i]->P1->lck);
-//#endif
-        //(*I)[i]->P1->F += (*I)[i]->F1;
-        //(*I)[i]->P1->T += (*I)[i]->T1;
-//#ifdef USE_THREAD
-        //pthread_mutex_unlock(&(*I)[i]->P1->lck);
-        //pthread_mutex_lock  (&(*I)[i]->P2->lck);
-//#endif
-        //(*I)[i]->P2->F += (*I)[i]->F2;
-        //(*I)[i]->P2->T += (*I)[i]->T2;
-//#ifdef USE_THREAD
-        //pthread_mutex_unlock(&(*I)[i]->P2->lck);
-//#endif
+#ifdef USE_THREAD
+        pthread_mutex_lock  (&(*I)[i]->P1->lck);
+#endif
+        (*I)[i]->P1->F += (*I)[i]->F1;
+        (*I)[i]->P1->T += (*I)[i]->T1;
+#ifdef USE_THREAD
+        pthread_mutex_unlock(&(*I)[i]->P1->lck);
+        pthread_mutex_lock  (&(*I)[i]->P2->lck);
+#endif
+        (*I)[i]->P2->F += (*I)[i]->F2;
+        (*I)[i]->P2->T += (*I)[i]->T2;
+#ifdef USE_THREAD
+        pthread_mutex_unlock(&(*I)[i]->P2->lck);
+#endif
 	}
-    //std::cout << "Im finished " << dat.ProcRank << std::endl
+    //std::cout << "Im finished " << dat.ProcRank << " " << Fn-In << std::endl;
     return NULL;
 }
 
@@ -340,6 +340,7 @@ void * GlobalMove(void * Data)
         //std::cout << "3" << std::endl;
         if ((*P)[i]->MaxDisplacement()>dat.Dmx) dat.Dmx = (*P)[i]->MaxDisplacement();
 	}
+    //std::cout << "Im finished " << dat.ProcRank << " " << Fn-In << std::endl;
     return NULL;
 }
 
@@ -2017,6 +2018,8 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     printf("%s  Total mass   of free particles   =  %g%s\n"       ,TERM_CLR4, Ms                                   , TERM_RST);
     printf("%s  Total volume of free particles   =  %g%s\n"       ,TERM_CLR4, Vs                                   , TERM_RST);
     printf("%s  Total number of particles        =  %zd%s\n"      ,TERM_CLR2, Particles.Size()                     , TERM_RST);
+    printf("%s  Time step                        =  %g%s\n"       ,TERM_CLR2, dt                                   , TERM_RST);
+    printf("%s  Verlet distance                  =  %g%s\n"       ,TERM_CLR2, Alpha                                , TERM_RST);
     printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
     printf("%s  Suggested Verlet distance        =  %g or %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
 
@@ -2246,8 +2249,8 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             tout += dtOut;
         }
 #ifdef USE_THREAD
-        //std::cout << "1" << std::endl;
         //Initialize particles
+        //std::cout << "1" << std::endl;
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_create(&thrs[i], NULL, GlobalIni, &MTD[i]);
@@ -2258,6 +2261,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         }
 
         //Calculate forces
+        //std::cout << "2" << std::endl;
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_create(&thrs[i], NULL, GlobalForce, &MTD[i]);
@@ -2266,14 +2270,16 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         {
             pthread_join(thrs[i], NULL);
         }
-        for (size_t i=0;i<Interactons.Size();i++)
-        {
-            Interactons[i]->P1->F += Interactons[i]->F1;
-            Interactons[i]->P1->T += Interactons[i]->T1;
-            Interactons[i]->P2->F += Interactons[i]->F2;
-            Interactons[i]->P2->T += Interactons[i]->T2;
-        }
-
+        //for (size_t i=0;i<Interactons.Size();i++)
+        //{
+            //Interactons[i]->P1->F += Interactons[i]->F1;
+            //Interactons[i]->P1->T += Interactons[i]->T1;
+            //Interactons[i]->P2->F += Interactons[i]->F2;
+            //Interactons[i]->P2->T += Interactons[i]->T2;
+        //}
+        //
+        // Periodic Boundary
+        //std::cout << "3" << std::endl;
         if (Xmax-Xmin>Alpha)
         {
             for (size_t i=0;i<Nproc;i++)
@@ -2302,11 +2308,12 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             }
         }
 
-        //std::cout << "2" << std::endl;
         // tell the user function to update its data
+        //std::cout << "4" << std::endl;
         if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
 
         // Move Particles
+        //std::cout << "5" << std::endl;
         for (size_t i=0;i<Nproc;i++)
         {
             pthread_create(&thrs[i], NULL, GlobalMove, &MTD[i]);
@@ -2317,20 +2324,20 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             pthread_join(thrs[i], NULL);
             if (maxdis<MTD[i].Dmx) maxdis = MTD[i].Dmx;
         }
-        //std::cout << "3" << std::endl;
 
+        //Update Linked Cells
+        //std::cout << "6" << std::endl;
         if (maxdis>Alpha)
         {
+            //std::cout << "A" <<  std::endl;
             LinkedCell.Resize(0);
             BoundingBox(LCxmin,LCxmax);
             LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
             LinkedCell.Resize(LCellDim(0)*LCellDim(1)*LCellDim(2));
-            //std::cout << "1" << std::endl;
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_create(&thrs[i], NULL, GlobalResetDisplacement, &MTD[i]);
             }
-            //std::cout << "2 " << CInteractons.Size() << std::endl;
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_join(thrs[i], NULL);
@@ -2344,7 +2351,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             {
                 pthread_create(&thrs[i], NULL, GlobalUpdateLinkedCells, &MTD[i]);
             }
-            //std::cout << "3 " << CInteractons.Size() << std::endl;
             Npp = 0;
             for (size_t i=0;i<Nproc;i++)
             {
@@ -2362,12 +2368,10 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
                 }
             }
             //UpdateLinkedCells();
-            //std::cout << "4 " << CInteractons.Size() << std::endl;
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
             }
-            //std::cout << "5 " << CInteractons.Size() << std::endl;
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_join(thrs[i], NULL);
@@ -2386,8 +2390,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
                     }
                 }
             }
-            //std::cout << "6 " << CInteractons.Size() << std::endl;
-            //std::cout << "2 " << CInteractons.Size() << std::endl;
             for (size_t i=0;i<Nproc;i++)
             {
                 pthread_create(&thrs[i], NULL, GlobalResetContacts2, &MTD[i]);
@@ -2470,7 +2472,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
                 }
                 //std::cout << ParXmax.Size() << std::endl;
             }
-            //std::cout << "3 " << PInteractons.Size() << std::endl;
         }
 
 
@@ -3666,7 +3667,6 @@ inline void Domain::Load (char const * FileKey)
 
 #endif
 
-
 #ifdef USE_VTK
 
 void Domain::WriteVTKContacts  (char const * FileKey)
@@ -3766,7 +3766,6 @@ void Domain::WriteVTKContacts  (char const * FileKey)
 }
 
 #endif // USE_VTK
-
 
 #ifdef USE_THREAD
 

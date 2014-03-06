@@ -10,7 +10,7 @@
 -0.2          Gn;                 
 0.0           Gt;                 
 0.01          eps;                
-30.0          Amax;
+5.0          Amax;
 0.4           width;
 1.0           SR of plates
 0.0          angle0
