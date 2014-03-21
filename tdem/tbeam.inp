@@ -1,11 +1,11 @@
 0.05   = Verlet:      Verlet distance for optimization
 voronoi = ptype:       Particle type (voronoi, sphere,rice and tetrahedra mesh so far)
-tensile = test:        Type of test (tensile or vibration)
-1       = RenderVideo: 1 if video should be render, 0 otherwise
+bending = test:        Type of test (tensile or vibration)
+2       = RenderVideo: 1 if video should be render, 0 otherwise
 5.0e4   = Kn:          Normal stiffness
 5.0e4   = Kt:          Tangential stiffness
-8.0     = Gn:          Normal dissipative coefficient
-8.0     = Gt:          Tangential dissipative coefficient
+-0.2     = Gn:          Normal dissipative coefficient
+0.0     = Gt:          Tangential dissipative coefficient
 0.3     = Mu:          Microscopic friction coefficient
 2.0e5   = Bn:          Cohesion Normal stiffness
 2.0e5   = Bt:          Cohesion Tangential stiffness

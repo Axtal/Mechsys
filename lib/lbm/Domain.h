@@ -1076,6 +1076,7 @@ void Domain::Collide (size_t n, size_t Np)
         {
             Cell * c = Lat[j].Cells[i];
             double rho = c->Rho;
+            //if (rho<1.0e-12) continue;
             //if (c->IsSolid||rho<1.0e-12) continue;
             if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
             //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
@@ -1083,22 +1084,24 @@ void Domain::Collide (size_t n, size_t Np)
             {
                 double Tau = Lat[j].Tau;
                 Vec3_t DV  = Vmix + c->BForce*dt/rho;
-                double Bn  = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
+                //Vec3_t DV  = Vmix + c->BForce*Tau/rho;
+                double Bn;
+                rho<10e-12 ? Bn =0.0 : Bn = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
                 bool valid  = true;
                 double alphal = 1.0;
                 double alphat = 1.0;
                 size_t num  = 0;
-                double newrho = 0.0;
+                //double newrho = 0.0;
                 while (valid)
                 {
-                    newrho = 0.0;
+                    //newrho = 0.0;
                     valid = false;
                     alphal  = alphat;
                     for (size_t k=0;k<c->Nneigh;k++)
                     {
                         double FDeqn = c->Feq(k,DV,rho);
                         c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
-                        newrho += c->Ftemp[k];
+                        //newrho += c->Ftemp[k];
                         if (c->Ftemp[k]<0.0&&num<1)
                         {
                             double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
@@ -1107,10 +1110,10 @@ void Domain::Collide (size_t n, size_t Np)
                         }
                     }
                     num++;
-                    //if (num>2) 
-                    //{
-                        //throw new Fatal("Domain::Collide: Redefine your time step, the current value ensures unstability");
-                    //}
+                    if (num>2) 
+                    {
+                        throw new Fatal("Domain::Collide: Redefine your time step, the current value ensures unstability");
+                    }
                 }
                 for (size_t k=0;k<c->Nneigh;k++)
                 {
@@ -1133,7 +1136,11 @@ void Domain::Collide (size_t n, size_t Np)
                 for (size_t j = 1;j<c->Nneigh;j++)
                 {
                     c->Ftemp[j] = c->F[j];
-                    if (std::isnan(c->Ftemp[j]))
+                }
+                for (size_t j = 1;j<c->Nneigh;j++)
+                {
+                    c->F[j]     = c->Ftemp[c->Op[j]];
+                    if (std::isnan(c->F[j]))
                     {
                         c->Gamma = 2.0;
                         #ifdef USE_HDF5
@@ -1143,7 +1150,6 @@ void Domain::Collide (size_t n, size_t Np)
                         throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
                     }
                 }
-                for (size_t j = 1;j<c->Nneigh;j++) c->F[j]     = c->Ftemp[c->Op[j]];
             }
         }
     }   

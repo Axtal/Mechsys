@@ -82,8 +82,7 @@ int main(int argc, char **argv) try
     Dom.UserData = &dat;
     Dom.Step = 2;
     Dom.Lat[0].G    = -200.0;
-    //Dom.Lat[0].Gs   = -200.0;
-    Dom.Lat[0].Gs   = -20.0;
+    Dom.Lat[0].Gs   = -0.0;
     Dom.Lat[1].G    = 0.0;
     Dom.Lat[1].Gs   = 0.0;
     Dom.Gmix        =  0.001;

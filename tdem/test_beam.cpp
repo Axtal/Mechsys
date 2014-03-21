@@ -122,16 +122,18 @@ void Report (DEM::Domain & Dom, void * UD)
 int main(int argc, char **argv) try
 {
 
-    if (argc!=2) throw new Fatal("This program must be called with one argument: the name of the data input file without the '.inp' suffix.\nExample:\t %s filekey\n",argv[0]);
+    if (argc<2) throw new Fatal("This program must be called with one argument: the name of the data input file without the '.inp' suffix.\nExample:\t %s filekey\n",argv[0]);
     String filekey  (argv[1]);
     String filename (filekey+".inp");
+    size_t Nproc = 1; 
+    if (argc==3) Nproc=atoi(argv[2]);
     if (!Util::FileExists(filename)) throw new Fatal("File <%s> not found",filename.CStr());
     ifstream infile(filename.CStr());
 
     double verlet;      // Verlet distance for optimization
     String ptype;       // Particle type 
     String test;       // Particle type 
-    bool   RenderVideo; // Decide is video should be render
+    size_t RenderVideo; // Decide is video should be render
     double Kn;          // Normal stiffness
     double Kt;          // Tangential stiffness
     double Gn;          // Normal dissipative coefficient
@@ -245,6 +247,6 @@ int main(int argc, char **argv) try
     p = dom.GetParticle (-2);
     p->FixVeloc();
 
-    dom.Solve (Tf,dt,dtOut, &Setup, &Report, filekey.CStr(), RenderVideo);
+    dom.Solve (Tf,dt,dtOut, &Setup, &Report, filekey.CStr(), RenderVideo, Nproc);
 }
 MECHSYS_CATCH
