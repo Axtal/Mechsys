@@ -97,6 +97,7 @@ public:
     //Methods
 #ifdef USE_HDF5
     void WriteXDMF (char const * FileKey);                                                                                            ///< Write the domain data in xdmf file
+    void Load      (char const * FileKey);                                                                                            ///< Load particle data from Mechsys DEM
 #endif
 
     void Initialize     (double dt=0.0);                                                                                              ///< Set the particles to a initial state and asign the possible insteractions
@@ -917,6 +918,151 @@ inline void Domain::WriteXDMF(char const * FileKey)
     std::ofstream of(fn.CStr(), std::ios::out);
     of << oss.str();
     of.close();
+}
+
+inline void Domain::Load (char const * FileKey)
+{
+
+    // Opening the file for reading
+    String fn(FileKey);
+    fn.append(".hdf5");
+    if (!Util::FileExists(fn)) throw new Fatal("File <%s> not found",fn.CStr());
+    printf("\n%s--- Loading file %s --------------------------------------------%s\n",TERM_CLR1,fn.CStr(),TERM_RST);
+    hid_t file_id;
+    file_id = H5Fopen(fn.CStr(), H5F_ACC_RDONLY, H5P_DEFAULT);
+
+    // Number of particles in the domain
+    int data[1];
+    H5LTread_dataset_int(file_id,"/NP",data);
+    size_t NP = data[0];
+
+    // Loading the particles
+    for (size_t i=0; i<NP; i++)
+    {
+
+        // Creating the string and the group for each particle
+        hid_t group_id;
+        String par;
+        par.Printf("/Particle_%08d",i);
+        group_id = H5Gopen(file_id, par.CStr(),H5P_DEFAULT);
+
+        // Finding the particle's position for the domain decomposition
+        double X[3];
+        H5LTread_dataset_double(group_id,"x",X);
+
+
+        // Loading the Vertices
+        H5LTread_dataset_int(group_id,"n_vertices",data);
+        size_t nv = data[0];
+        hid_t gv_id;
+        gv_id = H5Gopen(group_id,"Verts", H5P_DEFAULT);
+        Array<Vec3_t> V;
+
+        for (size_t j=0;j<nv;j++)
+        {
+            String parv;
+            parv.Printf("Verts_%08d",j);
+            double cod[3];
+            H5LTread_dataset_double(gv_id,parv.CStr(),cod);
+            V.Push(Vec3_t(cod[0],cod[1],cod[2]));
+        }
+        
+        // Loading the edges
+        H5LTread_dataset_int(group_id,"n_edges",data);
+        size_t ne = data[0];
+        gv_id = H5Gopen(group_id,"Edges", H5P_DEFAULT);
+        Array<Array <int> > E;
+
+        for (size_t j=0;j<ne;j++)
+        {
+            String parv;
+            parv.Printf("Edges_%08d",j);
+            int cod[2];
+            H5LTread_dataset_int(gv_id,parv.CStr(),cod);
+            Array<int> Ep(2);
+            Ep[0]=cod[0];
+            Ep[1]=cod[1];
+            E.Push(Ep);
+        }
+
+        // Loading the faces
+
+        // Number of faces of the particle
+        H5LTread_dataset_int(group_id,"n_faces",data);
+        size_t nf = data[0];
+        gv_id = H5Gopen(group_id,"Faces", H5P_DEFAULT);
+        Array<Array <int> > F;
+        
+        // Faces
+        for (size_t j=0;j<nf;j++)
+        {
+            String parv;
+            parv.Printf("Faces_%08d",j);
+            hsize_t dim[1];
+            H5LTget_dataset_info(gv_id,parv.CStr(),dim,NULL,NULL);
+            size_t ns = (size_t)dim[0];
+            int co[ns];
+            Array<int> Fp(ns);
+
+            H5LTread_dataset_int(gv_id,parv.CStr(),co);
+            
+            for (size_t k=0;k<ns;k++)
+            {
+                Fp[k] = co[k];
+            }
+
+            F.Push(Fp);
+
+        }
+
+        Particles.Push (new DEM::Particle(-1,V,E,F,OrthoSys::O,OrthoSys::O,0.1,1.0));
+
+        // Loading vectorial variables
+        Particles[Particles.Size()-1]->x = Vec3_t(X[0],X[1],X[2]);
+        double cd[3];
+        H5LTread_dataset_double(group_id,"xb",cd);
+        Particles[Particles.Size()-1]->xb = Vec3_t(cd[0],cd[1],cd[2]);
+        H5LTread_dataset_double(group_id,"v",cd);
+        Particles[Particles.Size()-1]->v = Vec3_t(cd[0],cd[1],cd[2]);
+        H5LTread_dataset_double(group_id,"w",cd);
+        Particles[Particles.Size()-1]->w = Vec3_t(cd[0],cd[1],cd[2]);
+        H5LTread_dataset_double(group_id,"wb",cd);
+        Particles[Particles.Size()-1]->wb = Vec3_t(cd[0],cd[1],cd[2]);
+        H5LTread_dataset_double(group_id,"I",cd);
+        Particles[Particles.Size()-1]->I = Vec3_t(cd[0],cd[1],cd[2]);
+
+        double cq[4];
+        H5LTread_dataset_double(group_id,"Q",cq);
+        Particles[Particles.Size()-1]->Q = Quaternion_t(cq[0],cq[1],cq[2],cq[3]);
+
+        // Loading the scalar quantities of the particle
+        double dat[1];
+        H5LTread_dataset_double(group_id,"SR",dat);
+        Particles[Particles.Size()-1]->Props.R = dat[0];
+        H5LTread_dataset_double(group_id,"Rho",dat);
+        Particles[Particles.Size()-1]->Props.rho = dat[0];
+        H5LTread_dataset_double(group_id,"m",dat);
+        Particles[Particles.Size()-1]->Props.m = dat[0];
+        H5LTread_dataset_double(group_id,"V",dat);
+        Particles[Particles.Size()-1]->Props.V = dat[0];
+        H5LTread_dataset_double(group_id,"Diam",dat);
+        Particles[Particles.Size()-1]->Diam = dat[0];
+        H5LTread_dataset_double(group_id,"Dmax",dat);
+        Particles[Particles.Size()-1]->Dmax = dat[0];
+        int datint[1];
+        H5LTread_dataset_int(group_id,"Index",datint);
+        //Particles[Particles.Size()-1]->Index = datint[0];
+        Particles[Particles.Size()-1]->Index = Particles.Size()-1;
+        int tag[1];
+        H5LTread_dataset_int(group_id,"Tag",tag);
+        Particles[Particles.Size()-1]->Tag = tag[0];
+        Particles[Particles.Size()-1]->PropsReady = true;
+
+    }
+
+
+    H5Fclose(file_id);
+    printf("\n%s--- Done --------------------------------------------%s\n",TERM_CLR2,TERM_RST);
 }
 #endif
 
