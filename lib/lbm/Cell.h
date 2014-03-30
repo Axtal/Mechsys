@@ -211,6 +211,10 @@ inline double Cell::VelDen(Vec3_t & V)
     if(isnan(rho))
     { 
         std::cout << "NaN found in cell: " << Index << std::endl;
+        for (size_t k=0;k<Nneigh;k++)
+        {
+            std::cout << F[k] << std::endl;
+        }
         throw new Fatal("NaN found in one of the cells");
     }
     return rho;
