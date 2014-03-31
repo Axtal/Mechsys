@@ -199,6 +199,7 @@ inline double Cell::VelDen(Vec3_t & V)
     double rho = 0.0;
     for (size_t k=0;k<Nneigh;k++)
     {
+        if (isnan(F[k])) F[k] = 1.0e-12;
         V   += F[k]*C[k];
         rho += F[k];
     }
@@ -207,7 +208,6 @@ inline double Cell::VelDen(Vec3_t & V)
        //V = OrthoSys::O;
        //return 0.0;
     //}
-    V *= Cs/rho;
     if(isnan(rho))
     { 
         std::cout << "NaN found in cell: " << Index << std::endl;
@@ -217,6 +217,7 @@ inline double Cell::VelDen(Vec3_t & V)
         }
         throw new Fatal("NaN found in one of the cells");
     }
+    V *= Cs/rho;
     return rho;
 }
 
