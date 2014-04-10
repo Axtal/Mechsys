@@ -17,7 +17,7 @@
 ########################################################################
 
 # Flags
-OPTION(A_MAKE_VERBOSE       "Show additional messages during compilation/linking?" OFF)
+OPTION(A_MAKE_VERBOSE       "Show additional messages during compilation/linking?" ON )
 OPTION(A_MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                       ON )
 OPTION(A_MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                         OFF)
 OPTION(A_MAKE_PROFILING     "Make with profiling information (-pg)"                OFF)
@@ -67,7 +67,7 @@ IF(A_MAKE_PROFILING)
 ENDIF(A_MAKE_PROFILING)
 
 IF(A_MAKE_OPTIMIZED)
-	ADD_DEFINITIONS (-Ofast -march=native)
+	ADD_DEFINITIONS (-O3)
 ENDIF(A_MAKE_OPTIMIZED)
 
 IF(A_MAKE_WXW_MONO)
