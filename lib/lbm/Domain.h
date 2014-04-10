@@ -96,8 +96,10 @@ public:
     
     //Methods
 #ifdef USE_HDF5
-    void WriteXDMF (char const * FileKey);                                                                                            ///< Write the domain data in xdmf file
-    void Load      (char const * FileKey);                                                                                            ///< Load particle data from Mechsys DEM
+    void WriteBF           (char const * FileKey);  ///< Save a h5 with branch and force information
+    void WriteFrac         (char const * FileKey);  ///< Save a xdmf file for fracture visualization
+    void WriteXDMF         (char const * FileKey);  ///< Write the domain data in xdmf file
+    void Load              (char const * FileKey);  ///< Load particle data from Mechsys DEM
 #endif
 
     void Initialize     (double dt=0.0);                                                                                              ///< Set the particles to a initial state and asign the possible insteractions
@@ -117,6 +119,7 @@ public:
     bool                                         Initialized;         ///< System (particles and interactons) initialized ?
     bool                                              PrtVec;         ///< Print Vector data into the xdmf-h5 files
     bool                                            Finished;         ///< Has the simulation finished
+    bool                                              Dilate;         ///< True if eroded particles should be dilated for visualization
     String                                           FileKey;         ///< File Key for output files
     Array <Lattice>                                      Lat;         ///< Fluid Lattices
     Array <DEM::Particle *>                        Particles;         ///< Array of Disks
@@ -131,6 +134,9 @@ public:
     double                                             Alpha;         ///< Verlet distance
     double                                              Gmix;         ///< Interaction constant for the mixture
     double                                            Voltot;         ///< toala particle volume
+    double                                           MaxDmax;         ///< Maximun value for the radious of the spheres surronding each particle
+    double                                                Ms;         ///< Total mass of the particles
+    double                                                Vs;         ///< Volume occupied by the grains
     void *                                          UserData;         ///< User Data
     size_t                                           idx_out;         ///< The discrete time step
     size_t                                              Step;         ///< The space step to reduce the size of the h5 file for visualization
@@ -481,6 +487,432 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
 }
 
 #ifdef USE_HDF5
+
+inline void Domain::WriteBF (char const * FileKey)
+{
+
+    size_t n_fn = 0;
+
+    for (size_t i=0;i<CInteractons.Size();i++)
+    {
+        //if ((norm(CInteractons[i]->Fnet)>1.0e-12)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree())) n_fn++;
+        if (norm(CInteractons[i]->Fnet)>1.0e-12) n_fn++;
+    }
+
+    if (n_fn==0) return;
+    
+    String fn(FileKey);
+    fn.append(".h5");
+    hid_t     file_id;
+    file_id = H5Fcreate(fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+    float  *  Fnnet = new float[3*n_fn];
+    float  *  Ftnet = new float[3*n_fn];
+    float  * Branch = new float[3*n_fn];
+    float  *   Orig = new float[3*n_fn];
+    float  *    Fn  = new float[  n_fn];
+    int    *    ID1 = new   int[  n_fn];
+    int    *    ID2 = new   int[  n_fn];
+
+    size_t idx = 0;
+
+    // Saving Collision forces
+    for (size_t i=0;i<CInteractons.Size();i++)
+    {
+        //if ((norm(CInteractons[i]->Fnet)>1.0e-12)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree()))
+        if (norm(CInteractons[i]->Fnet)>1.0e-12)
+        {
+            Fnnet [3*idx  ] = float(CInteractons[i]->Fnet  (0));
+            Fnnet [3*idx+1] = float(CInteractons[i]->Fnet  (1));
+            Fnnet [3*idx+2] = float(CInteractons[i]->Fnet  (2));
+            Ftnet [3*idx  ] = float(CInteractons[i]->Ftnet (0));
+            Ftnet [3*idx+1] = float(CInteractons[i]->Ftnet (1));
+            Ftnet [3*idx+2] = float(CInteractons[i]->Ftnet (2));
+            Branch[3*idx  ] = float(CInteractons[i]->P1->x(0)-CInteractons[i]->P2->x(0));
+            Branch[3*idx+1] = float(CInteractons[i]->P1->x(1)-CInteractons[i]->P2->x(1)); 
+            Branch[3*idx+2] = float(CInteractons[i]->P1->x(2)-CInteractons[i]->P2->x(2)); 
+            //Orig  [3*idx  ] = 0.5*float(CInteractons[i]->P1->x(0)+CInteractons[i]->P2->x(0));
+            //Orig  [3*idx+1] = 0.5*float(CInteractons[i]->P1->x(1)+CInteractons[i]->P2->x(1)); 
+            //Orig  [3*idx+2] = 0.5*float(CInteractons[i]->P1->x(2)+CInteractons[i]->P2->x(2)); 
+            Orig  [3*idx  ] = float(CInteractons[i]->P2->x(0));
+            Orig  [3*idx+1] = float(CInteractons[i]->P2->x(1)); 
+            Orig  [3*idx+2] = float(CInteractons[i]->P2->x(2)); 
+            Fn    [idx]     = float(norm(CInteractons[i]->Fnet));
+            ID1   [idx]     = int  (CInteractons[i]->P1->Index);
+            ID2   [idx]     = int  (CInteractons[i]->P2->Index);
+            idx++;
+        }
+    }
+
+    hsize_t dims[1];
+    dims[0] = 3*n_fn;
+    String dsname;
+    dsname.Printf("Normal");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Fnnet );
+    dsname.Printf("Tangential");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Ftnet );
+    dsname.Printf("Branch");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Branch);
+    dsname.Printf("Position");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Orig);
+    dims[0] = n_fn;
+    dsname.Printf("Fn");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Fn);
+    dsname.Printf("ID1");
+    H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,ID1   );
+    dsname.Printf("ID2");
+    H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,ID2   );
+
+
+    delete [] Fnnet;
+    delete [] Ftnet;
+    delete [] Branch;
+    delete [] Orig;
+    delete [] Fn;
+    delete [] ID1;
+    delete [] ID2;
+
+    //Saving Cohesive forces
+    if (BInteractons.Size()>0)
+    {
+    float  *  Bnnet = new float[3*BInteractons.Size()];
+    float  *  Btnet = new float[3*BInteractons.Size()];
+    float  *  BOrig = new float[3*BInteractons.Size()];
+    int    *  BVal  = new   int[  BInteractons.Size()];
+    int    *  BID1  = new   int[  BInteractons.Size()];
+    int    *  BID2  = new   int[  BInteractons.Size()];
+
+    idx = 0;
+    for (size_t i=0;i<BInteractons.Size();i++)
+    {
+        Bnnet [3*idx  ] = float(BInteractons[i]->Fnet  (0));
+        Bnnet [3*idx+1] = float(BInteractons[i]->Fnet  (1));
+        Bnnet [3*idx+2] = float(BInteractons[i]->Fnet  (2));
+        Btnet [3*idx  ] = float(BInteractons[i]->Ftnet (0));
+        Btnet [3*idx+1] = float(BInteractons[i]->Ftnet (1));
+        Btnet [3*idx+2] = float(BInteractons[i]->Ftnet (2));
+        BOrig [3*idx  ] = float(BInteractons[i]->xnet(0));
+        BOrig [3*idx+1] = float(BInteractons[i]->xnet(1)); 
+        BOrig [3*idx+2] = float(BInteractons[i]->xnet(2)); 
+        BVal  [idx]     = int  (BInteractons[i]->valid);
+        BID1  [idx]     = int  (BInteractons[i]->P1->Index);
+        BID2  [idx]     = int  (BInteractons[i]->P2->Index);
+        idx++;
+
+    }
+    hsize_t dims[1];
+    dims[0] = 3*BInteractons.Size();
+    String dsname;
+    dsname.Printf("BNormal");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Bnnet );
+    dsname.Printf("BTangential");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Btnet );
+    dsname.Printf("BPosition");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,BOrig );
+    dims[0] = BInteractons.Size();
+    dsname.Printf("BVal");
+    H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,BVal  );
+    dsname.Printf("BID1");
+    H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,BID1  );
+    dsname.Printf("BID2");
+    H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,BID2  );
+
+    delete [] Bnnet;
+    delete [] Btnet;
+    delete [] BOrig;
+    delete [] BVal ;
+    delete [] BID1 ;
+    delete [] BID2 ;
+
+
+    }
+
+
+    //Closing the file
+    H5Fflush(file_id,H5F_SCOPE_GLOBAL);
+    H5Fclose(file_id);
+
+    std::ostringstream oss;
+    oss << "<?xml version=\"1.0\" ?>\n";
+    oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
+    oss << "<Xdmf Version=\"2.0\">\n";
+    oss << " <Domain>\n";
+    oss << "   <Grid Name=\"BranchForce\" GridType=\"Uniform\">\n";
+    oss << "     <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"" << n_fn << "\"/>\n";
+    oss << "     <Geometry GeometryType=\"XYZ\">\n";
+    oss << "       <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"4\" Dimensions=\"" << n_fn << " 3\" >\n";
+    oss << "        " << fn.CStr() <<":/Position \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Geometry>\n";
+    oss << "     <Attribute Name=\"Normal\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Normal \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Tangential\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Tangential \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Branch\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Branch \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Fn\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << "\" NumberType=\"Float\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Fn \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"ID1\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/ID1 \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"ID2\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/ID2 \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "   </Grid>\n";
+    if (BInteractons.Size()>0)
+    {
+    oss << "   <Grid Name=\"CohesiveForce\" GridType=\"Uniform\">\n";
+    oss << "     <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"" << BInteractons.Size() << "\"/>\n";
+    oss << "     <Geometry GeometryType=\"XYZ\">\n";
+    oss << "       <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"4\" Dimensions=\"" << BInteractons.Size() << " 3\" >\n";
+    oss << "        " << fn.CStr() <<":/BPosition \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Geometry>\n";
+    oss << "     <Attribute Name=\"BNormal\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << BInteractons.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/BNormal \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"BTangential\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << BInteractons.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/BTangential \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"BVal\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << BInteractons.Size() << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/BVal \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"BID1\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << BInteractons.Size() << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/BID1 \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"BID2\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << BInteractons.Size() << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/BID2 \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "   </Grid>\n";
+    }
+    oss << " </Domain>\n";
+    oss << "</Xdmf>\n";
+    
+    fn = FileKey;
+    fn.append(".xmf");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
+}
+
+inline void Domain::WriteFrac (char const * FileKey)
+{
+
+    // Counting the number of non valid cohesive interactons
+    size_t N_Faces = 0;
+    size_t N_Verts = 0;
+    size_t nvbi = 0;
+    for (size_t i=0;i<BInteractons.Size();i++)
+    {
+        if (!BInteractons[i]->valid) 
+        {
+            DEM::Particle * P1 = BInteractons[i]->P1;
+            DEM::Particle * P2 = BInteractons[i]->P2;
+            DEM::Face     * F1 = P1->Faces[BInteractons[i]->IF1];
+            DEM::Face     * F2 = P2->Faces[BInteractons[i]->IF2];
+            nvbi++;
+            N_Faces += F1->Edges.Size();
+            N_Faces += F2->Edges.Size();
+            N_Verts += F1->Edges.Size() + 1;
+            N_Verts += F2->Edges.Size() + 1;
+        }
+    }
+
+    //std::cout << "1 " << nvbi << std::endl;
+
+    if (nvbi==0) return;
+
+    //Geometric information
+    float  * Verts   = new float [3*N_Verts];
+    int    * FaceCon = new int   [3*N_Faces];
+
+    //Atributes
+    int    * Tags    = new int   [  N_Faces];
+       
+    size_t n_verts = 0;
+    size_t n_faces = 0;
+    size_t n_attrs = 0;
+    for (size_t i=0;i<BInteractons.Size();i++)
+    {
+        if (BInteractons[i]->valid) continue;
+        DEM::Particle * P1 = BInteractons[i]->P1;
+        DEM::Particle * P2 = BInteractons[i]->P2;
+        size_t    IF1 = BInteractons[i]->IF1;
+        size_t    IF2 = BInteractons[i]->IF2;
+        //std::cout << P1 << " " << P2 <<std::endl;
+
+        //For P1
+        {
+            size_t n_refv = n_verts/3;
+            Array<Vec3_t> Vtemp(P1->Verts.Size());
+            Array<Vec3_t> Vres (P1->Verts.Size());
+            for (size_t j=0;j<P1->Verts.Size();j++)
+            {
+                Vtemp[j] = *P1->Verts[j];
+                Vres [j] = *P1->Verts[j];
+            }
+            double multiplier = 0.0;
+            if (P1->Eroded&&P1->Faces.Size()>=4)
+            {
+                DEM::Dilation(Vtemp,P1->EdgeCon,P1->FaceCon,Vres,P1->Props.R);
+                multiplier = 1.0;
+            }
+            for (size_t j=0;j<P1->FaceCon[IF1].Size();j++)
+            {
+                size_t k = P1->FaceCon[IF1][j];
+                Verts[n_verts++] = float(Vres[k](0));
+                Verts[n_verts++] = float(Vres[k](1));
+                Verts[n_verts++] = float(Vres[k](2));
+            }
+            size_t n_reff = n_verts/3;
+            Vec3_t C,N;
+            P1->Faces[IF1]->Centroid(C);
+            P1->Faces[IF1]->Normal(N);
+            Verts[n_verts++] = float(C(0) + multiplier*P1->Props.R*N(0));
+            Verts[n_verts++] = float(C(1) + multiplier*P1->Props.R*N(1));
+            Verts[n_verts++] = float(C(2) + multiplier*P1->Props.R*N(2));
+            for (size_t j=0;j<P1->FaceCon[IF1].Size();j++)
+            {
+                FaceCon[n_faces++] = int(n_reff);  
+                FaceCon[n_faces++] = int(n_refv + j);
+                FaceCon[n_faces++] = int(n_refv + (j+1)%(P1->FaceCon[IF1].Size()));
+                Tags   [n_attrs]   = int(P1->Tag);
+                n_attrs++;
+            }
+        }
+        //std::cout << "2" << std::endl;
+        //For P2
+        {
+            size_t n_refv = n_verts/3;
+            Array<Vec3_t> Vtemp(P2->Verts.Size());
+            Array<Vec3_t> Vres (P2->Verts.Size());
+            for (size_t j=0;j<P2->Verts.Size();j++)
+            {
+                Vtemp[j] = *P2->Verts[j];
+                Vres [j] = *P2->Verts[j];
+            }
+            //std::cout << "3" << std::endl;
+            double multiplier = 0.0;
+            if (P2->Eroded&&P2->Faces.Size()>=4)
+            {
+                DEM::Dilation(Vtemp,P2->EdgeCon,P2->FaceCon,Vres,P2->Props.R);
+                multiplier = 1.0;
+            }
+            //std::cout << "4" << std::endl;
+            for (size_t j=0;j<P2->FaceCon[IF2].Size();j++)
+            {
+                size_t k = P2->FaceCon[IF2][j];
+                Verts[n_verts++] = float(Vres[k](0));
+                Verts[n_verts++] = float(Vres[k](1));
+                Verts[n_verts++] = float(Vres[k](2));
+            }
+            //std::cout << "5" << std::endl;
+            size_t n_reff = n_verts/3;
+            Vec3_t C,N;
+            P2->Faces[IF2]->Centroid(C);
+            P2->Faces[IF2]->Normal(N);
+            Verts[n_verts++] = float(C(0) + multiplier*P2->Props.R*N(0));
+            Verts[n_verts++] = float(C(1) + multiplier*P2->Props.R*N(1));
+            Verts[n_verts++] = float(C(2) + multiplier*P2->Props.R*N(2));
+            //std::cout << "6" << std::endl;
+            for (size_t j=0;j<P2->FaceCon[IF2].Size();j++)
+            {
+                FaceCon[n_faces++] = int(n_reff);  
+                FaceCon[n_faces++] = int(n_refv + j);
+                FaceCon[n_faces++] = int(n_refv + (j+1)%(P2->FaceCon[IF2].Size()));
+                Tags   [n_attrs]   = int(P2->Tag);
+                n_attrs++;
+            }
+            //std::cout << "7" << std::endl;
+        }
+    }
+    //std::cout << n_faces << " " << N_Faces << std::endl;
+    //Write the data
+    String fn(FileKey);
+    fn.append(".h5");
+    hid_t     file_id;
+    file_id = H5Fcreate(fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    hsize_t dims[1];
+    String dsname;
+    dims[0] = 3*N_Verts;
+    dsname.Printf("Verts");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Verts);
+    dims[0] = 3*N_Faces;
+    dsname.Printf("FaceCon");
+    H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,FaceCon);
+    dims[0] = N_Faces;
+    dsname.Printf("Tag");
+    H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,Tags   );
+
+    //Erasing the data
+    delete [] Verts;
+    delete [] FaceCon;
+    delete [] Tags;
+
+    //Closing the file
+    H5Fflush(file_id,H5F_SCOPE_GLOBAL);
+    H5Fclose(file_id);
+
+    //Writing xmf file
+    std::ostringstream oss;
+    oss << "<?xml version=\"1.0\" ?>\n";
+    oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
+    oss << "<Xdmf Version=\"2.0\">\n";
+    oss << " <Domain>\n";
+    oss << "   <Grid Name=\"DEM_Faces\">\n";
+    oss << "     <Topology TopologyType=\"Triangle\" NumberOfElements=\"" << N_Faces << "\">\n";
+    oss << "       <DataItem Format=\"HDF\" DataType=\"Int\" Dimensions=\"" << N_Faces << " 3\">\n";
+    oss << "        " << fn.CStr() <<":/FaceCon \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Topology>\n";
+    oss << "     <Geometry GeometryType=\"XYZ\">\n";
+    oss << "       <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"4\" Dimensions=\"" << N_Verts << " 3\" >\n";
+    oss << "        " << fn.CStr() <<":/Verts \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Geometry>\n";
+    oss << "     <Attribute Name=\"Tag\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+    oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Tag \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "   </Grid>\n";
+    oss << " </Domain>\n";
+    oss << "</Xdmf>\n";
+
+    fn = FileKey;
+    fn.append(".xmf");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
+
+}
+
 inline void Domain::WriteXDMF(char const * FileKey)
 {
     String fn(FileKey);
@@ -596,6 +1028,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
             
             //Atributes
             int    * Tags    = new int   [  N_Faces];
+            int    * Clus    = new int   [  N_Faces];
             float  * Vel     = new float [  N_Faces];
             float  * Ome     = new float [  N_Faces];
             //float  * Stress  = new float [9*N_Faces];
@@ -618,11 +1051,11 @@ inline void Domain::WriteXDMF(char const * FileKey)
                 }
                 double multiplier = 0.0;
 
-                //if (Pa->Faces.Size()>=4)
-                //{
-                    //DEM::Dilation(Vtemp,Pa->EdgeCon,Pa->FaceCon,Vres,Pa->Props.R);
-                    //multiplier = 1.0;
-                //}
+                if (Dilate&&Pa->Eroded&&Pa->Faces.Size()>=4)
+                {
+                    DEM::Dilation(Vtemp,Pa->EdgeCon,Pa->FaceCon,Vres,Pa->Props.R);
+                    multiplier = 1.0;
+                }
 
                 for (size_t j=0;j<Pa->Verts.Size();j++)
                 {
@@ -654,9 +1087,10 @@ inline void Domain::WriteXDMF(char const * FileKey)
                         FaceCon[n_faces++] = (int) n_refv + nen;
 
                         //Writing the attributes
-                        Tags[n_attrs] = (int)   Pa->Tag;
-                        Vel [n_attrs] = (float) norm(Pa->v);
-                        Ome [n_attrs] = (float) norm(Pa->w);
+                        Tags  [n_attrs] = (int)   Pa->Tag;
+                        Clus  [n_attrs] = size_t(Pa->Cluster);
+                        Vel   [n_attrs] = (float) norm(Pa->v);
+                        Ome   [n_attrs] = (float) norm(Pa->w);
                         n_attrs++;
 
                         //Vel [n_attrv  ] = (float) Pa->v(0);
@@ -691,6 +1125,9 @@ inline void Domain::WriteXDMF(char const * FileKey)
             dsname.Printf("Tag");
             H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,Tags   );
             dims[0] = N_Faces;
+            dsname.Printf("Cluster");
+            H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,Clus   );
+            dims[0] = N_Faces;
             dsname.Printf("Velocity");
             H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vel);
             dims[0] = N_Faces;
@@ -704,6 +1141,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
             delete [] Verts;
             delete [] FaceCon;
             delete [] Tags;
+            delete [] Clus;
             delete [] Vel;
             delete [] Ome;
             //delete [] Stress;
@@ -856,6 +1294,11 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "     <Attribute Name=\"Tag\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
         oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Int\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Tag \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Cluster\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+        oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Cluster \n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
@@ -1064,6 +1507,7 @@ inline void Domain::Load (char const * FileKey)
     H5Fclose(file_id);
     printf("\n%s--- Done --------------------------------------------%s\n",TERM_CLR2,TERM_RST);
 }
+
 #endif
 
 inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
@@ -2240,6 +2684,7 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
 
         // add particle
         Particles.Push (new DEM::Particle(M.Cells[i]->Tag, V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+        Particles[Particles.Size()-1]->Eroded = true;
         Particles[Particles.Size()-1]->Index = Particles.Size()-1;
         if (!MC)
         {
@@ -2576,10 +3021,6 @@ inline void Domain::Initialize (double dt)
 inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t ptReport,
                           char const * TheFileKey, bool RenderVideo, size_t Nproc)
 {
-    // info
-    Util::Stopwatch stopwatch;
-    printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    printf("%s  Porosity = %g%s\n",TERM_CLR4,1.0 - Lat[0].SolidFraction(),TERM_RST);
 
     idx_out     = 0;
     FileKey.Printf("%s",TheFileKey);
@@ -2587,6 +3028,50 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
     // initialize particles
     Initialize (dt);
+    // calc the total volume of particles (solids)
+    //FreePar.Resize(0);
+    //NoFreePar.Resize(0);
+    Vs = 0.0;
+    Ms = 0.0;
+    MaxDmax        =  0.0;
+    double MaxKn   =  0.0;
+    double MaxBn   =  0.0;
+    double MinDmax = -1.0;
+    double MinMass = -1.0;
+    for (size_t i=0; i<Particles.Size(); i++) 
+    { 
+        if (Particles[i]->IsFree())
+        {
+            Vs += Particles[i]->Props.V;
+            Ms += Particles[i]->Props.m;
+            if (Particles[i]->Dmax     > MaxDmax) MaxDmax = Particles[i]->Dmax;
+            if (Particles[i]->Props.Kn > MaxKn  ) MaxKn   = Particles[i]->Props.Kn;
+            if (Particles[i]->Dmax     < MinDmax||(MinDmax<0.0)) MinDmax = Particles[i]->Dmax;
+            if (Particles[i]->Props.m  < MinMass||(MinMass<0.0)) MinMass = Particles[i]->Props.m;
+            //FreePar.Push(i);
+        }
+        //else NoFreePar.Push(i);
+    }
+    for (size_t i=0; i<BInteractons.Size(); i++)
+    {
+        double pbn = BInteractons[i]->Bn/BInteractons[i]->L0;
+        if (pbn > MaxBn) MaxBn = pbn;
+    }
+
+    // info
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1   , TERM_RST);
+    printf("%s  Porosity                         = %g%s\n"        ,TERM_CLR4, 1.0 - Lat[0].SolidFraction()         , TERM_RST);
+    printf("%s  Total mass   of free particles   =  %g%s\n"       ,TERM_CLR4, Ms                                   , TERM_RST);
+    printf("%s  Total volume of free particles   =  %g%s\n"       ,TERM_CLR4, Vs                                   , TERM_RST);
+    printf("%s  Total number of particles        =  %zd%s\n"      ,TERM_CLR2, Particles.Size()                     , TERM_RST);
+    printf("%s  Time step                        =  %g%s\n"       ,TERM_CLR2, dt                                   , TERM_RST);
+    printf("%s  Verlet distance                  =  %g%s\n"       ,TERM_CLR2, Alpha                                , TERM_RST);
+    printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
+    printf("%s  Suggested Verlet distance        =  %g or %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
+
+
+
 
     //std::cout << "1" << std::endl;
     // Creates pair of cells to speed up body force calculation
@@ -2624,6 +3109,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             ListPosPairs.Push(make_pair(i,j));
         }
     }
+
     //GlobalResetDisplacement
     for (size_t i=0;i<Nproc;i++)
     {
