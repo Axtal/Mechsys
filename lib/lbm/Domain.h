@@ -34,6 +34,7 @@
 #include <mechsys/util/util.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/mesh/unstructured.h>
+#include <mechsys/util/tree.h>
 
 using std::set;
 using std::map;
@@ -74,6 +75,7 @@ public:
     void BoundingBox       (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
     void Center            (Vec3_t C = Vec3_t(0.0,0.0,0.0));                                                    ///< Centers the domain around C
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
+    void Clusters          ();                                                                                  ///< Check the bounded particles in the domain and how many connected clusters are still present
     
     //Methods for adding particles
     void AddSphere     (int Tag, Vec3_t const & X, double R, double rho);                                                                              ///< Add sphere
@@ -140,6 +142,7 @@ public:
     void *                                          UserData;         ///< User Data
     size_t                                           idx_out;         ///< The discrete time step
     size_t                                              Step;         ///< The space step to reduce the size of the h5 file for visualization
+    Array<Array <int> >                       Listofclusters;         ///< List of particles belonging to bounded clusters (applies only for cohesion simulations)
 };
 
 #ifdef USE_THREAD
@@ -1059,12 +1062,12 @@ inline void Domain::WriteXDMF(char const * FileKey)
 
                 for (size_t j=0;j<Pa->Verts.Size();j++)
                 {
-                    Verts[n_verts++] = (float) (*Pa->Verts[j])(0);
-                    Verts[n_verts++] = (float) (*Pa->Verts[j])(1);
-                    Verts[n_verts++] = (float) (*Pa->Verts[j])(2);
-                    //Verts[n_verts++] = (float) Vres[j](0);
-                    //Verts[n_verts++] = (float) Vres[j](1);
-                    //Verts[n_verts++] = (float) Vres[j](2);
+                    //Verts[n_verts++] = (float) (*Pa->Verts[j])(0);
+                    //Verts[n_verts++] = (float) (*Pa->Verts[j])(1);
+                    //Verts[n_verts++] = (float) (*Pa->Verts[j])(2);
+                    Verts[n_verts++] = (float) Vres[j](0);
+                    Verts[n_verts++] = (float) Vres[j](1);
+                    Verts[n_verts++] = (float) Vres[j](2);
                 }
                 size_t n_reff = n_verts/3;
                 for (size_t j=0;j<Pa->FaceCon.Size();j++)
@@ -1196,7 +1199,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
     H5Fflush(file_id,H5F_SCOPE_GLOBAL);
     H5Fclose(file_id);
 
-	// Writing xmf file
+	// Writing xmf fil
     std::ostringstream oss;
 
     //std::cout << "2" << std::endl;
@@ -2166,6 +2169,29 @@ inline void Domain::SetProps (Dict & D)
     }
 }
 
+inline void Domain::Clusters ()
+{
+    Array<int> connections;
+    for (size_t i=0;i<BInteractons.Size();i++)
+    {
+        if (BInteractons[i]->valid)
+        {
+            connections.Push(BInteractons[i]->P1->Index);
+            connections.Push(BInteractons[i]->P2->Index);
+        }
+    }
+
+    Util::Tree tree(connections);
+    tree.GetClusters(Listofclusters);
+    for (size_t i=0;i<Listofclusters.Size();i++)
+    {
+        for (size_t j=0;j<Listofclusters[i].Size();j++)
+        {
+            Particles[Listofclusters[i][j]]->Cluster = i;
+        }
+    }
+}
+
 //DEM particle methods
 inline void Domain::AddSphere (int Tag,Vec3_t const & X, double R, double rho)
 {
@@ -3061,7 +3087,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     // info
     Util::Stopwatch stopwatch;
     printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1   , TERM_RST);
-    printf("%s  Porosity                         = %g%s\n"        ,TERM_CLR4, 1.0 - Lat[0].SolidFraction()         , TERM_RST);
+    printf("%s  Porosity                         =  %g%s\n"       ,TERM_CLR4, 1.0 - Lat[0].SolidFraction()         , TERM_RST);
     printf("%s  Total mass   of free particles   =  %g%s\n"       ,TERM_CLR4, Ms                                   , TERM_RST);
     printf("%s  Total volume of free particles   =  %g%s\n"       ,TERM_CLR4, Vs                                   , TERM_RST);
     printf("%s  Total number of particles        =  %zd%s\n"      ,TERM_CLR2, Particles.Size()                     , TERM_RST);
@@ -3211,6 +3237,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
                 }
                 if (ptReport!=NULL) (*ptReport) ((*this), UserData);
             }
+            if (BInteractons.Size()>0) Clusters();
             tout += dtOut;
             idx_out++;
         }
