@@ -1716,8 +1716,10 @@ void Domain::Collide (size_t n, size_t Np)
                         #ifdef USE_HDF5
                         WriteXDMF("error");
                         #endif
-                        std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << std::endl;
-                        throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
+                        std::cout << "Nan found, resetting" << std::endl;
+                        std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << " " << std::endl;
+                        c->Ftemp[k] = c->F[k];
+                        //throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
                     }
                     c->F[k] = fabs(c->Ftemp[k]);
                     //c->F[k] = fabs(c->Ftemp[k])*c->Rho/newrho;
@@ -1733,15 +1735,6 @@ void Domain::Collide (size_t n, size_t Np)
                 for (size_t j = 1;j<c->Nneigh;j++)
                 {
                     c->F[j]     = c->Ftemp[c->Op[j]];
-                    if (std::isnan(c->F[j]))
-                    {
-                        c->Gamma = 2.0;
-                        #ifdef USE_HDF5
-                        WriteXDMF("error");
-                        #endif
-                        std::cout << c->Density() << " " << c->BForce << " " << num << " " << c->Index << " " << c->IsSolid << " " << j << std::endl;
-                        throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
-                    }
                 }
             }
         }
