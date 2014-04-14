@@ -85,7 +85,7 @@ public:
     void AddTetra        (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a octahedron at position X with spheroradius R, side of length L and density rho
     void AddPlane        (int Tag, Vec3_t const & X, double R, double Lx,double Ly , double rho, double Angle=0, Vec3_t * Axis=NULL);                    ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, double rho, bool Cohesion=false);                        ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
-    void GenBoundingBox  (int InitialTag, double R, double Cf,bool Cohesion=false);                                                                      ///< Generate o bounding box enclosing the previous included particles.
+    void GenBoundingBox  (int InitialTag, double R, double Cf, double rho, bool Cohesion=false);                                                         ///< Generate o bounding box enclosing the previous included particles.
     void GenFromMesh     (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);                           ///< Generate particles from a FEM mesh generator
     void AddVoroCell     (int Tag, voro::voronoicell & VC, double R, double rho, bool Erode, Vec3_t nv = iVec3_t(1.0,1.0,1.0));                          ///< Add a single voronoi cell, it should be built before tough
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
@@ -204,6 +204,18 @@ void * GlobalForce(void * Data)
             sleep(1);
             throw new Fatal("Maximun overlap detected between particles");
         }
+        if (isnan(norm((*I)[i]->F1)))
+        {
+            std::cout << "Calculated force is not a number at time " << dat.Dom->Time    << std::endl;
+            std::cout << "Particle 1 " << (*I)[i]->P1->Index << " "  << (*I)[i]->P1->Tag << std::endl;
+            std::cout << *(*I)[i]->P1 << std::endl;
+            std::cout << "Particle 2 " << (*I)[i]->P2->Index << " "  << (*I)[i]->P2->Tag << std::endl;
+            std::cout << *(*I)[i]->P2 << std::endl;
+            sleep(1);
+            throw new Fatal("Force is not a number detected between particles");
+        }
+
+
 #ifdef USE_THREAD
         pthread_mutex_lock  (&(*I)[i]->P1->lck);
 #endif
@@ -2614,12 +2626,12 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
     }
 }
 
-inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf,bool Cohesion)
+inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf, double rho, bool Cohesion)
 {
     Center();
     Vec3_t minX,maxX;
     BoundingBox(minX,maxX);
-    GenBox(InitialTag, maxX(0)-minX(0)+2*R, maxX(1)-minX(1)+2*R, maxX(2)-minX(2)+2*R, R, Cf,Cohesion);
+    GenBox(InitialTag, maxX(0)-minX(0)+2*R, maxX(1)-minX(1)+2*R, maxX(2)-minX(2)+2*R, R, Cf, rho, Cohesion);
 }
 
 inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool Cohesion, bool MC, double thickness)

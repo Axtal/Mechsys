@@ -244,6 +244,23 @@ std::ostream & operator<< (std::ostream & os, Particle const & P)
     os << "Dmax          = "  << P.Dmax << std::endl;
     os << "Diam          = "  << P.Diam << std::endl;
     os << "Cn            = "  << P.Cn   << std::endl;
+    os << "Kn            = "  << P.Props.Kn   << std::endl; 
+    os << "Kt            = "  << P.Props.Kt   << std::endl; 
+    os << "Bn            = "  << P.Props.Bn   << std::endl; 
+    os << "Bt            = "  << P.Props.Bt   << std::endl; 
+    os << "Bm            = "  << P.Props.Bm   << std::endl; 
+    os << "Gn            = "  << P.Props.Gn   << std::endl; 
+    os << "Gt            = "  << P.Props.Gt   << std::endl; 
+    os << "Gv            = "  << P.Props.Gv   << std::endl; 
+    os << "Gm            = "  << P.Props.Gm   << std::endl; 
+    os << "Mu            = "  << P.Props.Mu   << std::endl; 
+    os << "eps           = "  << P.Props.eps  << std::endl; 
+    os << "Beta          = "  << P.Props.Beta << std::endl;
+    os << "Eta           = "  << P.Props.Eta  << std::endl; 
+    os << "R             = "  << P.Props.R    << std::endl; 
+    os << "rho           = "  << P.Props.rho  << std::endl; 
+    os << "V             = "  << P.Props.V    << std::endl; 
+    os << "m             = "  << P.Props.m    << std::endl; 
     return os;
 }
 
@@ -267,7 +284,7 @@ inline void Particle::init_default_values(int tag, double r, double rho)
     Props.Bn   = 1.0e4;
     Props.Bt   = 5.0e3;
     Props.Bm   = 5.0e3;
-    Props.Gn   = 8.0;
+    Props.Gn   =-0.2;
     Props.Gt   = 0.0;
     Props.Gv   = 0.0;
     Props.Gm   = 0.0;
@@ -757,8 +774,12 @@ inline void Particle::Translate (double dt)
     //std::cout << "1" << std::endl;
     Ft -= Props.Gv*Props.m*v;
 
-    if(Util::IsNan(norm(F))) 
+    if(Util::IsNan(norm(Ft))) 
     {
+        std::cout << "Position = " << x       << std::endl;
+        std::cout << "Force    = " << Ft      << std::endl;
+        std::cout << "Mass     = " << Props.m << std::endl;
+        std::cout << "Inertia  = " << I       << std::endl;
         printf("Particle::Translate: The force is not a number %zd(%d), try reducing the time step \n",Index,Tag);
         throw new Fatal("Particle::Translate: The force is not a number %zd(%d), try reducing the time step",Index,Tag);
     }
