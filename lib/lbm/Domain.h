@@ -1732,7 +1732,7 @@ void Domain::Collide (size_t n, size_t Np)
                 Tau = 0.5*(Tau + sqrt(Tau*Tau + 6.0*Q*Sc/rho));
 
                 double Bn;
-                rho<10e-12 ? Bn =0.0 : Bn = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
+                rho<10e-12 ? Bn =0.0 : Bn = (c->Gamma*(Lat[j].Tau-0.5))/((1.0-c->Gamma)+(Lat[j].Tau-0.5));
                 bool valid  = true;
                 double alphal = 1.0;
                 double alphat = 1.0;
