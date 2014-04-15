@@ -57,8 +57,8 @@ int main(int argc, char **argv) try
     LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
     UserData dat;
     Dom.UserData = &dat;
-    //dat.g           = 0.0,-0.001,0.0;
-    dat.g           = 0.0,0.0,0.0;
+    dat.g           = 0.0,-0.001,0.0;
+    //dat.g           = 0.0,0.0,0.0;
     for (size_t i=0;i<nx;i++)
     {
         Dom.Lat[0].GetCell(iVec3_t(i,0   ,0))->IsSolid = true;

@@ -140,6 +140,8 @@ public:
     double                                           MaxDmax;         ///< Maximun value for the radious of the spheres surronding each particle
     double                                                Ms;         ///< Total mass of the particles
     double                                                Vs;         ///< Volume occupied by the grains
+    double                                                Sc;         ///< Smagorinsky constant
+    Array <double>                                       EEk;         ///< Diadic velocity tensor trace
     void *                                          UserData;         ///< User Data
     size_t                                           idx_out;         ///< The discrete time step
     size_t                                              Step;         ///< The space step to reduce the size of the h5 file for visualization
@@ -482,7 +484,21 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     dt     = Thedt;
     Alpha  = 10.0;
     Step   = 1;
+    Sc     = 0.17;
     PrtVec = true;
+
+
+    EEk.Resize(Lat[0].Cells[0]->Nneigh);
+    for (size_t k=0;k<Lat[0].Cells[0]->Nneigh;k++)
+    {
+        EEk[k]    = 0.0;
+        for (size_t n=0;n<3;n++)
+        for (size_t m=0;m<3;m++)
+        {
+            EEk[k] += fabs(Lat[0].Cells[0]->C[k][n]*Lat[0].Cells[0]->C[k][m]);
+        }
+    }
+
     printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Size()*Lat[0].Ncells,TERM_RST);
 }
 
@@ -498,7 +514,20 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     dt     = Thedt;
     Alpha  = 10.0;
     Step   = 1;
+    Sc     = 0.17;
     PrtVec = true;
+
+    EEk.Resize(Lat[0].Cells[0]->Nneigh);
+    for (size_t k=0;k<Lat[0].Cells[0]->Nneigh;k++)
+    {
+        EEk[k]    = 0.0;
+        for (size_t n=0;n<3;n++)
+        for (size_t m=0;m<3;m++)
+        {
+            EEk[k] += fabs(Lat[0].Cells[0]->C[k][n]*Lat[0].Cells[0]->C[k][m]);
+        }
+    }
+
     printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Size()*Lat[0].Ncells,TERM_RST);
 }
 
@@ -1688,9 +1717,20 @@ void Domain::Collide (size_t n, size_t Np)
             //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
             if (!c->IsSolid)
             {
-                double Tau = Lat[j].Tau;
+                //Calculate Smagorinsky LES model
+                Array<double> NonEq(c->Nneigh);
                 Vec3_t DV  = Vmix + c->BForce*dt/rho;
-                //Vec3_t DV  = Vmix + c->BForce*Tau/rho;
+                double Tau = Lat[j].Tau;
+                double Q = 0.0;
+                for (size_t k=0;k<c->Nneigh;k++)
+                {
+                    double FDeqn = c->Feq(k,DV,rho);
+                    NonEq[k] = c->F[k] - FDeqn;
+                    Q += NonEq[k]*NonEq[k]*EEk[k];
+                }
+                Q = sqrt(2.0*Q);
+                Tau = 0.5*(Tau + sqrt(Tau*Tau + 6.0*Q*Sc/rho));
+
                 double Bn;
                 rho<10e-12 ? Bn =0.0 : Bn = (c->Gamma*(Tau-0.5))/((1.0-c->Gamma)+(Tau-0.5));
                 bool valid  = true;
@@ -1705,12 +1745,14 @@ void Domain::Collide (size_t n, size_t Np)
                     alphal  = alphat;
                     for (size_t k=0;k<c->Nneigh;k++)
                     {
-                        double FDeqn = c->Feq(k,DV,rho);
-                        c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
+                        //double FDeqn = c->Feq(k,DV,rho);
+                        //c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
+                        c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k]);
                         //newrho += c->Ftemp[k];
                         if (c->Ftemp[k]<0.0&&num<1)
                         {
-                            double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
+                            //double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
+                            double temp = fabs(c->F[k]/((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k]));
                             if (temp<alphat) alphat = temp;
                             valid = true;
                         }
@@ -3075,8 +3117,8 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     Vs = 0.0;
     Ms = 0.0;
     MaxDmax        =  0.0;
-    double MaxKn   =  0.0;
-    double MaxBn   =  0.0;
+    double MaxKn   = -1.0;
+    double MaxBn   = -1.0;
     double MinDmax = -1.0;
     double MinMass = -1.0;
     for (size_t i=0; i<Particles.Size(); i++) 
@@ -3086,7 +3128,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             Vs += Particles[i]->Props.V;
             Ms += Particles[i]->Props.m;
             if (Particles[i]->Dmax     > MaxDmax) MaxDmax = Particles[i]->Dmax;
-            if (Particles[i]->Props.Kn > MaxKn  ) MaxKn   = Particles[i]->Props.Kn;
+            if (Particles[i]->Props.Kn > MaxKn  ||(MinDmax<0.0)) MaxKn   = Particles[i]->Props.Kn;
             if (Particles[i]->Dmax     < MinDmax||(MinDmax<0.0)) MinDmax = Particles[i]->Dmax;
             if (Particles[i]->Props.m  < MinMass||(MinMass<0.0)) MinMass = Particles[i]->Props.m;
             //FreePar.Push(i);
@@ -3096,7 +3138,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     for (size_t i=0; i<BInteractons.Size(); i++)
     {
         double pbn = BInteractons[i]->Bn/BInteractons[i]->L0;
-        if (pbn > MaxBn) MaxBn = pbn;
+        if (pbn > MaxBn||(MinDmax<0.0)) MaxBn = pbn;
     }
 
     // info
