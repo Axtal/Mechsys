@@ -28,6 +28,8 @@ struct UserData
 {
     std::ofstream      oss_ss;       ///< file for particle data
     Vec3_t                acc;
+    double                 nu;
+    double                  R;
     Array<Cell *>        xmin;
     Array<Cell *>        xmax;
 };
@@ -72,7 +74,7 @@ void Report(LBM::Domain & dom, void * UD)
         String fs;
         fs.Printf("%s_force.res",dom.FileKey.CStr());
         dat.oss_ss.open(fs.CStr());
-        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "Fx" << Util::_8s << "Fy" << Util::_8s << "Fz" << Util::_8s << "Tx" << Util::_8s << "Ty" << Util::_8s << "Tz" << Util::_8s << "Vx" << Util::_8s << "Fx" << Util::_8s << "F" << Util::_8s << "Rho \n";
+        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "Fx" << Util::_8s << "Fy" << Util::_8s << "Fz" << Util::_8s << "Tx" << Util::_8s << "Ty" << Util::_8s << "Tz" << Util::_8s << "Vx" << Util::_8s << "Fx" << Util::_8s << "F" << Util::_8s << "Rho" << Util::_8s << "Re" << Util::_8s << "CD" << Util::_8s << "CDsphere \n";
     }
     if (!dom.Finished) 
     {
@@ -91,7 +93,18 @@ void Report(LBM::Domain & dom, void * UD)
         }
         Vx  /=dom.Lat[0].Ncells;
         Flux/=M;
-        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dom.Particles[0]->F(0) << Util::_8s << dom.Particles[0]->F(1) << Util::_8s << dom.Particles[0]->F(2) << Util::_8s << dom.Particles[0]->T(0) << Util::_8s << dom.Particles[0]->T(1) << Util::_8s << dom.Particles[0]->T(2) << Util::_8s << Vx << Util::_8s << Flux(0) << Util::_8s << norm(Flux) << Util::_8s << M/nc << std::endl;
+        M   /=nc;
+        double CD  = 2.0*dom.Particles[0]->F(0)/(Flux(0)*Flux(0)/M*M_PI*dat.R*dat.R);
+        double Re  = 2.0*Flux(0)*dat.R/(M*dat.nu);
+        double CDt = 24.0/Re + 6.0/(1.0+sqrt(Re)) + 0.4;
+        if (Flux(0)<1.0e-12) 
+        {
+            Flux = OrthoSys::O;
+            CD = 0.0;
+            Re = 0.0;
+        }
+
+        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dom.Particles[0]->F(0) << Util::_8s << dom.Particles[0]->F(1) << Util::_8s << dom.Particles[0]->F(2) << Util::_8s << dom.Particles[0]->T(0) << Util::_8s << dom.Particles[0]->T(1) << Util::_8s << dom.Particles[0]->T(2) << Util::_8s << Vx << Util::_8s << Flux(0) << Util::_8s << norm(Flux) << Util::_8s << M << Util::_8s << Re << Util::_8s << CD << Util::_8s << CDt << std::endl;
     }
     else
     {
@@ -145,6 +158,8 @@ int main(int argc, char **argv) try
     UserData dat;
     Dom.UserData = &dat;
     dat.acc      = Vec3_t(Dp,0.0,0.0);
+    dat.R        = R;
+    dat.nu       = nu;
 
     for (int i=0;i<nx;i++)
     for (int j=0;j<ny;j++)

@@ -74,7 +74,7 @@ int main(int argc, char **argv) try
     if (argc==2) Nproc=atoi(argv[1]);
     double u_max  = 0.1;                // Poiseuille's maximum velocity
     double Re     = 40000.0;                  // Reynold's number
-    size_t nx = 400;
+    size_t nx = 800;
     size_t ny = 100;
     int radius = ny/10 + 1;           // radius of inner circle (obstacle)
     double nu     = u_max*(2*radius)/Re; // viscocity
@@ -138,7 +138,7 @@ int main(int argc, char **argv) try
 
     //Solving
     Dom.Time = 0.0;
-    Dom.Solve(10000.0,20.0,Setup,NULL,"tlbm01",true,Nproc);
+    Dom.Solve(40000.0,80.0,Setup,NULL,"tlbm01",true,Nproc);
  
 }
 MECHSYS_CATCH
