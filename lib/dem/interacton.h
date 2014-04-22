@@ -279,8 +279,8 @@ inline bool CInteracton::CalcForce (double dt)
 #endif
         //P1->Cn++;
         //P2->Cn++;
-        if (!P1->IsFree()) P2->Bdry = true;
-        if (!P2->IsFree()) P1->Bdry = true;
+        //if (!P1->IsFree()) P2->Bdry = true;
+        //if (!P2->IsFree()) P1->Bdry = true;
 #ifdef USE_THREAD
         //pthread_mutex_unlock(&lck);
         //pthread_mutex_unlock(&P1->lck);
@@ -723,8 +723,8 @@ inline bool CInteractonSphere::CalcForce(double dt)
     {
         //P1->Cn++;
         //P2->Cn++;
-        if (!P1->IsFree()) P2->Bdry = true;
-        if (!P2->IsFree()) P1->Bdry = true;
+        //if (!P1->IsFree()) P2->Bdry = true;
+        //if (!P2->IsFree()) P1->Bdry = true;
     }
     //return overlap;
     return false;

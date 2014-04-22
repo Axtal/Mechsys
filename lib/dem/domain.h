@@ -280,7 +280,7 @@ void * GlobalIni(void * Data)
         // initialize the coordination (number of contacts per particle) number and the Bdry flag
         (*P)[i]->Comp = 0.0;
         (*P)[i]->Cn   = 0.0;
-        (*P)[i]->Bdry = false;
+        //(*P)[i]->Bdry = false;
     }
     return NULL;
 }
@@ -2496,7 +2496,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
             // initialize the coordination (number of contacts per particle) number and the flag of the particle begin in contact with the container
             Particles[i]->Cn   = 0.0;
-            Particles[i]->Bdry = false;
+            //Particles[i]->Bdry = false;
 
             // external work added to the system by the fixed forces Ff
             Wext += dot(Particles[i]->Ff,Particles[i]->v)*Dt;

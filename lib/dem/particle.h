@@ -276,6 +276,7 @@ inline void Particle::init_default_values(int tag, double r, double rho)
     Cluster    = 0;
     PropsReady = false;
     Eroded     = false;
+    Bdry       = false;
     v          = 0.0,0.0,0.0;
     w          = 0.0,0.0,0.0;
 

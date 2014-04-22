@@ -389,7 +389,7 @@ void * GlobalResetContacts1 (void * Data)
                 double y     = dat.Dom->Lat[0].dx*(cell->Index(1));
                 double z     = dat.Dom->Lat[0].dx*(cell->Index(2));
                 Vec3_t  C(x,y,z);
-                if (norm(C-Pa->x)>2.0*dat.Dom->Alpha+2.0*dat.Dom->Lat[0].dx+Pa->Dmax) continue;
+                if ((norm(C-Pa->x)>2.0*dat.Dom->Alpha+2.0*dat.Dom->Lat[0].dx+Pa->Dmax)||(Pa->Bdry==true)) continue;
                 ParticleCellPair NewPCP;
                 NewPCP.IPar = i;
                 //NewPCP.IPar = n;
@@ -1296,7 +1296,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "     <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n";
         oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> 0.0 0.0 0.0\n";
         oss << "       </DataItem>\n";
-        oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> " << Step << " " << Step << " " << Step << "\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> " << Step*Lat[0].dx << " " << Step*Lat[0].dx  << " " << Step*Lat[0].dx  << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Geometry>\n";
         for (size_t j=0;j<Lat.Size();j++)
@@ -1966,7 +1966,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
                 double Fvp     = cell->Feq(k          ,VelP,rho);
                 cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
-                Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k]*cell->Cs;
+                Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k]*cell->Cs*Lat[0].dx*Lat[0].dx*Lat[0].dx;
                 Vec3_t T,Tt;
                 Tt =           cross(B,Flbm);
                 Quaternion_t q;
@@ -3153,6 +3153,11 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
     printf("%s  Suggested Verlet distance        =  %g or %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
 
+    if (Alpha > MinDmax)
+    {
+        Alpha = MinDmax;
+        printf("%s  Verlet distance changed to       =  %g%s\n"   ,TERM_CLR2, Alpha                                    , TERM_RST);
+    }
 
 
 
@@ -3342,6 +3347,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             pthread_join(thrs[i], NULL);
             if (maxdis<MTD[i].Dmx) maxdis = MTD[i].Dmx;
         }
+        //GlobalResetDisplacement
         if (maxdis>Alpha)
         {
             //GlobalResetDisplacement
