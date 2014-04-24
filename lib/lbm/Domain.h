@@ -378,6 +378,13 @@ void * GlobalResetContacts1 (void * Data)
         {
             //Cell  * cell = dat.Dom->Lat[0].Cells[i];
             DEM::Particle * Pa = (*P)[i];
+            //std::cout << std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " " 
+                      //<< std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " " 
+                      //<< std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " " << std::endl;
+            //std::cout << std::min(double(dat.Dom->Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " "
+                      //<< std::min(double(dat.Dom->Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " "
+                      //<< std::min(double(dat.Dom->Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " " << std::endl;
+
             for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);n<=std::min(double(dat.Dom->Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);n++)
             for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);m<=std::min(double(dat.Dom->Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);m++)
             for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l<=std::min(double(dat.Dom->Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx);l++)
@@ -1966,7 +1973,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
                 double Fvp     = cell->Feq(k          ,VelP,rho);
                 cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
-                Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k]*cell->Cs*Lat[0].dx*Lat[0].dx*Lat[0].dx;
+                Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k]*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx;
                 Vec3_t T,Tt;
                 Tt =           cross(B,Flbm);
                 Quaternion_t q;
@@ -3150,14 +3157,20 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     printf("%s  Total number of particles        =  %zd%s\n"      ,TERM_CLR2, Particles.Size()                     , TERM_RST);
     printf("%s  Time step                        =  %g%s\n"       ,TERM_CLR2, dt                                   , TERM_RST);
     printf("%s  Verlet distance                  =  %g%s\n"       ,TERM_CLR2, Alpha                                , TERM_RST);
+    for (size_t i=0;i<Lat.Size();i++)
+    {
+    printf("%s  Tau of Lattice %d                 =  %g%s\n"       ,TERM_CLR2, i, Lat[i].Tau                        , TERM_RST);
+    }
     printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
     printf("%s  Suggested Verlet distance        =  %g or %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
 
-    if (Alpha > MinDmax)
+    if (Alpha > MinDmax&&MinDmax>0.0)
     {
         Alpha = MinDmax;
         printf("%s  Verlet distance changed to       =  %g%s\n"   ,TERM_CLR2, Alpha                                    , TERM_RST);
     }
+
+    if (Alpha < 0.0) throw new Fatal("Verlet distance cannot be negative");
 
 
 
@@ -3350,6 +3363,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         //GlobalResetDisplacement
         if (maxdis>Alpha)
         {
+            //std::cout << "Remaking cells " << maxdis << std::endl;
             //GlobalResetDisplacement
             for (size_t i=0;i<Nproc;i++)
             {
