@@ -16,8 +16,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-from numpy import array, sqrt, linspace, pi, cos, sin, arctan2, zeros
-from pylab import figure, text, show, axis, gca, gcf, xlabel, ylabel, plot
+from numpy import array, sqrt, linspace, pi, cos, sin, arctan2
+from pylab import figure, text, show, axis, gca, gcf
 from pylab import matplotlib as MPL
 from msys_fig import GetLightClr, GetClr
 
@@ -52,9 +52,6 @@ class DrawMesh:
         self.fsz1 = fsz1
         self.fsz2 = fsz2
         self.lw   = 0.5
-
-        # vertices marker size
-        self.vmsz = 3
 
         # use different colors according to cell tags?
         self.rainbow = rainbow
@@ -106,13 +103,11 @@ class DrawMesh:
     #==========
     def draw(self, with_ids=True, with_tags=True,
              edgescells={}, cellscells=[], vertscells=[], vertsverts=[],
-             p_vids={}, p_cids={}, only_lin_cells=False,
-             with_grid=True, rotateIds=False, jointsR=None, lineedgeLws={},
-             vert_tags=True, edge_tags=True, cell_tags=True, xy_labels=False,
-             show_verts=False, show_parts=False):
-
+             p_vertscells=[], p_verts=[], only_lin_cells=False,
+             with_grid=True, rotateIds=False, jointsR=None, lineedgeLws={}):
         # get figure
-        ax = gca()
+        fig = gcf()
+        ax  = fig.add_subplot(111)
         if with_grid:
             ax.grid(color='gray')
             ax.set_axisbelow(True)
@@ -168,16 +163,12 @@ class DrawMesh:
                     dat.append((self.PH.CLOSEPOLY, (0,0)))
                 if len(dat)>0:
                     cmd,vert = zip(*dat)
-                    ph0  = self.PH (vert, cmd)
-                    clr  = self.lblue
-                    eclr = self.celledgeclr
-                    if show_parts and len(c)>4:
-                        clr  = GetLightClr(c[4])
-                        eclr = 'None'
-                    elif self.rainbow:
-                        clr  = GetLightClr(abs(c[1]))
-                        eclr = 'black'
-                    pc0 = self.PC (ph0, facecolor=clr, edgecolor=eclr, linewidth=self.lw, clip_on=False)
+                    ph0 = self.PH (vert, cmd)
+                    if self.rainbow:
+                        clr = GetLightClr(abs(c[1]))
+                        pc0 = self.PC (ph0, facecolor=clr, edgecolor='black', linewidth=self.lw, clip_on=False)
+                    else:
+                        pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.celledgeclr, linewidth=self.lw, clip_on=False)
                     ax.add_patch(pc0)
 
         # draw linear cells
@@ -209,7 +200,7 @@ class DrawMesh:
                     ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=self.lineedgeclr, lw=lw))
 
         # text
-        if with_ids or (with_tags and cell_tags):
+        if with_ids or with_tags:
             for c in self.C:
                 # centre
                 if only_lin_cells and len(c[2])>2: continue
@@ -217,9 +208,9 @@ class DrawMesh:
                 xc, yc, alp = self.get_cell_centre(c, cf)
                 if not rotateIds: alp = 0.0
                 if with_ids:
-                    if with_tags and cell_tags: txt = '%d (%d)' % (c[0], c[1])
-                    else:                       txt = '%d'      %  c[0]
-                elif with_tags and cell_tags:   txt = '%d'      %        c[1]
+                    if with_tags: txt = '%d (%d)' % (c[0], c[1])
+                    else:         txt = '%d'      %  c[0]
+                else:             txt = '%d'      %        c[1]
                 if self.rainbow:
                     ax.text(xc,yc, txt, rotation=alp, va='center', ha='center', backgroundcolor='white', fontsize=self.fsz2)
                 else:
@@ -227,7 +218,7 @@ class DrawMesh:
                     ax.text(xc,yc, txt, rotation=alp, va='center', ha='center', backgroundcolor=bclr, fontsize=self.fsz2)
 
         # edge tags
-        if edge_tags and with_tags and self.ndim>1:
+        if with_tags and self.ndim>1:
             for c in self.C:
                 if len(c)>3: self.edge_tags(ax, c, only_tag=True)
 
@@ -239,10 +230,10 @@ class DrawMesh:
                 text(v[2], yval, s, va='bottom', ha='right', color='black', backgroundcolor=self.lyellow, fontsize=self.fsz1)
 
         # draw nodes
-        if vert_tags and with_tags:
+        if with_tags:
             for v in self.V:
                 tag = v[1]
-                if tag<0:
+                if tag<0 and with_tags:
                     xval = v[2]+self.yidnoise
                     yval = v[3]-self.yidnoise if self.ndim>1 else -self.yidnoise
                     text(xval, yval, '%d'%tag, va='top', ha='left', color='black', backgroundcolor=self.orange, fontsize=self.fsz2)
@@ -289,22 +280,22 @@ class DrawMesh:
             text(xc, yc, s, va='center', ha='center', color='black', backgroundcolor='white', fontsize=self.fsz2)
 
         # patch information
-        for key in p_vids.keys():
-            s = 'c:\n'
-            for k, ic in enumerate(p_cids[key]):
+        for iv, cells in enumerate(p_vertscells):              # for each 'driver' vertex and cells around it
+            if len(cells) == 0: continue                       # skip boundary vertex (without cells)
+            s = ''
+            for k, ic in enumerate(cells):
                 s += '%d' % ic
-                if k < len(p_cids[key])-1:
+                if k < len(cells)-1:
                     s += ' '
                     if k%3 == 2: s += '\n'
-            s += '\nv:\n'
-            for k, iv in enumerate(p_vids[key]):
-                s += '%d' % iv
-                if k < len(p_vids[key])-1:
+            s += '\n---\n'
+            for k, iva in enumerate(p_verts[iv]):
+                s += '%d' % iva
+                if k < len(p_verts[iv])-1:
                     s += ' '
                     if k%3 == 2: s += '\n'
-            n    = key[0]
-            xval = self.V[n][2]+2.*self.yidnoise
-            yval = self.V[n][3]-self.yidnoise if self.ndim>1 else -self.yidnoise
+            xval = self.V[iv][2]+2.*self.yidnoise
+            yval = self.V[iv][3]-self.yidnoise if self.ndim>1 else -self.yidnoise
             text(xval, yval, s, va='bottom', ha='left', color='black', backgroundcolor='lightgray', fontsize=self.fsz2)
 
         # joints
@@ -326,20 +317,6 @@ class DrawMesh:
             tag = self.V[key][1]
             if tag<0 and with_tags:
                 text(x, y, '%d'%tag, va='top', color='black', backgroundcolor='none', fontsize=self.fsz2)
-
-        # show vertices
-        if show_verts:
-            X = [v[2] for v in self.V]
-            if self.ndim == 1: plot(X, zeros(len(X), 'ko'), markersize=self.vmsz)
-            else:
-                Y = [v[3] for v in self.V]
-                plot(X, Y, 'ko', markersize=self.vmsz)
-
-        # force same scale
-        if xy_labels:
-            xlabel(r'$x$')
-            ylabel(r'$y$')
-        axis('equal')
 
     # Draw edge tags
     # ==============
@@ -467,13 +444,14 @@ class DrawMesh:
             wz = False
             fx = False
             fy = False
+            sfx, sfy = 0.0, 0.0
             for key in B:
                 if key=='T':  T  = True
                 if key=='ux': ux = True
                 if key=='uy': uy = True
                 if key=='wz': wz = True
-                if key=='fx': fx, sf = True, self.sgn(B[key])
-                if key=='fy': fy, sf = True, self.sgn(B[key])
+                if key=='fx': fx, sfx = True, self.sgn(B[key])
+                if key=='fy': fy, sfy = True, self.sgn(B[key])
                 if key=='T_func':
                     text(v[2],v[3],'f',fontsize=18,color=self.orange)
             # draw icon
@@ -509,14 +487,15 @@ class DrawMesh:
                 if wz: self.fixed_rotation (ax,array([v[2],v[3]]),self.il,n)
                 else:  self.little_triangle(ax,array([v[2],v[3]]),self.il,n,fix)
             if fx or fy:
-                d = sf * self.al
+                dX = sfx * self.al
+                dY = sfy * self.al
                 if fx:
-                    dx, dy = d, 0.0
-                    ax.add_patch(self.PP.Arrow(v[2],v[3],dx,dy,facecolor='black',edgecolor='none',width=0.5*d,zorder=zorder))
+                    dx, dy = dX, 0.0
+                    ax.add_patch(self.PP.Arrow(v[2],v[3],dx,dy,facecolor='black',edgecolor='none',width=0.5*dx,zorder=zorder))
                 if fy:
-                    dx, dy, yc = 0.0, d, v[3]
-                    if usetip: yc += abs(d)
-                    ax.add_patch(self.PP.Arrow(v[2],yc,dx,dy,facecolor='black',edgecolor='none',width=0.5*d,zorder=zorder))
+                    dx, dy, yc = 0.0, dY, v[3]
+                    if usetip: yc += abs(dy)
+                    ax.add_patch(self.PP.Arrow(v[2],yc,dx,dy,facecolor='black',edgecolor='none',width=0.5*dy,zorder=zorder))
 
     # Draw edge boundary conditions
     #==============================
@@ -708,6 +687,5 @@ class DrawMesh:
     # Sign funcion
     # ============
     def sgn(self, val):
-        if not isinstance(val, float): val = val(0)
         if val<0: return -1
         else:     return  1

@@ -47,7 +47,8 @@ int main(int argc, char **argv) try
     if (readmsh)
     {
         DEM::Particle * p = new DEM::Particle;
-        p->ConstructFromJson(-2, "bucket.msh", R, 3.0, 10.0);
+        //p->ConstructFromJson(-2, "bucket.msh", R, 3.0, 10.0);
+        p->ConstructFromJson(-2, "Rawbucket.msh", R, 3.0, 10.0);
         d.Particles.Push(p);
     }
     else
