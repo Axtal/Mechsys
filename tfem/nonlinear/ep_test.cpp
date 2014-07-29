@@ -73,7 +73,7 @@ int main(int argc, char **argv) try
     Array<int> out_verts(1,2,3);
     Dict prps, mdls;
     prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), TRUE);
-    mdls.Set(-1, "name E nu VM sY Hp psa", MODEL("ElastoPlastic"), E, nu, TRUE, sY, Hp, TRUE);
+    mdls.Set(-1, "name E nu VM sY Hp psa rho", MODEL("ElastoPlastic"), E, nu, TRUE, sY, Hp, TRUE, 1.0);
     //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, TRUE);
     FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict(), "ep_test", &out_verts);
 
