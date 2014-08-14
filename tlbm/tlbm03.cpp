@@ -78,8 +78,6 @@ int main(int argc, char **argv) try
     Dom.AddSphere(-1,Vec3_t(0.2*nx,0.5*ny,0.5*nz),0.1*nx,3.0);
     Dom.Particles[0]->v = Vec3_t(0.02,0.0,0.0);
     Dom.Particles[0]->w = Vec3_t(0.0,0.0,0.0);
-    UserData dat;
-    Dom.UserData = &dat;
     double rho0 = 0.12;
     Vec3_t v0(0.0,0.0,0.0);
 

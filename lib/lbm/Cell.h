@@ -86,7 +86,7 @@ public:
     double       Rho;      ///< Density of the Cell
     iVec3_t      Index;    ///< Vector of indexes
     Vec3_t       Vel;      ///< Velocity of the Cell
-    //Vec3_t       VelBC;    ///< Velocity at boundary
+    Vec3_t       VelBC;    ///< Velocity at boundary
     Vec3_t       BForce;   ///< Applied body force
     Vec3_t       BForcef;  ///< Fixed Applied body force
     double       RhoBC;    ///< Density at boundary
