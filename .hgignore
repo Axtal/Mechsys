@@ -5,6 +5,9 @@ src/dem_viewres
 tdoc/doc_msh1
 tdoc/doc_msh2
 tdoc/doc_msh3
+tlbm/bubble
+tlbm/dam
+tlbm/multicomp
 tlbm/tlbm01
 tlbm/tlbm02
 tlbm/tlbm03
