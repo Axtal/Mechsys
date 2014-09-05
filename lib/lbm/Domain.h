@@ -132,7 +132,6 @@ public:
     Array <iVec3_t>                                CellPairs;         ///< Pairs of cells
     Array <ParticleCellPair>                    ParCellPairs;         ///< Pairs of cells and particles
     set<pair<DEM::Particle *, DEM::Particle *> > Listofpairs;         ///< List of pair of particles associated per interacton for memory optimization
-    double                                             Fconv;         ///< A constant to normalize the force over a particle produced by the fluid.
     double                                              Time;         ///< Time of the simulation
     double                                                dt;         ///< Timestep
     double                                             Alpha;         ///< Verlet distance
@@ -491,7 +490,6 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     Time   = 0.0;
     dt     = Thedt;
     Alpha  = 10.0;
-    Fconv  = 1.0;
     Step   = 1;
     Sc     = 0.17;
     PrtVec = true;
@@ -522,7 +520,6 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     Time   = 0.0;
     dt     = Thedt;
     Alpha  = 10.0;
-    Fconv  = 1.0;
     Step   = 1;
     Sc     = 0.17;
     PrtVec = true;
@@ -1581,7 +1578,7 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
             size_t vec  = CellPairs[i](2);
             Cell * c = Lat[0].Cells[ind1];
             Cell *nb = Lat[1].Cells[ind2];
-            double nb_psi,psi,G=Gmix;
+            double nb_psi,psi,G=Gmix/(dt*dt);
             if (c->IsSolid)
             {
                 psi    = 1.0;
@@ -1611,7 +1608,7 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
 
             c  = Lat[1].Cells[ind1];
             nb = Lat[0].Cells[ind2];
-            G  = Gmix;
+            G  = Gmix/(dt*dt);
             if (c->IsSolid)
             {
                 psi    = 1.0;
@@ -1740,6 +1737,7 @@ void Domain::Collide (size_t n, size_t Np)
                 }
                 Q = sqrt(2.0*Q);
                 Tau = 0.5*(Tau + sqrt(Tau*Tau + 6.0*Q*Sc/rho));
+                //std::cout << Tau << std::endl;
 
                 double Bn;
                 rho<10e-12 ? Bn =0.0 : Bn = (c->Gamma*(Lat[j].Tau-0.5))/((1.0-c->Gamma)+(Lat[j].Tau-0.5));
@@ -1976,7 +1974,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
                 double Fvp     = cell->Feq(k          ,VelP,rho);
                 cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
-                Vec3_t Flbm    = -Bn*Fconv*cell->Omeis[k]*cell->C[k]*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx;
+                Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k]*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx;
                 Vec3_t T,Tt;
                 Tt =           cross(B,Flbm);
                 Quaternion_t q;
@@ -3162,7 +3160,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     printf("%s  Verlet distance                  =  %g%s\n"       ,TERM_CLR2, Alpha                                , TERM_RST);
     for (size_t i=0;i<Lat.Size();i++)
     {
-    printf("%s  Tau of Lattice %zu                 =  %g%s\n"       ,TERM_CLR2, i, Lat[i].Tau                        , TERM_RST);
+    printf("%s  Tau of Lattice %zd                 =  %g%s\n"       ,TERM_CLR2, i, Lat[i].Tau                        , TERM_RST);
     }
     printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
     printf("%s  Suggested Verlet distance        =  %g or %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);

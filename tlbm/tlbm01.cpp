@@ -70,8 +70,8 @@ void Setup (LBM::Domain & dom, void * UD)
 
 int main(int argc, char **argv) try
 {
-    size_t Nproc = 1; 
-    if (argc==2) Nproc=atoi(argv[1]);
+    size_t nproc = 1; 
+    if (argc==2) nproc=atoi(argv[1]);
     double u_max  = 0.1;                // Poiseuille's maximum velocity
     double Re     = 40000.0;                  // Reynold's number
     size_t nx = 800;

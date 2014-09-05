@@ -1,4 +1,4 @@
-0.1     = Verlet:      Verlet distance for optimization
+0.005     = Verlet:      Verlet distance for optimization
 voronoi = ptype:       Particle type (voronoi, sphere,rice and tetrahedra mesh so far)
 2      = RenderVideo: 1 if video should be render, 0 otherwise
 0       = Cohesion:    1 if cohesion is considered, 0 otherwise

@@ -162,6 +162,7 @@ public:
     double L0;                             ///< Equilibrium distance
     double An;                             ///< Angular displacement
     double eps;                            ///< Maximun strain before fracture
+    double eta;                            ///< ratio between normal and tangential breaking threshold
     bool   valid;                          ///< Check if the bound has not been broken
     double s1,t1;                          ///< Planar coordinates for face F1
     double s2,t2;                          ///< Planar coordinates for face F2
@@ -775,6 +776,7 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     Gn              = 2*ReducedValue(P1->Props.Gn,P2->Props.Gn)*ReducedValue(P1->Props.m,P2->Props.m);
     Gt              = 2*ReducedValue(P1->Props.Gt,P2->Props.Gt)*ReducedValue(P1->Props.m,P2->Props.m);
     eps             = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
+    eta             = 2*ReducedValue(P1->Props.Eta,P2->Props.Eta);
 
     Vec3_t n1,n2;
     P1->Faces[IF1]->Normal(n1);
@@ -912,7 +914,10 @@ inline bool BInteracton::CalcForce(double dt)
 #endif
 
         //Breaking point
-        if ((L0*fabs(delta)+norm(td)+0.0*fabs(Ant-An)*L0>L0*eps)&&(eps>=0.0))
+        double en = fabs(delta)/(eta*eps);
+        double et = norm(td)/(L0*eps);
+        //if ((fabs(delta)/(eta*eps)+norm(td)/(L0*eps)+0.0*fabs(Ant-An)*L0>1.0)&&(eps>=0.0))
+        if ((en*en + et*et > 1.0)&&(eps>=0.0))
         {
             valid = false;
         }
@@ -928,6 +933,7 @@ inline void BInteracton::UpdateParameters ()
     Gn              = 2*ReducedValue(P1->Props.Gn,P2->Props.Gn)*ReducedValue(P1->Props.m,P2->Props.m);
     Gt              = 2*ReducedValue(P1->Props.Gt,P2->Props.Gt)*ReducedValue(P1->Props.m,P2->Props.m);
     eps             = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
+    eta             = 2*ReducedValue(P1->Props.Eta,P2->Props.Eta);
     I1              = P1->Index;
     I2              = P2->Index;
 }

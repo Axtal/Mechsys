@@ -2007,7 +2007,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     }
     for (size_t i=0; i<BInteractons.Size(); i++)
     {
-        double pbn = BInteractons[i]->Bn/BInteractons[i]->L0;
+        double pbn = std::max(BInteractons[i]->Bn/BInteractons[i]->L0,BInteractons[i]->Bt/BInteractons[i]->L0);
         if (pbn > MaxBn) MaxBn = pbn;
     }
 
