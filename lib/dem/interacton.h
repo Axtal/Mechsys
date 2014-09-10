@@ -914,10 +914,10 @@ inline bool BInteracton::CalcForce(double dt)
 #endif
 
         //Breaking point
-        double en = fabs(delta)/(eta*eps);
-        double et = norm(td)/(L0*eps);
-        //if ((fabs(delta)/(eta*eps)+norm(td)/(L0*eps)+0.0*fabs(Ant-An)*L0>1.0)&&(eps>=0.0))
-        if ((en*en + et*et > 1.0)&&(eps>=0.0))
+        if ((fabs(delta)/(eta*eps)+norm(td)/(L0*eps)+0.0*fabs(Ant-An)*L0>1.0)&&(eps>=0.0))
+        //double en = fabs(delta)/(eta*eps);
+        //double et = norm(td)/(L0*eps);
+        //if ((en*en + et*et > 1.0)&&(eps>=0.0))
         {
             valid = false;
         }
