@@ -139,7 +139,7 @@ int main(int argc, char **argv) try
 
     //Solving
     Dom.Time = 0.0;
-    Dom.Solve(40000.0,80.0,Setup,NULL,"tlbm01",true,Nproc);
+    Dom.Solve(40000.0,80.0,Setup,NULL,"tlbm01",true,nproc);
  
 }
 MECHSYS_CATCH

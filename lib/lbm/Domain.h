@@ -141,6 +141,7 @@ public:
     double                                                Ms;         ///< Total mass of the particles
     double                                                Vs;         ///< Volume occupied by the grains
     double                                                Sc;         ///< Smagorinsky constant
+    double                                             Fconv;         ///< Force conversion factor
     Array <double>                                       EEk;         ///< Diadic velocity tensor trace
     void *                                          UserData;         ///< User Data
     size_t                                           idx_out;         ///< The discrete time step
@@ -493,6 +494,7 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     Step   = 1;
     Sc     = 0.17;
     PrtVec = true;
+    Fconv  = 1.0;
 
 
     EEk.Resize(Lat[0].Cells[0]->Nneigh);
@@ -523,6 +525,7 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     Step   = 1;
     Sc     = 0.17;
     PrtVec = true;
+    Fconv  = 1.0;
 
     EEk.Resize(Lat[0].Cells[0]->Nneigh);
     for (size_t k=0;k<Lat[0].Cells[0]->Nneigh;k++)
@@ -1974,7 +1977,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
                 double Fvp     = cell->Feq(k          ,VelP,rho);
                 cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
-                Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k]*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx;
+                Vec3_t Flbm    = -Fconv*Bn*cell->Omeis[k]*cell->C[k]*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx;
                 Vec3_t T,Tt;
                 Tt =           cross(B,Flbm);
                 Quaternion_t q;
