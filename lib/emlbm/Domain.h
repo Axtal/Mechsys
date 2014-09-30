@@ -121,7 +121,7 @@ void * GlobalStream2 (void * Data)
 }
 #endif
 
-inline Domain::Domain(LBMethod Method, Array<double> Tau, iVec3_t Ndim, double dx, double Thedt)
+inline Domain::Domain(LBMethod Method, Array<double> Tau, iVec3_t Ndim, double Thedx, double Thedt)
 {
     Initialized = false;
     Util::Stopwatch stopwatch;
@@ -129,7 +129,7 @@ inline Domain::Domain(LBMethod Method, Array<double> Tau, iVec3_t Ndim, double d
     if (Tau.Size()==0) throw new Fatal("LBM::Domain: Declare at leat one Lattice please");
     for (size_t i=0;i<Tau.Size();i++)
     {
-        Lat.Push(Lattice(Method,Tau[i],Ndim,dx,Thedt));
+        Lat.Push(Lattice(Method,Tau[i],Ndim,Thedx,Thedt));
     }
     Time   = 0.0;
     dt     = Thedt;
@@ -170,6 +170,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
         float * Phi       = new float[  Nx*Ny*Nz];
         float * Cur       = new float[3*Nx*Ny*Nz];
         float * Avec      = new float[3*Nx*Ny*Nz];
+        float * Bvec      = new float[3*Nx*Ny*Nz];
 
         size_t i=0;
         for (size_t m=0;m<Lat[0].Ndim(2);m+=Step)
@@ -180,6 +181,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
             double cha    = 0.0;
             Vec3_t avec   = OrthoSys::O;
             Vec3_t cur    = OrthoSys::O;
+            Vec3_t bvec   = OrthoSys::O;
 
             for (size_t ni=0;ni<Step;ni++)
             for (size_t li=0;li<Step;li++)
@@ -193,9 +195,15 @@ inline void Domain::WriteXDMF(char const * FileKey)
                 cur (0)  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->J[1];
                 cur (1)  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->J[2];
                 cur (2)  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->J[3];
+                bvec(0)  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->B[0];
+                bvec(1)  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->B[1];
+                bvec(2)  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->B[2];
             }
+            cha  /= Step*Step*Step;
             phi  /= Step*Step*Step;
+            cur  /= Step*Step*Step;
             avec /= Step*Step*Step;
+            bvec /= Step*Step*Step;
             Phi [i]      = (float) phi;
             Avec[3*i  ]  = (float) avec(0);
             Avec[3*i+1]  = (float) avec(1);
@@ -204,6 +212,9 @@ inline void Domain::WriteXDMF(char const * FileKey)
             Cur [3*i  ]  = (float) cur (0);
             Cur [3*i+1]  = (float) cur (1);
             Cur [3*i+2]  = (float) cur (2);
+            Bvec[3*i  ]  = (float) bvec(0);
+            Bvec[3*i+1]  = (float) bvec(1);
+            Bvec[3*i+2]  = (float) bvec(2);
             i++;
         }
 
@@ -224,6 +235,9 @@ inline void Domain::WriteXDMF(char const * FileKey)
             dims[0] = 3*Nx*Ny*Nz;
             dsname.Printf("Current_%d",j);
             H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Cur     );
+            dims[0] = 3*Nx*Ny*Nz;
+            dsname.Printf("MagField_%d",j);
+            H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Bvec    );
         }
         dims[0] = 1;
         int N[1];
@@ -243,6 +257,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
         delete [] Phi     ;
         delete [] Cur     ;
         delete [] Avec    ;
+        delete [] Bvec    ;
     }
 
 
@@ -289,6 +304,11 @@ inline void Domain::WriteXDMF(char const * FileKey)
     oss << "        " << fn.CStr() <<":/VecPot_" << j << "\n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"MagField_" << j << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/MagField_" << j << "\n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
     }
     oss << "   </Grid>\n";
     }
@@ -321,6 +341,7 @@ void Domain::Collide (size_t n, size_t Np)
                 {
                     c->Ftemp[mu][k] = c->F[mu][k] - (c->F[mu][k] - c->Feq(mu,k))/Lat[j].Tau;
                     c->Gtemp[mu][k] = c->G[mu][k] - (c->G[mu][k] - c->Geq(mu,k))/Lat[j].Tau;
+                    //if (c->Index[0]==Lat[0].Ndim[0]/2&&c->Index[1]==Lat[0].Ndim[1]/2&&c->Index[2]==Lat[0].Ndim[2]/2) std::cout << c->Feq(mu,k) << " " << c->Geq(mu,k) << " " << c->A[mu] << " " << c->Sig[mu] << " " << mu << " " << k << std::endl;
                 }
             }
         }
@@ -349,6 +370,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         for (size_t i=0;i<Lat[j].Ncells;i++)
         {
             Lat[j].Cells[i]->Initialize();
+            Lat[j].Cells[i]->CalcProp();
         }
     }
 

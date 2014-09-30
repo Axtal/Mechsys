@@ -60,7 +60,6 @@ public:
     //LBMethod     Method;   ///< Is 2D, 3D and how many velocities it has
     bool         IsSolid;  ///< It is a solid node
     //double       Tau;      ///< Relaxation Time
-    double       Gamma;    ///< Solid/Fluid ratio
     double       Gs;       ///< Interaction constant between solid and fluid
     size_t       Nneigh;   ///< Number of neighbors
     size_t       ID;       ///< Tag for the particle
@@ -83,6 +82,9 @@ public:
     double        *  Sig;   ///< Array of currents
     double        ** S;     ///< Array of auxiliary vectors
     size_t        *  Neighs;///< Array of neighbors indexes
+    Vec3_t           E;     ///< Electric Field
+    Vec3_t           B;     ///< Magnetic Field
+
 };
 
 inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t TheNdim, double TheCs, double TheDt)
@@ -92,7 +94,7 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
     //Method = TheMethod;
     Index  = TheIndexes;
     Cs     = TheCs;
-    Gamma  = 0.0;
+    Dt     = TheDt;
     Gs     = 1.0;
     //Tau    = TheTau;
     if (TheMethod==D3Q7)
@@ -162,8 +164,9 @@ inline void Cell::CalcProp()
             S[i][2] += F[i][j]*C[j][2];
             Sig [i] += G[i][j];
         }
-        A  [i] = A  [i] + 0.5*Dt*Sig[i];
+        //A  [i] = A  [i] + 0.5*Dt*Sig[i];
         Sig[i] = Sig[i] + 0.5*Dt*J[i];
+        A  [i] = A  [i] + 0.5*Dt*Sig[i];
     }
     J[0] = 0.0;
     for (size_t j=0;j<Nneigh;j++)
@@ -171,7 +174,6 @@ inline void Cell::CalcProp()
         J[0] += H[j];
     }
     J[0] *= Cs*Cs;
-
 }
 
 inline double Cell::Feq(size_t mu,size_t k)
@@ -185,7 +187,7 @@ inline double Cell::Geq(size_t mu,size_t k)
 }
 inline double Cell::Heq(size_t k)
 {
-    return W[k]*(J[0]+4.0*(C[k][0]*J[1] + C[k][1]*J[2] + C[k][2]*J[3]));
+    return W[k]*(J[0]/(Cs*Cs)+4.0*(C[k][0]*J[1] + C[k][1]*J[2] + C[k][2]*J[3]));
 }
 
 inline void Cell::Initialize()

@@ -116,6 +116,9 @@ inline void Lattice::Stream2(size_t n, size_t Np)
         Cells[i]->H      = Cells[i]->Htemp;
         Cells[i]->Htemp  = Htemp;
         Cells[i]->CalcProp();
+        Cells[i]->B(0) = 0.5*(Cells[Cells[i]->Neighs[4]]->A[3]-Cells[Cells[i]->Neighs[5]]->A[3])-0.5*(Cells[Cells[i]->Neighs[6]]->A[2]-Cells[Cells[i]->Neighs[7]]->A[2]);
+        Cells[i]->B(1) = 0.5*(Cells[Cells[i]->Neighs[6]]->A[1]-Cells[Cells[i]->Neighs[7]]->A[1])-0.5*(Cells[Cells[i]->Neighs[1]]->A[3]-Cells[Cells[i]->Neighs[2]]->A[3]);
+        Cells[i]->B(2) = 0.5*(Cells[Cells[i]->Neighs[1]]->A[2]-Cells[Cells[i]->Neighs[2]]->A[2])-0.5*(Cells[Cells[i]->Neighs[4]]->A[1]-Cells[Cells[i]->Neighs[5]]->A[1]);
     }
 }
 
