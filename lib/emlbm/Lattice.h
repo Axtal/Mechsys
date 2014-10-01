@@ -41,9 +41,10 @@ public:
     Lattice (LBMethod Method, double Tau, iVec3_t Ndim, double dx, double dt);
 
     //Methods
-    void Stream1(size_t n = 0, size_t Np = 1);                                      ///< Stream the velocity distributions
-    void Stream2(size_t n = 0, size_t Np = 1);                                      ///< Stream the velocity distributions
-    Cell * GetCell(iVec3_t const & v);                                              ///< Get pointer to cell at v
+    void Stream1  (size_t n = 0, size_t Np = 1);                                      ///< Stream the velocity distributions
+    void Stream2  (size_t n = 0, size_t Np = 1);                                      ///< Stream the velocity distributions
+    void CalcField(size_t n = 0, size_t Np = 1);                                      ///< Calculate the magnetic and electric fields
+    Cell * GetCell(iVec3_t const & v);                                                ///< Get pointer to cell at v
 
 
     //Data
@@ -116,11 +117,32 @@ inline void Lattice::Stream2(size_t n, size_t Np)
         Cells[i]->H      = Cells[i]->Htemp;
         Cells[i]->Htemp  = Htemp;
         Cells[i]->CalcProp();
-        Cells[i]->B(0) = 0.5*(Cells[Cells[i]->Neighs[4]]->A[3]-Cells[Cells[i]->Neighs[5]]->A[3])-0.5*(Cells[Cells[i]->Neighs[6]]->A[2]-Cells[Cells[i]->Neighs[7]]->A[2]);
-        Cells[i]->B(1) = 0.5*(Cells[Cells[i]->Neighs[6]]->A[1]-Cells[Cells[i]->Neighs[7]]->A[1])-0.5*(Cells[Cells[i]->Neighs[1]]->A[3]-Cells[Cells[i]->Neighs[2]]->A[3]);
-        Cells[i]->B(2) = 0.5*(Cells[Cells[i]->Neighs[1]]->A[2]-Cells[Cells[i]->Neighs[2]]->A[2])-0.5*(Cells[Cells[i]->Neighs[4]]->A[1]-Cells[Cells[i]->Neighs[5]]->A[1]);
     }
 }
+
+inline void Lattice::CalcField(size_t n, size_t Np)
+{
+	size_t Ni = Ncells/Np;
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = Ncells : Fn = (n+1)*Ni;
+    //Calculate fields
+    for (size_t i=In;i<Fn;i++)
+    {
+        Cell * c = Cells[i];
+        //if (c->Index[0]==Ndim[0]/2&&c->Index[1]==Ndim[1]/2&&c->Index[2]==Ndim[2]/2) std::cout << c->Index << " " << Cells[Cells[i]->Neighs[4]]->Index << " " << 
+            //Cells[Cells[i]->Neighs[5]]->Index << std::endl;
+        c->B(0) = (Cells[c->Neighs[3]]->A[3]-Cells[c->Neighs[4]]->A[3])-(Cells[c->Neighs[5]]->A[2]-Cells[c->Neighs[6]]->A[2]);
+        c->B(1) = (Cells[c->Neighs[5]]->A[1]-Cells[c->Neighs[6]]->A[1])-(Cells[c->Neighs[1]]->A[3]-Cells[c->Neighs[2]]->A[3]);
+        c->B(2) = (Cells[c->Neighs[1]]->A[2]-Cells[c->Neighs[2]]->A[2])-(Cells[c->Neighs[3]]->A[1]-Cells[c->Neighs[4]]->A[1]);
+        c->E(0) = -(Cells[c->Neighs[1]]->A[0]-Cells[c->Neighs[2]]->A[0])-(c->A[1]-c->Ap[1]);
+        c->E(1) = -(Cells[c->Neighs[3]]->A[0]-Cells[c->Neighs[4]]->A[0])-(c->A[2]-c->Ap[2]);
+        c->E(2) = -(Cells[c->Neighs[5]]->A[0]-Cells[c->Neighs[6]]->A[0])-(c->A[3]-c->Ap[3]);
+    }
+
+}
+
+
 
 inline Cell * Lattice::GetCell(iVec3_t const & v)
 {

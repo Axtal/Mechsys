@@ -30,13 +30,13 @@ int main(int argc, char **argv) try
 {
     size_t nproc = 1; 
     if (argc==2) nproc=atoi(argv[1]);
-    int nx = 50;
-    int ny = 50;
-    int nz = 50;
+    int nx = 40;
+    int ny = 40;
+    int nz = 40;
     EMLBM::Domain Dom(D3Q7, 0.5, iVec3_t(nx,ny,nz), 0.25, 1.0);
 
 
-    double J0 = 1.0e-1;
+    double J0 = -1.0e-3;
     for (int i=0;i<nx;i++)
     for (int j=0;j<ny;j++)
     for (int k=0;k<nz;k++)
@@ -45,7 +45,7 @@ int main(int argc, char **argv) try
         Dom.Lat[0].GetCell(iVec3_t(i,j,k))->J[3] = J0*exp(-0.75*(dx*dx+dy*dy));
     }
     //Dom.WriteXDMF("test");
-    Dom.Solve(1000.0,10.0,NULL,NULL,"temlbm01",true,nproc);
+    Dom.Solve(4000.0,40.0,NULL,NULL,"temlbm01",true,nproc);
 
     return 0;
 }

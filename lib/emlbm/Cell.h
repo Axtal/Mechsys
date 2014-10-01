@@ -78,6 +78,7 @@ public:
     double        *  H;     ///< Distribution functions for density
     double        *  Htemp; ///< Temporary distribution functions
     double        *  A;     ///< Array of potentials
+    double        *  Ap;    ///< Array of previous potentials
     double        *  J;     ///< 4-current
     double        *  Sig;   ///< Array of currents
     double        ** S;     ///< Array of auxiliary vectors
@@ -108,6 +109,7 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
     G      = new double *[4];
     Gtemp  = new double *[4];
     A      = new double  [4];
+    Ap     = new double  [4];
     Sig    = new double  [4];
     J      = new double  [4];
     S      = new double *[4];
@@ -151,6 +153,7 @@ inline void Cell::CalcProp()
 {
     for (size_t i=0;i<4;i++)
     {
+        Ap  [i] = A[i];
         A   [i] = 0.0;
         Sig [i] = 0.0;
         S[i][0] = 0.0;
