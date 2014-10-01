@@ -132,12 +132,12 @@ inline void Lattice::CalcField(size_t n, size_t Np)
         Cell * c = Cells[i];
         //if (c->Index[0]==Ndim[0]/2&&c->Index[1]==Ndim[1]/2&&c->Index[2]==Ndim[2]/2) std::cout << c->Index << " " << Cells[Cells[i]->Neighs[4]]->Index << " " << 
             //Cells[Cells[i]->Neighs[5]]->Index << std::endl;
-        c->B(0) = (Cells[c->Neighs[3]]->A[3]-Cells[c->Neighs[4]]->A[3])-(Cells[c->Neighs[5]]->A[2]-Cells[c->Neighs[6]]->A[2]);
-        c->B(1) = (Cells[c->Neighs[5]]->A[1]-Cells[c->Neighs[6]]->A[1])-(Cells[c->Neighs[1]]->A[3]-Cells[c->Neighs[2]]->A[3]);
-        c->B(2) = (Cells[c->Neighs[1]]->A[2]-Cells[c->Neighs[2]]->A[2])-(Cells[c->Neighs[3]]->A[1]-Cells[c->Neighs[4]]->A[1]);
-        c->E(0) = -(Cells[c->Neighs[1]]->A[0]-Cells[c->Neighs[2]]->A[0])-(c->A[1]-c->Ap[1]);
-        c->E(1) = -(Cells[c->Neighs[3]]->A[0]-Cells[c->Neighs[4]]->A[0])-(c->A[2]-c->Ap[2]);
-        c->E(2) = -(Cells[c->Neighs[5]]->A[0]-Cells[c->Neighs[6]]->A[0])-(c->A[3]-c->Ap[3]);
+        c->B(0) = 0.5*(Cells[c->Neighs[3]]->A[3]-Cells[c->Neighs[4]]->A[3])/dx-0.5*(Cells[c->Neighs[5]]->A[2]-Cells[c->Neighs[6]]->A[2])/dx;
+        c->B(1) = 0.5*(Cells[c->Neighs[5]]->A[1]-Cells[c->Neighs[6]]->A[1])/dx-0.5*(Cells[c->Neighs[1]]->A[3]-Cells[c->Neighs[2]]->A[3])/dx;
+        c->B(2) = 0.5*(Cells[c->Neighs[1]]->A[2]-Cells[c->Neighs[2]]->A[2])/dx-0.5*(Cells[c->Neighs[3]]->A[1]-Cells[c->Neighs[4]]->A[1])/dx;
+        c->E(0) = -0.5*(Cells[c->Neighs[1]]->A[0]-Cells[c->Neighs[2]]->A[0])/dx-0.5*(3.0*c->A[1]-4.0*c->Ap[1]+c->Al[1])/dt;
+        c->E(1) = -0.5*(Cells[c->Neighs[3]]->A[0]-Cells[c->Neighs[4]]->A[0])/dx-0.5*(3.0*c->A[2]-4.0*c->Ap[2]+c->Al[2])/dt;
+        c->E(2) = -0.5*(Cells[c->Neighs[5]]->A[0]-Cells[c->Neighs[6]]->A[0])/dx-0.5*(3.0*c->A[3]-4.0*c->Ap[3]+c->Al[3])/dt;
     }
 
 }

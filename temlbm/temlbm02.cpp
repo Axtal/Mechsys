@@ -42,11 +42,12 @@ int main(int argc, char **argv) try
     for (int j=0;j<ny;j++)
     for (int k=0;k<nz;k++)
     {
-        double dx=i-nx/2,dy=j-ny/2;
+        double dx=i-2*nx/3,dy=j-ny/2;
         Dom.Lat[0].GetCell(iVec3_t(i,j,k))->J[3] = J0*exp(-0.75*(dx*dx+dy*dy));
+        Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Eps = 0.75*tanh(double(nx/3 - i)/1.5)+1.75;
     }
     //Dom.WriteXDMF("test");
-    Dom.Solve(200.0,2.0,NULL,NULL,"temlbm01",true,nproc);
+    Dom.Solve(200.0,2.0,NULL,NULL,"temlbm02",true,nproc);
 
     return 0;
 }

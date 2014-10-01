@@ -79,6 +79,7 @@ public:
     double        *  Htemp; ///< Temporary distribution functions
     double        *  A;     ///< Array of potentials
     double        *  Ap;    ///< Array of previous potentials
+    double        *  Al;    ///< Array of late potentials (2 time steps before)
     double        *  J;     ///< 4-current
     double        *  Sig;   ///< Array of currents
     double        ** S;     ///< Array of auxiliary vectors
@@ -97,6 +98,7 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
     Cs     = TheCs;
     Dt     = TheDt;
     Gs     = 1.0;
+    Eps    = 1.0;
     //Tau    = TheTau;
     if (TheMethod==D3Q7)
     {
@@ -110,6 +112,7 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
     Gtemp  = new double *[4];
     A      = new double  [4];
     Ap     = new double  [4];
+    Al     = new double  [4];
     Sig    = new double  [4];
     J      = new double  [4];
     S      = new double *[4];
@@ -153,7 +156,8 @@ inline void Cell::CalcProp()
 {
     for (size_t i=0;i<4;i++)
     {
-        Ap  [i] = A[i];
+        Al  [i] = Ap[i];
+        Ap  [i] =  A[i];
         A   [i] = 0.0;
         Sig [i] = 0.0;
         S[i][0] = 0.0;
@@ -176,13 +180,13 @@ inline void Cell::CalcProp()
     {
         J[0] += H[j];
     }
-    J[0] *= Cs*Cs;
+    J[0] *= Cs*Cs/Eps;
 }
 
 inline double Cell::Feq(size_t mu,size_t k)
 {
-    if (k==0) return 4.0*W[k]*(1.0-3.0*Cs*Cs)*A[mu];
-    else      return 4.0*W[k]*(Cs*Cs*A[mu] + C[k][0]*S[mu][0] + C[k][1]*S[mu][1] + C[k][2]*S[mu][2]);
+    if (k==0) return 4.0*W[k]*(1.0-3.0*Cs*Cs/Eps)*A[mu];
+    else      return 4.0*W[k]*(Cs*Cs/Eps*A[mu] + C[k][0]*S[mu][0] + C[k][1]*S[mu][1] + C[k][2]*S[mu][2]);
 }
 inline double Cell::Geq(size_t mu,size_t k)
 {
@@ -190,7 +194,7 @@ inline double Cell::Geq(size_t mu,size_t k)
 }
 inline double Cell::Heq(size_t k)
 {
-    return W[k]*(J[0]/(Cs*Cs)+4.0*(C[k][0]*J[1] + C[k][1]*J[2] + C[k][2]*J[3]));
+    return W[k]*(J[0]/(Cs*Cs/Eps)+4.0*(C[k][0]*J[1] + C[k][1]*J[2] + C[k][2]*J[3]));
 }
 
 inline void Cell::Initialize()

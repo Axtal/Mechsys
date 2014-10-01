@@ -177,6 +177,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
     for (size_t j=0;j<Lat.Size();j++)
     {
         // Creating data sets
+        float * Eps       = new float[  Nx*Ny*Nz];
         float * Char      = new float[  Nx*Ny*Nz];
         float * Phi       = new float[  Nx*Ny*Nz];
         float * Cur       = new float[3*Nx*Ny*Nz];
@@ -189,6 +190,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
         for (size_t l=0;l<Lat[0].Ndim(1);l+=Step)
         for (size_t n=0;n<Lat[0].Ndim(0);n+=Step)
         {
+            double eps    = 0.0;
             double phi    = 0.0;
             double cha    = 0.0;
             Vec3_t avec   = OrthoSys::O;
@@ -200,6 +202,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
             for (size_t li=0;li<Step;li++)
             for (size_t mi=0;mi<Step;mi++)
             {
+                eps      += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Eps;
                 phi      += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->A[0];
                 avec(0)  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->A[1];
                 avec(1)  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->A[2];
@@ -215,11 +218,14 @@ inline void Domain::WriteXDMF(char const * FileKey)
                 evec(1)  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->E[1];
                 evec(2)  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->E[2];
             }
+            eps  /= Step*Step*Step;
             cha  /= Step*Step*Step;
             phi  /= Step*Step*Step;
             cur  /= Step*Step*Step;
             avec /= Step*Step*Step;
             bvec /= Step*Step*Step;
+            evec /= Step*Step*Step;
+            Eps [i]      = (float) eps;
             Phi [i]      = (float) phi;
             Avec[3*i  ]  = (float) avec(0);
             Avec[3*i+1]  = (float) avec(1);
@@ -246,6 +252,8 @@ inline void Domain::WriteXDMF(char const * FileKey)
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Phi );
         dsname.Printf("Charge_%d",j);
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Char);
+        dsname.Printf("Epsilon_%d",j);
+        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Eps );
         if (PrtVec)
         {
             dims[0] = 3*Nx*Ny*Nz;
@@ -272,6 +280,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
         dsname.Printf("Nz");
         H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,N);
 
+        delete [] Eps     ;
         delete [] Char    ;
         delete [] Phi     ;
         delete [] Cur     ;
@@ -302,6 +311,11 @@ inline void Domain::WriteXDMF(char const * FileKey)
     oss << "     </Geometry>\n";
     for (size_t j=0;j<Lat.Size();j++)
     {
+    oss << "     <Attribute Name=\"Epsilon_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Epsilon_" << j << "\n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
     oss << "     <Attribute Name=\"Charge_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
     oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
     oss << "        " << fn.CStr() <<":/Charge_" << j << "\n";
