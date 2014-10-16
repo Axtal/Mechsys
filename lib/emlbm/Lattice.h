@@ -86,6 +86,11 @@ inline void Lattice::Stream1(size_t n, size_t Np)
     size_t Fn;
     n == Np-1 ? Fn = Ncells : Fn = (n+1)*Ni;
     // Assign temporal distributions
+#ifdef USE_OMP
+    In = 0;
+    Fn = Ncells;
+    #pragma omp parallel for schedule (static) num_threads(Np)
+#endif
     for (size_t i=In;i<Fn;i++)
     for (size_t j=1;j<Cells[i]->Nneigh;j++)
     {
@@ -105,6 +110,11 @@ inline void Lattice::Stream2(size_t n, size_t Np)
     size_t Fn;
     n == Np-1 ? Fn = Ncells : Fn = (n+1)*Ni;
     //Swap the distribution values
+#ifdef USE_OMP
+    In = 0;
+    Fn = Ncells;
+    #pragma omp parallel for schedule (static) num_threads(Np)
+#endif
     for (size_t i=In;i<Fn;i++)
     {
         double ** Ftemp  = Cells[i]->F;
@@ -127,6 +137,11 @@ inline void Lattice::CalcField(size_t n, size_t Np)
     size_t Fn;
     n == Np-1 ? Fn = Ncells : Fn = (n+1)*Ni;
     //Calculate fields
+#ifdef USE_OMP
+    In = 0;
+    Fn = Ncells;
+    #pragma omp parallel for schedule (static) num_threads(Np)
+#endif
     for (size_t i=In;i<Fn;i++)
     {
         Cell * c = Cells[i];

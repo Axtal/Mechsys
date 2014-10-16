@@ -38,7 +38,7 @@ int main(int argc, char **argv) try
     //X = 0.0, 1.0, 1.0, 0.0, 0.5;
     //Y = 0.0, 0.0, 1.0, 1.0, 0.5;
     //Z = 1.0, 1.0, 1.0, 1.0, 0.5;
-    mesh.Delaunay    (X, Y, Z,/*Tag*/-1);
+    mesh.Delaunay    (X, Y, Z,/*Tag*/-2);
     mesh.WriteVTU    ("delaunay3D");
     cout << " File <delaunay3D.vtu> generated\n";
     return 0;

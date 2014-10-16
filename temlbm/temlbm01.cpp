@@ -46,7 +46,7 @@ int main(int argc, char **argv) try
         Dom.Lat[0].GetCell(iVec3_t(i,j,k))->J[3] = J0*exp(-0.75*(dx*dx+dy*dy));
     }
     //Dom.WriteXDMF("test");
-    Dom.Solve(200.0,2.0,NULL,NULL,"temlbm01",true,nproc);
+    Dom.Solve(2000.0,20.0,NULL,NULL,"temlbm01",true,nproc);
 
     return 0;
 }

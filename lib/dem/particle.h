@@ -26,6 +26,8 @@
 #include <fstream>
 #ifdef USE_THREAD
     #include <pthread.h>
+#elif USE_OMP
+    #include <omp.h>
 #endif
 
 // boost => to read json files
@@ -112,8 +114,10 @@ public:
     //bool   IsFree             () {return !vxf&&!vyf&&!vzf&&!wxf&&!wyf&&!wzf;};              ///< Ask if the particle has any constrain in its movement
     bool   IsFree             () {return !vxf&&!vyf&&!vzf;};                                  ///< Ask if the particle has any constrain in its movement
 #ifdef USE_THREAD
-    pthread_mutex_t lck;              ///< to protect variables in multithreading
-    //std::mutex mtex;                 ///< to protect variables in multithreading
+    pthread_mutex_t lck;             ///< to protect variables in multithreading
+    //std::mutex mtex;               ///< to protect variables in multithreading
+#elif USE_OMP
+    omp_lock_t      lck;             ///< to protect variables in multithreading
 #endif
 
     int             Tag;             ///< Tag of the particle
@@ -364,6 +368,8 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
     for (size_t i=0; i<E.Size(); i++) Edges.Push (new Edge((*Verts[E[i][0]]), (*Verts[E[i][1]])));
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
+#elif USE_OMP
+    omp_init_lock(&lck);
 #endif
     
 }
@@ -432,6 +438,8 @@ inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, dou
 
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
+#elif USE_OMP
+    omp_init_lock(&lck);
 #endif
 }
 
@@ -606,6 +614,8 @@ inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, doub
 
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
+#elif USE_OMP
+    omp_init_lock(&lck);
 #endif
 }
 
@@ -669,6 +679,8 @@ inline void Particle::ConstructFromJson (int Tag, char const * Filename, double 
 
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
+#elif USE_OMP
+    omp_init_lock(&lck);
 #endif
 }
 

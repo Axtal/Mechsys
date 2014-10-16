@@ -368,6 +368,11 @@ void Domain::Collide (size_t n, size_t Np)
     size_t In = n*Ni;
     size_t Fn;
     n == Np-1 ? Fn = Lat[0].Ncells : Fn = (n+1)*Ni;
+#ifdef USE_OMP
+    In = 0;
+    Fn = Lat[0].Ncells;
+    #pragma omp parallel for schedule (static) num_threads(Np)
+#endif
     for (size_t i=In;i<Fn;i++)
     {
         for (size_t j=0;j<Lat.Size();j++)
@@ -504,7 +509,14 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         {
             pthread_join(thrs[i], NULL);
         }
-#else 
+#elif USE_OMP 
+        Collide(1,Nproc);
+        for (size_t i=0;i<Lat.Size();i++)
+        {
+            Lat[i].Stream1  (1,Nproc);
+            Lat[i].Stream2  (1,Nproc);
+            Lat[i].CalcField(1,Nproc);
+        }
 
 #endif
 

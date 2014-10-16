@@ -24,10 +24,17 @@
     #include <pthread.h>
 #endif
 
+//OpenMP
+#ifdef USE_OMP
+    #include <omp.h>
+#endif
+
 // MechSys
 #include <mechsys/util/array.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/linalg/matvec.h>
+
+
 
 enum LBMethod
 {

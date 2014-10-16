@@ -103,7 +103,7 @@ int main(int argc, char **argv) try
 
     // Set the camera position
     dom.CamPos = 0.0,0.0,30.0;
-    dom.Solve(/*final time*/30.0,/*time step*/dt,/*Output step*/0.1,NULL,&Report,/*file key*/"test_02",/*Render video?*/true);
+    dom.Solve(/*final time*/30.0,/*time step*/dt,/*Output step*/0.1,NULL,&Report,/*file key*/"test_02",/*Render video?*/2);
 
     return 0;
 }

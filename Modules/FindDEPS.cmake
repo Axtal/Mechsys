@@ -30,6 +30,7 @@ OPTION(A_MAKE_CHECK_OVERLAP "Check for maximun overlapping in DEM simulations"  
                                                                                    
 # Options                                                                          
 OPTION(A_USE_THREAD         "Use (p)Threads ?"                                     ON )
+OPTION(A_USE_OMP            "Use OpenMP  ?"                                        ON )
 OPTION(A_USE_MPI            "Use OpenMPI ?"                                        OFF)
 OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
 OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
@@ -130,6 +131,7 @@ INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindPROC.cmake     ) # 21
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindTENSORS.cmake  ) # 23
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindIGRAPH.cmake   ) # 24
 INCLUDE (FindThreads)                                       # 25
+INCLUDE (FindOpenMP )                                       # 26
 
 # 1
 if(wxWidgets_FOUND AND A_USE_WXW)
@@ -378,3 +380,15 @@ else(Threads_FOUND AND A_USE_THREAD)
         SET (MISSING "${MISSING} (p)Threads")
     endif(A_USE_THREAD)
 endif(Threads_FOUND AND A_USE_THREAD)
+
+# 26
+if(OPENMP_FOUND AND A_USE_OMP)
+    ADD_DEFINITIONS (-DUSE_OMP)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+else(OPENMP_FOUND AND A_USE_OMP)
+    if(A_USE_OMP)
+        SET (MISSING "${MISSING} OpenMP")
+    endif(A_USE_OMP)
+endif(OPENMP_FOUND AND A_USE_OMP)

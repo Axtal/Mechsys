@@ -104,6 +104,7 @@ inline void Delaunay::Generate ()
     for (CGAL_Triangulation::Vertex_iterator it=tr.vertices_begin(), end=tr.vertices_end(); it!=end; ++it)
     {
         vh[i++] = it;
+        printf("%g %g %g\n", vh[i-1]->point().x(), vh[i-1]->point().y(), vh[i-1]->point().z());
     }
     CGAL_triangulation_assertion(i==n+1);
     CGAL_triangulation_assertion(tr.is_infinite(vh[0]));
@@ -115,7 +116,7 @@ inline void Delaunay::Generate ()
     {
         PushVert(-1, vh[i]->point().x(), vh[i]->point().y(), vh[i]->point().z());
         V[vh[i]] = i;
-        //printf("vert %3zd: %g %g %g\n", Verts.Size()-1, vh[i]->point().x(), vh[i]->point().y(), vh[i]->point().z());
+        printf("vert %3zd: %g %g %g\n", Verts.Size()-1, vh[i]->point().x(), vh[i]->point().y(), vh[i]->point().z());
     }
 
     // cells handle
