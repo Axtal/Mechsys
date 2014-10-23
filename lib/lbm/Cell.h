@@ -23,6 +23,8 @@
 // Std lib
 #ifdef USE_THREAD
     #include <pthread.h>
+#elif USE_OMP
+    #include <omp.h>
 #endif
 
 // MechSys
@@ -72,6 +74,8 @@ public:
 #ifdef USE_THREAD
     pthread_mutex_t lck;
     //std::mutex mtex;       ///< to protect variables in multithreading
+#elif USE_OMP
+    omp_lock_t      lck;             ///< to protect variables in multithreading
 #endif
 
     // Data
@@ -171,6 +175,8 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
     }
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
+#elif USE_OMP
+    omp_init_lock(&lck);
 #endif
 }
 

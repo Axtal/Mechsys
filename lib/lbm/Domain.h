@@ -51,6 +51,8 @@ struct ParticleCellPair
     Array<size_t> IGeo;   ///< Array of index of the geometric feature
 };
 
+struct MtData;
+
 class Domain
 {
 public:
@@ -104,6 +106,7 @@ public:
     void WriteXDMF         (char const * FileKey);  ///< Write the domain data in xdmf file
     void Load              (char const * FileKey);  ///< Load particle data from Mechsys DEM
 #endif
+    void UpdateLinkedCells ();                                                                                  ///< Update the linked cells
 
     void Initialize     (double dt=0.0);                                                                                              ///< Set the particles to a initial state and asign the possible insteractions
     void ApplyForce     (size_t n = 0, size_t Np = 1, bool MC=false);                                                                 ///< Apply the interaction forces and the collision operator
@@ -117,12 +120,20 @@ public:
 
 #ifdef USE_THREAD
     Array<pair<size_t, size_t> >                ListPosPairs;         ///< List of all possible particles pairs
+#elif USE_OMP
+    Array<pair<size_t, size_t> >                ListPosPairs;         ///< List of all possible particles pairs
+    iVec3_t                                     LCellDim;             ///< Dimensions of the linked cell array
+    Array<Array <size_t> >                      LinkedCell;           ///< Linked Cell array for optimization.
+    Vec3_t                                      LCxmin;               ///< Bounding box low   limit for the linked cell array
+    Vec3_t                                      LCxmax;               ///< Bounding box upper limit for the linked cell array
 #endif
     //Data
     bool                                         Initialized;         ///< System (particles and interactons) initialized ?
     bool                                              PrtVec;         ///< Print Vector data into the xdmf-h5 files
     bool                                            Finished;         ///< Has the simulation finished
     bool                                              Dilate;         ///< True if eroded particles should be dilated for visualization
+    Array<size_t>                                    FreePar;         ///< Particles that are free
+    Array<size_t>                                  NoFreePar;         ///< Particles that are not free
     String                                           FileKey;         ///< File Key for output files
     Array <Lattice>                                      Lat;         ///< Fluid Lattices
     Array <DEM::Particle *>                        Particles;         ///< Array of Disks
@@ -135,6 +146,7 @@ public:
     double                                              Time;         ///< Time of the simulation
     double                                                dt;         ///< Timestep
     double                                             Alpha;         ///< Verlet distance
+    double                                              Beta;         ///< Binmultiplier
     double                                              Gmix;         ///< Interaction constant for the mixture
     double                                            Voltot;         ///< toala particle volume
     double                                           MaxDmax;         ///< Maximun value for the radious of the spheres surronding each particle
@@ -144,24 +156,29 @@ public:
     double                                             Fconv;         ///< Force conversion factor
     Array <double>                                       EEk;         ///< Diadic velocity tensor trace
     void *                                          UserData;         ///< User Data
+    size_t                                             Nproc;         ///< Number of cores for multithreading
     size_t                                           idx_out;         ///< The discrete time step
     size_t                                              Step;         ///< The space step to reduce the size of the h5 file for visualization
     Array<Array <int> >                       Listofclusters;         ///< List of particles belonging to bounded clusters (applies only for cohesion simulations)
+    MtData *                                             MTD;         ///< Multithread data
+};
+
+struct MtData
+{
+    size_t                        ProcRank; ///< Rank of the thread
+    size_t                          N_Proc; ///< Total number of threads
+    LBM::Domain *                      Dom; ///< Pointer to the lbm domain
+    double                             Dmx; ///< Maximun displacement
+    double                              dt; ///< Time step
+    Array<pair<size_t,size_t> >         LC; ///< A temporal list of new contacts
+    Array<size_t>                      LCI; ///< A temporal array of posible Cinteractions
+    Array<size_t>                      LCB; ///< A temporal array of posible Binteractions
+    Array<ParticleCellPair>            LPC; ///< A temporal array of possible particle cell contacts
+    Array<std::pair<iVec3_t,size_t> >  LLC; ///< A temporal array of possible linked cells locations
+    Array<std::pair<size_t,size_t> >   LPP; ///< A temporal array of possible partcle types
 };
 
 #ifdef USE_THREAD
-struct MtData
-{
-    size_t                  ProcRank; ///< Rank of the thread
-    size_t                    N_Proc; ///< Total number of threads
-    LBM::Domain *                Dom; ///< Pointer to the lbm domain
-    double                       Dmx; ///< Maximun displacement
-    double                        dt; ///< Time step
-    Array<pair<size_t,size_t> >   LC; ///< A temporal list of new contacts
-    Array<size_t>                LCI; ///< A temporal array of posible Cinteractions
-    Array<size_t>                LCB; ///< A temporal array of posible Binteractions
-    Array<ParticleCellPair>      LPC; ///< A temporal array of possible particle cell contacts
-};
 
 void * GlobalIni(void * Data)
 {
@@ -1574,6 +1591,11 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
 
     if (MC)
     {
+#ifdef USE_OMP
+        In = 0;
+        Fn = CellPairs.Size();
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+#endif
         for (size_t i=In;i<Fn;i++)
         {
             size_t ind1 = CellPairs[i](0);
@@ -1598,15 +1620,22 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
 
 #ifdef USE_THREAD
             pthread_mutex_lock  (&c ->lck);
+#elif USE_OMP
+            omp_set_lock        (&c->lck);
 #endif
             c ->BForce += BF;
 #ifdef USE_THREAD
             pthread_mutex_unlock(&c ->lck);
             pthread_mutex_lock  (&nb->lck);
+#elif USE_OMP
+            omp_unset_lock      (&c ->lck);
+            omp_set_lock        (&nb->lck);
 #endif
             nb->BForce -= BF;
 #ifdef USE_THREAD
             pthread_mutex_unlock(&nb->lck);
+#elif USE_OMP
+            omp_unset_lock      (&nb->lck);
 #endif
 
             c  = Lat[1].Cells[ind1];
@@ -1628,20 +1657,32 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
 
 #ifdef USE_THREAD
             pthread_mutex_lock  (&c ->lck);
+#elif USE_OMP
+            omp_set_lock        (&c->lck);
 #endif
             c ->BForce += BF;
 #ifdef USE_THREAD
             pthread_mutex_unlock(&c ->lck);
             pthread_mutex_lock  (&nb->lck);
+#elif USE_OMP
+            omp_unset_lock      (&c ->lck);
+            omp_set_lock        (&nb->lck);
 #endif
             nb->BForce -= BF;
 #ifdef USE_THREAD
             pthread_mutex_unlock(&nb->lck);
+#elif USE_OMP
+            omp_unset_lock      (&nb->lck);
 #endif
         }
     }
     else
     {
+#ifdef USE_OMP
+        In = 0;
+        Fn = CellPairs.Size();
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+#endif
         for (size_t i=In;i<Fn;i++)
         {
             size_t ind1 = CellPairs[i](0);
@@ -1680,16 +1721,23 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
                         BF += -Gmix*c->Rho*nb->Rho*c->W[vec]*c->C[vec];
                     }
 #ifdef USE_THREAD
-                pthread_mutex_lock  (&c ->lck);
+                    pthread_mutex_lock  (&c ->lck);
+#elif USE_OMP
+                    omp_set_lock        (&c ->lck);
 #endif
-                c ->BForce += BF;
+                    c ->BForce += BF;
 #ifdef USE_THREAD
-                pthread_mutex_unlock(&c ->lck);
-                pthread_mutex_lock  (&nb->lck);
+                    pthread_mutex_unlock(&c ->lck);
+                    pthread_mutex_lock  (&nb->lck);
+#elif USE_OMP
+                    omp_unset_lock      (&c ->lck);
+                    omp_set_lock        (&nb->lck);
 #endif
-                nb->BForce -= BF;
+                    nb->BForce -= BF;
 #ifdef USE_THREAD
-                pthread_mutex_unlock(&nb->lck);
+                    pthread_mutex_unlock(&nb->lck);
+#elif USE_OMP
+                    omp_unset_lock      (&nb->lck);
 #endif
                 }
             }
@@ -1703,6 +1751,11 @@ void Domain::Collide (size_t n, size_t Np)
     size_t In = n*Ni;
     size_t Fn;
     n == Np-1 ? Fn = Lat[0].Ncells : Fn = (n+1)*Ni;
+#ifdef USE_OMP
+    In = 0;
+    Fn = Lat[0].Ncells;
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+#endif
     for (size_t i=In;i<Fn;i++)
     {
         Vec3_t num(0.0,0.0,0.0);
@@ -1897,7 +1950,11 @@ void Domain::ImprintLattice (size_t n,size_t Np)
     //}
 
     //3D imprint
-
+#ifdef USE_OMP
+    In = 0;
+    Fn = ParCellPairs.Size();
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+#endif
     for (size_t i = In;i<Fn;i++)
     {
         DEM::Particle  * Pa   = Particles[ParCellPairs[i].IPar];
@@ -1986,11 +2043,15 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 //std::cout << "1" << std::endl;
 #ifdef USE_THREAD
                 pthread_mutex_lock(&Pa->lck);
+#elif USE_OMP
+                omp_set_lock      (&Pa->lck);
 #endif
                 Pa->F          += Flbm;
                 Pa->T          += T;
 #ifdef USE_THREAD
                 pthread_mutex_unlock(&Pa->lck);
+#elif USE_OMP
+                omp_unset_lock    (&Pa->lck);
 #endif
                 //std::cout << "2" << std::endl;
 //#ifdef USE_THREAD
@@ -2010,10 +2071,37 @@ void Domain::ImprintLattice (size_t n,size_t Np)
 
 inline void Domain::ResetDisplacements()
 {
+#ifdef USE_OMP
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    for (size_t i=0;i<Nproc;i++)
+    {
+        MTD[i].Dmx = 0.0;
+        MTD[i].LLC.Resize(0);
+    }
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    for (size_t i=0;i<Particles.Size();i++)
+    {
+        Particles[i]->ResetDisplacements();
+        if(Particles[i]->IsFree())
+        {
+            iVec3_t idx = (Particles[i]->x - LCxmin)/(2.0*Beta*MaxDmax);
+            MTD[omp_get_thread_num()].LLC.Push(std::make_pair(idx,i));
+        }
+    }
+    for (size_t i=0;i<Nproc;i++)
+    {
+        for (size_t j=0;j<MTD[i].LLC.Size();j++)
+        {
+            size_t idx = DEM::Pt2idx(MTD[i].LLC[j].first,LCellDim);
+            LinkedCell[idx].Push(MTD[i].LLC[j].second);
+        }
+    }
+#else
     for (size_t i=0; i<Particles.Size(); i++)
     {
         Particles[i]->ResetDisplacements();
     }
+#endif
 }
 
 inline double Domain::MaxDisplacement()
@@ -2027,8 +2115,235 @@ inline double Domain::MaxDisplacement()
     return md;
 }
 
+#ifdef USE_OMP
+inline void Domain::UpdateLinkedCells()
+{
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    for (size_t i=0;i<Nproc;i++)
+    {
+        MTD[i].LPP.Resize(0);
+    }
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    for (size_t i=0;i<FreePar.Size()  ;i++)
+    for (size_t j=0;j<NoFreePar.Size();j++)
+    {
+        size_t i1 = std::min(FreePar[i],NoFreePar[j]);
+        size_t i2 = std::max(FreePar[i],NoFreePar[j]);
+        MTD[omp_get_thread_num()].LPP.Push(std::make_pair(i1,i2));
+    }
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    for (size_t idx=0;idx<LinkedCell.Size();idx++)
+    {
+        if (LinkedCell[idx].Size()==0) continue;
+        iVec3_t index;
+        DEM::idx2Pt(idx,index,LCellDim);
+        for (size_t n=0  ;n<LinkedCell[idx].Size()-1;n++)
+        for (size_t m=n+1;m<LinkedCell[idx].Size()  ;m++)
+        {
+            size_t i1 = LinkedCell[idx][n];
+            size_t i2 = LinkedCell[idx][m];
+            if (i1==i2) continue;
+            MTD[omp_get_thread_num()].LPP.Push(std::make_pair(i1,i2));
+        }
+        size_t i = index(0);
+        size_t j = index(1);
+        size_t k = index(2);
+        for (size_t knb=std::max(0,int(k)-1);knb<=std::min(LCellDim(2)-1,k+1);knb++)
+        for (size_t jnb=std::max(0,int(j)-1);jnb<=std::min(LCellDim(1)-1,j+1);jnb++)
+        for (size_t inb=std::max(0,int(i)-1);inb<=std::min(LCellDim(0)-1,i+1);inb++)
+        {
+            iVec3_t Ptnb(inb,jnb,knb);
+            size_t idxnb = DEM::Pt2idx(Ptnb,LCellDim);
+            if (idxnb>idx)
+            {
+                for (size_t n=0;n<LinkedCell[idx].Size()  ;n++)
+                {
+                    for (size_t m=0;m<LinkedCell[idxnb].Size()  ;m++)
+                    {
+                        size_t i1 = std::min(LinkedCell[idx  ][n],LinkedCell[idxnb][m]);
+                        size_t i2 = std::max(LinkedCell[idx  ][n],LinkedCell[idxnb][m]);
+                        if (i1==i2) continue;
+                        MTD[omp_get_thread_num()].LPP.Push(std::make_pair(i1,i2));
+                    }
+                }
+            }
+        }
+    }
+    size_t Npp = 0;
+    for (size_t i=0;i<Nproc;i++)
+    {
+        Npp += MTD[i].LPP.Size();
+    }
+    ListPosPairs.Resize(Npp);
+    size_t idx = 0;
+    for (size_t i=0;i<Nproc;i++)
+    {
+        for (size_t j=0;j<MTD[i].LPP.Size();j++)
+        {
+            ListPosPairs[idx] = MTD[i].LPP[j];
+            idx++;
+        }
+    }
+}
+#endif
+
 inline void Domain::ResetContacts()
 {
+#ifdef USE_OMP
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    for (size_t i=0;i<Nproc;i++)
+    {
+        MTD[i].LC.Resize(0);
+        MTD[i].LCI.Resize(0);
+        MTD[i].LCB.Resize(0);
+        MTD[i].LPC.Resize(0);
+    }
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    for (size_t n=0;n<ListPosPairs.Size();n++)
+    {
+        size_t i = ListPosPairs[n].first;
+        size_t j = ListPosPairs[n].second;
+        bool pi_has_vf = !Particles[i]->IsFree();
+        bool pj_has_vf = !Particles[j]->IsFree();
+        bool close = (DEM::Distance(Particles[i]->x,Particles[j]->x)<=Particles[i]->Dmax+Particles[j]->Dmax+2*Alpha);
+        if ((pi_has_vf && pj_has_vf) || !close) continue;
+        std::set<std::pair<DEM::Particle *, DEM::Particle *> >::iterator it = Listofpairs.find(std::make_pair(Particles[i],Particles[j]));
+        if (it != Listofpairs.end())
+        {
+            continue;
+        }
+        MTD[omp_get_thread_num()].LC.Push(std::make_pair(i,j));
+    }
+    for (size_t i=0;i<Nproc;i++)
+    {
+        //std::cout << MTD[i].LC.Size() << std::endl;
+        for (size_t j=0;j<MTD[i].LC.Size();j++)
+        {
+        //std::cout << MTD[i].LC.Size() << std::endl;
+            size_t n = MTD[i].LC[j].first;
+            size_t m = MTD[i].LC[j].second;
+            Listofpairs.insert(std::make_pair(Particles[n],Particles[m]));
+            if (Particles[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
+            {
+                CInteractons.Push (new DEM::CInteractonSphere(Particles[n],Particles[m]));
+            }
+            else
+            {
+                CInteractons.Push (new DEM::CInteracton(Particles[n],Particles[m]));
+            }
+        }
+    }
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    for (size_t n=0;n<CInteractons.Size();n++)
+    {
+        if(CInteractons[n]->UpdateContacts(Alpha)) MTD[omp_get_thread_num()].LCI.Push(n);
+    }
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    for (size_t n=0;n<BInteractons.Size();n++)
+    {
+        if(BInteractons[n]->UpdateContacts(Alpha)) MTD[omp_get_thread_num()].LCB.Push(n);
+    }
+    Interactons.Resize(0);
+    for (size_t i=0;i<Nproc;i++)
+    {
+        for (size_t j=0;j<MTD[i].LCI.Size();j++)
+        {
+            Interactons.Push(CInteractons[MTD[i].LCI[j]]);
+        }
+        for (size_t j=0;j<MTD[i].LCB.Size();j++)
+        {
+            Interactons.Push(BInteractons[MTD[i].LCB[j]]);
+        }
+    }
+    if (Lat[0].Ndim(2)==1)
+    {
+        // TODO 2D case
+    }
+    else
+    {
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+	    for (size_t i=0;i<Particles.Size();i++)
+        {
+            //Cell  * cell = dat.Dom->Lat[0].Cells[i];
+            DEM::Particle * Pa = Particles[i];
+            //std::cout << std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " " 
+                      //<< std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " " 
+                      //<< std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " " << std::endl;
+            //std::cout << std::min(double(dat.Dom->Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " "
+                      //<< std::min(double(dat.Dom->Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " "
+                      //<< std::min(double(dat.Dom->Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " " << std::endl;
+
+            for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);n++)
+            for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);m++)
+            for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);l<=std::min(double(Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);l++)
+            //for (size_t n=0;n<dat.Dom->Particles.Size();n++)
+            {
+                //DEM::Particle * Pa = dat.Dom->Particles[n];
+                Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,l));
+                double x     = Lat[0].dx*(cell->Index(0));
+                double y     = Lat[0].dx*(cell->Index(1));
+                double z     = Lat[0].dx*(cell->Index(2));
+                Vec3_t  C(x,y,z);
+                if ((norm(C-Pa->x)>2.0*Alpha+2.0*Lat[0].dx+Pa->Dmax)||(Pa->Bdry==true)) continue;
+                ParticleCellPair NewPCP;
+                NewPCP.IPar = i;
+                //NewPCP.IPar = n;
+                NewPCP.ICell= cell->ID;
+                bool valid = false;
+                if (Pa->Faces.Size()>0)
+                {
+                    for (size_t j=0;j<Pa->Faces.Size();j++)
+                    {
+                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*Alpha+Pa->Props.R)
+                        {
+                            if (Pa->Faces[j]->Area()<2.0*M_PI*Pa->Props.R*Pa->Props.R)
+                            {
+                                //std::cout << "it did" << std::endl;
+                                continue;
+                            }
+                            NewPCP.IGeo.Push(j);
+                            valid = true;
+                        }
+                    }
+                }
+                else if (Pa->Edges.Size()>0)
+                {
+                    for (size_t j=0;j<Pa->Edges.Size();j++)
+                    {
+                        if (DEM::Distance(C,*Pa->Edges[j])<2.0*Alpha+Pa->Props.R) 
+                        {
+                            NewPCP.IGeo.Push(j);
+                            valid = true;
+                        }
+                           
+                    }
+                }
+                else if (Pa->Verts.Size()>0)
+                {
+                    for (size_t j=0;j<Pa->Verts.Size();j++)
+                    {
+                        if (DEM::Distance(C,*Pa->Verts[j])<2.0*Alpha+Pa->Props.R)
+                        {
+                            NewPCP.IGeo.Push(j);
+                            valid = true;
+                        }
+                    }
+                }
+                if (Pa->IsInsideFaceOnly(C)) valid = true;
+
+                if (valid) MTD[omp_get_thread_num()].LPC.Push(NewPCP);
+            }
+        }
+    }
+    ParCellPairs.Resize(0);
+    for (size_t i=0;i<Nproc;i++)
+    {
+        for (size_t j=0;j<MTD[i].LPC.Size();j++)
+        {
+            ParCellPairs.Push(MTD[i].LPC[j]);
+        }
+    }
+#else
 	if (Particles.Size()==0) return;
     for (size_t i=0; i<Particles.Size()-1; i++)
     {
@@ -2135,21 +2450,30 @@ inline void Domain::ResetContacts()
             }
         }
     }
+#endif
 }
 
 //Utility methods
 inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
 {
-    minX = Vec3_t(Particles[0]->MinX(), Particles[0]->MinY(), Particles[0]->MinZ());
-    maxX = Vec3_t(Particles[0]->MaxX(), Particles[0]->MaxY(), Particles[0]->MaxZ());
-    for (size_t i=1; i<Particles.Size(); i++)
+    if (Particles.Size()==0)
     {
-        if (minX(0)>Particles[i]->MinX()&&Particles[i]->IsFree()) minX(0) = Particles[i]->MinX();
-        if (minX(1)>Particles[i]->MinY()&&Particles[i]->IsFree()) minX(1) = Particles[i]->MinY();
-        if (minX(2)>Particles[i]->MinZ()&&Particles[i]->IsFree()) minX(2) = Particles[i]->MinZ();
-        if (maxX(0)<Particles[i]->MaxX()&&Particles[i]->IsFree()) maxX(0) = Particles[i]->MaxX();
-        if (maxX(1)<Particles[i]->MaxY()&&Particles[i]->IsFree()) maxX(1) = Particles[i]->MaxY();
-        if (maxX(2)<Particles[i]->MaxZ()&&Particles[i]->IsFree()) maxX(2) = Particles[i]->MaxZ();
+        minX = OrthoSys::O;
+        maxX = OrthoSys::O;
+    }
+    else
+    {
+        minX = Vec3_t(Particles[0]->MinX(), Particles[0]->MinY(), Particles[0]->MinZ());
+        maxX = Vec3_t(Particles[0]->MaxX(), Particles[0]->MaxY(), Particles[0]->MaxZ());
+        for (size_t i=1; i<Particles.Size(); i++)
+        {
+            if (minX(0)>Particles[i]->MinX()&&Particles[i]->IsFree()) minX(0) = Particles[i]->MinX();
+            if (minX(1)>Particles[i]->MinY()&&Particles[i]->IsFree()) minX(1) = Particles[i]->MinY();
+            if (minX(2)>Particles[i]->MinZ()&&Particles[i]->IsFree()) minX(2) = Particles[i]->MinZ();
+            if (maxX(0)<Particles[i]->MaxX()&&Particles[i]->IsFree()) maxX(0) = Particles[i]->MaxX();
+            if (maxX(1)<Particles[i]->MaxY()&&Particles[i]->IsFree()) maxX(1) = Particles[i]->MaxY();
+            if (maxX(2)<Particles[i]->MaxZ()&&Particles[i]->IsFree()) maxX(2) = Particles[i]->MaxZ();
+        }
     }
 }
 
@@ -3113,18 +3437,19 @@ inline void Domain::Initialize (double dt)
 }
 
 inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t ptReport,
-                          char const * TheFileKey, bool RenderVideo, size_t Nproc)
+                          char const * TheFileKey, bool RenderVideo, size_t TheNproc)
 {
 
     idx_out     = 0;
     FileKey.Printf("%s",TheFileKey);
     Finished = false;
+    Nproc = TheNproc;
 
     // initialize particles
     Initialize (dt);
     // calc the total volume of particles (solids)
-    //FreePar.Resize(0);
-    //NoFreePar.Resize(0);
+    FreePar.Resize(0);
+    NoFreePar.Resize(0);
     Vs = 0.0;
     Ms = 0.0;
     MaxDmax        =  0.0;
@@ -3142,9 +3467,9 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             if (Particles[i]->Props.Kn > MaxKn  ||(MinDmax<0.0)) MaxKn   = Particles[i]->Props.Kn;
             if (Particles[i]->Dmax     < MinDmax||(MinDmax<0.0)) MinDmax = Particles[i]->Dmax;
             if (Particles[i]->Props.m  < MinMass||(MinMass<0.0)) MinMass = Particles[i]->Props.m;
-            //FreePar.Push(i);
+            FreePar.Push(i);
         }
-        //else NoFreePar.Push(i);
+        else NoFreePar.Push(i);
     }
     for (size_t i=0; i<BInteractons.Size(); i++)
     {
@@ -3194,8 +3519,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     }
     //std::cout << "2" << std::endl;
     
-#ifdef USE_THREAD
-    LBM::MtData MTD[Nproc];
+    MTD = new LBM::MtData[Nproc];
     for (size_t i=0;i<Nproc;i++)
     {
         MTD[i].N_Proc   = Nproc;
@@ -3204,6 +3528,9 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         MTD[i].Dmx      = 0.0;
         MTD[i].dt       = Lat[0].dt;
     }
+    //std::cout << "3" << std::endl;
+    //std::cout << "4" << std::endl;
+#ifdef USE_THREAD
     pthread_t thrs[Nproc];   
     
     if (Particles.Size() > 0)
@@ -3283,6 +3610,22 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         pthread_join(thrs[i], NULL);
     }
     //std::cout << "2" << std::endl;
+#elif USE_OMP
+    LinkedCell.Resize(0);
+    BoundingBox(LCxmin,LCxmax);
+    LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
+    LinkedCell.Resize(LCellDim(0)*LCellDim(1)*LCellDim(2));
+    //std::cout << "1" << std::endl;
+    UpdateLinkedCells();
+
+    //std::cout << "2" << std::endl;
+    ResetContacts();
+
+    //std::cout << "3" << std::endl;
+    ResetDisplacements();
+
+    //std::cout << "4" << std::endl;
+    ImprintLattice(1,Nproc);    
 #else
 
     //Connect particles and lattice
@@ -3478,7 +3821,102 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             pthread_join(thrs[i], NULL);
         }
         //std::cout << "5" <<std::endl;
-#else 
+#elif USE_OMP 
+        //Initialize all the particles and cells
+        for (size_t i=0;i<Lat.Size();i++)
+        {
+            Lat[i].SetZeroGamma(0,Nproc);
+        }
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for(size_t i=0;i<Particles.Size();i++)
+        {
+            Particles[i]->F = Particles[i]->Ff;
+            Particles[i]->T = Particles[i]->Tf;
+        }
+        
+        //Imprint the particles into the lattice
+        ImprintLattice(0,Nproc);
+
+        //Calculate interparticle forces
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0; i<Interactons.Size(); i++)
+        {
+		    if (Interactons[i]->CalcForce(dt))
+            {
+                WriteXDMF("error");
+                std::cout << "Maximun overlap detected between particles at time " << Time << std::endl;
+                sleep(1);
+                throw new Fatal("Maximun overlap detected between particles");
+            }
+            omp_set_lock  (&Interactons[i]->P1->lck);
+            Interactons[i]->P1->F += Interactons[i]->F1;
+            Interactons[i]->P1->T += Interactons[i]->T1;
+            omp_unset_lock(&Interactons[i]->P1->lck);
+            omp_set_lock  (&Interactons[i]->P2->lck);
+            Interactons[i]->P2->F += Interactons[i]->F2;
+            Interactons[i]->P2->T += Interactons[i]->T2;
+            omp_unset_lock(&Interactons[i]->P2->lck);
+        }
+
+        //Checking if particles have moved beyond the verlet distance
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0;i<Nproc;i++)
+        {
+            MTD[i].Dmx = 0.0;
+        }
+
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0; i<Particles.Size(); i++)
+        {
+            //std::cout << "1" << std::endl;
+		    Particles[i]->Translate(dt);
+            //std::cout << "2" << std::endl;
+		    Particles[i]->Rotate(dt);
+            //std::cout << "3" << std::endl;
+            if (Particles[i]->MaxDisplacement()>MTD[omp_get_thread_num()].Dmx) MTD[omp_get_thread_num()].Dmx = Particles[i]->MaxDisplacement();
+        }
+
+        double maxdis = 0.0;
+        for (size_t i=0;i<Nproc;i++)
+        {
+            if (maxdis<MTD[i].Dmx) maxdis = MTD[i].Dmx;
+        }
+        
+        if (maxdis>Alpha)
+        {
+            LinkedCell.Resize(0);
+            BoundingBox(LCxmin,LCxmax);
+            LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
+            LinkedCell.Resize(LCellDim(0)*LCellDim(1)*LCellDim(2));
+
+            UpdateLinkedCells();
+
+            ResetContacts();
+
+            ResetDisplacements();
+        }
+
+        //Apply molecular forces
+        if (Lat.Size()>1||fabs(Lat[0].G)>1.0e-12)
+        {
+            bool MC = false;
+            if (Lat.Size()==2)
+            {
+                if (fabs(Lat[0].G)<1.0e-9&&fabs(Lat[1].G)<1.0e-9) MC = true;
+            }
+            ApplyForce(0,Nproc,MC);
+        }
+
+        //Apply collision operator
+        Collide(0,Nproc);
+
+        //Stream the distribution functions
+        for (size_t i=0;i<Lat.Size();i++)
+        {
+            Lat[i].Stream(0,Nproc);
+        }
+        
+#else
         //Assigning a vlaue of zero to the particles forces and torques
         for(size_t i=0;i<Particles.Size();i++)
         {

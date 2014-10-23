@@ -31,9 +31,9 @@ int main(int argc, char **argv) try
 {
     size_t Nproc = 1; 
     if (argc==2) Nproc=atoi(argv[1]);
-    size_t nx = 50;
-    size_t ny = 50;
-    size_t nz = 50;
+    size_t nx = 100;
+    size_t ny = 100;
+    size_t nz = 100;
     //size_t nz = 1;
     double nu = 1.0/6.0;
     double dx = 1.0;

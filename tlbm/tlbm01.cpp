@@ -44,6 +44,9 @@ void Setup (LBM::Domain & dom, void * UD)
     //}
 
 	// Cells with prescribed velocity
+#ifdef USE_OMP
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
+#endif
 	for (size_t i=0; i<dat.Left.Size(); ++i)
 	{
 		Cell * c = dat.Left[i];
@@ -56,6 +59,9 @@ void Setup (LBM::Domain & dom, void * UD)
 	}
 
 	// Cells with prescribed density
+#ifdef USE_OMP
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
+#endif
 	for (size_t i=0; i<dat.Right.Size(); ++i)
 	{
 		Cell * c = dat.Right[i];

@@ -29,7 +29,7 @@ OPTION(A_MAKE_STDVECTOR     "Use std::vector instead of own implemenatation ?"  
 OPTION(A_MAKE_CHECK_OVERLAP "Check for maximun overlapping in DEM simulations"     ON )
                                                                                    
 # Options                                                                          
-OPTION(A_USE_THREAD         "Use (p)Threads ?"                                     ON )
+OPTION(A_USE_THREAD         "Use (p)Threads ?"                                     OFF)
 OPTION(A_USE_OMP            "Use OpenMP  ?"                                        ON )
 OPTION(A_USE_MPI            "Use OpenMPI ?"                                        OFF)
 OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
