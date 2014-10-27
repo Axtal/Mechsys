@@ -35,6 +35,9 @@ struct UserData
 void Setup(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
+#ifdef USE_OMP
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
+#endif
     for (size_t i=0;i<dom.Lat[0].Ncells;i++)
     {
         Cell * c   = dom.Lat[0].Cells[i];
@@ -42,9 +45,9 @@ void Setup(LBM::Domain & dom, void * UD)
         c          = dom.Lat[1].Cells[i];
         c->BForcef = c->Density()*dat.g;
     }
-    for (size_t i=0;i<dom.Particles.Size();i++)
-    {
-        dom.Particles[i]->Ff = dom.Particles[i]->Props.m*dat.g;
+    //for (size_t i=0;i<dom.Particles.Size();i++)
+    //{
+        //dom.Particles[i]->Ff = dom.Particles[i]->Props.m*dat.g;
         //double delta;
         //delta =   dat.Xmin(0) - dom.Particles[i]->x(0) + dom.Particles[i]->Props.R;
         //if (delta > 0.0)  dom.Particles[i]->Ff(0) += dat.Kn*delta;
@@ -58,7 +61,7 @@ void Setup(LBM::Domain & dom, void * UD)
         //if (delta > 0.0)  dom.Particles[i]->Ff(2) += dat.Kn*delta;
         //delta = - dat.Xmax(2) + dom.Particles[i]->x(2) + dom.Particles[i]->Props.R;
         //if (delta > 0.0)  dom.Particles[i]->Ff(2) -= dat.Kn*delta;
-    }
+    //}
 }
 
 int main(int argc, char **argv) try
@@ -68,7 +71,7 @@ int main(int argc, char **argv) try
     size_t nx = 100;
     size_t ny = 100;
     size_t nz = 100;
-    double nu = 0.001;
+    double nu = 0.01;
     double dx = 1.0;
     double dt = 1.0;
     double rho= 3000.0;
@@ -186,6 +189,7 @@ int main(int argc, char **argv) try
     
     for (size_t i=0;i<Dom.Particles.Size();i++)
     {
+        Dom.Particles[i]->Ff = Dom.Particles[i]->Props.m*dat.g;
         Dom.Particles[i]->Props.Kn = 1.0*dat.Kn;
         Dom.Particles[i]->Props.Kt = 0.5*dat.Kn;
         Dom.Particles[i]->Props.Gn = 0.16;

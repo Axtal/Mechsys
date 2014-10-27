@@ -508,6 +508,7 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     Time   = 0.0;
     dt     = Thedt;
     Alpha  = 10.0;
+    Beta   = 1.0;
     Step   = 1;
     Sc     = 0.17;
     PrtVec = true;
@@ -539,6 +540,7 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     Time   = 0.0;
     dt     = Thedt;
     Alpha  = 10.0;
+    Beta   = 1.0;
     Step   = 1;
     Sc     = 0.17;
     PrtVec = true;
@@ -2078,6 +2080,7 @@ inline void Domain::ResetDisplacements()
         MTD[i].Dmx = 0.0;
         MTD[i].LLC.Resize(0);
     }
+    //std::cout << "1" << std::endl;
     #pragma omp parallel for schedule(static) num_threads(Nproc)
     for (size_t i=0;i<Particles.Size();i++)
     {
@@ -2088,14 +2091,17 @@ inline void Domain::ResetDisplacements()
             MTD[omp_get_thread_num()].LLC.Push(std::make_pair(idx,i));
         }
     }
+    //std::cout << "2" << std::endl;
     for (size_t i=0;i<Nproc;i++)
     {
         for (size_t j=0;j<MTD[i].LLC.Size();j++)
         {
+            //std::cout << i << " " << j << std::endl;
             size_t idx = DEM::Pt2idx(MTD[i].LLC[j].first,LCellDim);
             LinkedCell[idx].Push(MTD[i].LLC[j].second);
         }
     }
+    //std::cout << "3" << std::endl;
 #else
     for (size_t i=0; i<Particles.Size(); i++)
     {
@@ -3616,13 +3622,13 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
     LinkedCell.Resize(LCellDim(0)*LCellDim(1)*LCellDim(2));
     //std::cout << "1" << std::endl;
-    UpdateLinkedCells();
+    ResetDisplacements();
 
     //std::cout << "2" << std::endl;
-    ResetContacts();
+    UpdateLinkedCells();
 
     //std::cout << "3" << std::endl;
-    ResetDisplacements();
+    ResetContacts();
 
     //std::cout << "4" << std::endl;
     ImprintLattice(1,Nproc);    
@@ -3889,11 +3895,12 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
             LinkedCell.Resize(LCellDim(0)*LCellDim(1)*LCellDim(2));
 
+            ResetDisplacements();
+
             UpdateLinkedCells();
 
             ResetContacts();
 
-            ResetDisplacements();
         }
 
         //Apply molecular forces

@@ -37,6 +37,9 @@ struct UserData
 void Setup(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
+#ifdef USE_OMP
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
+#endif
     for (size_t i=0;i<dom.Lat[0].Ncells;i++)
     {
         Cell * c   = dom.Lat[0].Cells[i];
