@@ -159,13 +159,14 @@ public:
     double CalcEnergy      (double & Ekin, double & Epot);  ///< Return total energy of the system
 
 #ifdef USE_THREAD
-    pthread_mutex_t lck;                                                           ///< to protect variables in multithreading
+    pthread_mutex_t                                   lck;                         ///< to protect variables in multithreading
     Array<std::pair<size_t, size_t> >                 ListPosPairs;                ///< List of all possible particles pairs
     iVec3_t                                           LCellDim;                    ///< Dimensions of the linked cell array
     Array<Array <size_t> >                            LinkedCell;                  ///< Linked Cell array for optimization.
     Vec3_t                                            LCxmin;                      ///< Bounding box low   limit for the linked cell array
     Vec3_t                                            LCxmax;                      ///< Bounding box upper limit for the linked cell array
 #elif USE_OMP
+    omp_lock_t                                        lck;                         ///< to protect variables in multithreading
     Array<std::pair<size_t, size_t> >                 ListPosPairs;                ///< List of all possible particles pairs
     iVec3_t                                           LCellDim;                    ///< Dimensions of the linked cell array
     Array<Array <size_t> >                            LinkedCell;                  ///< Linked Cell array for optimization.
@@ -186,6 +187,7 @@ public:
     Array<BInteracton*>                               BInteractons;                ///< Cohesion interactons
     Array<Interacton*>                                PInteractons;                ///< Interactons for periodic conditions
     Array<CInteracton*>                               CPInteractons;               ///< Contact interacton for periodic conditions
+    Array<SphereCollision*>                           SInteractons;                ///< Contact interacton for spheres only
     Vec3_t                                            CamPos;                      ///< Camera position for POV
     double                                            Time;                        ///< Current time
     double                                            Dt;                          ///< Time step
@@ -207,7 +209,12 @@ public:
     std::set<std::pair<Particle *, Particle *> >      PListofpairs;                ///< List of pair of particles associated per interacton for memory optimization under periodic boundary conditions
     Array<Array <int> >                               Listofclusters;              ///< List of particles belonging to bounded clusters (applies only for cohesion simulations)
     MtData *                                          MTD;                         ///< Multithread data
-    
+
+    // Some utilities when the interactions are mainly between spheres
+    bool                                              MostlySpheres;               ///< If the simulation is mainly between spheres this should be true
+    FrictionMap_t                                     FricSpheres;                 ///< The friction value for spheres only
+    FrictionMap_t                                     RollSpheres;                 ///< Map storing the rolling resistance between spheres
+    void     CalcForceSphere();                                                    ///< Calculate force between only spheres spheres
     
 #ifdef USE_BOOST_PYTHON
     void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
@@ -641,10 +648,13 @@ void * GlobalPerForce(void * Data)
 inline Domain::Domain (void * UD)
     :  Initialized(false), Dilate(false), Time(0.0), Alpha(0.05), Beta(1.0), UserData(UD)
 {
+    MostlySpheres = false;
     Xmax = Xmin = 0.0;
     CamPos = 1.0, 2.0, 3.0;
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
+#elif USE_OMP
+    omp_init_lock(&lck);
 #endif
 }
 
@@ -1781,6 +1791,8 @@ inline void Domain::AddTorus (int Tag, Vec3_t const & X, Vec3_t const & N, doubl
     q(3) = (xp(1)-yp(0))/(4*q(0));
     q = q/norm(q);
 
+    if (isnan(norm(q))) q = 1.0,0.0,0.0,0.0;
+
     Particles[Particles.Size()-1]->Q          = q;
     Particles[Particles.Size()-1]->Props.V    = 2*M_PI*M_PI*R*R*Rmax;
     Particles[Particles.Size()-1]->Props.m    = rho*2*M_PI*M_PI*R*R*Rmax;
@@ -1803,7 +1815,7 @@ inline void Domain::AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t c
     Vec3_t n = X1 - X0;
     n /= norm(n);
     Vec3_t P1 = OrthoSys::e0 - dot(OrthoSys::e0,n)*n;
-    if (norm(P1)<1.0e-12) P1 = OrthoSys::e1 - dot(OrthoSys::e1,n)*n;
+    if (norm(P1)<1.0e-12) P1 = OrthoSys::e2 - dot(OrthoSys::e2,n)*n;
     P1       /= norm(P1);
     Vec3_t P2 = cross(n,P1);
     P2       /= norm(P2);
@@ -1837,6 +1849,8 @@ inline void Domain::AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t c
     q(3) = (xp(1)-yp(0))/(4*q(0));
     q = q/norm(q);
 
+    if (isnan(norm(q))) q = 1.0,0.0,0.0,0.0;
+
     Particles[Particles.Size()-1]->Q          = q;
     Particles[Particles.Size()-1]->Props.V    = 4.0*M_PI*R0*R*norm(X1-X0);
     Particles[Particles.Size()-1]->Props.m    = rho*4.0*M_PI*R0*R*norm(X1-X0);
@@ -1850,6 +1864,8 @@ inline void Domain::AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t c
     Particles[Particles.Size()-1]->Tori.Push     (new Torus(&X0,Particles[Particles.Size()-1]->Verts[0],Particles[Particles.Size()-1]->Verts[1]));
     Particles[Particles.Size()-1]->Tori.Push     (new Torus(&X1,Particles[Particles.Size()-1]->Verts[3],Particles[Particles.Size()-1]->Verts[4]));
     Particles[Particles.Size()-1]->Cylinders.Push(new Cylinder(Particles[Particles.Size()-1]->Tori[0],Particles[Particles.Size()-1]->Tori[1],Particles[Particles.Size()-1]->Verts[2],Particles[Particles.Size()-1]->Verts[5]));
+
+    //std::cout << *Particles[Particles.Size()-1] << std::endl;
 }
 
 // Methods
@@ -2028,9 +2044,9 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
     printf("%s  Suggested Verlet distance        =  %g or %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
 
-    if (Alpha > MaxDmax)
+    if (Alpha > Beta*MaxDmax)
     {
-        Alpha = MaxDmax;
+        Alpha = Beta*MaxDmax;
         printf("%s  Verlet distance changed to       =  %g%s\n"   ,TERM_CLR2, Alpha                                    , TERM_RST);
     }
 
@@ -2519,7 +2535,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         }
 
         //Calculate forces
-        //std::cout << "2" << std::endl;
+        //std::cout << Interactons.Size() << " 2" << std::endl;
         #pragma omp parallel for schedule(static) num_threads(Nproc)
         for (size_t i=0; i<Interactons.Size(); i++)
         {
@@ -2540,7 +2556,29 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             Interactons[i]->P2->T += Interactons[i]->T2;
             omp_unset_lock(&Interactons[i]->P2->lck);
         }
-        
+
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0; i<SInteractons.Size(); i++)
+        {
+		    if (SInteractons[i]->CalcForce(Dt))
+            {
+                Save     ("error");
+                WriteXDMF("error");
+                std::cout << "Maximun overlap detected between particles at time " << Time << std::endl;
+                sleep(1);
+                throw new Fatal("Maximun overlap detected between particles");
+            }
+            omp_set_lock  (&SInteractons[i]->P1->lck);
+            SInteractons[i]->P1->F += SInteractons[i]->F1;
+            SInteractons[i]->P1->T += SInteractons[i]->T1;
+            omp_unset_lock(&SInteractons[i]->P1->lck);
+            omp_set_lock  (&SInteractons[i]->P2->lck);
+            SInteractons[i]->P2->F += SInteractons[i]->F2;
+            SInteractons[i]->P2->T += SInteractons[i]->T2;
+            omp_unset_lock(&SInteractons[i]->P2->lck);
+        }
+
+        if(MostlySpheres) CalcForceSphere();
         // Periodic Boundary
         //std::cout << "3" << std::endl;
         if (Xmax-Xmin>Alpha)
@@ -4035,6 +4073,7 @@ inline void Domain::UpdateLinkedCells()
         //std::cout << ListPosPairs[i].first << " " << ListPosPairs[i].second << std::endl;
     //}
 }
+
 #elif USE_OMP
 
 inline void Domain::UpdateLinkedCells()
@@ -4058,14 +4097,19 @@ inline void Domain::UpdateLinkedCells()
         if (LinkedCell[idx].Size()==0) continue;
         iVec3_t index;
         idx2Pt(idx,index,LCellDim);
+        //std::cout << index << " " << LinkedCell[idx].Size() << " ";
         for (size_t n=0  ;n<LinkedCell[idx].Size()-1;n++)
-        for (size_t m=n+1;m<LinkedCell[idx].Size()  ;m++)
         {
-            size_t i1 = LinkedCell[idx][n];
-            size_t i2 = LinkedCell[idx][m];
-            if (i1==i2) continue;
-            MTD[omp_get_thread_num()].LPP.Push(std::make_pair(i1,i2));
+            //std::cout << LinkedCell[idx][n] << " ";
+            for (size_t m=n+1;m<LinkedCell[idx].Size()  ;m++)
+            {
+                size_t i1 = LinkedCell[idx][n];
+                size_t i2 = LinkedCell[idx][m];
+                if (i1==i2) continue;
+                MTD[omp_get_thread_num()].LPP.Push(std::make_pair(i1,i2));
+            }
         }
+        //std::cout << std::endl;
         size_t i = index(0);
         size_t j = index(1);
         size_t k = index(2);
@@ -4280,7 +4324,8 @@ inline void Domain::ResetContacts()
             Listofpairs.insert(std::make_pair(Particles[n],Particles[m]));
             if (Particles[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
             {
-                CInteractons.Push (new CInteractonSphere(Particles[n],Particles[m]));
+                if (!MostlySpheres) CInteractons.Push (new CInteractonSphere(Particles[n],Particles[m]));
+                //if (!MostlySpheres) SInteractons.Push (new SphereCollision(Particles[n],Particles[m]));
             }
             else
             {
@@ -4512,6 +4557,161 @@ inline void Domain::ResetBoundaries()
     Vec3_t vmin(Xmax-Xmin,0.0,0.0);
     for (size_t i=0;i<ParXmax.Size();i++) ParXmax[i]->Translate(vmin);
 }
+
+inline void Domain::CalcForceSphere()
+{
+    //std::cout << "Pairs size = " << ListPosPairs.Size() << std::endl;
+    //std::set<std::pair<Particle *,Particle *> >::iterator it;
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    //for (it=Listofpairs.begin();it!=Listofpairs.end();++it)
+    for (size_t np=0;np<ListPosPairs.size();np++)
+    {
+        //std::cout << "1" << std::endl;
+        size_t i = ListPosPairs[np].first;
+        size_t j = ListPosPairs[np].second;
+        //std::cout << i << " " << j << std::endl;
+        DEM::Particle * P1 = Particles[i];
+        DEM::Particle * P2 = Particles[j];
+        //DEM::Particle * P1 = it->first;
+        //DEM::Particle * P2 = it->second;
+        //size_t i = P1->Index;
+        //size_t j = P2->Index;
+        bool pi = (P1->Verts.Size()==1);
+        bool pj = (P2->Verts.Size()==1);
+        //bool close = (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*Alpha);
+        if (!(pi&&pj)) continue;
+        //std::cout << i << " " << j << std::endl;
+
+        Vec3_t xi = P1->x;
+        Vec3_t xf = P2->x;
+        double dist = norm(P1->x - P2->x);
+        double delta = P1->Props.R + P2->Props.R - dist;
+        if (delta>0)
+        {
+            //std::cout << "2" << std::endl;
+            Vec3_t n = (xf-xi)/dist;
+            Vec3_t x = xi+n*((P1->Props.R*P1->Props.R-P2->Props.R*P2->Props.R+dist*dist)/(2*dist));
+            Vec3_t t1,t2,x1,x2;
+            Rotation(P1->w,P1->Q,t1);
+            Rotation(P2->w,P2->Q,t2);
+            x1 = x - P1->x;
+            x2 = x - P2->x;
+            Vec3_t vrel = -((P2->v-P1->v)+cross(t2,x2)-cross(t1,x1));
+            Vec3_t vt = vrel - dot(n,vrel)*n;
+
+            double Kn = ReducedValue(P1->Props.Kn,P2->Props.Kn);
+            double Kt = 2*ReducedValue(P1->Props.Kt,P2->Props.Kt);
+            double me = ReducedValue(P1->Props.m ,P2->Props.m );
+            double Gn = 2*ReducedValue(P1->Props.Gn,P2->Props.Gn);
+            double Gt = 2*ReducedValue(P1->Props.Gt,P2->Props.Gt);
+            double beta = 2*ReducedValue(P1->Props.Beta,P2->Props.Beta);
+            double eta  = 2*ReducedValue(P1->Props.Eta,P2->Props.Eta);
+            double Bn   = 2*ReducedValue(P1->Props.Bn,P2->Props.Bn);
+            double Bt   = 2*ReducedValue(P1->Props.Bt,P2->Props.Bt);
+            double eps  = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
+            double Mu;
+
+            if (P1->Props.Mu>1.0e-12&&P2->Props.Mu>1.0e-12)
+            {
+                Mu          = std::max(P1->Props.Mu,P2->Props.Mu);
+            }
+            else 
+            {
+                Mu          = 0.0;
+            }
+
+            if (Gn < -0.001)
+            {
+                if (fabs(Gn)>1.0) throw new Fatal("CInteractonSphere the restitution coefficient is greater than 1");
+                Gn = 2.0*sqrt((pow(log(-Gn),2.0)*(Kn/me))/(M_PI*M_PI+pow(log(-Gn),2.0)));
+                Gt = 0.0;
+            }
+            Gn *= me;
+            Gt *= me;
+
+            Vec3_t Fn = Kn*delta*n;
+            std::pair<int,int> p;
+            p = std::make_pair(i,j);
+            if (FricSpheres.count(p)==0) 
+            {             
+                omp_set_lock  (&lck);
+                FricSpheres[p] = OrthoSys::O;
+                omp_unset_lock(&lck);
+            }
+            FricSpheres[p] += vt*Dt;
+            FricSpheres[p] -= dot(FricSpheres[p],n)*n;
+            Vec3_t tan = FricSpheres[p];
+            if (norm(tan)>0.0) tan/=norm(tan);
+            if (norm(FricSpheres[p])>Mu*norm(Fn)/Kt)
+            {
+                FricSpheres[p] = Mu*norm(Fn)/Kt*tan;
+            }
+            Vec3_t F = Fn + Kt*FricSpheres[p] + Gn*dot(n,vrel)*n + Gt*vt;
+            //Vec3_t F = Fn + P1->Props.Gn*dot(n,vrel)*n + P1->Props.Gt*vt;
+            Vec3_t F1   = -F;
+            Vec3_t F2   =  F;
+
+            Vec3_t T, Tt;
+            Tt = cross (x1,F);
+            Quaternion_t q;
+            Conjugate (P1->Q,q);
+            Rotation  (Tt,q,T);
+            Vec3_t T1 = -T;
+
+            Tt = cross (x2,F);
+            Conjugate (P2->Q,q);
+            Rotation  (Tt,q,T);
+            Vec3_t T2 =  T;
+            
+            //std::cout << "3" << std::endl;
+
+
+            //rolling resistance
+            if (dot(F,n)<0) F-=dot(F,n)*n;
+            Vec3_t Normal = Fn/norm(Fn);
+            Vec3_t Vr = P1->Props.R*P2->Props.R*cross(Vec3_t(t1 - t2),Normal)/(P1->Props.R+P2->Props.R);
+            if (RollSpheres.count(p)==0) 
+            {
+                omp_set_lock  (&lck);
+                RollSpheres[p] = OrthoSys::O;
+                omp_unset_lock(&lck);
+            }
+            RollSpheres[p] += Vr*Dt;
+            RollSpheres[p] -= dot(RollSpheres[p],Normal)*Normal;
+            tan = RollSpheres[p];
+            if (norm(tan)>0.0) tan/=norm(tan);
+            double Kr = beta*Kt;
+            if (norm(RollSpheres[p])>eta*Mu*norm(Fn)/Kr)
+            {
+                RollSpheres[p] = eta*Mu*norm(Fn)/Kr*tan;
+            }
+            Vec3_t Ft = -Kr*RollSpheres[p];
+
+            //std::cout << "4" << std::endl;
+
+            Tt = P1->Props.R*cross(Normal,Ft);
+            Conjugate (P1->Q,q);
+            Rotation  (Tt,q,T);
+            T1 += T;
+//
+            Tt = P2->Props.R*cross(Normal,Ft);
+            Conjugate (P2->Q,q);
+            Rotation  (Tt,q,T);
+            T2 -= T;
+
+            omp_set_lock  (&P1->lck);
+            P1->F += F1;
+            P1->T += T1;
+            omp_unset_lock(&P1->lck);
+            omp_set_lock  (&P2->lck);
+            P2->F += F2;
+            P2->T += T2;
+            omp_unset_lock(&P2->lck);
+        }
+    }
+    
+}
+
 // Auxiliar methods
 
 inline void Domain::LinearMomentum (Vec3_t & L)

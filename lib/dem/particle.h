@@ -797,7 +797,7 @@ inline void Particle::Translate (double dt)
         throw new Fatal("Particle::Translate: The force is not a number %zd(%d), try reducing the time step",Index,Tag);
     }
     Vec3_t temp,xa;
-    xa    = 2*x - xb + Ft*(dt*dt/Props.m);
+    xa    = 2.0*x - xb + Ft*(dt*dt/Props.m);
     temp  = xa - x;
     v    = 0.5*(xa - xb)/dt;
     xb   = x;

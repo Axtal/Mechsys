@@ -475,8 +475,12 @@ int main(int argc, char **argv) try
 
     if (argc<2) throw new Fatal("This program must be called with one argument: the name of the data input file without the '.inp' suffix.\nExample:\t %s filekey\n",argv[0]);
     //number of threads
-    size_t Nproc = 1; 
-    if (argc==3) Nproc=atoi(argv[2]);
+    size_t Nproc         = 1;
+    bool   mostlyspheres = false;
+    double binsize       = 2.0;
+    if (argc>=3) Nproc         = atoi(argv[2]);
+    if (argc>=4) mostlyspheres = atoi(argv[3]);
+    if (argc>=5) binsize       = atof(argv[4]);
     String filekey  (argv[1]);
     String filename (filekey+".inp");
     if (!Util::FileExists(filename)) throw new Fatal("File <%s> not found",filename.CStr());
@@ -571,9 +575,12 @@ int main(int argc, char **argv) try
     UserData dat;
     DEM::Domain dom(&dat);
     dom.Alpha=verlet;
+    dom.Beta = binsize;
+    dom.MostlySpheres = mostlyspheres;
     dom.CamPos = Vec3_t(0.1*Lx, 0.7*(Lx+Ly+Lz), 0.15*Lz); // position of camera
     dat.dt = dt;
     dat.RenderVideo = (bool) RenderVideo;
+
 
     bool load = false;
     // particle

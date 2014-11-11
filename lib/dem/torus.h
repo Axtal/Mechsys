@@ -71,27 +71,27 @@ inline void Torus::Draw (std::ostream & os, double Radius, char const * Color, b
     }
     else
     {
-        Vec3_t xp,yp,zp;
-        xp = (*X1)-(*X0);
-        zp = (*X2)-(*X0);
-        yp = cross(zp,xp);
-        xp/= norm(xp);
-        yp/= norm(yp);
-        zp/= norm(zp);
-        CheckDestroGiro(xp,yp,zp);
-        Quaternion_t Q;
-        Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
-        Q(1) = (yp(2)-zp(1))/(4*Q(0));
-        Q(2) = (zp(0)-xp(2))/(4*Q(0));
-        Q(3) = (xp(1)-yp(0))/(4*Q(0));
-        Q = Q/norm(Q);
-        double angle = 2*acos(Q(0));
-        double Rmax = norm((*X0)-(*X1));
-        double Rmin = Radius;
-        os << "torus  { \n" << Rmax << "," << Rmin << "\n Axis_Rotate_Trans (<" 
-           << Q(1) << "," << Q(2) << "," << Q(3) << ">," << angle*180.0/M_PI << ") \n"
-           << "translate <" << (*X0)(0) << "," << (*X0)(1) << "," << (*X0)(2) << ">"
-           <<"\n pigment { color "<<Color<<" } }\n";
+        //Vec3_t xp,yp,zp;
+        //xp = (*X1)-(*X0);
+        //zp = (*X2)-(*X0);
+        //yp = cross(zp,xp);
+        //xp/= norm(xp);
+        //yp/= norm(yp);
+        //zp/= norm(zp);
+        //CheckDestroGiro(xp,yp,zp);
+        //Quaternion_t Q;
+        //Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+        //Q(1) = (yp(2)-zp(1))/(4*Q(0));
+        //Q(2) = (zp(0)-xp(2))/(4*Q(0));
+        //Q(3) = (xp(1)-yp(0))/(4*Q(0));
+        //Q = Q/norm(Q);
+        //double angle = 2*acos(Q(0));
+        //double Rmax = norm((*X0)-(*X1));
+        //double Rmin = Radius;
+        //os << "torus  { \n" << Rmax << "," << Rmin << "\n Axis_Rotate_Trans (<" 
+           //<< Q(1) << "," << Q(2) << "," << Q(3) << ">," << angle*180.0/M_PI << ") \n"
+           //<< "translate <" << (*X0)(0) << "," << (*X0)(1) << "," << (*X0)(2) << ">"
+           //<<"\n pigment { color "<<Color<<" } }\n";
     }
 }
 }
