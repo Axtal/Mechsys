@@ -31,17 +31,16 @@
 namespace LBM
 {
 
-class Particle
+class Disk
 {
 public:
-    Particle () {} ///< Default constructor
+    Disk(int Tag, Vec3_t const & X, Vec3_t const & V, Vec3_t const & W, double rho, double R, double dt);
 
     //Methods
     void Translate   (double dt);
     void Rotate      (double dt);
     void FixVelocity () {vf=true,true,true; wf=true,true,true;};
     bool IsFree () {return !vf(0)&&!vf(1)&&!vf(2)&&!wf(0)&&!wf(1)&&!wf(2);}; ///< Ask if the particle has any constrain in its movement
-    void ImprintDisk (Lattice & Lat);
 
 #ifdef USE_THREAD
     pthread_mutex_t lck;   ///< Lock to protect variables from race conditions.
@@ -74,21 +73,36 @@ public:
     
 };
 
-class Disk: public Particle
+inline Disk::Disk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
 {
-public:
-    //Constructor
-    Disk(int Tag, Vec3_t const & X, Vec3_t const & V, Vec3_t const & W, double rho, double R, double dt);
-};
+    Tag = TheTag;
+    X   = TheX;
+    V   = TheV;
+    W   = TheW;
+    R   = TheR;
+    M   = M_PI*R*R*Therho;
+    I   = 0.5*M*R*R;
+    Xb  = X - dt*V;
+    Wb  = W;
+    Ff  = 0.0,0.0,0.0;
+    Tf  = 0.0,0.0,0.0;
+    vf  = false,false,false;
+    wf  = false,false,false;
+    Gn  = 8.0;
+    Gt  = 0.0;
+    Kn  = 1.0e3;
+    Kt  = 5.0e2;
+    Mu  = 0.4;
+    Eta = 1.0;  
+    Beta = 0.12; 
+    Q    = 1.0,0.0,0.0,0.0;
 
-class Sphere: public Particle
-{
-public:
-    //Constructor
-    Sphere(int Tag, Vec3_t const & X, Vec3_t const & V, Vec3_t const & W, double rho, double R, double dt);
-};
+#ifdef USE_THREAD
+    pthread_mutex_init(&lck,NULL);
+#endif
+}
 
-inline void Particle::Translate(double dt)
+inline void Disk::Translate(double dt)
 {
     //std::cout << F(0) << " " << M << " " << V(0) << std::endl;
     if (vf(0)) F(0) = 0.0;
@@ -101,7 +115,7 @@ inline void Particle::Translate(double dt)
     X         = Xa;
 }
 
-inline void Particle::Rotate (double dt)
+inline void Disk::Rotate (double dt)
 {
     double q0,q1,q2,q3,wx,wy,wz;
     q0 = 0.5*Q(0);
@@ -132,63 +146,6 @@ inline void Particle::Rotate (double dt)
     dq  = Quaternion_t(-(q1*wx+q2*wy+q3*wz),q0*wx-q3*wy+q2*wz,q3*wx+q0*wy-q1*wz,-q2*wx+q1*wy+q0*wz);
     Quaternion_t Qd = (qm+dq*0.5*dt),temp;
     Q  = Qd/norm(Qd);
-}
-
-inline Disk::Disk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
-{
-    Tag = TheTag;
-    X   = TheX;
-    V   = TheV;
-    W   = TheW;
-    R   = TheR;
-    M   = M_PI*R*R*Therho;
-    I   = 0.5*M*R*R;
-    Xb  = X - dt*V;
-    Wb  = W;
-    Ff  = 0.0,0.0,0.0;
-    Tf  = 0.0,0.0,0.0;
-    vf  = false,false,false;
-    wf  = false,false,false;
-    Gn  = 8.0;
-    Gt  = 0.0;
-    Kn  = 1.0e3;
-    Kt  = 5.0e2;
-    Mu  = 0.4;
-    Eta = 1.0;  
-    Beta = 0.12; 
-    Q    = 1.0,0.0,0.0,0.0;
-
-#ifdef USE_THREAD
-    pthread_mutex_init(&lck,NULL);
-#endif
-}
-
-inline Sphere::Sphere(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
-{
-    Tag = TheTag;
-    X   = TheX;
-    V   = TheV;
-    W   = TheW;
-    R   = TheR;
-    M   = 4.0/3.0*M_PI*R*R*R*Therho;
-    I   = 2.0/5.0*M*R*R;
-    Xb  = X - dt*V;
-    Wb  = W;
-    Ff  = 0.0,0.0,0.0;
-    Tf  = 0.0,0.0,0.0;
-    vf  = false,false,false;
-    wf  = false,false,false;
-    Gn  = 8.0;
-    Gt  = 0.0;
-    Kn  = 1.0e3;
-    Kt  = 5.0e2;
-    Mu  = 0.4;
-    Eta = 1.0;  
-    Beta = 0.12; 
-    Q    = 1.0,0.0,0.0,0.0;
-#ifdef USE_THREAD
-    pthread_mutex_init(&lck,NULL);
-#endif
 }
 
 }

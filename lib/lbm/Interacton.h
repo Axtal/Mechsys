@@ -26,12 +26,12 @@
 #include <mechsys/dem/basic_functions.h>
 namespace LBM
 {
-class Interacton
+class DiskPair
 {
 public:
     //Constructor
-    Interacton () {};
-    Interacton(Particle * D1, Particle * D2);
+    DiskPair () {};
+    DiskPair(Disk * D1, Disk * D2);
 
     //Methods
     void CalcForce      (double dt);
@@ -42,8 +42,8 @@ public:
 #endif
 
     //Data
-    Particle * P1;       ///< Pointer to first particle
-    Particle * P2;       ///< Pointer to second particle
+    Disk * P1;       ///< Pointer to first particle
+    Disk * P2;       ///< Pointer to second particle
     double     Kn;       ///< Normal Spring constant 
     double     Kt;       ///< Tangential Spring constant 
     double     Gn;       ///< dissipation constant
@@ -55,7 +55,7 @@ public:
     Vec3_t    Fdr;       ///< Vector of rolling resistance
 };
 
-Interacton::Interacton(Particle * Dp1, Particle * Dp2)
+DiskPair::DiskPair(Disk * Dp1, Disk * Dp2)
 {
     P1 = Dp1;
     P2 = Dp2;
@@ -73,7 +73,7 @@ Interacton::Interacton(Particle * Dp1, Particle * Dp2)
 #endif
 }
 
-void Interacton::CalcForce(double dt)
+void DiskPair::CalcForce(double dt)
 {
     double dist  = norm(P2->X - P1->X);
     double delta = P1->R + P2->R - dist;
@@ -140,7 +140,7 @@ void Interacton::CalcForce(double dt)
     }
 }
 
-bool Interacton::UpdateContacts(double Alpha)
+bool DiskPair::UpdateContacts(double Alpha)
 {
     if (norm(P1->X-P2->X) <= P1->R + P2->R + 2*Alpha) return true;
     else                                              return false;

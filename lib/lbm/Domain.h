@@ -30,6 +30,7 @@
 // MechSys
 #include <mechsys/dem/domain.h>
 #include <mechsys/lbm/Lattice.h>
+#include <mechsys/lbm/Interacton.h>
 #include <mechsys/mesh/mesh.h>
 #include <mechsys/util/util.h>
 #include <mechsys/util/maps.h>
@@ -136,8 +137,10 @@ public:
     Array<size_t>                                  NoFreePar;         ///< Particles that are not free
     String                                           FileKey;         ///< File Key for output files
     Array <Lattice>                                      Lat;         ///< Fluid Lattices
-    Array <DEM::Particle *>                        Particles;         ///< Array of Disks
-    Array <DEM::Interacton *>                    Interactons;         ///< Array of insteractons
+    Array <DEM::Particle *>                        Particles;         ///< Array of Particles
+    Array <LBM::Disk     *>                            Disks;         ///< Array of Disks for 2D calculation
+    Array <DEM::Interacton *>                    Interactons;         ///< Array of interactons
+    Array <LBM::DiskPair   *>                      DiskPairs;         ///< Array of interactons for 2D calculation
     Array <DEM::CInteracton *>                  CInteractons;         ///< Array of valid  collision interactons
     Array <DEM::BInteracton *>                  BInteractons;         ///< Cohesion interactons
     Array <iVec3_t>                                CellPairs;         ///< Pairs of cells

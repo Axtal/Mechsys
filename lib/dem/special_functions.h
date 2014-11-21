@@ -471,6 +471,49 @@ inline double SphereCube (Vec3_t & Xs, Vec3_t & Xc, double R, double dx) // Calc
     return len;
 }
 
+inline double DiskSquare (Vec3_t & Xs, Vec3_t & Xc, double R, double dx) // Calculates the area of intersection between a Square an a Disk
+{
+    Array<Vec3_t> P(4);
+    P[0] = Xc - 0.5*dx*OrthoSys::e0 - 0.5*dx*OrthoSys::e1 + 0.5*dx*OrthoSys::e2; 
+    P[1] = Xc + 0.5*dx*OrthoSys::e0 - 0.5*dx*OrthoSys::e1 + 0.5*dx*OrthoSys::e2;
+    P[2] = Xc + 0.5*dx*OrthoSys::e0 + 0.5*dx*OrthoSys::e1 + 0.5*dx*OrthoSys::e2;
+    P[3] = Xc - 0.5*dx*OrthoSys::e0 + 0.5*dx*OrthoSys::e1 + 0.5*dx*OrthoSys::e2;
+    
+    double dmin = 2*R;
+    double dmax = 0.0;
+    for (size_t j=0;j<P.Size();j++)
+    {
+        double dist = norm(P[j] - Xs);
+        if (dmin>dist) dmin = dist;
+        if (dmax<dist) dmax = dist;
+    }
+    if (dmin > R + dx) return 0.0;
+    
+    if (dmax < R)
+    {
+        return 4.0*dx;
+    }
+    double len = 0.0;
+    for (size_t j=0;j<4;j++)
+    {
+        Vec3_t D = P[(j+1)%4] - P[j];
+        double a = dot(D,D);
+        double b = 2*dot(P[j]-Xs,D);
+        double c = dot(P[j]-Xs,P[j]-Xs) - R*R;
+        if (b*b-4*a*c>0.0)
+        {
+            double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
+            double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
+            if (ta>1.0&&tb>1.0) continue;
+            if (ta<0.0&&tb<0.0) continue;
+            if (ta<0.0) ta = 0.0;
+            if (tb>1.0) tb = 1.0;
+            len += norm((tb-ta)*D);
+        }
+    }
+    return len;
+}
+
 inline size_t Pt2idx(iVec3_t & iv, iVec3_t & Dim) // Calculates the index of the cell at coordinates iv for a cubic lattice of dimensions Dim
 {
     return iv(0) + iv(1)*Dim(0) + iv(2)*Dim(0)*Dim(1);
