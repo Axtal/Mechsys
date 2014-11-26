@@ -187,7 +187,6 @@ public:
     Array<BInteracton*>                               BInteractons;                ///< Cohesion interactons
     Array<Interacton*>                                PInteractons;                ///< Interactons for periodic conditions
     Array<CInteracton*>                               CPInteractons;               ///< Contact interacton for periodic conditions
-    Array<SphereCollision*>                           SInteractons;                ///< Contact interacton for spheres only
     Vec3_t                                            CamPos;                      ///< Camera position for POV
     double                                            Time;                        ///< Current time
     double                                            Dt;                          ///< Time step
@@ -2557,27 +2556,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             omp_unset_lock(&Interactons[i]->P2->lck);
         }
 
-        #pragma omp parallel for schedule(static) num_threads(Nproc)
-        for (size_t i=0; i<SInteractons.Size(); i++)
-        {
-		    if (SInteractons[i]->CalcForce(Dt))
-            {
-                Save     ("error");
-                WriteXDMF("error");
-                std::cout << "Maximun overlap detected between particles at time " << Time << std::endl;
-                sleep(1);
-                throw new Fatal("Maximun overlap detected between particles");
-            }
-            omp_set_lock  (&SInteractons[i]->P1->lck);
-            SInteractons[i]->P1->F += SInteractons[i]->F1;
-            SInteractons[i]->P1->T += SInteractons[i]->T1;
-            omp_unset_lock(&SInteractons[i]->P1->lck);
-            omp_set_lock  (&SInteractons[i]->P2->lck);
-            SInteractons[i]->P2->F += SInteractons[i]->F2;
-            SInteractons[i]->P2->T += SInteractons[i]->T2;
-            omp_unset_lock(&SInteractons[i]->P2->lck);
-        }
-
         if(MostlySpheres) CalcForceSphere();
         // Periodic Boundary
         //std::cout << "3" << std::endl;
@@ -4606,9 +4584,9 @@ inline void Domain::CalcForceSphere()
             double Gt = 2*ReducedValue(P1->Props.Gt,P2->Props.Gt);
             double beta = 2*ReducedValue(P1->Props.Beta,P2->Props.Beta);
             double eta  = 2*ReducedValue(P1->Props.Eta,P2->Props.Eta);
-            double Bn   = 2*ReducedValue(P1->Props.Bn,P2->Props.Bn);
-            double Bt   = 2*ReducedValue(P1->Props.Bt,P2->Props.Bt);
-            double eps  = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
+            //double Bn   = 2*ReducedValue(P1->Props.Bn,P2->Props.Bn);
+            //double Bt   = 2*ReducedValue(P1->Props.Bt,P2->Props.Bt);
+            //double eps  = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
             double Mu;
 
             if (P1->Props.Mu>1.0e-12&&P2->Props.Mu>1.0e-12)

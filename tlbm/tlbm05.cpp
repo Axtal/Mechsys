@@ -35,40 +35,45 @@ struct UserData
 void Setup(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
     for (size_t i=0;i<dom.Lat[0].Ncells;i++)
     {
         Cell * c = dom.Lat[0].Cells[i];
         c->BForcef = c->Density()*dat.g;
     }
-    for (size_t i=0;i<dom.Particles.Size();i++)
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
+    for (size_t i=0;i<dom.Disks.Size();i++)
     {
-        dom.Particles[i]->Ff = dom.Particles[i]->M*dat.g;
+        dom.Disks[i]->Ff = dom.Disks[i]->M*dat.g;
         double delta;
-        delta =   dat.Xmin(0) - dom.Particles[i]->X(0) + dom.Particles[i]->R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(0) += dat.Kn*delta;
-        delta = - dat.Xmax(0) + dom.Particles[i]->X(0) + dom.Particles[i]->R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(0) -= dat.Kn*delta;
-        delta =   dat.Xmin(1) - dom.Particles[i]->X(1) + dom.Particles[i]->R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(1) += dat.Kn*delta;
-        delta = - dat.Xmax(1) + dom.Particles[i]->X(1) + dom.Particles[i]->R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(1) -= dat.Kn*delta;
+        delta =   dat.Xmin(0) - dom.Disks[i]->X(0) + dom.Disks[i]->R;
+        if (delta > 0.0)  dom.Disks[i]->Ff(0) += dat.Kn*delta;
+        delta = - dat.Xmax(0) + dom.Disks[i]->X(0) + dom.Disks[i]->R;
+        if (delta > 0.0)  dom.Disks[i]->Ff(0) -= dat.Kn*delta;
+        delta =   dat.Xmin(1) - dom.Disks[i]->X(1) + dom.Disks[i]->R;
+        if (delta > 0.0)  dom.Disks[i]->Ff(1) += dat.Kn*delta;
+        delta = - dat.Xmax(1) + dom.Disks[i]->X(1) + dom.Disks[i]->R;
+        if (delta > 0.0)  dom.Disks[i]->Ff(1) -= dat.Kn*delta;
     }
 }
 
 
 int main(int argc, char **argv) try
 {
+    size_t Nproc  = 1; 
     size_t nx = 200;
     size_t ny = 200;
     double nu = 0.1;
     double dx = 1.0;
     double dt = 1.0;
     double rho= 100.0;
+    if (argc>=2) Nproc = atoi(argv[1]);
     LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
     UserData dat;
     Dom.UserData = &dat;
     Dom.Lat[0].G    = -200.0;
     Dom.Lat[0].Gs   = -200.0;
+    Dom.Sc          = 0.0;
     dat.g        = 0.0,-0.001,0.0;
     dat.Xmin     = 0.0,0.0,0.0;
     dat.Xmax     = nx*dx,ny*dx,0.0;
@@ -86,8 +91,8 @@ int main(int argc, char **argv) try
         Dom.Lat[0].GetCell(iVec3_t(nx-1,i,0))->IsSolid = true;
     }
 
-    for (int i=0;i<nx;i++)
-    for (int j=0;j<ny;j++)
+    for (size_t i=0;i<nx;i++)
+    for (size_t j=0;j<ny;j++)
     {
         Vec3_t v0(0.0,0.0,0.0);
         if (j<ny/2.0) Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,v0);
@@ -99,10 +104,10 @@ int main(int argc, char **argv) try
     Dom.AddDisk(0,Vec3_t(0.50*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
     Dom.AddDisk(0,Vec3_t(0.60*nx,0.8*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
     Dom.AddDisk(0,Vec3_t(0.70*nx,0.6*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,rho,0.1*ny,dt);
-    //Dom.Particles[Dom.Particles.Size()-1]->FixVelocity();
+    //Dom.Disks[Dom.Disks.Size()-1]->FixVelocity();
 
     //Solving
-    Dom.Solve(10000.0,50.0,Setup,NULL,"test05");
+    Dom.Solve(10000.0,50.0,Setup,NULL,"test05","true",Nproc);
     //Dom.Solve(10000.0,20.0,NULL,NULL,"test05");
 }
 MECHSYS_CATCH

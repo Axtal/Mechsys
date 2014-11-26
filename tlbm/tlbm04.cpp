@@ -53,6 +53,7 @@ void Setup (LBM::Domain & dom, void * UD)
     //}
 
 	// Cells with prescribed velocity
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
 	for (size_t i=0; i<dat.Left.Size(); ++i)
 	{
 		Cell * c = dat.Left[i];
@@ -61,9 +62,11 @@ void Setup (LBM::Domain & dom, void * UD)
 		c->F[1] = c->F[3] + (2.0/3.0)*rho*c->VelBC(0);
 		c->F[5] = c->F[7] + (1.0/6.0)*rho*c->VelBC(0) + 0.5*rho*c->VelBC(1) - 0.5*(c->F[2]-c->F[4]);
 		c->F[8] = c->F[6] + (1.0/6.0)*rho*c->VelBC(0) - 0.5*rho*c->VelBC(1) + 0.5*(c->F[2]-c->F[4]);
+        c->Rho = c->VelDen(c->Vel);
 	}
 
-	// Cells with prescribed density
+	// Cells with prescribed density 
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
 	for (size_t i=0; i<dat.Right.Size(); ++i)
 	{
 		Cell * c = dat.Right[i];
@@ -72,23 +75,22 @@ void Setup (LBM::Domain & dom, void * UD)
 		c->F[3] = c->F[1] - (2.0/3.0)*c->RhoBC*vx; 
 		c->F[7] = c->F[5] - (1.0/6.0)*c->RhoBC*vx + 0.5*(c->F[2]-c->F[4]);
 		c->F[6] = c->F[8] - (1.0/6.0)*c->RhoBC*vx - 0.5*(c->F[2]-c->F[4]);
+        c->Rho = c->VelDen(c->Vel);
 	}
 
     dat.Np = 0;
-    for (size_t i=0;i<dom.Particles.Size();i++)
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
+    for (size_t i=0;i<dom.Disks.Size();i++)
     {
-        if (dom.Particles[i]->X(0) > dat.Xmax(0)) dat.Np++;
-        //dom.Particles[i]->Ff = dom.Particles[i]->M*dat.g;
-        dom.Particles[i]->Ff = 0.0,0.0,0.0;
+        if (dom.Disks[i]->X(0) > dat.Xmax(0)) dat.Np++;
+        dom.Disks[i]->Ff = 0.0,0.0,0.0;
         double delta;
-        delta =   dat.Xmin(0) - dom.Particles[i]->X(0) + dom.Particles[i]->R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(0) += dat.Kn*delta;
-        //delta = - dat.Xmax(0) + dom.Particles[i]->X(0) + dom.Particles[i]->R;
-        //if (delta > 0.0)  dom.Particles[i]->Ff(0) -= dat.Kn*delta;
-        delta =   dat.Xmin(1) - dom.Particles[i]->X(1) + dom.Particles[i]->R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(1) += dat.Kn*delta;
-        delta = - dat.Xmax(1) + dom.Particles[i]->X(1) + dom.Particles[i]->R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(1) -= dat.Kn*delta;
+        delta =   dat.Xmin(0) - dom.Disks[i]->X(0) + dom.Disks[i]->R;
+        if (delta > 0.0)  dom.Disks[i]->Ff(0) += dat.Kn*delta;
+        delta =   dat.Xmin(1) - dom.Disks[i]->X(1) + dom.Disks[i]->R;
+        if (delta > 0.0)  dom.Disks[i]->Ff(1) += dat.Kn*delta;
+        delta = - dat.Xmax(1) + dom.Disks[i]->X(1) + dom.Disks[i]->R;
+        if (delta > 0.0)  dom.Disks[i]->Ff(1) -= dat.Kn*delta;
     }
 
     Vec3_t Xmin,Xmax;
@@ -98,7 +100,7 @@ void Setup (LBM::Domain & dom, void * UD)
         for (double y=0.05*dat.Xmax(1) + dat.alt*2.0*dat.rc;y<0.95*dat.Xmax(1);y+=4.0*dat.rc)
         {
             dom.AddDisk(0,Vec3_t(dat.xlim, y,0.0),Vec3_t(dat.vp,0.0,0.0),OrthoSys::O,3.0,dat.rc,1.0);
-            dom.Particles[dom.Particles.Size()-1]->Kn = dat.Kn;
+            dom.Disks[dom.Disks.Size()-1]->Kn = dat.Kn;
         }
         dom.ResetContacts();
         dom.ResetDisplacements();
@@ -123,6 +125,7 @@ void Report(LBM::Domain & dom, void * UD)
 
 int main(int argc, char **argv) try
 {
+    size_t Nproc  = 1; 
     size_t nx     = 1000;
     size_t ny     = 1000;
     double nu     = 0.04;
@@ -132,10 +135,15 @@ int main(int argc, char **argv) try
     double rc     = 5.0;
     double xlim   = 1.1*rc;
     double Kn     = 1.0e2;
+    double Tf     = 1.0e3;
+    if (argc>=2) Nproc = atoi(argv[1]);
+    if (argc>=3) Tf    = atof(argv[2]);
+
     LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
     UserData dat;
     Dom.UserData = &dat;
     Dom.Alpha    = 2.0*rc;
+    Dom.Sc       = 0.0;
     dat.xlim     = xlim;
     dat.Xmin     = 0.0,0.0,0.0;
     dat.Xmax     = nx*dx,ny*dx,0.0;
@@ -146,6 +154,7 @@ int main(int argc, char **argv) try
     dat.Np       = 0;
     dat.Kn       = Kn;
 
+    //std::cout << "1" << std::endl;
     //Assigning the left and right cells
     for (size_t i=0;i<ny;i++)
     {
@@ -168,6 +177,7 @@ int main(int argc, char **argv) try
         Dom.Lat[0].GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
     }
 
+    //std::cout << "2" << std::endl;
 	// Set grains
 	Table grains;
 	grains.Read("circles.out");
@@ -177,15 +187,17 @@ int main(int argc, char **argv) try
 		double yc = grains["Yc"][i]*ny;
 		double r  = grains["R" ][i]*nx*0.9;
         Dom.AddDisk(0,Vec3_t(xc,yc,0.0),OrthoSys::O,OrthoSys::O,3.0,r,1.0);
-        Dom.Particles[Dom.Particles.Size()-1]->FixVelocity();
-        Dom.Particles[Dom.Particles.Size()-1]->Kn = Kn;
+        Dom.Disks[Dom.Disks.Size()-1]->FixVelocity();
+        Dom.Disks[Dom.Disks.Size()-1]->Kn = Kn;
 	}
 
+    //std::cout << "3" << std::endl;
     for (double y=0.05*dat.Xmax(1);y<0.95*dat.Xmax(1);y+=4.0*rc)
     {
         Dom.AddDisk(0,Vec3_t(xlim, y,0.0),Vec3_t(0.1*vb,0.0,0.0),OrthoSys::O,3.0,rc,1.0);
-        Dom.Particles[Dom.Particles.Size()-1]->Kn = Kn;
+        Dom.Disks[Dom.Disks.Size()-1]->Kn = Kn;
     }
+    //Dom.AddDisk(0,Vec3_t(0.3*nx,0.5*ny,0.0),Vec3_t(0.0,0.0,0.0),OrthoSys::O,3.0,10.0*rc,1.0);
 
     
 
@@ -198,9 +210,9 @@ int main(int argc, char **argv) try
         Dom.Lat[0].Cells[i]->Initialize(rho0, v0);
     }
 
+
     //Solving
-    Dom.Time = 0.0;
-    Dom.Solve(100000.0,1000.0,Setup,Report,"test04");
+    Dom.Solve(Tf,0.01*Tf,Setup,Report,"test04",true,Nproc);
     dat.oss_ss.close();
  
 }

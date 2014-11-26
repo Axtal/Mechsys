@@ -38,6 +38,7 @@ struct UserData
 void Setup(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
     for (size_t i=0;i<dom.Lat[0].Ncells;i++)
     {
         Cell * c = dom.Lat[0].Cells[i];
@@ -47,6 +48,7 @@ void Setup(LBM::Domain & dom, void * UD)
     //double TC    = 3.0*dat.Tf/4.0;
     //double rho = 500.0*(1.0 + alpha*4.0*dom.Time*(TC-dom.Time)/(TC*TC));
     //if (dom.Time>TC) rho = 500.0;
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
     for (size_t i=0;i<dat.Bottom.Size();i++)
     {
         Cell * c = dat.Bottom[i];
@@ -60,18 +62,19 @@ void Setup(LBM::Domain & dom, void * UD)
         dat.Bottom[i]->Initialize(dat.rho,OrthoSys::O);
     }
 
-    for (size_t i=0;i<dom.Particles.Size();i++)
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
+    for (size_t i=0;i<dom.Disks.Size();i++)
     {
-        dom.Particles[i]->Ff = dom.Particles[i]->M*dat.g;
+        dom.Disks[i]->Ff = dom.Disks[i]->M*dat.g;
         double delta;
-        delta =   dat.Xmin(0) - dom.Particles[i]->X(0) + dom.Particles[i]->R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(0) += dat.Kn*delta;
-        delta = - dat.Xmax(0) + dom.Particles[i]->X(0) + dom.Particles[i]->R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(0) -= dat.Kn*delta;
-        delta =   dat.Xmin(1) - dom.Particles[i]->X(1) + dom.Particles[i]->R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(1) += dat.Kn*delta;
-        delta = - dat.Xmax(1) + dom.Particles[i]->X(1) + dom.Particles[i]->R;
-        if (delta > 0.0)  dom.Particles[i]->Ff(1) -= dat.Kn*delta;
+        delta =   dat.Xmin(0) - dom.Disks[i]->X(0) + dom.Disks[i]->R;
+        if (delta > 0.0)  dom.Disks[i]->Ff(0) += dat.Kn*delta;
+        delta = - dat.Xmax(0) + dom.Disks[i]->X(0) + dom.Disks[i]->R;
+        if (delta > 0.0)  dom.Disks[i]->Ff(0) -= dat.Kn*delta;
+        delta =   dat.Xmin(1) - dom.Disks[i]->X(1) + dom.Disks[i]->R;
+        if (delta > 0.0)  dom.Disks[i]->Ff(1) += dat.Kn*delta;
+        delta = - dat.Xmax(1) + dom.Disks[i]->X(1) + dom.Disks[i]->R;
+        if (delta > 0.0)  dom.Disks[i]->Ff(1) -= dat.Kn*delta;
     }
 }
 

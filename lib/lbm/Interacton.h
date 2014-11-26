@@ -53,6 +53,10 @@ public:
     double     Eta;      ///< Plastic moment coefficient
     Vec3_t    SFr;       ///< Vector of static friction
     Vec3_t    Fdr;       ///< Vector of rolling resistance
+    Vec3_t     F1;       ///< net force over particle 1
+    Vec3_t     F2;       ///< net force over particle 2
+    Vec3_t     T1;       ///< net torque over particle 1
+    Vec3_t     T2;       ///< net torque over particle 2
 };
 
 DiskPair::DiskPair(Disk * Dp1, Disk * Dp2)
@@ -126,16 +130,16 @@ void DiskPair::CalcForce(double dt)
 #ifdef USE_THREAD
         //pthread_mutex_lock(&D1->lck);
         //pthread_mutex_lock(&D2->lck);
-        pthread_mutex_lock(&lck);
+        //pthread_mutex_lock(&lck);
 #endif
-        P1->F      -= F;
-        P2->F      += F;
-        P1->T      += t1;
-        P2->T      += t2;
+        F1      = -F;
+        F2      =  F;
+        T1      = t1;
+        T2      = t2;
 #ifdef USE_THREAD
         //pthread_mutex_unlock(&D1->lck);
         //pthread_mutex_unlock(&D2->lck);
-        pthread_mutex_unlock(&lck);
+        //pthread_mutex_unlock(&lck);
 #endif
     }
 }

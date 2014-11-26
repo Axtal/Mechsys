@@ -57,7 +57,8 @@ int main(int argc, char **argv) try
     LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
     UserData dat;
     Dom.UserData = &dat;
-    dat.g           = 0.0,-0.001,0.0;
+    Dom.Sc       = 0.0;
+    dat.g           = 0.0,-0.0001,0.0;
     //dat.g           = 0.0,0.0,0.0;
     for (size_t i=0;i<nx;i++)
     {
@@ -77,17 +78,17 @@ int main(int argc, char **argv) try
 		Vec3_t V;  V = 0.0, 0.0, 0.0;
 		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
 		{
-            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
-            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
-            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
-            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(100.0,V);
+            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
+            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
+            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
+            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(100.0,V);
 		}
 		else
 		{
-            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
-            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(100.0,V);
-            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
-            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
+            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
+            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(100.0,V);
+            Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
+            Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
 		}
     }
 

@@ -44,6 +44,8 @@ public:
 
 #ifdef USE_THREAD
     pthread_mutex_t lck;   ///< Lock to protect variables from race conditions.
+#elif USE_OMP
+    omp_lock_t      lck;             ///< to protect variables in multithreading
 #endif
     // Data
     int  Tag;              ///< Id of the particle
@@ -99,6 +101,8 @@ inline Disk::Disk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t c
 
 #ifdef USE_THREAD
     pthread_mutex_init(&lck,NULL);
+#elif USE_OMP
+    omp_init_lock(&lck);
 #endif
 }
 

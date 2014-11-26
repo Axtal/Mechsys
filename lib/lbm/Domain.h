@@ -95,11 +95,12 @@ public:
     double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                                                ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
     double rho, bool Cohesion, bVec3_t Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                                             ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni, Periodic conditions are chosen for each particle
+    void AddDisk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt);        ///< Add a disk element in 2D
+    
     // Access methods
     DEM::Particle       * GetParticle  (int Tag, bool Check=true);       ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
     DEM::Particle const & GetParticle  (int Tag, bool Check=true) const; ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
     void                 DelParticles  (Array<int> const & Tags);        ///< Delete particle
-    
     //Methods
 #ifdef USE_HDF5
     void WriteBF           (char const * FileKey);  ///< Save a h5 with branch and force information
@@ -123,6 +124,7 @@ public:
     Array<pair<size_t, size_t> >                ListPosPairs;         ///< List of all possible particles pairs
 #elif USE_OMP
     Array<pair<size_t, size_t> >                ListPosPairs;         ///< List of all possible particles pairs
+    Array<pair<size_t, size_t> >                List2DPairs;          ///< List of all possible particles pairs in 2D
     iVec3_t                                     LCellDim;             ///< Dimensions of the linked cell array
     Array<Array <size_t> >                      LinkedCell;           ///< Linked Cell array for optimization.
     Vec3_t                                      LCxmin;               ///< Bounding box low   limit for the linked cell array
@@ -146,6 +148,7 @@ public:
     Array <iVec3_t>                                CellPairs;         ///< Pairs of cells
     Array <ParticleCellPair>                    ParCellPairs;         ///< Pairs of cells and particles
     set<pair<DEM::Particle *, DEM::Particle *> > Listofpairs;         ///< List of pair of particles associated per interacton for memory optimization
+    set<pair<LBM::Disk *, LBM::Disk *> >     ListofDiskPairs;         ///< List of pair of disks associated per interacton for memory optimization
     double                                              Time;         ///< Time of the simulation
     double                                                dt;         ///< Timestep
     double                                             Alpha;         ///< Verlet distance
@@ -1836,12 +1839,12 @@ void Domain::Collide (size_t n, size_t Np)
                 {
                     if (std::isnan(c->Ftemp[k]))
                     {
-                        c->Gamma = 2.0;
+                        //c->Gamma = 2.0;
                         #ifdef USE_HDF5
-                        WriteXDMF("error");
+                        //WriteXDMF("error");
                         #endif
-                        std::cout << "Nan found, resetting" << std::endl;
-                        std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << " " << std::endl;
+                        //std::cout << "Nan found, resetting" << std::endl;
+                        //std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << " " << std::endl;
                         c->Ftemp[k] = 1.0e-15;
                         //c->Ftemp[k] = c->F[k];
                         //throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
@@ -1875,202 +1878,187 @@ void Domain::ImprintLattice (size_t n,size_t Np)
     n == Np-1 ? Fn = ParCellPairs.Size() : Fn = (n+1)*Ni;
     //std::cout << "Im proccess = " << n << std::endl;
     // 2D imprint
-    //if (Lat[0].Ndim(2)==1)
-    //{
-        //for (size_t i = In;i<Fn;i++)
-        //{
-            //DEM::Particle * Pa = Particles[i];
-            //for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);n++)
-            //for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Props.R-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Props.R+Lat[0].dx)/Lat[0].dx);m++)
-            //{
-                //Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,0));
-                //double x     = Lat[0].dx*cell->Index(0);
-                //double y     = Lat[0].dx*cell->Index(1);
-                //double z     = Lat[0].dx*cell->Index(2);
-                //Vec3_t  C(x,y,z);
-                //Array<Vec3_t> P(4);
-//
-                //P[0] = C - 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1;
-                //P[1] = C + 0.5*Lat[0].dx*OrthoSys::e0 - 0.5*Lat[0].dx*OrthoSys::e1;
-                //P[2] = C + 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1;
-                //P[3] = C - 0.5*Lat[0].dx*OrthoSys::e0 + 0.5*Lat[0].dx*OrthoSys::e1;
-                //double dmin = 2*Pa->Props.R;
-                //double dmax = 0.0;
-                //for (size_t j=0;j<P.Size();j++)
-                //{
-                    //double dist = norm(P[j] - Pa->x);
-                    //if (dmin>dist) dmin = dist;
-                    //if (dmax<dist) dmax = dist;
-                //}
-                //if (dmin > Pa->Props.R + Lat[0].dx) continue;
-//
-                //double len = 0.0;
-//
-                //if (dmax < Pa->Props.R)
-                //{
-                    //len = 4.0;
-                //}
-                //else
-                //{
-                    //for (size_t j=0;j<4;j++)
-                    //{
-                        //Vec3_t D = P[(j+1)%4] - P[j];
-                        //double a = dot(D,D);
-                        //double b = 2*dot(P[j]-Pa->x,D);
-                        //double c = dot(P[j]-Pa->x,P[j]-Pa->x) - Pa->Props.R*Pa->Props.R;
-                        //if (b*b-4*a*c>0.0)
-                        //{
-                            //double ta = (-b - sqrt(b*b-4*a*c))/(2*a);
-                            //double tb = (-b + sqrt(b*b-4*a*c))/(2*a);
-                            //if (ta>1.0&&tb>1.0) continue;
-                            //if (ta<0.0&&tb<0.0) continue;
-                            //if (ta<0.0) ta = 0.0;
-                            //if (tb>1.0) tb = 1.0;
-                            //len += norm((tb-ta)*D);
-                        //}
-                    //}
-                //}
-//
-                //for (size_t j=0;j<Lat.Size();j++)
-                //{
-                    //cell = Lat[j].GetCell(iVec3_t(n,m,0));
-                    //cell->Gamma   = std::max(len/(4.0*Lat[0].dx),cell->Gamma);
-                    //if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) continue;
-                    //Vec3_t B      = C - Pa->x;
-                    //Vec3_t VelP   = Pa->x + cross(Pa->x,B);
-                    //double rho = cell->Rho;
-                    //double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
-                    //for (size_t k=0;k<cell->Nneigh;k++)
-                    //{
-                        //double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
-                        //double Fvp     = cell->Feq(k          ,VelP,rho);
-                        //cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
-                        //Vec3_t Flbm    = -Bn*cell->Omeis[k]*cell->C[k];
-                        //Pa->F          += Flbm;
-                        //Pa->T          += cross(B,Flbm);
-                    //}
-                //}
-            //}
-        //}
-    //}
+    if (Lat[0].Ndim(2)==1)
+    {
+    #ifdef USE_OMP
+        In = 0;
+        Fn = ParCellPairs.Size();
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+    #endif
+        for (size_t i = In;i<Fn;i++)
+        {
+            LBM::Disk      * Pa   = Disks[ParCellPairs[i].IPar];
+            Cell           * cell = Lat[0].Cells[ParCellPairs[i].ICell];
+            double x              = Lat[0].dx*(cell->Index(0));
+            double y              = Lat[0].dx*(cell->Index(1));
+            double z              = Lat[0].dx*(cell->Index(2));
+            Vec3_t  C(x,y,z);
+            double len = DEM::DiskSquare(Pa->X,C,Pa->R,Lat[0].dx);
+            if (fabs(len)<1.0e-12) continue;
+            for (size_t j=0;j<Lat.Size();j++)
+            {
+                double Tau = Lat[j].Tau;
+                cell = Lat[j].Cells[ParCellPairs[i].ICell];
+                cell->Gamma   = std::max(len/(4.0*Lat[0].dx),cell->Gamma);
+                if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
+                {
+                    continue;
+                }
+                Vec3_t B      = C - Pa->X;
+                Vec3_t tmp;
+                Rotation(Pa->W,Pa->Q,tmp);
+                Vec3_t VelP   = Pa->V + cross(tmp,B);
+                double rho = cell->Rho;
+                double Bn  = (cell->Gamma*(Tau-0.5))/((1.0-cell->Gamma)+(Tau-0.5));
+                for (size_t k=0;k<cell->Nneigh;k++)
+                {
+                    double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
+                    double Fvp     = cell->Feq(k          ,VelP,rho);
+                    cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
+                    Vec3_t Flbm    = -Fconv*Bn*cell->Omeis[k]*cell->C[k]*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx;
+                    Vec3_t T,Tt;
+                    Tt =           cross(B,Flbm);
+                    Quaternion_t q;
+                    Conjugate    (Pa->Q,q);
+                    Rotation     (Tt,q,T);
+    #ifdef USE_THREAD
+                    pthread_mutex_lock(&Pa->lck);
+    #elif USE_OMP
+                    omp_set_lock      (&Pa->lck);
+    #endif
+                    Pa->F          += Flbm;
+                    Pa->T          += T;
+    #ifdef USE_THREAD
+                    pthread_mutex_unlock(&Pa->lck);
+    #elif USE_OMP
+                    omp_unset_lock    (&Pa->lck);
+    #endif
+                }
+            }
+
+        }
+    }
 
     //3D imprint
-#ifdef USE_OMP
-    In = 0;
-    Fn = ParCellPairs.Size();
-    #pragma omp parallel for schedule(static) num_threads(Nproc)
-#endif
-    for (size_t i = In;i<Fn;i++)
+    else
     {
-        DEM::Particle  * Pa   = Particles[ParCellPairs[i].IPar];
-        Cell           * cell = Lat[0].Cells[ParCellPairs[i].ICell];
-        double x              = Lat[0].dx*(cell->Index(0));
-        double y              = Lat[0].dx*(cell->Index(1));
-        double z              = Lat[0].dx*(cell->Index(2));
-        Vec3_t  C(x,y,z);
-        Vec3_t  Xtemp,Xs,Xstemp;
-        double len,minl = Pa->Dmax;
-
-        //std::cout << "1" << std::endl;
-        if (Pa->IsInsideFaceOnly(C)) len = 12.0*Lat[0].dx;
-        else if (ParCellPairs[i].IGeo.Size()==0) continue;
-        else
+    #ifdef USE_OMP
+        In = 0;
+        Fn = ParCellPairs.Size();
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+    #endif
+        for (size_t i = In;i<Fn;i++)
         {
-            if (Pa->Faces.Size()>0)
+            DEM::Particle  * Pa   = Particles[ParCellPairs[i].IPar];
+            Cell           * cell = Lat[0].Cells[ParCellPairs[i].ICell];
+            double x              = Lat[0].dx*(cell->Index(0));
+            double y              = Lat[0].dx*(cell->Index(1));
+            double z              = Lat[0].dx*(cell->Index(2));
+            Vec3_t  C(x,y,z);
+            Vec3_t  Xtemp,Xs,Xstemp;
+            double len,minl = Pa->Dmax;
+    
+            //std::cout << "1" << std::endl;
+            if (Pa->IsInsideFaceOnly(C)) len = 12.0*Lat[0].dx;
+            else if (ParCellPairs[i].IGeo.Size()==0) continue;
+            else
             {
-                for (size_t j=0;j<ParCellPairs[i].IGeo.Size();j++)
+                if (Pa->Faces.Size()>0)
                 {
-                    DEM::Distance(C,*Pa->Faces[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
-                    if (norm(Xtemp-Xstemp) < minl)
+                    for (size_t j=0;j<ParCellPairs[i].IGeo.Size();j++)
                     {
-                        minl = norm(Xtemp-Xstemp);
-                        Xs   = Xstemp;
+                        DEM::Distance(C,*Pa->Faces[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
+                        if (norm(Xtemp-Xstemp) < minl)
+                        {
+                            minl = norm(Xtemp-Xstemp);
+                            Xs   = Xstemp;
+                        }
                     }
                 }
-            }
-            else if (Pa->Edges.Size()>0)
-            {
-                for (size_t j=0;j<ParCellPairs[i].IGeo.Size();j++)
+                else if (Pa->Edges.Size()>0)
                 {
-                    DEM::Distance(C,*Pa->Edges[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
-                    if (norm(Xtemp-Xstemp) < minl)
+                    for (size_t j=0;j<ParCellPairs[i].IGeo.Size();j++)
                     {
-                        minl = norm(Xtemp-Xstemp);
-                        Xs   = Xstemp;
+                        DEM::Distance(C,*Pa->Edges[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
+                        if (norm(Xtemp-Xstemp) < minl)
+                        {
+                            minl = norm(Xtemp-Xstemp);
+                            Xs   = Xstemp;
+                        }
                     }
                 }
-            }
-            else if (Pa->Verts.Size()>0)
-            {
-                for (size_t j=0;j<ParCellPairs[i].IGeo.Size();j++)
+                else if (Pa->Verts.Size()>0)
                 {
-                    DEM::Distance(C,*Pa->Verts[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
-                    if (norm(Xtemp-Xstemp) < minl)
+                    for (size_t j=0;j<ParCellPairs[i].IGeo.Size();j++)
                     {
-                        minl = norm(Xtemp-Xstemp);
-                        Xs   = Xstemp;
+                        DEM::Distance(C,*Pa->Verts[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
+                        if (norm(Xtemp-Xstemp) < minl)
+                        {
+                            minl = norm(Xtemp-Xstemp);
+                            Xs   = Xstemp;
+                        }
                     }
                 }
+                len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
             }
-            len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
+            
+            //std::cout << "2" << std::endl;
+            if (fabs(len)<1.0e-12) continue;
+    
+            for (size_t j=0;j<Lat.Size();j++)
+            {
+                double Tau = Lat[j].Tau;
+                cell = Lat[j].Cells[ParCellPairs[i].ICell];
+                cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
+                //if (fabs(cell->Gamma-1.0)<1.0e-12)
+                if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
+                {
+                    continue;
+                }
+                Vec3_t B      = C - Pa->x;
+                Vec3_t tmp;
+                Rotation(Pa->w,Pa->Q,tmp);
+                Vec3_t VelP   = Pa->v + cross(tmp,B);
+                double rho = cell->Rho;
+                double Bn  = (cell->Gamma*(Tau-0.5))/((1.0-cell->Gamma)+(Tau-0.5));
+                for (size_t k=0;k<cell->Nneigh;k++)
+                {
+                    double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
+                    double Fvp     = cell->Feq(k          ,VelP,rho);
+                    cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
+                    Vec3_t Flbm    = -Fconv*Bn*cell->Omeis[k]*cell->C[k]*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx;
+                    Vec3_t T,Tt;
+                    Tt =           cross(B,Flbm);
+                    Quaternion_t q;
+                    Conjugate    (Pa->Q,q);
+                    Rotation     (Tt,q,T);
+                    //std::cout << "1" << std::endl;
+    #ifdef USE_THREAD
+                    pthread_mutex_lock(&Pa->lck);
+    #elif USE_OMP
+                    omp_set_lock      (&Pa->lck);
+    #endif
+                    Pa->F          += Flbm;
+                    Pa->T          += T;
+    #ifdef USE_THREAD
+                    pthread_mutex_unlock(&Pa->lck);
+    #elif USE_OMP
+                    omp_unset_lock    (&Pa->lck);
+    #endif
+                    //std::cout << "2" << std::endl;
+    //#ifdef USE_THREAD
+                    //pthread_mutex_lock  (&cell->lck);
+    //#endif
+                    //cell->Omeis[k] = Omeis;
+                    //cell->Gamma    = Gamma;
+    //#ifdef USE_THREAD
+                    //pthread_mutex_unlock(&cell->lck);
+    //#endif
+                    //std::cout << "3" << std::endl;
+                }
+            }
+            //std::cout << "3" << std::endl;
         }
-        
-        //std::cout << "2" << std::endl;
-        if (fabs(len)<1.0e-12) continue;
-
-        for (size_t j=0;j<Lat.Size();j++)
-        {
-            double Tau = Lat[j].Tau;
-            cell = Lat[j].Cells[ParCellPairs[i].ICell];
-            cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
-            //if (fabs(cell->Gamma-1.0)<1.0e-12)
-            if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
-            {
-                continue;
-            }
-            Vec3_t B      = C - Pa->x;
-            Vec3_t tmp;
-            Rotation(Pa->w,Pa->Q,tmp);
-            Vec3_t VelP   = Pa->v + cross(tmp,B);
-            double rho = cell->Rho;
-            double Bn  = (cell->Gamma*(Tau-0.5))/((1.0-cell->Gamma)+(Tau-0.5));
-            for (size_t k=0;k<cell->Nneigh;k++)
-            {
-                double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
-                double Fvp     = cell->Feq(k          ,VelP,rho);
-                cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
-                Vec3_t Flbm    = -Fconv*Bn*cell->Omeis[k]*cell->C[k]*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx;
-                Vec3_t T,Tt;
-                Tt =           cross(B,Flbm);
-                Quaternion_t q;
-                Conjugate    (Pa->Q,q);
-                Rotation     (Tt,q,T);
-                //std::cout << "1" << std::endl;
-#ifdef USE_THREAD
-                pthread_mutex_lock(&Pa->lck);
-#elif USE_OMP
-                omp_set_lock      (&Pa->lck);
-#endif
-                Pa->F          += Flbm;
-                Pa->T          += T;
-#ifdef USE_THREAD
-                pthread_mutex_unlock(&Pa->lck);
-#elif USE_OMP
-                omp_unset_lock    (&Pa->lck);
-#endif
-                //std::cout << "2" << std::endl;
-//#ifdef USE_THREAD
-                //pthread_mutex_lock  (&cell->lck);
-//#endif
-                //cell->Omeis[k] = Omeis;
-                //cell->Gamma    = Gamma;
-//#ifdef USE_THREAD
-                //pthread_mutex_unlock(&cell->lck);
-//#endif
-                //std::cout << "3" << std::endl;
-            }
-        }
-        //std::cout << "3" << std::endl;
     }
 }
 
@@ -2103,6 +2091,13 @@ inline void Domain::ResetDisplacements()
             size_t idx = DEM::Pt2idx(MTD[i].LLC[j].first,LCellDim);
             LinkedCell[idx].Push(MTD[i].LLC[j].second);
         }
+    }
+
+    //Only for 2D Disks
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    for (size_t i=0;i<Disks.Size();i++)
+    {
+        Disks[i]->X0 = Disks[i]->X;
     }
     //std::cout << "3" << std::endl;
 #else
@@ -2207,70 +2202,122 @@ inline void Domain::ResetContacts()
         MTD[i].LCB.Resize(0);
         MTD[i].LPC.Resize(0);
     }
-    #pragma omp parallel for schedule(static) num_threads(Nproc)
-    for (size_t n=0;n<ListPosPairs.Size();n++)
-    {
-        size_t i = ListPosPairs[n].first;
-        size_t j = ListPosPairs[n].second;
-        bool pi_has_vf = !Particles[i]->IsFree();
-        bool pj_has_vf = !Particles[j]->IsFree();
-        bool close = (DEM::Distance(Particles[i]->x,Particles[j]->x)<=Particles[i]->Dmax+Particles[j]->Dmax+2*Alpha);
-        if ((pi_has_vf && pj_has_vf) || !close) continue;
-        std::set<std::pair<DEM::Particle *, DEM::Particle *> >::iterator it = Listofpairs.find(std::make_pair(Particles[i],Particles[j]));
-        if (it != Listofpairs.end())
-        {
-            continue;
-        }
-        MTD[omp_get_thread_num()].LC.Push(std::make_pair(i,j));
-    }
-    for (size_t i=0;i<Nproc;i++)
-    {
-        //std::cout << MTD[i].LC.Size() << std::endl;
-        for (size_t j=0;j<MTD[i].LC.Size();j++)
-        {
-        //std::cout << MTD[i].LC.Size() << std::endl;
-            size_t n = MTD[i].LC[j].first;
-            size_t m = MTD[i].LC[j].second;
-            Listofpairs.insert(std::make_pair(Particles[n],Particles[m]));
-            if (Particles[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
-            {
-                CInteractons.Push (new DEM::CInteractonSphere(Particles[n],Particles[m]));
-            }
-            else
-            {
-                CInteractons.Push (new DEM::CInteracton(Particles[n],Particles[m]));
-            }
-        }
-    }
-    #pragma omp parallel for schedule(static) num_threads(Nproc)
-    for (size_t n=0;n<CInteractons.Size();n++)
-    {
-        if(CInteractons[n]->UpdateContacts(Alpha)) MTD[omp_get_thread_num()].LCI.Push(n);
-    }
-    #pragma omp parallel for schedule(static) num_threads(Nproc)
-    for (size_t n=0;n<BInteractons.Size();n++)
-    {
-        if(BInteractons[n]->UpdateContacts(Alpha)) MTD[omp_get_thread_num()].LCB.Push(n);
-    }
-    Interactons.Resize(0);
-    for (size_t i=0;i<Nproc;i++)
-    {
-        for (size_t j=0;j<MTD[i].LCI.Size();j++)
-        {
-            Interactons.Push(CInteractons[MTD[i].LCI[j]]);
-        }
-        for (size_t j=0;j<MTD[i].LCB.Size();j++)
-        {
-            Interactons.Push(BInteractons[MTD[i].LCB[j]]);
-        }
-    }
+
+    //2D case
     if (Lat[0].Ndim(2)==1)
     {
-        // TODO 2D case
+        //2D case
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+	    for (size_t i=0;i<Disks.Size();i++)
+        {
+            LBM::Disk * Pa = Disks[i];
+            for (size_t n=std::max(0.0,double(Pa->X(0)-Pa->R-2.0*Alpha-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->X(0)+Pa->R+2.0*Alpha+Lat[0].dx)/Lat[0].dx);n++)
+            for (size_t m=std::max(0.0,double(Pa->X(1)-Pa->R-2.0*Alpha-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->X(1)+Pa->R+2.0*Alpha+Lat[0].dx)/Lat[0].dx);m++)
+            {
+                Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,0));
+                double x     = Lat[0].dx*(cell->Index(0));
+                double y     = Lat[0].dx*(cell->Index(1));
+                double z     = Lat[0].dx*(cell->Index(2));
+                Vec3_t  C(x,y,z);
+                if ((norm(C-Pa->X)>2.0*Alpha+2.0*Lat[0].dx+Pa->R)) continue;
+                ParticleCellPair NewPCP;
+                NewPCP.IPar = i;
+                NewPCP.ICell= cell->ID;
+
+                MTD[omp_get_thread_num()].LPC.Push(NewPCP);
+            }
+        }
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t n=0;n<List2DPairs.Size();n++)
+        {
+            size_t i = List2DPairs[n].first;
+            size_t j = List2DPairs[n].second;
+            bool pi_has_vf = !Disks[i]->IsFree();
+            bool pj_has_vf = !Disks[j]->IsFree();
+            bool close = (DEM::Distance(Disks[i]->X,Disks[j]->X)<=Disks[i]->R+Disks[j]->R+2*Alpha);
+            if ((pi_has_vf && pj_has_vf) || !close) continue;
+            set<pair<Disk *, Disk *> >::iterator it = ListofDiskPairs.find(make_pair(Disks[i],Disks[j]));
+            if (it != ListofDiskPairs.end())
+            {
+                continue;
+            }
+            MTD[omp_get_thread_num()].LC.Push(std::make_pair(i,j));
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            //std::cout << MTD[i].LC.Size() << std::endl;
+            for (size_t j=0;j<MTD[i].LC.Size();j++)
+            {
+            //std::cout << MTD[i].LC.Size() << std::endl;
+                size_t n = MTD[i].LC[j].first;
+                size_t m = MTD[i].LC[j].second;
+                ListofDiskPairs.insert(std::make_pair(Disks[n],Disks[m]));
+                DiskPairs.Push(new DiskPair(Disks[n],Disks[m]));
+            }
+        }
     }
+
     else
     {
-    #pragma omp parallel for schedule(static) num_threads(Nproc)
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t n=0;n<ListPosPairs.Size();n++)
+        {
+            size_t i = ListPosPairs[n].first;
+            size_t j = ListPosPairs[n].second;
+            bool pi_has_vf = !Particles[i]->IsFree();
+            bool pj_has_vf = !Particles[j]->IsFree();
+            bool close = (DEM::Distance(Particles[i]->x,Particles[j]->x)<=Particles[i]->Dmax+Particles[j]->Dmax+2*Alpha);
+            if ((pi_has_vf && pj_has_vf) || !close) continue;
+            std::set<std::pair<DEM::Particle *, DEM::Particle *> >::iterator it = Listofpairs.find(std::make_pair(Particles[i],Particles[j]));
+            if (it != Listofpairs.end())
+            {
+                continue;
+            }
+            MTD[omp_get_thread_num()].LC.Push(std::make_pair(i,j));
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            //std::cout << MTD[i].LC.Size() << std::endl;
+            for (size_t j=0;j<MTD[i].LC.Size();j++)
+            {
+            //std::cout << MTD[i].LC.Size() << std::endl;
+                size_t n = MTD[i].LC[j].first;
+                size_t m = MTD[i].LC[j].second;
+                Listofpairs.insert(std::make_pair(Particles[n],Particles[m]));
+                if (Particles[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
+                {
+                    CInteractons.Push (new DEM::CInteractonSphere(Particles[n],Particles[m]));
+                }
+                else
+                {
+                    CInteractons.Push (new DEM::CInteracton(Particles[n],Particles[m]));
+                }
+            }
+        }
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t n=0;n<CInteractons.Size();n++)
+        {
+            if(CInteractons[n]->UpdateContacts(Alpha)) MTD[omp_get_thread_num()].LCI.Push(n);
+        }
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t n=0;n<BInteractons.Size();n++)
+        {
+            if(BInteractons[n]->UpdateContacts(Alpha)) MTD[omp_get_thread_num()].LCB.Push(n);
+        }
+        Interactons.Resize(0);
+        for (size_t i=0;i<Nproc;i++)
+        {
+            for (size_t j=0;j<MTD[i].LCI.Size();j++)
+            {
+                Interactons.Push(CInteractons[MTD[i].LCI[j]]);
+            }
+            for (size_t j=0;j<MTD[i].LCB.Size();j++)
+            {
+                Interactons.Push(BInteractons[MTD[i].LCB[j]]);
+            }
+        }
+
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
 	    for (size_t i=0;i<Particles.Size();i++)
         {
             //Cell  * cell = dat.Dom->Lat[0].Cells[i];
@@ -2344,6 +2391,8 @@ inline void Domain::ResetContacts()
             }
         }
     }
+
+
     ParCellPairs.Resize(0);
     for (size_t i=0;i<Nproc;i++)
     {
@@ -3364,6 +3413,11 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
     AddVoroPack(Tag,R,Lx,Ly,Lz,nx,ny,nz,rho,Cohesion,bVec3_t(Periodic,Periodic,Periodic),Randomseed,fraction,qin);
 }
 
+inline void Domain::AddDisk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)
+{
+    Disks.Push(new Disk(TheTag,TheX,TheV,TheW,Therho,TheR,dt));
+}
+
 //Particle access methods
 inline DEM::Particle * Domain::GetParticle (int Tag, bool Check)
 {
@@ -3620,6 +3674,16 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     }
     //std::cout << "2" << std::endl;
 #elif USE_OMP
+    if (Disks.Size()>0)
+    {
+        List2DPairs.Resize(0);
+        for (size_t i=0;i<Disks.Size()-1;i++)
+        for (size_t j=i+1;j<Disks.Size();j++)
+        {
+            List2DPairs.Push(make_pair(i,j));
+        }
+    }
+
     LinkedCell.Resize(0);
     BoundingBox(LCxmin,LCxmax);
     LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
@@ -3842,6 +3906,13 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             Particles[i]->F = Particles[i]->Ff;
             Particles[i]->T = Particles[i]->Tf;
         }
+        //2D case
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for(size_t i=0;i<Disks.Size();i++)
+        {
+            Disks[i]->F = Disks[i]->Ff;
+            Disks[i]->T = Disks[i]->Tf;
+        }
         
         //Imprint the particles into the lattice
         ImprintLattice(0,Nproc);
@@ -3867,6 +3938,21 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             omp_unset_lock(&Interactons[i]->P2->lck);
         }
 
+        //2D case
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0; i<DiskPairs.Size(); i++)
+        {
+		    DiskPairs[i]->CalcForce(dt);
+            omp_set_lock  (&DiskPairs[i]->P1->lck);
+            DiskPairs[i]->P1->F += DiskPairs[i]->F1;
+            DiskPairs[i]->P1->T += DiskPairs[i]->T1;
+            omp_unset_lock(&DiskPairs[i]->P1->lck);
+            omp_set_lock  (&DiskPairs[i]->P2->lck);
+            DiskPairs[i]->P2->F += DiskPairs[i]->F2;
+            DiskPairs[i]->P2->T += DiskPairs[i]->T2;
+            omp_unset_lock(&DiskPairs[i]->P2->lck);
+        }
+
         //Checking if particles have moved beyond the verlet distance
         #pragma omp parallel for schedule(static) num_threads(Nproc)
         for (size_t i=0;i<Nproc;i++)
@@ -3883,6 +3969,18 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 		    Particles[i]->Rotate(dt);
             //std::cout << "3" << std::endl;
             if (Particles[i]->MaxDisplacement()>MTD[omp_get_thread_num()].Dmx) MTD[omp_get_thread_num()].Dmx = Particles[i]->MaxDisplacement();
+        }
+
+        //2D case
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0; i<Disks.Size(); i++)
+        {
+            //std::cout << "1" << std::endl;
+		    Disks[i]->Translate(dt);
+            //std::cout << "2" << std::endl;
+		    Disks[i]->Rotate(dt);
+            //std::cout << "3" << std::endl;
+            if (norm(Disks[i]->X0-Disks[i]->X)>MTD[omp_get_thread_num()].Dmx) MTD[omp_get_thread_num()].Dmx = norm(Disks[i]->X0-Disks[i]->X);
         }
 
         double maxdis = 0.0;
