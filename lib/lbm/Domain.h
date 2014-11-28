@@ -1808,11 +1808,10 @@ void Domain::Collide (size_t n, size_t Np)
                 bool valid  = true;
                 double alphal = 1.0;
                 double alphat = 1.0;
-                size_t num  = 0;
-                //double newrho = 0.0;
+                size_t num = 0;
                 while (valid)
                 {
-                    //newrho = 0.0;
+                    num++;
                     valid = false;
                     alphal  = alphat;
                     for (size_t k=0;k<c->Nneigh;k++)
@@ -1821,18 +1820,13 @@ void Domain::Collide (size_t n, size_t Np)
                         //c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
                         c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k]);
                         //newrho += c->Ftemp[k];
-                        if (c->Ftemp[k]<0.0&&num<1)
+                        if (c->Ftemp[k]<-1.0e-12&&num<2)
                         {
                             //double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
                             double temp = fabs(c->F[k]/((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k]));
                             if (temp<alphat) alphat = temp;
                             valid = true;
                         }
-                    }
-                    num++;
-                    if (num>2) 
-                    {
-                        throw new Fatal("Domain::Collide: Redefine your time step, the current value ensures unstability");
                     }
                 }
                 for (size_t k=0;k<c->Nneigh;k++)
@@ -1843,10 +1837,9 @@ void Domain::Collide (size_t n, size_t Np)
                         #ifdef USE_HDF5
                         //WriteXDMF("error");
                         #endif
-                        //std::cout << "Nan found, resetting" << std::endl;
-                        //std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << " " << std::endl;
-                        c->Ftemp[k] = 1.0e-15;
-                        //c->Ftemp[k] = c->F[k];
+                        std::cout << "Nan found, resetting" << std::endl;
+                        std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << " " << std::endl;
+                        c->Ftemp[k] = c->F[k];
                         //throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
                     }
                     c->F[k] = fabs(c->Ftemp[k]);
@@ -1900,6 +1893,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 double Tau = Lat[j].Tau;
                 cell = Lat[j].Cells[ParCellPairs[i].ICell];
                 cell->Gamma   = std::max(len/(4.0*Lat[0].dx),cell->Gamma);
+                //if (fabs(cell->Gamma-1.0)<1.0e-12) 
                 if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
                 {
                     continue;
@@ -2443,69 +2437,62 @@ inline void Domain::ResetContacts()
 
     ParCellPairs.Resize(0);
 
-    if (Lat[0].Ndim(2)==1)
+    for (size_t i=0; i<Particles.Size(); i++)
     {
-        // TODO 2D case
-    }
-    else
-    {
-        for (size_t i=0; i<Particles.Size(); i++)
+        DEM::Particle * Pa = Particles[i];
+        for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);n++)
+        for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);m++)
+        for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);l<=std::min(double(Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);l++)
         {
-            DEM::Particle * Pa = Particles[i];
-            for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);n++)
-            for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);m++)
-            for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);l<=std::min(double(Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);l++)
+            Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,l));
+            double x     = Lat[0].dx*(cell->Index(0));
+            double y     = Lat[0].dx*(cell->Index(1));
+            double z     = Lat[0].dx*(cell->Index(2));
+            Vec3_t  C(x,y,z);
+            ParticleCellPair NewPCP;
+            NewPCP.IPar = i;
+            NewPCP.ICell= cell->ID;
+            bool valid = false;
+            if (Pa->Faces.Size()>0)
             {
-                Cell  * cell = Lat[0].GetCell(iVec3_t(n,m,l));
-                double x     = Lat[0].dx*(cell->Index(0));
-                double y     = Lat[0].dx*(cell->Index(1));
-                double z     = Lat[0].dx*(cell->Index(2));
-                Vec3_t  C(x,y,z);
-                ParticleCellPair NewPCP;
-                NewPCP.IPar = i;
-                NewPCP.ICell= cell->ID;
-                bool valid = false;
-                if (Pa->Faces.Size()>0)
+                for (size_t j=0;j<Pa->Faces.Size();j++)
                 {
-                    for (size_t j=0;j<Pa->Faces.Size();j++)
+                    if (DEM::Distance(C,*Pa->Faces[j])<2.0*Alpha+Pa->Props.R)                        
                     {
-                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*Alpha+Pa->Props.R)                        
+                        if (Pa->Faces[j]->Area()<2.0*M_PI*Pa->Props.R*Pa->Props.R)
                         {
-                            if (Pa->Faces[j]->Area()<2.0*M_PI*Pa->Props.R*Pa->Props.R)
-                            {
-                                //std::cout << "it did" << std::endl;
-                                continue;
-                            }
-                            NewPCP.IGeo.Push(j);
-                            valid = true;
+                            //std::cout << "it did" << std::endl;
+                            continue;
                         }
+                        NewPCP.IGeo.Push(j);
+                        valid = true;
                     }
                 }
-                else if (Pa->Edges.Size()>0)
-                {
-                    for (size_t j=0;j<Pa->Edges.Size();j++)
-                    {
-                        if (DEM::Distance(C,*Pa->Edges[j])<2.0*Alpha+Pa->Props.R)
-                        {
-                            NewPCP.IGeo.Push(j);
-                            valid = true;
-                        }
-                    }
-                }
-                else if (Pa->Verts.Size()>0)
-                {
-                    for (size_t j=0;j<Pa->Verts.Size();j++)
-                    {
-                        if (DEM::Distance(C,*Pa->Verts[j])<2.0*Alpha+Pa->Props.R)
-                        {
-                            NewPCP.IGeo.Push(j);
-                            valid = true;
-                        }
-                    }
-                }
-                if (Pa->IsInsideFaceOnly(C)) valid = true;
-                if (valid) ParCellPairs.Push(NewPCP);
             }
+            else if (Pa->Edges.Size()>0)
+            {
+                for (size_t j=0;j<Pa->Edges.Size();j++)
+                {
+                    if (DEM::Distance(C,*Pa->Edges[j])<2.0*Alpha+Pa->Props.R)
+                    {
+                        NewPCP.IGeo.Push(j);
+                        valid = true;
+                    }
+                }
+            }
+            else if (Pa->Verts.Size()>0)
+            {
+                for (size_t j=0;j<Pa->Verts.Size();j++)
+                {
+                    if (DEM::Distance(C,*Pa->Verts[j])<2.0*Alpha+Pa->Props.R)
+                    {
+                        NewPCP.IGeo.Push(j);
+                        valid = true;
+                    }
+                }
+            }
+            if (Pa->IsInsideFaceOnly(C)) valid = true;
+            if (valid) ParCellPairs.Push(NewPCP);
         }
     }
 #endif
@@ -2514,12 +2501,12 @@ inline void Domain::ResetContacts()
 //Utility methods
 inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
 {
-    if (Particles.Size()==0)
+    if (Particles.Size()==0&&Disks.Size()==0)
     {
         minX = OrthoSys::O;
         maxX = OrthoSys::O;
     }
-    else
+    else if (Particles.Size()>0)
     {
         minX = Vec3_t(Particles[0]->MinX(), Particles[0]->MinY(), Particles[0]->MinZ());
         maxX = Vec3_t(Particles[0]->MaxX(), Particles[0]->MaxY(), Particles[0]->MaxZ());
@@ -2532,6 +2519,20 @@ inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
             if (maxX(1)<Particles[i]->MaxY()&&Particles[i]->IsFree()) maxX(1) = Particles[i]->MaxY();
             if (maxX(2)<Particles[i]->MaxZ()&&Particles[i]->IsFree()) maxX(2) = Particles[i]->MaxZ();
         }
+    }
+    else
+    {
+        minX = Vec3_t(Disks[0]->X(0)-Disks[0]->R, Disks[0]->X(1)-Disks[0]->R, Disks[0]->X(2)-Disks[0]->R);
+        maxX = Vec3_t(Disks[0]->X(0)+Disks[0]->R, Disks[0]->X(1)+Disks[0]->R, Disks[0]->X(2)+Disks[0]->R);
+        for (size_t i=1; i<Disks.Size(); i++)
+        {
+            if ((minX(0)>Disks[i]->X(0)-Disks[i]->R)&&Disks[i]->IsFree()) minX(0) = Disks[i]->X(0)-Disks[i]->R;
+            if ((minX(1)>Disks[i]->X(1)-Disks[i]->R)&&Disks[i]->IsFree()) minX(1) = Disks[i]->X(1)-Disks[i]->R;
+            if ((minX(2)>Disks[i]->X(2)-Disks[i]->R)&&Disks[i]->IsFree()) minX(2) = Disks[i]->X(2)-Disks[i]->R;
+            if ((maxX(0)<Disks[i]->X(0)+Disks[i]->R)&&Disks[i]->IsFree()) maxX(0) = Disks[i]->X(0)+Disks[i]->R;
+            if ((maxX(1)<Disks[i]->X(1)+Disks[i]->R)&&Disks[i]->IsFree()) maxX(1) = Disks[i]->X(1)+Disks[i]->R;
+            if ((maxX(2)<Disks[i]->X(2)+Disks[i]->R)&&Disks[i]->IsFree()) maxX(2) = Disks[i]->X(2)+Disks[i]->R;
+        }                                                                                                
     }
 }
 
@@ -3913,6 +3914,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             Disks[i]->F = Disks[i]->Ff;
             Disks[i]->T = Disks[i]->Tf;
         }
+
         
         //Imprint the particles into the lattice
         ImprintLattice(0,Nproc);
@@ -3952,7 +3954,17 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             DiskPairs[i]->P2->T += DiskPairs[i]->T2;
             omp_unset_lock(&DiskPairs[i]->P2->lck);
         }
-
+        //if (DiskPairs.Size()>0)
+        //if (norm(DiskPairs[0]->F1)>1.0e10) 
+        //{
+            //std::cout << DiskPairs.Size() << std::endl;
+            //std::cout << DiskPairs[0]->F1(0) << std::endl;
+            //std::cout << Disks[0]->W << " " << Disks[1]->W << std::endl;
+            //std::cout << Disks[0]->V << " " << Disks[1]->V << std::endl;
+            //std::cout << Disks[0]->X << " " << Disks[1]->X << std::endl;
+            //throw new Fatal("Bad");
+        //}
+        //if (isnan(norm(Disks[1]->F))) std::cout << Disks[0]->W << " " << Disks[1]->W << std::endl;
         //Checking if particles have moved beyond the verlet distance
         #pragma omp parallel for schedule(static) num_threads(Nproc)
         for (size_t i=0;i<Nproc;i++)

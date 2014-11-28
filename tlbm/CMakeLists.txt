@@ -18,8 +18,9 @@
 
 SET(PROGS
     bubble
-    multicomp
     dam
+    magnus
+    multicomp
     tlbm01
     tlbm02
     tlbm03

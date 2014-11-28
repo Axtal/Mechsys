@@ -79,6 +79,10 @@ DiskPair::DiskPair(Disk * Dp1, Disk * Dp2)
 
 void DiskPair::CalcForce(double dt)
 {
+    F1      = OrthoSys::O;
+    F2      = OrthoSys::O;
+    T1      = OrthoSys::O;
+    T2      = OrthoSys::O;
     double dist  = norm(P2->X - P1->X);
     double delta = P1->R + P2->R - dist;
     if (delta>0)
@@ -103,7 +107,8 @@ void DiskPair::CalcForce(double dt)
             SFr = Mu*norm(Fn)/Kt*tan;
         }
         Vec3_t F    = Fn + Gn*dot(n,Vrel)*n + Kt*SFr + Gt*vt;
-        //if (dot(F,n)<0) F-=dot(F,n)*n;
+        if (dot(F,n)<0) F-=dot(F,n)*n;
+
         
         //Rolling resistance
         Vec3_t Vr = P1->R*P2->R*cross(Vec3_t(t1 - t2),n)/(P1->R+P2->R);
@@ -127,20 +132,11 @@ void DiskPair::CalcForce(double dt)
         Conjugate (P2->Q,q);
         Rotation  (T2,q,t2);
 
-#ifdef USE_THREAD
-        //pthread_mutex_lock(&D1->lck);
-        //pthread_mutex_lock(&D2->lck);
-        //pthread_mutex_lock(&lck);
-#endif
         F1      = -F;
         F2      =  F;
         T1      = t1;
         T2      = t2;
-#ifdef USE_THREAD
-        //pthread_mutex_unlock(&D1->lck);
-        //pthread_mutex_unlock(&D2->lck);
-        //pthread_mutex_unlock(&lck);
-#endif
+
     }
 }
 

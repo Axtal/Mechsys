@@ -21,69 +21,69 @@
 #include <iostream>
 
 // MechSys
-#include <mechsys/lbm/lattice.h>
+#include <mechsys/lbm/Domain.h>
 
 using std::cout;
 using std::endl;
 
-// Analysis constants
-double tau    = 1.0;
-int    nx     = 100;
-int    ny     = 50;
-double v0     = 0.04;
-int    radius = ny/10;
-double omega  = 0.01;  // Angular velocity in the surface of the obstacle
-
+void Report(LBM::Domain & dom, void * UD)
+{
+    for (size_t i=0;i<dom.Disks.Size();i++)
+    {
+        std::cout << dom.Disks[i]->X << std::endl;
+    }
+}
 int main(int argc, char **argv) try
 {
-	// Allocate lattice
-	LBM::Lattice l("magnus",      // FileKey
-	               false,         // Is3D
-				   1,
-	               nx,            // Nx
-	               ny,
-				   1,
-				   1,
-				   1);           // Ny
+    size_t Nproc  = 1; 
+    size_t nx     = 200;
+    size_t ny     = 200;
+    double nu     = 1.0e-3;
+    double dx     = 1.0;
+    double dt     = 1.0;    
+    double vb     = 0.2;
+    double wb     = 0.0;
+    double rc     = 10.0;
+    double Kn     = 0.0e0;
+    double Tf     = 1.0e3;
+    if (argc>=2) Nproc = atoi(argv[1]);
+    if (argc>=3) Tf    = atof(argv[2]);
 
-	// Set walls (top and bottom)
-	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
-	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
+    LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), dx, dt);
+    Dom.Alpha    = 2.0*rc;
+    //Dom.Sc       = 0.0;
+    //Assigning solid boundaries at top and bottom
+    //for (size_t i=0;i<nx;i++)
+    //{
+        //Dom.Lat[0].GetCell(iVec3_t(i,0   ,0))->IsSolid = true;
+        //Dom.Lat[0].GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
+    //}
+    
+    //Dom.AddDisk(0,Vec3_t(0.2*nx,0.2*ny,0.0),Vec3_t(vb,0.0,0.0),Vec3_t(0.0,0.0,wb),3.0,rc,1.0);
+    Dom.AddDisk(0,Vec3_t(0.3*nx,0.5*ny,0.0),Vec3_t(vb ,0.0,0.0),Vec3_t(0.0,0.0,wb),3.0,rc,1.0);
+    Dom.AddDisk(1,Vec3_t(0.6*nx,0.5*ny,0.0),Vec3_t(0.0,0.0,0.0),Vec3_t(0.0,0.0,wb),3.0,rc,1.0);
 
-	// Set inner obstacle
-	int obsX = nx/2;   // x position
-	int obsY = ny/2; // y position
-	for (size_t i=0; i<l.Nx(); ++i)
-	for (size_t j=0; j<l.Ny(); ++j)
-	{
-		// Calculate the magnus velocity in the obstacle
-		double vx = -omega*((int)j-obsY);
-		double vy =  omega*((int)i-obsX);
+    for (size_t i=0;i<Dom.Disks.Size();i++)
+    {
+        Dom.Disks[i]->Kn = Kn;
+        //std::cout << Dom.Disks[i]->M << std::endl;
+    }
 
-		// Set solids and set the magnus velocity
-		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
-			l.GetCell(i,j)->SetSolid(vx, vy);
-	}
-	
-	// Define boundary conditions
-	for (size_t j=0; j<l.Ny(); j++)
-	{
-		Vec3_t v;  v = v0, 0.0, 0.0;
-		l.SetVelocityBC (0, j, v);
-		l.SetDensityBC  (nx-1,j, 1.0);
-	}
+    for (size_t i=0;i<ny;i++)
+    {
+        Dom.Lat[0].GetCell(iVec3_t(0,i,0))->IsSolid = true;
+    }
 
-	// Define Initial conditions: velocity speed and density
-	for (size_t i=0; i<l.Nx(); i++)
-	for (size_t j=0; j<l.Ny(); j++)
-	{
-		double rho0 = 1.0;
-		Vec3_t v;  v = v0, 0.0, 0.0;
-		l.GetCell(i,j)->Initialize (rho0, v,l.Cs());
-	}
+    double rho0 = 1.0;
+    Vec3_t v0(0.0,0.0,0.0);
 
-	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dtOut*/10.0);
-	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
+    //Initializing values
+    for (size_t i=0;i<Dom.Lat[0].Ncells;i++)
+    {
+        Dom.Lat[0].Cells[i]->Initialize(rho0, v0);
+    }
+
+    Dom.Solve(Tf,0.01*Tf,NULL,NULL,"magnus",true,Nproc);
+
 }
 MECHSYS_CATCH

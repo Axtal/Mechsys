@@ -112,6 +112,11 @@ inline void Disk::Translate(double dt)
     if (vf(0)) F(0) = 0.0;
     if (vf(1)) F(1) = 0.0;
     if (vf(2)) F(2) = 0.0;
+    //if (isnan(norm(F))) 
+    //{
+        //std::cout << Tag << std::endl;
+    //}
+
     Vec3_t Xa = 2*X - Xb + F*(dt*dt/M);
     Vec3_t tp = Xa - X;
     V         = 0.5*(Xa - Xb)/dt;
