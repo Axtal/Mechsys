@@ -44,6 +44,8 @@
 
 // VTK
 #ifdef USE_VTK
+//#include <vtkCellType.h>
+//#include <vtkPolyhedron.h>
 #include <vtkSmartPointer.h>
 #include <vtkLine.h>
 #include <vtkLineSource.h>
@@ -4540,7 +4542,9 @@ inline void Domain::CalcForceSphere()
 {
     //std::cout << "Pairs size = " << ListPosPairs.Size() << std::endl;
     //std::set<std::pair<Particle *,Particle *> >::iterator it;
+#ifdef USE_OMP
     #pragma omp parallel for schedule(static) num_threads(Nproc)
+#endif
     //for (it=Listofpairs.begin();it!=Listofpairs.end();++it)
     for (size_t np=0;np<ListPosPairs.size();np++)
     {
@@ -4612,9 +4616,13 @@ inline void Domain::CalcForceSphere()
             p = std::make_pair(i,j);
             if (FricSpheres.count(p)==0) 
             {             
+#ifdef USE_OMP
                 omp_set_lock  (&lck);
+#endif
                 FricSpheres[p] = OrthoSys::O;
+#ifdef USE_OMP
                 omp_unset_lock(&lck);
+#endif
             }
             FricSpheres[p] += vt*Dt;
             FricSpheres[p] -= dot(FricSpheres[p],n)*n;
@@ -4650,9 +4658,13 @@ inline void Domain::CalcForceSphere()
             Vec3_t Vr = P1->Props.R*P2->Props.R*cross(Vec3_t(t1 - t2),Normal)/(P1->Props.R+P2->Props.R);
             if (RollSpheres.count(p)==0) 
             {
+#ifdef USE_OMP
                 omp_set_lock  (&lck);
+#endif
                 RollSpheres[p] = OrthoSys::O;
+#ifdef USE_OMP
                 omp_unset_lock(&lck);
+#endif
             }
             RollSpheres[p] += Vr*Dt;
             RollSpheres[p] -= dot(RollSpheres[p],Normal)*Normal;
@@ -4677,14 +4689,20 @@ inline void Domain::CalcForceSphere()
             Rotation  (Tt,q,T);
             T2 -= T;
 
+#ifdef USE_OMP
             omp_set_lock  (&P1->lck);
+#endif
             P1->F += F1;
             P1->T += T1;
+#ifdef USE_OMP
             omp_unset_lock(&P1->lck);
             omp_set_lock  (&P2->lck);
+#endif
             P2->F += F2;
             P2->T += T2;
+#ifdef USE_OMP
             omp_unset_lock(&P2->lck);
+#endif
         }
     }
     
