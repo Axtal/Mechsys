@@ -153,6 +153,7 @@ inline void Lattice::CalcField(size_t n, size_t Np)
         c->E(0) = -0.5*(Cells[c->Neighs[1]]->A[0]-Cells[c->Neighs[2]]->A[0])/dx-0.5*(3.0*c->A[1]-4.0*c->Ap[1]+c->Al[1])/dt;
         c->E(1) = -0.5*(Cells[c->Neighs[3]]->A[0]-Cells[c->Neighs[4]]->A[0])/dx-0.5*(3.0*c->A[2]-4.0*c->Ap[2]+c->Al[2])/dt;
         c->E(2) = -0.5*(Cells[c->Neighs[5]]->A[0]-Cells[c->Neighs[6]]->A[0])/dx-0.5*(3.0*c->A[3]-4.0*c->Ap[3]+c->Al[3])/dt;
+        c->E   /= c->Eps;
     }
 
 }

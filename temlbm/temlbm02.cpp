@@ -26,6 +26,31 @@
 using std::cout;
 using std::endl;
 
+struct UserData
+{
+    double w;
+    double J0;
+    double T0;
+    int nx;
+    int ny;
+    int nz;
+};
+
+void Setup (EMLBM::Domain & dom, void * UD)
+{
+    UserData & dat = (*static_cast<UserData *>(UD));
+#ifdef USE_OMP
+    #pragma omp parallel for schedule (static) num_threads(dom.Nproc)
+#endif
+    for (int i=0;i<dat.nx;i++)
+    for (int j=0;j<dat.ny;j++)
+    for (int k=0;k<dat.nz;k++)
+    {
+        double dx=i-2*dat.nx/3;
+        dom.Lat[0].GetCell(iVec3_t(i,j,k))->J[3] = 0.5*dat.J0*exp(-(dom.Time-dat.T0)*(dom.Time-dat.T0)/1.5)*exp(-0.75*(dx*dx));
+    }
+}
+
 int main(int argc, char **argv) try
 {
     size_t nproc = 1; 
@@ -34,20 +59,30 @@ int main(int argc, char **argv) try
     int ny = 100;
     int nz = 100;
     EMLBM::Domain Dom(D3Q7, 0.5, iVec3_t(nx,ny,nz), 0.25, 1.0);
+    UserData dat;
+    Dom.UserData = &dat;
+    dat.w  = 2*M_PI*0.02;
+    dat.J0 = 1.0e-3;
+    dat.T0 = 15.0;
     Dom.Step = 1;
+    dat.nx = nx;
+    dat.ny = ny;
+    dat.nz = nz;
 
-
-    double J0 = -1.0e-3;
+    //double J0 = -1.0e-3;
     for (int i=0;i<nx;i++)
     for (int j=0;j<ny;j++)
     for (int k=0;k<nz;k++)
     {
-        double dx=i-2*nx/3,dy=j-ny/2;
-        Dom.Lat[0].GetCell(iVec3_t(i,j,k))->J[3] = J0*exp(-0.75*(dx*dx+dy*dy));
-        Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Eps = 0.75*tanh(double(nx/3 - i)/1.5)+1.75;
+        //double dx=i-2*nx/3,dy=j-ny/2;
+        //Dom.Lat[0].GetCell(iVec3_t(i,j,k))->J[3] = J0*exp(-0.75*(dx*dx+dy*dy));
+        //double dx=i-2*nx/3;
+        //Dom.Lat[0].GetCell(iVec3_t(i,j,k))->J[3] = J0*exp(-0.75*(dx*dx));
+        //Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Eps = 0.75*tanh(double(nx/2 - i)/1.5)+1.75;
+        Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Eps = 0.75*(tanh((nx/2-i)/1.5)+tanh((i-nx/3)/1.5))+1.0;
     }
     //Dom.WriteXDMF("test");
-    Dom.Solve(200.0,2.0,NULL,NULL,"temlbm02",true,nproc);
+    Dom.Solve(300.0,3.0,&Setup,NULL,"temlbm02",true,nproc);
 
     return 0;
 }

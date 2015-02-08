@@ -188,6 +188,7 @@ inline void Cell::CalcProp()
         J[0] += H[j];
     }
     J[0] *= Cs*Cs/Eps;
+    //J[0] *= Cs*Cs;
 }
 
 inline double Cell::Feq(size_t mu,size_t k)
@@ -202,6 +203,7 @@ inline double Cell::Geq(size_t mu,size_t k)
 inline double Cell::Heq(size_t k)
 {
     return W[k]*(J[0]/(Cs*Cs/Eps)+4.0*(C[k][0]*J[1] + C[k][1]*J[2] + C[k][2]*J[3]));
+    //return W[k]*(J[0]/(Cs*Cs)+4.0*(C[k][0]*J[1] + C[k][1]*J[2] + C[k][2]*J[3]));
 }
 
 inline void Cell::Initialize()

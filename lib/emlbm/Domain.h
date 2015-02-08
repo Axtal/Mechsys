@@ -81,6 +81,7 @@ public:
     void *                                          UserData;         ///< User Data
     size_t                                           idx_out;         ///< The discrete time step
     size_t                                              Step;         ///< The space step to reduce the size of the h5 file for visualization
+    size_t                                             Nproc;         ///< Number of cores used for the simulation
 };
 
 #ifdef USE_THREAD
@@ -407,7 +408,7 @@ void Domain::Collide (size_t n, size_t Np)
 }
 
 inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t ptReport,
-                          char const * TheFileKey, bool RenderVideo, size_t Nproc)
+                          char const * TheFileKey, bool RenderVideo, size_t TheNproc)
 {
 
     idx_out     = 0;
@@ -422,6 +423,8 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     {
     printf("%s  Tau of Lattice %zd                 =  %g%s\n"       ,TERM_CLR2, i, Lat[i].Tau                        , TERM_RST);
     }
+
+    Nproc = TheNproc;
 
     for (size_t j=0;j<Lat.Size();j++)
     {
