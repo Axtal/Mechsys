@@ -30,9 +30,9 @@ int main(int argc, char **argv) try
 {
     size_t nproc = 1; 
     if (argc==2) nproc=atoi(argv[1]);
-    int nx = 100;
-    int ny = 100;
-    int nz = 100;
+    int nx = 400;
+    int ny = 400;
+    int nz = 10;
     EMLBM::Domain Dom(iVec3_t(nx,ny,nz), 1.0, 1.0);
     Dom.Step = 1;
 
