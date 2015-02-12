@@ -16,10 +16,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-/////////////////////// Test 02 The dielectric medium
+/////////////////////// Test 03 the dipole antenna
 
 // MechSys
-#include <mechsys/emlbm/Domain.h>
+#include <mechsys/emlbm2/Domain.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
 
@@ -30,12 +30,10 @@ struct UserData
 {
     double w;
     double J0;
-    double T0;
     int nx;
     int ny;
     int nz;
 };
-
 void Setup (EMLBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
@@ -46,45 +44,38 @@ void Setup (EMLBM::Domain & dom, void * UD)
     for (int j=0;j<dat.ny;j++)
     for (int k=0;k<dat.nz;k++)
     {
-        double dx=i-2*dat.nx/3;
-        dom.Lat[0].GetCell(iVec3_t(i,j,k))->J[3] = 0.5*dat.J0*exp(-(dom.Time-dat.T0)*(dom.Time-dat.T0)/1.5)*exp(-0.75*(dx*dx));
+        double dx=i-dat.nx/2,dy=j-dat.ny/2;
+        dom.Lat.GetCell(iVec3_t(i,j,k))->Jf = OrthoSys::e2*dat.J0*sin(dat.w*dom.Time)*exp(-0.75*(dx*dx+dy*dy))*(tanh(double(k)-2.0*dat.nz/5.0)+tanh(3.0*dat.nz/5.0-double(k)));
+        //if ((i==10)&&(j==10)&&(k==10)) std::cout << dom.Lat.GetCell(iVec3_t(i,j,k))->J << std::endl;
     }
 }
-
 int main(int argc, char **argv) try
 {
     size_t nproc = 1; 
     if (argc==2) nproc=atoi(argv[1]);
-    int nx = 200;
+    int nx = 100;
     int ny = 100;
     int nz = 100;
-    EMLBM::Domain Dom(D3Q7, 0.5, iVec3_t(nx,ny,nz), 0.25, 1.0);
+    EMLBM::Domain Dom(iVec3_t(nx,ny,nz), 0.25, 1.0);
     UserData dat;
     Dom.UserData = &dat;
-    dat.w  = 2*M_PI*0.02;
-    dat.J0 = 1.0e-3;
-    dat.T0 = 15.0;
+    dat.w  = 2*M_PI/25.0;
+    dat.J0 = 1.0e-4;
     Dom.Step = 1;
     dat.nx = nx;
     dat.ny = ny;
     dat.nz = nz;
-
-    double J0 = -1.0e-3;
-    for (int i=0;i<nx;i++)
-    for (int j=0;j<ny;j++)
-    for (int k=0;k<nz;k++)
+    //double Sig0 = 1.0e6;
+    for (int i=0;i<dat.nx;i++)
+    for (int j=0;j<dat.ny;j++)
+    for (int k=0;k<dat.nz;k++)
     {
-        //double dx=i-2*nx/3,dy=j-ny/2;
-        //Dom.Lat[0].GetCell(iVec3_t(i,j,k))->J[3] = J0*exp(-0.75*(dx*dx+dy*dy));
-        double dx=i-2*nx/3;
-        Dom.Lat[0].GetCell(iVec3_t(i,j,k))->J[3] = J0*exp(-0.75*(dx*dx));
-        //Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Eps = 0.75*tanh(double(nx/2 - i)/1.5)+1.75;
-        Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Eps = 0.75*(tanh((nx/2-i)/1.5)+tanh((i-nx/3)/1.5))+1.0;
+        Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 2.0;
+        //double dx=i-nx/2,dy=j-ny/2;
+        //Dom.Lat.GetCell(iVec3_t(i,j,k))->Sig = Sig0*exp(-0.75*(dx*dx+dy*dy))*(tanh(double(k)-2.0*nz/5.0)+tanh(3.0*nz/5.0-double(k)));
     }
-    //Dom.WriteXDMF("test");
-    //Dom.Solve(600.0,6.0,&Setup,NULL,"temlbm02",true,nproc);
-    Dom.Solve(600.0,6.0,NULL,NULL,"temlbm02",true,nproc);
-
+    Dom.Solve(200.0,2.0,&Setup,NULL,"temlbm03",true,nproc);
+    
     return 0;
 }
 MECHSYS_CATCH

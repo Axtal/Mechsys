@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-/////////////////////// Test 01 the sliding block
+/////////////////////// Test 01 the Biot Savart law
 
 // MechSys
 #include <mechsys/emlbm/Domain.h>

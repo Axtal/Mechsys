@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-/////////////////////// Test 01 the sliding block
+/////////////////////// Test 03 the dipole antenna
 
 // MechSys
 #include <mechsys/emlbm/Domain.h>
