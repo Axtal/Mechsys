@@ -26,6 +26,27 @@
 using std::cout;
 using std::endl;
 
+struct UserData
+{
+    int nx;
+    int ny;
+    int nz;
+};
+
+void Setup (EMLBM::Domain & dom, void * UD)
+{
+    UserData & dat = (*static_cast<UserData *>(UD));
+#ifdef USE_OMP
+    #pragma omp parallel for schedule (static) num_threads(dom.Nproc)
+#endif
+    for (int i=0;i<dat.nx;i++)
+    for (int j=0;j<dat.ny;j++)
+    {
+        dom.Lat.GetCell(iVec3_t(i,j,       0))->Initialize(0.0,OrthoSys::O,OrthoSys::O,OrthoSys::O);
+        dom.Lat.GetCell(iVec3_t(i,j,dat.nz-1))->Initialize(0.0,OrthoSys::O,OrthoSys::O,OrthoSys::O);
+    }
+}
+
 int main(int argc, char **argv) try
 {
     size_t nproc = 1; 
@@ -34,6 +55,12 @@ int main(int argc, char **argv) try
     int ny = 10;
     int nz = 200;
     EMLBM::Domain Dom(iVec3_t(nx,ny,nz), 1.0, 1.0);
+    UserData dat;
+    Dom.UserData = &dat;
+    Dom.Step = 1;
+    dat.nx = nx;
+    dat.ny = ny;
+    dat.nz = nz;
     double E0 = 0.001;
     double B0 = sqrt(2.0)*E0;
     double alpha = 0.01;
@@ -43,13 +70,14 @@ int main(int argc, char **argv) try
     for (int j=0;j<ny;j++)
     for (int k=0;k<nz;k++)
     {
-        Vec3_t E(-E0*exp(-alpha*(k-z0)*(k-z0)),0.0,0.0);
+        Vec3_t E(E0*exp(-alpha*(k-z0)*(k-z0)),0.0,0.0);
         Vec3_t B(0.0,B0*exp(-alpha*(k-z0)*(k-z0)),0.0);
         Dom.Lat.GetCell(iVec3_t(i,j,k))->Initialize(0.0,OrthoSys::O,E,B);
-        Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 0.75*tanh(k-nz/2)+1.75;
+        //Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 0.75*tanh(k-nz/2)+1.75;
+        if (k>nz/2) Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 2.5;
     }
     //Dom.WriteXDMF("test");
-    Dom.Solve(200.0,2.0,NULL,NULL,"temlbm02",true,nproc);
+    Dom.Solve(200.0,2.0,&Setup,NULL,"temlbm02",true,nproc);
 
     return 0;
 }
