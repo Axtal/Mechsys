@@ -110,6 +110,7 @@ inline Cell::Cell(size_t TheID, iVec3_t TheIndexes, iVec3_t TheNdim, double TheC
         FBtemp[i]  = new double [Nneigh];
     }
     
+    Initialize(0.0,OrthoSys::O,OrthoSys::O,OrthoSys::O);
 
 
     Neighs  = new size_t [Nneigh];
