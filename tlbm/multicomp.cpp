@@ -90,6 +90,11 @@ int main(int argc, char **argv) try
             Dom.Lat[0].GetCell(iVec3_t(i,j,0))->Initialize(1300.0,V);
             Dom.Lat[1].GetCell(iVec3_t(i,j,0))->Initialize(0.1,V);
 		}
+		//if (pow((int)(i)-obsX-nx/3,2.0) + pow((int)(j)-4*ny/5,2.0) <= pow(radius/3,2.0)) // circle equation
+        //{
+            //Dom.Lat[0].GetCell(iVec3_t(i,j,0))->IsSolid = true;
+            //Dom.Lat[1].GetCell(iVec3_t(i,j,0))->IsSolid = true;
+        //}
     }
 
     // Set parameters

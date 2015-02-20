@@ -56,7 +56,7 @@ int main(int argc, char **argv) try
     int nx = 100;
     int ny = 100;
     int nz = 100;
-    EMLBM::Domain Dom(iVec3_t(nx,ny,nz), 0.25, 1.0);
+    EMLBM::Domain Dom(iVec3_t(nx,ny,nz), 1.0, 1.0);
     UserData dat;
     Dom.UserData = &dat;
     dat.w  = 2*M_PI/25.0;

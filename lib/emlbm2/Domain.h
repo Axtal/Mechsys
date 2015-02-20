@@ -256,7 +256,8 @@ void Domain::Collide (size_t Np)
     for (size_t i=0;i<Lat.Ncells;i++)
     {
         Cell * c = Lat.Cells[i];
-        c->F0[0] = c->F0[1] = c->Rho;
+        c->F0[0] = c->F0[0] - 2.0*(c->F0[0] - c->Rho);
+        c->F0[1] = c->F0[1] - 2.0*(c->F0[1] - c->Rho);
         for (size_t k=0;k<c->Nneigh;k++)
         {
             for (size_t mu=0;mu<2;mu++)

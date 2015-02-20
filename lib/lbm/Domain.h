@@ -516,7 +516,8 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     Alpha  = 10.0;
     Beta   = 1.0;
     Step   = 1;
-    Sc     = 0.17;
+    if (nu.Size()>1) Sc = 0.0;
+    else             Sc = 0.17;
     PrtVec = true;
     Fconv  = 1.0;
 

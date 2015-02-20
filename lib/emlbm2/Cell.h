@@ -77,6 +77,7 @@ public:
     double        ** FBtemp; ///< Temporary distribution functions
     size_t        *  Neighs; ///< Array of neighbors indexes
     double              Rho; ///< Charge Density
+    double             Rhof; ///< Charge Density of free charges
     Vec3_t                J; ///< Current density
     Vec3_t               Jf; ///< Current free density
     Vec3_t                E; ///< Electric Field
@@ -93,6 +94,7 @@ inline Cell::Cell(size_t TheID, iVec3_t TheIndexes, iVec3_t TheNdim, double TheC
     Mu      = 2.0;
     Sig     = 0.0;
     Nneigh  = 12;
+    Rhof    = 0.0;
     Jf      = OrthoSys::O;
     F0      = new double  [2];
     F0temp  = new double  [2];
@@ -153,14 +155,14 @@ inline void Cell::CalcProp()
 
 inline double Cell::FEeq(size_t mu,size_t k)
 {
-    if (mu==0) return (1.0/16.0)*dot(C[k],Jf)+(Eps/4.0)*dot(E-Mu/(4.0*Eps)*Jf,D1[k])+(1.0/(8.0*Mu))*dot(B,H1[k]);
-    else       return (1.0/16.0)*dot(C[k],Jf)+(Eps/4.0)*dot(E-Mu/(4.0*Eps)*Jf,D2[k])+(1.0/(8.0*Mu))*dot(B,H2[k]);
+    if (mu==0) return (1.0/16.0)*dot(C[k],J+Jf)+(Eps/4.0)*dot(E-Mu/(4.0*Eps)*(J+Jf),D1[k])+(1.0/(8.0*Mu))*dot(B,H1[k]);
+    else       return (1.0/16.0)*dot(C[k],J+Jf)+(Eps/4.0)*dot(E-Mu/(4.0*Eps)*(J+Jf),D2[k])+(1.0/(8.0*Mu))*dot(B,H2[k]);
 }
 
 inline double Cell::FBeq(size_t mu,size_t k)
 {
-    if (mu==0) return (1.0/16.0)*dot(C[k],Jf)+(1.0/4.0)*dot(E-Mu/(4.0*Eps)*Jf,D1[k])+(1.0/8.0)*dot(B,H1[k]);
-    else       return (1.0/16.0)*dot(C[k],Jf)+(1.0/4.0)*dot(E-Mu/(4.0*Eps)*Jf,D2[k])+(1.0/8.0)*dot(B,H2[k]);
+    if (mu==0) return (1.0/16.0)*dot(C[k],J+Jf)+(1.0/4.0)*dot(E-Mu/(4.0*Eps)*(J+Jf),D1[k])+(1.0/8.0)*dot(B,H1[k]);
+    else       return (1.0/16.0)*dot(C[k],J+Jf)+(1.0/4.0)*dot(E-Mu/(4.0*Eps)*(J+Jf),D2[k])+(1.0/8.0)*dot(B,H2[k]);
 }
 
 inline void Cell::Initialize(double TheRho, Vec3_t & TheJ, Vec3_t & TheE, Vec3_t & TheB)
@@ -171,6 +173,7 @@ inline void Cell::Initialize(double TheRho, Vec3_t & TheJ, Vec3_t & TheE, Vec3_t
     B   = TheB;
 
     F0[0] = F0[1] = TheRho;
+    //F0[0] = F0[1] = Rhof;
     for (size_t i=0;i<Nneigh;i++)
     {
         FE[0][i] = FEeq(0,i);
