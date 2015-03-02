@@ -24,6 +24,7 @@
 // Std Lib
 #include <math.h>
 #include <map>
+//#include <unordered_map>
 #include <vector>
 #include <utility>
 
@@ -34,6 +35,7 @@ namespace DEM
 {
 
 // typedefs
+//typedef std::unordered_map<std::pair<int,int>,Vec3_t> FrictionMap_t;
 typedef std::map<std::pair<int,int>,Vec3_t> FrictionMap_t;
 typedef Array<std::pair<int,int> > ListContacts_t;
 

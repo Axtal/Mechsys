@@ -1,5 +1,5 @@
 from msys_plt import *
-import mechsys as ms
+#import mechsys 
 
 voronoi = 0 # 0 => spheres
 
@@ -24,10 +24,7 @@ if voronoi: # voronoi
     #p.maxidx   = 10
     p.justone = 3
     p.proport = 1.0 if p.justone==5 else 0.75
-    p.plot ("vorodense/ttt_c_walls.res",   label=r'$e = 0.4$',  marker='s',    markevery=15, clr='blue',   txtmax=True,  txtlst=True,  draw_fl=True,  draw_ros=True)
-    #p.plot ("vorodense2/ttt_c_walls.res",  label=r'$\theta=15^\circ$',  marker='d',    markevery=15, clr='orange', txtmax=False, txtlst=False, draw_fl=False, draw_ros=False)
-    p.plot ("voroloose/ttt_c_walls.res",   label=r'$e = 0.63$',   marker='o',    markevery=15, clr='black',  txtmax=False, txtlst=False, draw_fl=False, draw_ros=False)
-    p.plot ("voroloose2/ttt_c_walls.res",  label=r'$e = 0.93$', marker='d', markevery=15, clr='red',    txtmax=False, txtlst=False, draw_fl=False, draw_ros=False)
+    #p.plot ("vorodense/ttt_c_walls.res",   label=r'$e = 0.4$',  marker='s',    markevery=15, clr='blue',   txtmax=True,  txtlst=True,  draw_fl=True,  draw_ros=True)
     if   p.justone==0: legend (loc='lower right', ncol=2)
     elif p.justone==1: legend (loc='lower right', ncol=2)
     elif p.justone==2: legend (loc='lower right', ncol=1)
