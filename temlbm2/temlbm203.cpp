@@ -40,13 +40,17 @@ void Setup (EMLBM::Domain & dom, void * UD)
 #ifdef USE_OMP
     #pragma omp parallel for schedule (static) num_threads(dom.Nproc)
 #endif
-    for (int i=0;i<dat.nx;i++)
     for (int j=0;j<dat.ny;j++)
-    for (int k=0;k<dat.nz;k++)
+    for (int i=0;i<dat.nx;i++)
     {
-        double dx=i-dat.nx/2,dy=j-dat.ny/2;
-        dom.Lat.GetCell(iVec3_t(i,j,k))->Jf = OrthoSys::e2*dat.J0*sin(dat.w*dom.Time)*exp(-0.75*(dx*dx+dy*dy))*(tanh(double(k)-2.0*dat.nz/5.0)+tanh(3.0*dat.nz/5.0-double(k)));
-        //if ((i==10)&&(j==10)&&(k==10)) std::cout << dom.Lat.GetCell(iVec3_t(i,j,k))->J << std::endl;
+        dom.Lat.GetCell(iVec3_t(i,j,dat.nz-1))->Initialize(0.0,OrthoSys::O,OrthoSys::O,OrthoSys::O);
+        for (int k=0;k<dat.nz;k++)
+        {
+            //double dx=i-dat.nx/2,dy=j-dat.ny/2;
+            //dom.Lat.GetCell(iVec3_t(i,j,k))->Jf = OrthoSys::e2*dat.J0*sin(dat.w*dom.Time)*exp(-0.75*(dx*dx+dy*dy))*(tanh(double(k)-2.0*dat.nz/5.0)+tanh(3.0*dat.nz/5.0-double(k)));
+            double dz=k;
+            dom.Lat.GetCell(iVec3_t(i,j,k))->Jf = OrthoSys::e0*dat.J0*sin(dat.w*dom.Time)*exp(-0.75*(dz*dz));
+        }
     }
 }
 int main(int argc, char **argv) try
@@ -59,7 +63,9 @@ int main(int argc, char **argv) try
     EMLBM::Domain Dom(iVec3_t(nx,ny,nz), 1.0, 1.0);
     UserData dat;
     Dom.UserData = &dat;
-    dat.w  = 2*M_PI/25.0;
+    
+    double lambda = 20.0;//wavelenght in LBM cells.
+    dat.w  = 2*M_PI/(2.0*lambda);
     dat.J0 = 1.0e-4;
     Dom.Step = 1;
     dat.nx = nx;
@@ -70,7 +76,7 @@ int main(int argc, char **argv) try
     for (int j=0;j<dat.ny;j++)
     for (int k=0;k<dat.nz;k++)
     {
-        Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 2.0;
+        Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 1.0;
         //double dx=i-nx/2,dy=j-ny/2;
         //Dom.Lat.GetCell(iVec3_t(i,j,k))->Sig = Sig0*exp(-0.75*(dx*dx+dy*dy))*(tanh(double(k)-2.0*nz/5.0)+tanh(3.0*nz/5.0-double(k)));
     }

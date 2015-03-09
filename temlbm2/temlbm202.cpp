@@ -42,8 +42,15 @@ void Setup (EMLBM::Domain & dom, void * UD)
     for (int i=0;i<dat.nx;i++)
     for (int j=0;j<dat.ny;j++)
     {
-        dom.Lat.GetCell(iVec3_t(i,j,       0))->Initialize(0.0,OrthoSys::O,OrthoSys::O,OrthoSys::O);
-        dom.Lat.GetCell(iVec3_t(i,j,dat.nz-1))->Initialize(0.0,OrthoSys::O,OrthoSys::O,OrthoSys::O);
+        Cell * c0  = dom.Lat.GetCell(iVec3_t(i,j,       0));
+        Cell * c0n = dom.Lat.GetCell(iVec3_t(i,j,       1));
+        Cell * c1  = dom.Lat.GetCell(iVec3_t(i,j,dat.nz-1));
+        Cell * c1n = dom.Lat.GetCell(iVec3_t(i,j,dat.nz-2));
+
+        //c0->Initialize(0.0,OrthoSys::O,c0n->E,c0n->B);
+        //c1->Initialize(0.0,OrthoSys::O,c1n->E,c1n->B);
+        c0->Initialize(0.0,OrthoSys::O,OrthoSys::O,OrthoSys::O);
+        c1->Initialize(0.0,OrthoSys::O,OrthoSys::O,OrthoSys::O);
     }
 }
 
@@ -62,7 +69,8 @@ int main(int argc, char **argv) try
     dat.ny = ny;
     dat.nz = nz;
     double E0 = 0.001;
-    double B0 = sqrt(2.0)*E0;
+    //double B0 = sqrt(2.0)*E0;
+    double B0 = 2.0*E0;
     double alpha = 0.01;
     double z0 = 40;
 
@@ -73,11 +81,12 @@ int main(int argc, char **argv) try
         Vec3_t E(E0*exp(-alpha*(k-z0)*(k-z0)),0.0,0.0);
         Vec3_t B(0.0,B0*exp(-alpha*(k-z0)*(k-z0)),0.0);
         Dom.Lat.GetCell(iVec3_t(i,j,k))->Initialize(0.0,OrthoSys::O,E,B);
-        //Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 0.75*tanh(k-nz/2)+1.75;
-        if (k>nz/2) Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 2.5;
+        Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 2.0*tanh(k-nz/2)+3.0;
+        //if (k>nz/2) Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 5.0;
     }
     //Dom.WriteXDMF("test");
-    Dom.Solve(200.0,2.0,&Setup,NULL,"temlbm02",true,nproc);
+    //Dom.Solve(600.0,6.0,&Setup,NULL,"temlbm02",true,nproc);
+    Dom.Solve(600.0,6.0,NULL,NULL,"temlbm02",true,nproc);
 
     return 0;
 }

@@ -54,11 +54,6 @@ public:
     void         CalcProp();                                       ///< Calculate the vectorial properties with the new distributions functions
     void         Initialize(double TheRho, Vec3_t & TheJ, Vec3_t & TheE, Vec3_t & TheB);                                     ///< Initialize cell with a given velocity and density
 
-#ifdef USE_THREAD
-    pthread_mutex_t lck;
-    //std::mutex mtex;       ///< to protect variables in multithreading
-#endif
-
     // Data
     size_t       Nneigh;   ///< Number of neighbors
     size_t       ID;       ///< Tag for the particle
@@ -133,9 +128,6 @@ inline Cell::Cell(size_t TheID, iVec3_t TheIndexes, iVec3_t TheNdim, double TheC
         Neighs[k] =  nindex[0] + nindex[1]*TheNdim[0] + nindex[2]*TheNdim[0]*TheNdim[1];
     }
 
-#ifdef USE_THREAD
-    pthread_mutex_init(&lck,NULL);
-#endif
 }
 
 

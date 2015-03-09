@@ -1791,8 +1791,9 @@ void Domain::Collide (size_t n, size_t Np)
             {
                 //Calculate Smagorinsky LES model
                 Array<double> NonEq(c->Nneigh);
-                Vec3_t DV  = Vmix + c->BForce*dt/rho;
                 double Tau = Lat[j].Tau;
+                Vec3_t DV  = Vmix + c->BForce*dt/rho;
+                //Vec3_t DV  = Vmix + c->BForce*Tau/rho;
                 double Q = 0.0;
                 for (size_t k=0;k<c->Nneigh;k++)
                 {
