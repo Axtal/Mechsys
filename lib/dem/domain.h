@@ -1388,10 +1388,10 @@ inline void Domain::AddRecBox (int Tag, Vec3_t const & X, Vec3_t const & L, doub
 
     // clean up
     if (!ThereisanAxis) delete Axis;
-    q(0) = 1.0;
-    q(1) = 0.0;
-    q(2) = 0.0;
-    q(3) = 0.0;
+    //q(0) = 1.0;
+    //q(1) = 0.0;
+    //q(2) = 0.0;
+    //q(3) = 0.0;
     q = q/norm(q);
 
     Particles[Particles.Size()-1]->Q          = q;
