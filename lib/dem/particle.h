@@ -322,8 +322,6 @@ inline void Particle::poly_calc_props(Array<Vec3_t> & V)
     Props.V = vol;
     Props.m = vol*Props.rho;
 
-    //Quaternion_t Q; // TODO: why redeclaring this one? there is a member Q already!!! <<<<<<<<<<<<<<<<<<<<<<<<<<
-
     Vec3_t xp,yp,zp;
     Eig(It,I,xp,yp,zp);
     I *= Props.rho;
@@ -634,6 +632,7 @@ inline void Particle::ConstructFromJson (int Tag, char const * Filename, double 
 
     // read json file
     Array<Vec3_t> V;
+
     try {
         boost::property_tree::ptree pt;
         boost::property_tree::read_json(Filename, pt);
@@ -657,6 +656,7 @@ inline void Particle::ConstructFromJson (int Tag, char const * Filename, double 
             }
             Edges.Push(new Edge((*Verts[vids[0]]), (*Verts[vids[1]])));
             EdgeCon.Push(vids);
+
         }
         BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("faces")) {
             Array<int>     vids;
@@ -1021,8 +1021,8 @@ inline void Particle::CalcProps (size_t NCalls)
 
         Vec3_t xp,yp,zp;
         Eig(It,I,xp,yp,zp);
-        std::cout << x(0) << std::endl;
         I *= Props.rho;
+        CheckDestroGiro(xp,yp,zp);
         Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
         Q(1) = (yp(2)-zp(1))/(4*Q(0));
         Q(2) = (zp(0)-xp(2))/(4*Q(0));

@@ -33,10 +33,49 @@ int main(int argc, char **argv) try
 {
     // test the varius Domain and Particle constructors.
     Domain d;
+    srand(1000);
 
     // add cube
-    d.AddCube (-1, Vec3_t(20,0,0),1.,15.0,1.,0.0,&OrthoSys::e0);
-    double cube_vol = (4./3.)*PI + 3.*PI*15. + pow(15,3.0) + 6*pow(15,2.0);
+    d.AddCube (-1, Vec3_t(20,0,0),1.0,30.0,3.0);
+    Array<Vec3_t> Vresult;
+    DEM::Particle * Pa = d.Particles[0];
+    Array<Vec3_t> Vtemp(Pa->Verts.Size());
+    Array<Vec3_t> Vres (Pa->Verts.Size());
+    for (size_t j=0;j<Pa->Verts.Size();j++)
+    {
+        Vtemp[j] = *Pa->Verts[j];
+        Vres [j] = *Pa->Verts[j];
+    }
+    DEM::Dilation(Vtemp,Pa->EdgeCon,Pa->FaceCon,Vres,Pa->Props.R);
+    for (size_t j=0;j<Pa->Verts.Size();j++)
+    {
+        *Pa->Verts[j] = Vres[j];
+    }
+    Pa->poly_calc_props(Vres);
+    double cube_vol = (4./3.)*PI + 3.*PI*30. + pow(30.0,3.0) + 6*pow(30.0,2.0);
+
+
+    // add rectangular box
+    Vec3_t L(10.0,40.0,90.0);  // An AC Clarke monolith
+    d.AddRecBox (-1, Vec3_t(0,20,0),L,1.0,1.0);
+    Pa = d.Particles[1];
+    Vtemp.Resize(Pa->Verts.Size());
+    Vres .Resize(Pa->Verts.Size());
+    for (size_t j=0;j<Pa->Verts.Size();j++)
+    {
+        Vtemp[j] = *Pa->Verts[j];
+        Vres [j] = *Pa->Verts[j];
+    }
+    DEM::Dilation(Vtemp,Pa->EdgeCon,Pa->FaceCon,Vres,Pa->Props.R);
+    for (size_t j=0;j<Pa->Verts.Size();j++)
+    {
+        *Pa->Verts[j] = Vres[j];
+    }
+    Pa->poly_calc_props(Vres);
+    double box_vol = (L(0)+2.0)*(L(1)+2.0)*(L(2)+2.0);
+    Quaternion_t temp;
+    Conjugate (Pa->Q,temp);
+    Pa->Rotate    (temp,Pa->x);
 
     // add rice
     d.AddRice (-1, Vec3_t(40,0,0),1.,10.,1.,0.,NULL);
@@ -88,6 +127,7 @@ int main(int argc, char **argv) try
     d.Particles[1]->Index=1;
     d.Particles[2]->Index=2;
     d.Particles[3]->Index=3;
+    d.Particles[4]->Index=4;
 
     // initialize
     //d.Particles[0]->Initialize(5000);
@@ -95,20 +135,19 @@ int main(int argc, char **argv) try
     //d.Particles[2]->Initialize(5000);
     //d.Particles[3]->Initialize(5000);
 
-    d.AddSphere(-1,d.Particles[2]->x,0.2,1.0);
-
-
     //d.Initialize (/*dt*/0.0);
 
     // check
     double cube_tol_vol = 1.0;
+    double  box_tol_vol = 1.0;
     double rice_tol_vol = 0.1;
     double rice_tol_I   = 2.5;
     double cube_err_vol = fabs(d.Particles[0]->Props.V - cube_vol);
-    double rice_err_vol = fabs(d.Particles[1]->Props.V - rice_vol);
-    double rice_err_I   = fabs(d.Particles[1]->I(0) - rice_I(0)) +
-                          fabs(d.Particles[1]->I(1) - rice_I(1)) +
-                          fabs(d.Particles[1]->I(2) - rice_I(2));
+    double box_err_vol  = fabs(d.Particles[1]->Props.V -  box_vol);
+    double rice_err_vol = fabs(d.Particles[2]->Props.V - rice_vol);
+    double rice_err_I   = fabs(d.Particles[2]->I(0) - rice_I(0)) +
+                          fabs(d.Particles[2]->I(1) - rice_I(1)) +
+                          fabs(d.Particles[2]->I(2) - rice_I(2));
 
     // output
     std::cout << "[1;33m\n--- Results ----------------------------------------------------[0m\n";
@@ -117,20 +156,25 @@ int main(int argc, char **argv) try
     cout << "  Cube Moment of inertia = " << d.Particles[0]->I(0)    << ", " << d.Particles[0]->I(1) << ", " << d.Particles[0]->I(2) << "\n";
     cout << "  Cube Quaternion        = " << d.Particles[0]->Q(0)    << ", " << d.Particles[0]->Q(1) << ", " << d.Particles[0]->Q(2) << ", " << d.Particles[0]->Q(3) << "\n";
     cout << endl;
-    cout << "  Rice Volume            = " << d.Particles[1]->Props.V << " (" << rice_vol << ") ==> Error = " << FmtErr(rice_err_vol,rice_tol_vol) << "\n";
-    cout << "  Rice Center of mass    = " << d.Particles[1]->x(0)    << ", " << d.Particles[1]->x(1) << ", " << d.Particles[1]->x(2) << endl;
-    cout << "  Rice Moment of inertia = " << d.Particles[1]->I(0)    << " (" << rice_I(0) << "), " << d.Particles[1]->I(1) << " (" << rice_I(1) << "), " << d.Particles[1]->I(2) << " (" << rice_I(2) << ") ==> Error = " << FmtErr(rice_err_I,rice_tol_I) << "\n";
-    cout << "  Rice Quaternion        = " << d.Particles[1]->Q(0)    << ", " << d.Particles[1]->Q(1) << ", " << d.Particles[1]->Q(2) << ", " << d.Particles[1]->Q(3) << "\n";
+    cout << "  Box  Volume            = " << d.Particles[1]->Props.V << " (" << box_vol  << ") ==> Error = " << FmtErr(box_err_vol,box_tol_vol) << "\n";
+    cout << "  Box  Center of mass    = " << d.Particles[1]->x(0)    << ", " << d.Particles[1]->x(1) << ", " << d.Particles[1]->x(2) << "\n";
+    cout << "  Box  Moment of inertia = " << d.Particles[1]->I(0)    << ", " << d.Particles[1]->I(1) << ", " << d.Particles[1]->I(2) << "\n";
+    cout << "  Box  Quaternion        = " << d.Particles[1]->Q(0)    << ", " << d.Particles[1]->Q(1) << ", " << d.Particles[1]->Q(2) << ", " << d.Particles[1]->Q(3) << "\n";
     cout << endl;
-    cout << "  Tetra Volume            = " << d.Particles[2]->Props.V<< " ( is inside? " << d.Particles[2]->IsInside(d.Particles[2]->x) << ")\n";
-    cout << "  Tetra Center of mass    = " << d.Particles[2]->x(0)   << ", " << d.Particles[2]->x(1) << ", " << d.Particles[2]->x(2) << "\n";
-    cout << "  Tetra Moment of inertia = " << d.Particles[2]->I(0)   << ", " << d.Particles[2]->I(1) << ", " << d.Particles[2]->I(2) << "\n";
-    cout << "  Tetra Quaternion        = " << d.Particles[2]->Q(0)   << ", " << d.Particles[2]->Q(1) << ", " << d.Particles[2]->Q(2) << ", " << d.Particles[2]->Q(3) << "\n";
+    cout << "  Rice Volume            = " << d.Particles[2]->Props.V << " (" << rice_vol << ") ==> Error = " << FmtErr(rice_err_vol,rice_tol_vol) << "\n";
+    cout << "  Rice Center of mass    = " << d.Particles[2]->x(0)    << ", " << d.Particles[2]->x(1) << ", " << d.Particles[2]->x(2) << endl;
+    cout << "  Rice Moment of inertia = " << d.Particles[2]->I(0)    << " (" << rice_I(0) << "), " << d.Particles[2]->I(1) << " (" << rice_I(1) << "), " << d.Particles[2]->I(2) << " (" << rice_I(2) << ") ==> Error = " << FmtErr(rice_err_I,rice_tol_I) << "\n";
+    cout << "  Rice Quaternion        = " << d.Particles[2]->Q(0)    << ", " << d.Particles[2]->Q(1) << ", " << d.Particles[2]->Q(2) << ", " << d.Particles[2]->Q(3) << "\n";
     cout << endl;
-    cout << "  Tetra Volume            = " << d.Particles[3]->Props.V<< " ( is inside? " << d.Particles[2]->IsInside(d.Particles[2]->x) << ")\n";
+    cout << "  Tetra Volume            = " << d.Particles[3]->Props.V<< " ( is inside? " << d.Particles[3]->IsInside(d.Particles[3]->x) << ")\n";
     cout << "  Tetra Center of mass    = " << d.Particles[3]->x(0)   << ", " << d.Particles[3]->x(1) << ", " << d.Particles[3]->x(2) << "\n";
     cout << "  Tetra Moment of inertia = " << d.Particles[3]->I(0)   << ", " << d.Particles[3]->I(1) << ", " << d.Particles[3]->I(2) << "\n";
     cout << "  Tetra Quaternion        = " << d.Particles[3]->Q(0)   << ", " << d.Particles[3]->Q(1) << ", " << d.Particles[3]->Q(2) << ", " << d.Particles[2]->Q(3) << "\n";
+    cout << endl;
+    cout << "  Tetra Volume            = " << d.Particles[4]->Props.V<< " ( is inside? " << d.Particles[4]->IsInside(d.Particles[4]->x) << ")\n";
+    cout << "  Tetra Center of mass    = " << d.Particles[4]->x(0)   << ", " << d.Particles[4]->x(1) << ", " << d.Particles[4]->x(2) << "\n";
+    cout << "  Tetra Moment of inertia = " << d.Particles[4]->I(0)   << ", " << d.Particles[4]->I(1) << ", " << d.Particles[4]->I(2) << "\n";
+    cout << "  Tetra Quaternion        = " << d.Particles[4]->Q(0)   << ", " << d.Particles[4]->Q(1) << ", " << d.Particles[4]->Q(2) << ", " << d.Particles[4]->Q(3) << "\n";
     cout << endl;
     
     // draw

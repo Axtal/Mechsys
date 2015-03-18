@@ -28,6 +28,7 @@ SET(EXES
   test_tetrahedra
   test_domain
   test_dynamics
+  test_mesh
   test_read
   test_write
   test_beam

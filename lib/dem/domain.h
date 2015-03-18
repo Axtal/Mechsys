@@ -109,9 +109,10 @@ public:
     void AddDrill    (int Tag, Vec3_t const & X, double R, double Lt, double Ll, double rho);                                    ///< A drill made as a combination of a cube and a pyramid.
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
-    void AddVoroCell (int Tag, voro::voronoicell & VC, double R, double rho, bool Erode, Vec3_t nv = iVec3_t(1.0,1.0,1.0));   ///< Add a single voronoi cell, it should be built before tough
+    void AddVoroCell (int Tag, voro::voronoicell & VC, double R, double rho, bool Erode, Vec3_t nv = iVec3_t(1.0,1.0,1.0));      ///< Add a single voronoi cell, it should be built before tough
     void AddTorus    (int Tag, Vec3_t const & X, Vec3_t const & N, double Rmax, double R, double rho);                           ///< Add a single torus at position X with a normal N, circunference Rmax and spheroradius R
     void AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t const & X1, double R1, double R, double rho);                ///< Add a cylinder formed by the connection of two circles at positions X0 and X1 and radii R0 and R1
+    void AddFromJson (int Tag, char const * Filename, double R, double rho, double scale,bool Erode = false);                    ///< Add a particle generated from Json mesh
 
 
     // 
@@ -1612,7 +1613,6 @@ inline void Domain::AddRice (int Tag, const Vec3_t & X, double R, double L, doub
     if (!ThereisanAxis) delete Axis;
 }
 
-
 inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, double Ly, double rho, double Angle, Vec3_t * Axis)
 {
     // vertices
@@ -1867,6 +1867,82 @@ inline void Domain::AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t c
     Particles[Particles.Size()-1]->Cylinders.Push(new Cylinder(Particles[Particles.Size()-1]->Tori[0],Particles[Particles.Size()-1]->Tori[1],Particles[Particles.Size()-1]->Verts[2],Particles[Particles.Size()-1]->Verts[5]));
 
     //std::cout << *Particles[Particles.Size()-1] << std::endl;
+}
+
+inline void Domain::AddFromJson (int Tag, char const * Filename, double R, double rho, double scale, bool Erode)
+{
+
+    Array<Vec3_t>       V;
+    Array<Array <int> > E;
+    Array<Array <int> > F;
+
+    try {
+        boost::property_tree::ptree pt;
+        boost::property_tree::read_json(Filename, pt);
+        BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("verts")) {
+            Vec3_t coords;
+            int i = 0;
+            BOOST_FOREACH(boost::property_tree::ptree::value_type & b, a.second.get_child("c")) {
+                coords[i] = scale * boost::lexical_cast<double>(b.second.data());
+                i++;
+            }
+            V.Push(coords);
+        }
+        BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("edges")) {
+            Array<int> vids(2);
+            int i = 0;
+            BOOST_FOREACH(boost::property_tree::ptree::value_type & b, a.second.get_child("verts")) {
+                vids[i] = boost::lexical_cast<int>(b.second.data());
+                i++;
+            }
+            E.Push(vids);
+        }
+        BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("faces")) {
+            Array<int>     vids;
+            BOOST_FOREACH(boost::property_tree::ptree::value_type & b, a.second.get_child("verts")) {
+                int vid = boost::lexical_cast<int>(b.second.data());
+                vids .Push(vid);
+            }
+            F.Push(vids);
+        }
+        printf("[1;32mparticle.h: ConstructFromJson: finished[0m\n");
+    } catch (std::exception & e) {
+        throw new Fatal("particle.h: ConstructFromJson failed:\n\t%s", e.what());
+    }
+    double vol; // volume of the polyhedron
+    Vec3_t CM;  // Center of mass of the polyhedron
+    Mat3_t It;  // Inertia tensor of the polyhedron
+    PolyhedraMP(V,F,vol,CM,It);
+    if (Erode) Erosion(V,E,F,R);
+    // add particle
+    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    if (Erode) Particles[Particles.Size()-1]->Eroded = true;
+    Particles[Particles.Size()-1]->x       = CM;
+    Particles[Particles.Size()-1]->Props.V = vol;
+    Particles[Particles.Size()-1]->Props.m = vol*rho;
+    Vec3_t I;
+    Quaternion_t Q;
+    Vec3_t xp,yp,zp;
+    Eig(It,I,xp,yp,zp);
+    CheckDestroGiro(xp,yp,zp);
+    I *= rho;
+    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+    Q(1) = (yp(2)-zp(1))/(4*Q(0));
+    Q(2) = (zp(0)-xp(2))/(4*Q(0));
+    Q(3) = (xp(1)-yp(0))/(4*Q(0));
+    Q = Q/norm(Q);
+    Particles[Particles.Size()-1]->I     = I;
+    Particles[Particles.Size()-1]->Q     = Q;
+    double Dmax = Distance(CM,V[0])+R;
+    for (size_t i=1; i<V.Size(); ++i)
+    {
+        if (Distance(CM,V[i])+R > Dmax) Dmax = Distance(CM,V[i])+R;
+    }
+    Particles[Particles.Size()-1]->Ekin = 0.0;
+    Particles[Particles.Size()-1]->Erot = 0.0;
+    Particles[Particles.Size()-1]->Dmax  = Dmax;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index = Particles.Size()-1;
 }
 
 // Methods
