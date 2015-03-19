@@ -36,7 +36,7 @@ int main(int argc, char **argv) try
     Domain d;
     d.AddFromJson(-1, "test.msh", R, 1.0, 1.0);
     d.Particles[0]->Position(OrthoSys::O);
-    double epsilon = R/d.Particles[0]->Dmax;
+    double epsilon = 2.0*R/pow(d.Particles[0]->Props.V,1.0/3.0);
 
 
     std::cout << "[1;33m\n--- Results for mass properties from surface integrals --------------------------------------[0m\n";

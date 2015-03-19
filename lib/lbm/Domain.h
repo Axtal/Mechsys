@@ -84,6 +84,7 @@ public:
     void AddSphere       (int Tag, Vec3_t const & X, double R, double rho);                                                                              ///< Add sphere
     void GenSpheresBox   (int Tag, Vec3_t const & X0, Vec3_t const & X1, double R, double rho, size_t Randomseed, double fraction, double RminFraction); ///< Create an array of spheres
     void AddCube         (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void AddRecBox       (int Tag, Vec3_t const & X, Vec3_t const & L, double R, double rho, double Angle=0, Vec3_t * Axis=NULL);                        ///< Add a rectangular box with dimensions given by the vector L
     void AddOcta         (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void AddTetra        (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a octahedron at position X with spheroradius R, side of length L and density rho
     void AddPlane        (int Tag, Vec3_t const & X, double R, double Lx,double Ly , double rho, double Angle=0, Vec3_t * Axis=NULL);                    ///< Add a cube at position X with spheroradius R, side of length L and density rho
@@ -95,7 +96,8 @@ public:
     double rho, bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                                                ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,
     double rho, bool Cohesion, bVec3_t Periodic,size_t Randomseed, double fraction, Vec3_t q = OrthoSys::O);                                             ///< Generate a Voronoi Packing with dimensions Li and polihedra per side ni, Periodic conditions are chosen for each particle
-    void AddDisk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt);        ///< Add a disk element in 2D
+    void AddFromJson (int Tag, char const * Filename, double R, double rho, double scale,bool Erode = false);                                            ///< Add a particle generated from Json mesh
+    void AddDisk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt);                      ///< Add a disk element in 2D
     
     // Access methods
     DEM::Particle       * GetParticle  (int Tag, bool Check=true);       ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
@@ -2856,6 +2858,91 @@ inline void Domain::AddCube (int Tag, Vec3_t const & X, double R, double L, doub
 
 }
 
+inline void Domain::AddRecBox (int Tag, Vec3_t const & X, Vec3_t const & L, double R, double rho, double Angle, Vec3_t * Axis)
+{
+    // vertices
+    Array<Vec3_t> V(8);
+    double lx = L(0)/2.0;
+    double ly = L(1)/2.0;
+    double lz = L(2)/2.0;
+    V[0] = -lx, -ly, -lz;
+    V[1] =  lx, -ly, -lz;
+    V[2] =  lx,  ly, -lz;
+    V[3] = -lx,  ly, -lz;
+    V[4] = -lx, -ly,  lz;
+    V[5] =  lx, -ly,  lz;
+    V[6] =  lx,  ly,  lz;
+    V[7] = -lx,  ly,  lz;
+
+    // edges
+    Array<Array <int> > E(12);
+    for (size_t i=0; i<12; ++i) E[i].Resize(2);
+    E[ 0] = 0, 1;
+    E[ 1] = 1, 2;
+    E[ 2] = 2, 3;
+    E[ 3] = 3, 0;
+    E[ 4] = 4, 5;
+    E[ 5] = 5, 6;
+    E[ 6] = 6, 7;
+    E[ 7] = 7, 4;
+    E[ 8] = 0, 4;
+    E[ 9] = 1, 5;
+    E[10] = 2, 6;
+    E[11] = 3, 7;
+
+    // faces
+    Array<Array <int> > F(6);
+    for (size_t i=0; i<6; i++) F[i].Resize(4);
+    F[0] = 4, 7, 3, 0;
+    F[1] = 1, 2, 6, 5;
+    F[2] = 0, 1, 5, 4;
+    F[3] = 2, 3, 7, 6;
+    F[4] = 0, 3, 2, 1;
+    F[5] = 4, 5, 6, 7;
+
+    // calculate the rotation
+    bool ThereisanAxis = true;
+    if (Axis==NULL)
+    {
+        Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
+        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+        ThereisanAxis = false;
+    }
+    Quaternion_t q;
+    NormalizeRotation (Angle,(*Axis),q);
+    for (size_t i=0; i<V.Size(); i++)
+    {
+        Vec3_t t;
+        Rotation (V[i],q,t);
+        V[i] = t+X;
+    }
+
+    // add particle
+    Particles.Push (new DEM::Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    // clean up
+    if (!ThereisanAxis) delete Axis;
+    //q(0) = 1.0;
+    //q(1) = 0.0;
+    //q(2) = 0.0;
+    //q(3) = 0.0;
+    q = q/norm(q);
+
+    Particles[Particles.Size()-1]->Q          = q;
+    Particles[Particles.Size()-1]->Props.V    = L(0)*L(1)*L(2);
+    Particles[Particles.Size()-1]->Props.m    = rho*L(0)*L(1)*L(2);
+    Particles[Particles.Size()-1]->I          = L(1)*L(1) + L(2)*L(2), L(0)*L(0) + L(2)*L(2), L(0)*L(0) + L(1)*L(1);
+    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m/12.0;
+    Particles[Particles.Size()-1]->x          = X;
+    Particles[Particles.Size()-1]->Ekin       = 0.0;
+    Particles[Particles.Size()-1]->Erot       = 0.0;
+    Particles[Particles.Size()-1]->Dmax       = 0.5*norm(L)+R;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
+    
+
+}
+
 inline void Domain::AddOcta (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
 {
     // vertices
@@ -3414,6 +3501,82 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
                                  , bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t qin)
 {
     AddVoroPack(Tag,R,Lx,Ly,Lz,nx,ny,nz,rho,Cohesion,bVec3_t(Periodic,Periodic,Periodic),Randomseed,fraction,qin);
+}
+
+inline void Domain::AddFromJson (int Tag, char const * Filename, double R, double rho, double scale, bool Erode)
+{
+
+    Array<Vec3_t>       V;
+    Array<Array <int> > E;
+    Array<Array <int> > F;
+
+    try {
+        boost::property_tree::ptree pt;
+        boost::property_tree::read_json(Filename, pt);
+        BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("verts")) {
+            Vec3_t coords;
+            int i = 0;
+            BOOST_FOREACH(boost::property_tree::ptree::value_type & b, a.second.get_child("c")) {
+                coords[i] = scale * boost::lexical_cast<double>(b.second.data());
+                i++;
+            }
+            V.Push(coords);
+        }
+        BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("edges")) {
+            Array<int> vids(2);
+            int i = 0;
+            BOOST_FOREACH(boost::property_tree::ptree::value_type & b, a.second.get_child("verts")) {
+                vids[i] = boost::lexical_cast<int>(b.second.data());
+                i++;
+            }
+            E.Push(vids);
+        }
+        BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("faces")) {
+            Array<int>     vids;
+            BOOST_FOREACH(boost::property_tree::ptree::value_type & b, a.second.get_child("verts")) {
+                int vid = boost::lexical_cast<int>(b.second.data());
+                vids .Push(vid);
+            }
+            F.Push(vids);
+        }
+        printf("[1;32mLBM::domain.h ConstructFromJson: finished[0m\n");
+    } catch (std::exception & e) {
+        throw new Fatal("LBM::domain.h: ConstructFromJson failed:\n\t%s", e.what());
+    }
+    double vol; // volume of the polyhedron
+    Vec3_t CM;  // Center of mass of the polyhedron
+    Mat3_t It;  // Inertia tensor of the polyhedron
+    DEM::PolyhedraMP(V,F,vol,CM,It);
+    if (Erode) DEM::Erosion(V,E,F,R);
+    // add particle
+    Particles.Push (new DEM::Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    if (Erode) Particles[Particles.Size()-1]->Eroded = true;
+    Particles[Particles.Size()-1]->x       = CM;
+    Particles[Particles.Size()-1]->Props.V = vol;
+    Particles[Particles.Size()-1]->Props.m = vol*rho;
+    Vec3_t I;
+    Quaternion_t Q;
+    Vec3_t xp,yp,zp;
+    Eig(It,I,xp,yp,zp);
+    CheckDestroGiro(xp,yp,zp);
+    I *= rho;
+    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+    Q(1) = (yp(2)-zp(1))/(4*Q(0));
+    Q(2) = (zp(0)-xp(2))/(4*Q(0));
+    Q(3) = (xp(1)-yp(0))/(4*Q(0));
+    Q = Q/norm(Q);
+    Particles[Particles.Size()-1]->I     = I;
+    Particles[Particles.Size()-1]->Q     = Q;
+    double Dmax = DEM::Distance(CM,V[0])+R;
+    for (size_t i=1; i<V.Size(); ++i)
+    {
+        if (DEM::Distance(CM,V[i])+R > Dmax) Dmax = DEM::Distance(CM,V[i])+R;
+    }
+    Particles[Particles.Size()-1]->Ekin = 0.0;
+    Particles[Particles.Size()-1]->Erot = 0.0;
+    Particles[Particles.Size()-1]->Dmax  = Dmax;
+    Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index = Particles.Size()-1;
 }
 
 inline void Domain::AddDisk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t const & TheW, double Therho, double TheR, double dt)

@@ -41,9 +41,9 @@ void Setup(LBM::Domain & dom, void * UD)
     for (size_t i=0;i<dom.Lat[0].Ncells;i++)
     {
         Cell * c   = dom.Lat[0].Cells[i];
-        c->BForcef = c->Density()*dat.g;
+        c->BForcef = c->Rho*dat.g;
         c          = dom.Lat[1].Cells[i];
-        c->BForcef = c->Density()*dat.g;
+        c->BForcef = c->Rho*dat.g;
     }
     //for (size_t i=0;i<dom.Particles.Size();i++)
     //{
@@ -83,7 +83,7 @@ int main(int argc, char **argv) try
     LBM::Domain Dom(D3Q15, Nu, iVec3_t(nx,ny,nz), dx, dt);
     UserData dat;
     Dom.UserData = &dat;
-    Dom.Step = 2;
+    Dom.Step = 1;
     Dom.Lat[0].G    = -200.0;
     Dom.Lat[0].Gs   = -0.0;
     Dom.Lat[1].G    = 0.0;
@@ -148,45 +148,19 @@ int main(int argc, char **argv) try
     deltag.Push(-8);
     Dom.DelParticles(deltag);
 
-    Dom.AddSphere(-1,Vec3_t(0.58*nx*dx,0.65*ny*dx,0.58*nz*dx),0.1*ny,0.4*rho);
-    Dom.AddSphere(-2,Vec3_t(0.57*nx*dx,0.85*ny*dx,0.57*nz*dx),0.1*ny,rho    );
-    Dom.AddSphere(-3,Vec3_t(0.43*nx*dx,0.65*ny*dx,0.42*nz*dx),0.1*ny,rho    );
-    Dom.AddSphere(-4,Vec3_t(0.36*nx*dx,0.85*ny*dx,0.63*nz*dx),0.1*ny,0.3*rho);
-    Dom.AddSphere(-5,Vec3_t(0.70*nx*dx,0.65*ny*dx,0.40*nz*dx),0.1*ny,0.6*rho);
+    //Dom.AddSphere(-1,Vec3_t(0.58*nx*dx,0.65*ny*dx,0.58*nz*dx),0.1*ny,0.4*rho);
+    //Dom.AddSphere(-2,Vec3_t(0.57*nx*dx,0.85*ny*dx,0.57*nz*dx),0.1*ny,rho    );
+    //Dom.AddSphere(-3,Vec3_t(0.43*nx*dx,0.65*ny*dx,0.42*nz*dx),0.1*ny,rho    );
+    //Dom.AddSphere(-4,Vec3_t(0.36*nx*dx,0.85*ny*dx,0.63*nz*dx),0.1*ny,0.3*rho);
+    //Dom.AddSphere(-5,Vec3_t(0.70*nx*dx,0.65*ny*dx,0.40*nz*dx),0.1*ny,0.6*rho);
 
-    //
+    Dom.AddRecBox(-1,OrthoSys::O,Vec3_t(0.2*nx*dx,0.2*ny*dx,0.1*nz*dx),1.0,0.5*rho);
+    Dom.GetParticle(-1)->Position(Vec3_t(0.5*nx*dx,0.8*ny*dx,0.5*nz*dx));
 
-    //DEM::Particle * Pa = new DEM::Particle(-1, "duck2", 1.0, 0.2*rho,50.0);
-    //DEM::Particle * Pa = new DEM::Particle(-1, "dolphin", 0.7, 0.3*rho,0.85);
-    //Vec3_t t(0.5*nx,0.75*ny,0.5*nz);
-    //Vec3_t t(0.5*nx,0.90*ny,0.5*nz);
-    //Dom.Particles.Push(Pa);
-    //Pa->Position(t);
-    //Vec3_t w = Vec3_t(0.005,0.0,0.0),wb;
-    //Quaternion_t q;
-    //Conjugate (Pa->Q,q);
-    //Rotation  (w,q,wb);
-    //Pa->w = wb;
-    
-    //Dom.Particles.Push(new DEM::Particle(-1, "octahedron", 0.01*ny, rho,20.0));
-    //Vec3_t t(0.63*nx,0.75*ny,0.63*nz);
-    //Dom.Particles[Dom.Particles.Size()-1]->Position(t);
-    //Dom.Particles[Dom.Particles.Size()-1]->Index = Dom.Particles.Size()-1;
-    //Quaternion_t q;
-    //Vec3_t axis = 0.3*OrthoSys::e1 + 0.2*OrthoSys::e2;
-    //NormalizeRotation(M_PI/6.0,axis,q);    
-    //Dom.Particles[Dom.Particles.Size()-1]->Rotate(q,Dom.Particles[Dom.Particles.Size()-1]->x);
-    //std::cout << Dom.Particles[Dom.Particles.Size()-1]->x << std::endl;
+    Dom.AddFromJson(-2, "test.msh", 1.0, 0.4*rho, 1.5);
+    Dom.GetParticle(-2)->Position(Vec3_t(0.35*nx*dx,0.65*ny*dx,0.35*nz*dx));
 
 
-    //Dom.AddTetra(-1,Vec3_t(0.63*nx*dx,0.8*ny*dx,0.63*nz*dx),0.01*ny,0.4*ny,    rho);
-    //Dom.AddTetra(-2,Vec3_t(0.38*nx*dx,0.8*ny*dx,0.38*nz*dx),0.01*ny,0.4*ny,0.3*rho);
-    //Dom.AddCube(-1,Vec3_t(0.63*nx*dx,0.8*ny*dx,0.63*nz*dx),0.01*ny,0.25*ny,    rho);
-    //Dom.AddOcta(-1,Vec3_t(0.63*nx*dx,0.8*ny*dx,0.63*nz*dx),0.01*ny,0.25*ny,    rho);
-    //
-    //Dom.AddPlane(-5,Vec3_t(0.5*nx,0.0,0.5*nz),0.01*ny,nx+1,ny+1,0.3*rho,M_PI/2.0,&OrthoSys::e0);
-    //Dom.GetParticle(-5)->FixVeloc();
-    
     for (size_t i=0;i<Dom.Particles.Size();i++)
     {
         Dom.Particles[i]->Ff = Dom.Particles[i]->Props.m*dat.g;
@@ -195,7 +169,7 @@ int main(int argc, char **argv) try
         Dom.Particles[i]->Props.Gn = 0.16;
     }
 
-    Dom.WriteXDMF("test07");
+    //Dom.WriteXDMF("test07");
     //Solving
     Dom.Solve(4000.0,10.0,Setup,NULL,"test07",true,Nproc);
 }

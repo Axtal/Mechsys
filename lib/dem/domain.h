@@ -1905,9 +1905,9 @@ inline void Domain::AddFromJson (int Tag, char const * Filename, double R, doubl
             }
             F.Push(vids);
         }
-        printf("[1;32mparticle.h: ConstructFromJson: finished[0m\n");
+        printf("[1;32mDEM::domain.h ConstructFromJson: finished[0m\n");
     } catch (std::exception & e) {
-        throw new Fatal("particle.h: ConstructFromJson failed:\n\t%s", e.what());
+        throw new Fatal("DEM::domain.h: ConstructFromJson failed:\n\t%s", e.what());
     }
     double vol; // volume of the polyhedron
     Vec3_t CM;  // Center of mass of the polyhedron
