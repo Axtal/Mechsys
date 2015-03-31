@@ -1205,11 +1205,14 @@ inline bool Particle::IsInsideFaceOnly(Vec3_t & V)
 {
     size_t nf = Faces.Size();
     size_t ni = 0;             //Number of intersections
+    //Vec3_t ref = x;
+    Vec3_t ref((1.0*rand())/RAND_MAX,(1.0*rand())/RAND_MAX,(1.0*rand())/RAND_MAX);
+    ref = Dmax*ref/norm(ref);
     if (nf>3)
     {
         for (size_t i = 0; i < nf; i++)
         {
-            if (Faces[i]->RayIntersect(V,x)) ni++;
+            if (Faces[i]->RayIntersect(V,ref)) ni++;
         }
     }
     if (ni%2==0) return false;
