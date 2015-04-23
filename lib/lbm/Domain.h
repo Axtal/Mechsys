@@ -1963,7 +1963,9 @@ void Domain::ImprintLattice (size_t n,size_t Np)
             {
                 if (Pa->Faces.Size()>0)
                 {
-                    for (size_t j=0;j<ParCellPairs[i].IGeo.Size();j++)
+                    DEM::Distance(C,*Pa->Faces[ParCellPairs[i].IGeo[0]],Xtemp,Xs);
+                    minl = norm(Xtemp-Xs);
+                    for (size_t j=1;j<ParCellPairs[i].IGeo.Size();j++)
                     {
                         DEM::Distance(C,*Pa->Faces[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
                         if (norm(Xtemp-Xstemp) < minl)
@@ -1975,7 +1977,9 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 }
                 else if (Pa->Edges.Size()>0)
                 {
-                    for (size_t j=0;j<ParCellPairs[i].IGeo.Size();j++)
+                    DEM::Distance(C,*Pa->Edges[ParCellPairs[i].IGeo[0]],Xtemp,Xs);
+                    minl = norm(Xtemp-Xs);
+                    for (size_t j=1;j<ParCellPairs[i].IGeo.Size();j++)
                     {
                         DEM::Distance(C,*Pa->Edges[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
                         if (norm(Xtemp-Xstemp) < minl)
@@ -1987,7 +1991,9 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 }
                 else if (Pa->Verts.Size()>0)
                 {
-                    for (size_t j=0;j<ParCellPairs[i].IGeo.Size();j++)
+                    DEM::Distance(C,*Pa->Verts[ParCellPairs[i].IGeo[0]],Xtemp,Xs);
+                    minl = norm(Xtemp-Xs);
+                    for (size_t j=1;j<ParCellPairs[i].IGeo.Size();j++)
                     {
                         DEM::Distance(C,*Pa->Verts[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
                         if (norm(Xtemp-Xstemp) < minl)
@@ -1999,7 +2005,6 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 }
                 len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
             }
-            
             //std::cout << "2" << std::endl;
             if (fabs(len)<1.0e-12) continue;
     
