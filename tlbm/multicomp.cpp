@@ -49,7 +49,8 @@ int main(int argc, char **argv) try
     if (argc==2) Nproc=atoi(argv[1]);
     Array<double> nu(2);
     nu[0] = 1.0/6.0;
-    nu[1] = 1.0/6.0;
+    //nu[1] = 1.0/6.0;
+    nu[1] = 1.0/30.0;
 
     size_t nx = 100, ny = 100;
 
@@ -104,7 +105,7 @@ int main(int argc, char **argv) try
     Dom.Lat[1].Gs=  0.0;
     Dom.Gmix     =  0.001;
 
-    Dom.Solve(5000,50.0,Setup,NULL,"multicomp",true,Nproc);
+    Dom.Solve(1.0e4,1.0e2,Setup,NULL,"multicomp",true,Nproc);
 
 
     return 0;

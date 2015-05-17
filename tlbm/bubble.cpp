@@ -33,15 +33,15 @@ int main(int argc, char **argv) try
     if (argc==2) Nproc=atoi(argv[1]);
     size_t nx = 100;
     size_t ny = 100;
-    size_t nz = 100;
-    //size_t nz = 1;
+    //size_t nz = 100;
+    size_t nz = 1;
     double nu = 1.0/6.0;
     double dx = 1.0;
     double dt = 1.0;
     double Tf = 10000.0;
-    LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
+    //LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
     //LBM::Domain Dom(D3Q19, nu, iVec3_t(nx,ny,nz), dx, dt);
-    //LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,nz), dx, dt);
+    LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,nz), dx, dt);
     //Dom.Lat[0].Rhoref =  2.0;
     //Dom.Lat[0].G      = -4.0;
     //Dom.Lat[0].Gs     =  0.0;
@@ -65,6 +65,7 @@ int main(int argc, char **argv) try
 	{
 		
 		double rho0 = (200.0 +(1.0*rand())/RAND_MAX)*dx*dx;
+		//double rho0 = (400.0 +(2.0*rand())/RAND_MAX)*dx*dx;
 		//double rho0 = (2.0 +(0.02*rand())/RAND_MAX)*dx*dx;
 		Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize (rho0, OrthoSys::O);
 	}
