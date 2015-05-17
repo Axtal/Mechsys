@@ -26,6 +26,7 @@ OPTION(A_WITH_TEST          "Compile general tests"          OFF)
 OPTION(A_WITH_TFEM          "Compile FEM tests"              OFF)
 OPTION(A_WITH_TLBM          "Compile LBM tests"              ON )
 OPTION(A_WITH_TEMLBM        "Compile EMLBM tests"            ON )
+OPTION(A_WITH_TEMLBM        "Compile ADLBM tests"            OFF)
 OPTION(A_WITH_TDEM          "Compile DEM tests"              ON )
 OPTION(A_WITH_TSPH          "Compile SPH tests"              OFF)
 OPTION(A_WITH_TMPM          "Compile MPM tests"              OFF)
@@ -81,6 +82,10 @@ ENDIF(A_WITH_TLBM)
 
 IF(A_WITH_TEMLBM)
 	SET(ALLDIRS ${ALLDIRS} temlbm temlbm2)
+ENDIF(A_WITH_TEMLBM)
+
+IF(A_WITH_TEMLBM)
+	SET(ALLDIRS ${ALLDIRS} tadlbm)
 ENDIF(A_WITH_TEMLBM)
 
 IF(A_WITH_TDEM)
