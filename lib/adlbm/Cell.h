@@ -16,8 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_EMLBM_CELL_H
-#define MECHSYS_EMLBM_CELL_H
+#ifndef MECHSYS_ADLBM_CELL_H
+#define MECHSYS_ADLBM_CELL_H
 
 // Std lib
 #ifdef USE_THREAD
@@ -40,7 +40,8 @@ class Cell
 {
 public:
 	static const Vec3_t  C   [9]; ///< Local velocities (D2Q9)
-    static const double  Cs;      ///< Speed parameter
+	static const double  W   [9]; ///< Local weights (D2Q9)
+    static       double  Cs;      ///< Speed parameter
     static const size_t  Op  [9]; ///< Index of opposing cells for bounce back
     static const size_t  Nneigh;  ///< Number of neighbors
    
@@ -48,8 +49,8 @@ public:
     Cell (size_t ID, iVec3_t Indexes, iVec3_t Ndim, double Cs, double Dt); ///< Constructor, it receives the grid type, ht einteger position and the total integer dimension of the domain and the spatial and time steps
     
     // Methods
-    double       Feq(size_t mu, size_t k);                         ///< Calculate the equilibrium distribution function F
-    double       Geq(size_t mu, size_t k);                         ///< Calculate the equilibrium distribution function G
+    double       Feq(size_t k);                         ///< Calculate the equilibrium distribution function F
+    double       Geq(size_t k);                         ///< Calculate the equilibrium distribution function G
     void         CalcProp();                                       ///< Calculate the vectorial properties with the new distributions functions
     void         Initialize(double TheRho, double TheCon, Vec3_t & TheV);       ///< Initialize cell with a given velocity and density
 
@@ -57,16 +58,17 @@ public:
     size_t       ID;       ///< Tag for the particle
     double       Dt;       ///< Time step
     
+    bool         IsSolid;  ///< It is a solid node
     iVec3_t      Index;    ///< Vector of indexes
 
     double        *      F; ///< Distribution functions for vector potentials
     double        *  Ftemp; ///< Temporary distribution functions
-    double        **     G; ///< Distribution functions for vector potentials
-    double        ** Gtemp; ///< Temporary distribution functions
-    size_t        *  Neighs; ///< Array of neighbors indexes
-    double              Rho; ///< Fluid density
-    double              Con; ///< Concentration Density
-    Vec3_t              Vel; ///< Electric Field
+    double        *      G; ///< Distribution functions for vector potentials
+    double        *  Gtemp; ///< Temporary distribution functions
+    size_t        * Neighs; ///< Array of neighbors indexes
+    double             Rho; ///< Fluid density
+    double             Con; ///< Concentration Density
+    Vec3_t             Vel; ///< Fluid velocity
 
 };
 
@@ -75,27 +77,11 @@ inline Cell::Cell(size_t TheID, iVec3_t TheIndexes, iVec3_t TheNdim, double TheC
     ID      = TheID;
     Index   = TheIndexes;
     Dt      = TheDt;
-    Eps     = 1.0;
-    Mu      = 2.0;
-    Sig     = 0.0;
-    Nneigh  = 12;
-    Rhof    = 0.0;
-    Jf      = OrthoSys::O;
-    F0      = new double  [2];
-    F0temp  = new double  [2];
-    FE      = new double *[2];
-    FEtemp  = new double *[2];
-    FB      = new double *[2];
-    FBtemp  = new double *[2];
-    for (size_t i=0;i<2;i++)
-    {
-        FE    [i]  = new double [Nneigh];
-        FEtemp[i]  = new double [Nneigh];
-        FB    [i]  = new double [Nneigh];
-        FBtemp[i]  = new double [Nneigh];
-    }
-    
-    Initialize(0.0,OrthoSys::O,OrthoSys::O,OrthoSys::O);
+    F      = new double [Nneigh];
+    Ftemp  = new double [Nneigh];
+    F      = new double [Nneigh];
+    Ftemp  = new double [Nneigh];
+    Initialize(1.0,1.0,OrthoSys::O);
 
 
     Neighs  = new size_t [Nneigh];
@@ -123,55 +109,55 @@ inline Cell::Cell(size_t TheID, iVec3_t TheIndexes, iVec3_t TheNdim, double TheC
 
 inline void Cell::CalcProp()
 {
-    E   = OrthoSys::O;
-    B   = OrthoSys::O;
-    Rho = F0[0];
-    for (size_t i=0;i<Nneigh;i++)
+    Rho = 0.0;
+    Con = 0.0;
+    Vel = OrthoSys::O;
+    if (!IsSolid)
     {
-        E   += FE[0][i]*D1[i] + FE[1][i]*D2[i];
-        B   += FB[0][i]*H1[i] + FB[1][i]*H2[i];
-        Rho += FE[0][i] + FE[1][i];
+        for (size_t i=0;i<Nneigh;i++)
+        {
+            Rho += F[i];
+            Con += G[i];
+            Vel += F[i]*C[i];
+        }
+        Vel /= Rho;
     }
-    E /= Eps;
-    J  = Sig*E;
 }
 
-inline double Cell::FEeq(size_t mu,size_t k)
+inline double Cell::Feq(size_t k)
+{   
+    double VdotC = dot(Vel,C[k]);
+    double VdotV = dot(Vel,Vel);
+    return W[k]*Rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
+}
+
+inline double Cell::Geq(size_t k)
 {
-    if (mu==0) return (1.0/16.0)*dot(C[k],J+Jf)+(Eps/4.0)*dot(E-Mu/(4.0*Eps)*(J+Jf),D1[k])+(1.0/(8.0*Mu))*dot(B,H1[k]);
-    else       return (1.0/16.0)*dot(C[k],J+Jf)+(Eps/4.0)*dot(E-Mu/(4.0*Eps)*(J+Jf),D2[k])+(1.0/(8.0*Mu))*dot(B,H2[k]);
+    double VdotC = dot(Vel,C[k]);
+    return W[k]*Con*(1.0 + 3.0*VdotC/Cs);
 }
 
-inline double Cell::FBeq(size_t mu,size_t k)
-{
-    if (mu==0) return (1.0/16.0)*dot(C[k],J+Jf)+(1.0/4.0)*dot(E-Mu/(4.0*Eps)*(J+Jf),D1[k])+(1.0/8.0)*dot(B,H1[k]);
-    else       return (1.0/16.0)*dot(C[k],J+Jf)+(1.0/4.0)*dot(E-Mu/(4.0*Eps)*(J+Jf),D2[k])+(1.0/8.0)*dot(B,H2[k]);
-}
-
-inline void Cell::Initialize(double TheRho, Vec3_t & TheJ, Vec3_t & TheE, Vec3_t & TheB)
+inline void Cell::Initialize(double TheRho, double TheCon, Vec3_t & TheVel)
 {
     Rho = TheRho;
-    J   = TheJ;
-    E   = TheE;
-    B   = TheB;
+    Con = TheCon;
+    Vel = TheVel;
 
-    F0[0] = F0[1] = TheRho;
-    //F0[0] = F0[1] = Rhof;
     for (size_t i=0;i<Nneigh;i++)
     {
-        FE[0][i] = FEeq(0,i);
-        FE[1][i] = FEeq(1,i);
-        FB[0][i] = FBeq(0,i);
-        FB[1][i] = FBeq(1,i);
+        F[i] = Feq(i);
+        G[i] = Geq(i);
     }
 }
 
 
 
-const Vec3_t Cell::C   [13] = { { 1.0, 1.0, 0.0}, {-1.0, 1.0, 0.0}, {-1.0,-1.0, 0.0}, { 1.0,-1.0, 0.0}, { 1.0, 0.0, 1.0}, {-1.0, 0.0, 1.0}, {-1.0, 0.0,-1.0}, { 1.0, 0.0,-1.0}, { 0.0, 1.0, 1.0}, { 0.0,-1.0, 1.0}, { 0.0,-1.0,-1.0}, { 0.0, 1.0,-1.0}, {0.0,0.0,0.0} };
-const Vec3_t Cell::D1  [12] = { {-0.5, 0.5, 0.0}, {-0.5,-0.5, 0.0}, { 0.5,-0.5, 0.0}, { 0.5, 0.5, 0.0}, {-0.5, 0.0, 0.5}, {-0.5, 0.0,-0.5}, { 0.5, 0.0,-0.5}, { 0.5, 0.0, 0.5}, { 0.0,-0.5, 0.5}, { 0.0,-0.5,-0.5}, { 0.0, 0.5,-0.5}, { 0.0, 0.5, 0.5} }; 
-const Vec3_t Cell::D2  [12] = { { 0.5,-0.5, 0.0}, { 0.5, 0.5, 0.0}, {-0.5, 0.5, 0.0}, {-0.5,-0.5, 0.0}, { 0.5, 0.0,-0.5}, { 0.5, 0.0, 0.5}, {-0.5, 0.0, 0.5}, {-0.5, 0.0,-0.5}, { 0.0, 0.5,-0.5}, { 0.0, 0.5, 0.5}, { 0.0,-0.5, 0.5}, { 0.0,-0.5,-0.5} };
-const Vec3_t Cell::H1  [12] = { { 0.0, 0.0, 1.0}, { 0.0, 0.0, 1.0}, { 0.0, 0.0, 1.0}, { 0.0, 0.0, 1.0}, { 0.0,-1.0, 0.0}, { 0.0,-1.0, 0.0}, { 0.0,-1.0, 0.0}, { 0.0,-1.0, 0.0}, { 1.0, 0.0, 0.0}, { 1.0, 0.0, 0.0}, { 1.0, 0.0, 0.0}, { 1.0, 0.0, 0.0} };
-const Vec3_t Cell::H2  [12] = { { 0.0, 0.0,-1.0}, { 0.0, 0.0,-1.0}, { 0.0, 0.0,-1.0}, { 0.0, 0.0,-1.0}, { 0.0, 1.0, 0.0}, { 0.0, 1.0, 0.0}, { 0.0, 1.0, 0.0}, { 0.0, 1.0, 0.0}, {-1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0} };
+const Vec3_t Cell::C   [9] = { {0,0,0}, {1,0,0}, {0,1,0}, {-1,0,0}, {0,-1,0}, {1,1,0}, {-1,1,0}, {-1,-1,0}, {1,-1,0} };
+const double Cell::W   [9] = { 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36., 1./36., 1./36. };
+const size_t Cell::Op  [9] = { 0, 3, 4, 1, 2, 7, 8, 5, 6 }; 
+const size_t Cell::Nneigh  = 8;
+      double Cell::Cs      = 1.0;
 
-#endif // MECHSYS_EMLBM_CELL_H
+
+
+#endif // MECHSYS_ADLBM_CELL_H

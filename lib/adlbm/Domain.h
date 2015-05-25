@@ -17,8 +17,8 @@
  ************************************************************************/
 
 
-#ifndef MECHSYS_EMLBM_DOMAIN_H
-#define MECHSYS_EMLBM_DOMAIN_H
+#ifndef MECHSYS_ADLBM_DOMAIN_H
+#define MECHSYS_ADLBM_DOMAIN_H
 
 // STD
 #include <map>
@@ -27,14 +27,14 @@
 #include <set>
 
 // MechSys
-#include <mechsys/emlbm2/Lattice.h>
+#include <mechsys/adlbm/Lattice.h>
 
 using std::set;
 using std::map;
 using std::pair;
 using std::make_pair;
 
-namespace EMLBM
+namespace ADLBM
 {
 
 class Domain
@@ -45,6 +45,8 @@ public:
 
     //Constructors
     Domain (
+    double                Thenu,
+    double                Thedif,
     iVec3_t               Ndim,   ///< Cell divisions per side
     double                dx,     ///< Space spacing
     double                dt);    ///< Time step
@@ -73,12 +75,12 @@ public:
     size_t                                             Nproc;         ///< Number of cores used for the simulation
 };
 
-inline Domain::Domain(iVec3_t Ndim, double Thedx, double Thedt)
+inline Domain::Domain(double Thenu, double Thedif, iVec3_t Ndim, double Thedx, double Thedt)
 {
     Initialized = false;
     Util::Stopwatch stopwatch;
     printf("\n%s--- Initializing LBM Domain --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    Lat = Lattice(Ndim,Thedx,Thedt);
+    Lat = Lattice(Thenu, Thedif, Ndim,Thedx,Thedt);
     Time   = 0.0;
     dt     = Thedt;
     Step   = 1;
@@ -99,74 +101,52 @@ inline void Domain::WriteXDMF(char const * FileKey)
     size_t  Ny = Lat.Ndim[1]/Step;
     size_t  Nz = Lat.Ndim[2]/Step;
     // Creating data sets
-    float * Eps       = new float[  Nx*Ny*Nz];
     float * Rho       = new float[  Nx*Ny*Nz];
-    float * Cur       = new float[3*Nx*Ny*Nz];
-    float * Bvec      = new float[3*Nx*Ny*Nz];
-    float * Evec      = new float[3*Nx*Ny*Nz];
+    float * Con       = new float[  Nx*Ny*Nz];
+    float * Vel       = new float[3*Nx*Ny*Nz];
 
     size_t i=0;
     for (size_t m=0;m<Lat.Ndim(2);m+=Step)
     for (size_t l=0;l<Lat.Ndim(1);l+=Step)
     for (size_t n=0;n<Lat.Ndim(0);n+=Step)
     {
-        double eps    = 0.0;
-        double cha    = 0.0;
-        Vec3_t cur    = OrthoSys::O;
-        Vec3_t bvec   = OrthoSys::O;
-        Vec3_t evec   = OrthoSys::O;
+        double rho    = 0.0;
+        double con    = 0.0;
+        Vec3_t vel    = OrthoSys::O;
 
         for (size_t ni=0;ni<Step;ni++)
         for (size_t li=0;li<Step;li++)
         for (size_t mi=0;mi<Step;mi++)
         {
-            eps      += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Eps;
-            cha      += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Rho;
-            cur (0)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->J[0];
-            cur (1)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->J[1];
-            cur (2)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->J[2];
-            bvec(0)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->B[0];
-            bvec(1)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->B[1];
-            bvec(2)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->B[2];
-            evec(0)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->E[0];
-            evec(1)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->E[1];
-            evec(2)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->E[2];
+            rho      += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Rho;
+            con      += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Con;
+            vel (0)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel[0];
+            vel (1)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel[1];
+            vel (2)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel[2];
         }
-        eps  /= Step*Step*Step;
-        cha  /= Step*Step*Step;
-        cur  /= Step*Step*Step;
-        bvec /= Step*Step*Step;
-        evec /= Step*Step*Step;
-        Eps [i]      = (float) eps;
-        Rho [i]      = (float) cha;
-        Cur [3*i  ]  = (float) cur (0);
-        Cur [3*i+1]  = (float) cur (1);
-        Cur [3*i+2]  = (float) cur (2);
-        Bvec[3*i  ]  = (float) bvec(0);
-        Bvec[3*i+1]  = (float) bvec(1);
-        Bvec[3*i+2]  = (float) bvec(2);
-        Evec[3*i  ]  = (float) evec(0);
-        Evec[3*i+1]  = (float) evec(1);
-        Evec[3*i+2]  = (float) evec(2);
+        rho  /= Step*Step*Step;
+        con  /= Step*Step*Step;
+        vel  /= Step*Step*Step;
+        Rho [i]      = (float) rho;
+        Con [i]      = (float) con;
+        Vel [3*i  ]  = (float) vel (0);
+        Vel [3*i+1]  = (float) vel (1);
+        Vel [3*i+2]  = (float) vel (2);
         i++;
     } 
     //Write the data
     hsize_t dims[1];
     dims[0] = Nx*Ny*Nz;
     String dsname;
-    dsname.Printf("Charge");
+    dsname.Printf("Density");
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Rho );
-    dsname.Printf("Epsilon");
-    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Eps );
+    dsname.Printf("Concentration");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Con );
     if (PrtVec)
     {
         dims[0] = 3*Nx*Ny*Nz;
-        dsname.Printf("Current");
-        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Cur     );
-        dsname.Printf("MagField");
-        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Bvec    );
-        dsname.Printf("ElecField");
-        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Evec    );
+        dsname.Printf("Velocity");
+        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vel );
     }
     dims[0] = 1;
     int N[1];
@@ -182,11 +162,9 @@ inline void Domain::WriteXDMF(char const * FileKey)
     dsname.Printf("Nz");
     H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,N);
 
-    delete [] Eps     ;
     delete [] Rho     ;
-    delete [] Cur     ;
-    delete [] Bvec    ;
-    delete [] Evec    ;
+    delete [] Con     ;
+    delete [] Vel     ;
 
 
     //Closing the file
@@ -208,31 +186,21 @@ inline void Domain::WriteXDMF(char const * FileKey)
     oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> " << Step*Lat.dx << " " << Step*Lat.dx  << " " << Step*Lat.dx  << "\n";
     oss << "       </DataItem>\n";
     oss << "     </Geometry>\n";
-    oss << "     <Attribute Name=\"Epsilon" << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "     <Attribute Name=\"Density" << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
     oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/Epsilon" << "\n";
+    oss << "        " << fn.CStr() <<":/Density" << "\n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
-    oss << "     <Attribute Name=\"Charge" << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "     <Attribute Name=\"Concentration" << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
     oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/Charge" << "\n";
+    oss << "        " << fn.CStr() <<":/Concentration" << "\n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     if (PrtVec)
     {
-    oss << "     <Attribute Name=\"Current" << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "     <Attribute Name=\"Velocity" << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
     oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/Current" << "\n";
-    oss << "       </DataItem>\n";
-    oss << "     </Attribute>\n";
-    oss << "     <Attribute Name=\"MagField" << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
-    oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/MagField" << "\n";
-    oss << "       </DataItem>\n";
-    oss << "     </Attribute>\n";
-    oss << "     <Attribute Name=\"ElecField" << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
-    oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/ElecField" << "\n";
+    oss << "        " << fn.CStr() <<":/Velocity" << "\n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     }
@@ -256,29 +224,23 @@ void Domain::Collide (size_t Np)
     for (size_t i=0;i<Lat.Ncells;i++)
     {
         Cell * c = Lat.Cells[i];
-        c->F0[0] = c->F0[0] - 2.0*(c->F0[0] - c->Rho);
-        c->F0[1] = c->F0[1] - 2.0*(c->F0[1] - c->Rho);
         for (size_t k=0;k<c->Nneigh;k++)
         {
-            for (size_t mu=0;mu<2;mu++)
+            if (!c->IsSolid)
             {
-                c->FEtemp[mu][k] = c->FE[mu][k] - 2.0*(c->FE[mu][k] - c->FEeq(mu,k));
-                c->FBtemp[mu][k] = c->FB[mu][k] - 2.0*(c->FB[mu][k] - c->FBeq(mu,k));
-                //if (c->Index[0]==Lat[0].Ndim[0]/2&&c->Index[1]==Lat[0].Ndim[1]/2&&c->Index[2]==Lat[0].Ndim[2]/2) std::cout << c->Feq(mu,k) << " " << c->Geq(mu,k) << " " << c->A[mu] << " " << c->Sig[mu] << " " << mu << " " << k << std::endl;
-                //if (c->Index[0]==15&&c->Index[1]==15&&c->Index[2]==15) std::cout << c->Feq(mu,k) << " " << c->Geq(mu,k) << " " << c->A[mu] << " " << c->Sig[mu] << " " << c->G[mu][k] << " " << mu << " " << k << std::endl;
-                //if (c->Index[0]==15&&c->Index[1]==15&&c->Index[2]==15) std::cout << c->Ftemp[mu][k] << " " << c->F[mu][k] << " " << mu << " " << k << std::endl;
+                c->Ftemp[k] = c->F[k] - (c->F[k] - c->Feq(k))/Lat.Tau;
+                c->Gtemp[k] = c->G[k] - (c->G[k] - c->Geq(k))/Lat.Tauc;
+            }
+            else
+            {
+                c->Ftemp[k] = c->F[Cell::Op[k]];
+                c->Gtemp[k] = c->G[Cell::Op[k]];
             }
         }
         for (size_t k=0;k<c->Nneigh;k++)
         {
-            for (size_t mu=0;mu<2;mu++)
-            {
-                c->FE[mu][k] = c->FEtemp[mu][k];
-                c->FB[mu][k] = c->FBtemp[mu][k];
-                //if (c->Index[0]==Lat[0].Ndim[0]/2&&c->Index[1]==Lat[0].Ndim[1]/2&&c->Index[2]==Lat[0].Ndim[2]/2) std::cout << c->Feq(mu,k) << " " << c->Geq(mu,k) << " " << c->A[mu] << " " << c->Sig[mu] << " " << mu << " " << k << std::endl;
-                //if (c->Index[0]==15&&c->Index[1]==15&&c->Index[2]==15) std::cout << c->Feq(mu,k) << " " << c->Geq(mu,k) << " " << c->A[mu] << " " << c->Sig[mu] << " " << c->G[mu][k] << " " << mu << " " << k << std::endl;
-                //if (c->Index[0]==15&&c->Index[1]==15&&c->Index[2]==15) std::cout << c->Ftemp[mu][k] << " " << c->F[mu][k] << " " << mu << " " << k << std::endl;
-            }
+            c->F[k] = c->Ftemp[k];
+            c->G[k] = c->Gtemp[k];
         }
     }   
 }
@@ -338,7 +300,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         Collide(Nproc);
         Lat.Stream1  (Nproc);
         Lat.Stream2  (Nproc);
-        Lat.CalcField(Nproc);
+        Lat.CalcProps(Nproc);
 #endif
 
         Time += dt;

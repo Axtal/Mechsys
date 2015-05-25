@@ -16,8 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_EMLBM_LATTICE_H
-#define MECHSYS_EMLBM_LATTICE_H
+#ifndef MECHSYS_ADLBM_LATTICE_H
+#define MECHSYS_ADLBM_LATTICE_H
 
 // Hdf5
 #ifdef USE_HDF5
@@ -26,7 +26,7 @@
 #endif
 
 // MechSys
-#include <mechsys/emlbm2/Cell.h>
+#include <mechsys/adlbm/Cell.h>
 #include <mechsys/util/util.h>
 #include <mechsys/util/stopwatch.h>
 
@@ -38,13 +38,13 @@ public:
 
     //Constructors
     Lattice () {};            //Default
-    Lattice (iVec3_t Ndim, double dx, double dt);
+    Lattice (double Thenu, double TheDif, iVec3_t TheNdim, double Thedx, double Thedt);
 
     //Methods
     void Stream1    (size_t Np);                                      ///< Stream the velocity distributions
     void Stream2    (size_t Np);                                      ///< Stream the velocity distributions
-    void CalcField  (size_t Np);                                      ///< Calculate the Electric and Magnetic Fields
-    Cell * GetCell(iVec3_t const & v);                     ///< Get pointer to cell at v
+    void CalcProps  (size_t Np);                                      ///< Calculate the fluid properties
+    Cell * GetCell(iVec3_t const & v);                                ///< Get pointer to cell at v
 
 
     //Data
@@ -54,14 +54,24 @@ public:
     double                                    Time;             // The current time
     double                                    dx;               // grid space
     double                                    dt;               // time step
+    double                                    Nu;               // Real viscosity
+    double                                    Dif;              // Diffusion coefficient
+    double                                    Tau;              // Relaxation time
+    double                                    Tauc;             // Relaxation time for diffusion 
     Cell                                   ** Cells;            // Array of pointer cells
 };
 
-inline Lattice::Lattice(iVec3_t TheNdim, double Thedx, double Thedt)
+inline Lattice::Lattice(double Thenu, double TheDif, iVec3_t TheNdim, double Thedx, double Thedt)
 {
     Ndim = TheNdim;
     dx   = Thedx;
     dt   = Thedt;
+    Nu   = Thenu;
+    Dif  = TheDif;
+    Tau  = 3.0*Nu *dt/(dx*dx) + 0.5;
+    Tauc = 3.0*Dif*dt/(dx*dx) + 0.5;
+
+
 
     //Cells.Resize(Ndim[0]*Ndim[1]*Ndim[2]);
     Cells = new Cell * [Ndim[0]*Ndim[1]*Ndim[2]];
@@ -75,6 +85,7 @@ inline Lattice::Lattice(iVec3_t TheNdim, double Thedx, double Thedt)
         Cells[n] = new Cell(n,iVec3_t(i,j,k),Ndim,dx/dt,dt);
         n++;
     } 
+    Cells[0]->Cs = dx/dt;
 }
 
 inline void Lattice::Stream1(size_t Np)
@@ -84,13 +95,10 @@ inline void Lattice::Stream1(size_t Np)
     #pragma omp parallel for schedule (static) num_threads(Np)
 #endif
     for (size_t i=0;i<Ncells;i++)
-    for (size_t j=0;j<Cells[i]->Nneigh;j++)
+    for (size_t j=0;j<Cell::Nneigh;j++)
     {
-        for (size_t k=0;k<2;k++)
-        {
-            Cells[Cells[i]->Neighs[j]]->FEtemp[k][j] = Cells[i]->FE[k][j];
-            Cells[Cells[i]->Neighs[j]]->FBtemp[k][j] = Cells[i]->FB[k][j];
-        }
+        Cells[Cells[i]->Neighs[j]]->Ftemp[j] = Cells[i]->F[j];
+        Cells[Cells[i]->Neighs[j]]->Gtemp[j] = Cells[i]->G[j];
     }
 }
 
@@ -102,16 +110,16 @@ inline void Lattice::Stream2(size_t Np)
 #endif
     for (size_t i=0;i<Ncells;i++)
     {
-        double ** FEtemp  = Cells[i]->FE;
-        Cells[i]->FE      = Cells[i]->FEtemp;
-        Cells[i]->FEtemp  = FEtemp;
-        double ** FBtemp  = Cells[i]->FB;
-        Cells[i]->FB      = Cells[i]->FBtemp;
-        Cells[i]->FBtemp  = FBtemp;
+        double * Ftemp  = Cells[i]->F;
+        Cells[i]->F     = Cells[i]->Ftemp;
+        Cells[i]->Ftemp = Ftemp;
+        double * Gtemp  = Cells[i]->G;
+        Cells[i]->G     = Cells[i]->Gtemp;
+        Cells[i]->Gtemp = Gtemp;
     }
 }
 
-inline void Lattice::CalcField(size_t Np)
+inline void Lattice::CalcProps(size_t Np)
 {
     //Calculate fields and densities
 #ifdef USE_OMP
