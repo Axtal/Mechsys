@@ -72,8 +72,6 @@ inline Lattice::Lattice(double Thenu, double TheDif, iVec3_t TheNdim, double The
     Tauc = 3.0*Dif*dt/(dx*dx) + 0.5;
 
 
-
-    //Cells.Resize(Ndim[0]*Ndim[1]*Ndim[2]);
     Cells = new Cell * [Ndim[0]*Ndim[1]*Ndim[2]];
     Ncells = Ndim[0]*Ndim[1]*Ndim[2];
     size_t n = 0;
@@ -81,7 +79,6 @@ inline Lattice::Lattice(double Thenu, double TheDif, iVec3_t TheNdim, double The
     for (size_t j=0;j<Ndim[1];j++)
     for (size_t i=0;i<Ndim[0];i++)
     {
-        //Cells[n] =  new Cell(n,TheMethod,iVec3_t(i,j,k),Ndim,dx/dt,Tau);
         Cells[n] = new Cell(n,iVec3_t(i,j,k),Ndim,dx/dt,dt);
         n++;
     } 
@@ -95,7 +92,7 @@ inline void Lattice::Stream1(size_t Np)
     #pragma omp parallel for schedule (static) num_threads(Np)
 #endif
     for (size_t i=0;i<Ncells;i++)
-    for (size_t j=0;j<Cell::Nneigh;j++)
+    for (size_t j=1;j<Cell::Nneigh;j++)
     {
         Cells[Cells[i]->Neighs[j]]->Ftemp[j] = Cells[i]->F[j];
         Cells[Cells[i]->Neighs[j]]->Gtemp[j] = Cells[i]->G[j];

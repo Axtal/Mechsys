@@ -79,10 +79,9 @@ inline Cell::Cell(size_t TheID, iVec3_t TheIndexes, iVec3_t TheNdim, double TheC
     Dt      = TheDt;
     F      = new double [Nneigh];
     Ftemp  = new double [Nneigh];
-    F      = new double [Nneigh];
-    Ftemp  = new double [Nneigh];
+    G      = new double [Nneigh];
+    Gtemp  = new double [Nneigh];
     Initialize(1.0,1.0,OrthoSys::O);
-
 
     Neighs  = new size_t [Nneigh];
 
@@ -148,6 +147,12 @@ inline void Cell::Initialize(double TheRho, double TheCon, Vec3_t & TheVel)
         F[i] = Feq(i);
         G[i] = Geq(i);
     }
+    if (IsSolid)
+    {
+        Rho = 0.0;
+        Con = 0.0;
+        Vel = OrthoSys::O;
+    }
 }
 
 
@@ -155,7 +160,7 @@ inline void Cell::Initialize(double TheRho, double TheCon, Vec3_t & TheVel)
 const Vec3_t Cell::C   [9] = { {0,0,0}, {1,0,0}, {0,1,0}, {-1,0,0}, {0,-1,0}, {1,1,0}, {-1,1,0}, {-1,-1,0}, {1,-1,0} };
 const double Cell::W   [9] = { 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36., 1./36., 1./36. };
 const size_t Cell::Op  [9] = { 0, 3, 4, 1, 2, 7, 8, 5, 6 }; 
-const size_t Cell::Nneigh  = 8;
+const size_t Cell::Nneigh  = 9;
       double Cell::Cs      = 1.0;
 
 

@@ -29,6 +29,7 @@ struct UserData
 {
     Array<Cell *> Left;
     Array<Cell *> Right;
+    Array<Cell *> Source;
     Array<double> Vel;
     double        vmax;
     double        rho;
@@ -55,6 +56,10 @@ void Setup (ADLBM::Domain & dom, void * UD)
 		c->F[1] = c->F[3] + (2.0/3.0)*rho*dat.Vel[i];
 		c->F[5] = c->F[7] + (1.0/6.0)*rho*dat.Vel[i] - 0.5*(c->F[2]-c->F[4]);
 		c->F[8] = c->F[6] + (1.0/6.0)*rho*dat.Vel[i] + 0.5*(c->F[2]-c->F[4]);
+        for (size_t k=0;k<c->Nneigh;k++)
+        {
+            c->G[k] = dom.Lat.Cells[c->Neighs[1]]->G[k];
+        }
         c->CalcProp();
 	}
 
@@ -70,8 +75,24 @@ void Setup (ADLBM::Domain & dom, void * UD)
 		c->F[3] = c->F[1] - (2.0/3.0)*dat.rho*vx; 
 		c->F[7] = c->F[5] - (1.0/6.0)*dat.rho*vx + 0.5*(c->F[2]-c->F[4]);
 		c->F[6] = c->F[8] - (1.0/6.0)*dat.rho*vx - 0.5*(c->F[2]-c->F[4]);
+        for (size_t k=0;k<c->Nneigh;k++)
+        {
+            c->G[k] = dom.Lat.Cells[c->Neighs[3]]->G[k];
+        }
         c->CalcProp();
 	}
+
+#ifdef USE_OMP
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
+#endif
+	for (size_t i=0; i<dat.Source.Size(); ++i)
+    {
+		Cell * c = dat.Source[i];
+        for (size_t k=0;k<c->Nneigh;k++)
+        {
+            c->G[k] += -c->W[k]*0.01;
+        }
+    }
 }
 
 int main(int argc, char **argv) try
@@ -79,7 +100,7 @@ int main(int argc, char **argv) try
     size_t nproc = 1; 
     if (argc==2) nproc=atoi(argv[1]);
     double u_max  = 0.1;                // Poiseuille's maximum velocity
-    double Re     = 10.0;                  // Reynold's number
+    double Re     = 100.0;                  // Reynold's number
     size_t nx = 800;
     size_t ny = 100;
     int radius = ny/10 + 1;           // radius of inner circle (obstacle)
@@ -107,10 +128,8 @@ int main(int argc, char **argv) try
     }
     dat.rho  = 1.0;
 
-    //std::cout << "2" << std::endl;
-
 	// set inner obstacle
-	int obsX   = ny/2;   // x position
+	int obsX   = nx/2;   // x position
 	int obsY   = ny/2+3; // y position
     for (size_t i=0;i<nx;i++)
     for (size_t j=0;j<ny;j++)
@@ -121,6 +140,27 @@ int main(int argc, char **argv) try
         }
     }
 
+    //Initializing values
+    double rho0 = 1.0;
+    Vec3_t v0(0.08,0.0,0.0);
+    for (size_t i=0;i<Dom.Lat.Ncells;i++)
+    {
+        Dom.Lat.Cells[i]->Initialize(rho0, rho0, v0);
+    }
+
+    //set a drop of ink in the beginning
+	obsX   = nx/6;   // x position
+	obsY   = ny/2+3; // y position
+    for (size_t i=0;i<nx;i++)
+    for (size_t j=0;j<ny;j++)
+    {
+        if ((i-obsX)*(i-obsX)+(j-obsY)*(j-obsY)<radius*radius)
+        {
+            //Dom.Lat.GetCell(iVec3_t(i,j,0))->Initialize(1.0,2.0,v0);
+            dat.Source.Push(Dom.Lat.GetCell(iVec3_t(i,j,0)));
+        }
+    }
+
     //Assigning solid boundaries at top and bottom
     for (size_t i=0;i<nx;i++)
     {
@@ -128,19 +168,12 @@ int main(int argc, char **argv) try
         Dom.Lat.GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
     }
 
-    double rho0 = 1.0;
-    Vec3_t v0(0.08,0.0,0.0);
 
-    //Initializing values
-    for (size_t i=0;i<Dom.Lat.Ncells;i++)
-    {
-        Dom.Lat.Cells[i]->Initialize(rho0, rho0, v0);
-    }
 
     //std::cout << "3" << std::endl;
     //Solving
     Dom.Time = 0.0;
-    Dom.Solve(40000.0,80.0,Setup,NULL,"tlbm01",true,nproc);
+    Dom.Solve(40000.0,80.0,Setup,NULL,"tadlbm01",true,nproc);
  
 }
 MECHSYS_CATCH
