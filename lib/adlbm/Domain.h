@@ -57,7 +57,6 @@ public:
 #endif
 
     void Initialize     (double dt=0.0);                                                                                              ///< Set the particles to a initial state and asign the possible insteractions
-    void Collide        (size_t Np = 1);                                                                                ///< Apply the interaction forces and the collision operator
     void Solve(double Tf, double dtOut, ptDFun_t ptSetup=NULL, ptDFun_t ptReport=NULL,
     char const * FileKey=NULL, bool RenderVideo=true, size_t Nproc=1);                                                                ///< Solve the Domain dynamics
 
@@ -102,8 +101,11 @@ inline void Domain::WriteXDMF(char const * FileKey)
     size_t  Nz = Lat.Ndim[2]/Step;
     // Creating data sets
     float * Rho       = new float[  Nx*Ny*Nz];
-    float * Con       = new float[  Nx*Ny*Nz];
+    float * Temp      = new float[  Nx*Ny*Nz];
+    float * Gamma     = new float[  Nx*Ny*Nz];
+    float * Dif       = new float[  Nx*Ny*Nz];
     float * Vel       = new float[3*Nx*Ny*Nz];
+    float * Flux      = new float[3*Nx*Ny*Nz];
 
     size_t i=0;
     for (size_t m=0;m<Lat.Ndim(2);m+=Step)
@@ -111,27 +113,43 @@ inline void Domain::WriteXDMF(char const * FileKey)
     for (size_t n=0;n<Lat.Ndim(0);n+=Step)
     {
         double rho    = 0.0;
-        double con    = 0.0;
+        double temp   = 0.0;
+        double gamma  = 0.0;
+        double dif    = 0.0;
         Vec3_t vel    = OrthoSys::O;
+        Vec3_t flux   = OrthoSys::O;
 
         for (size_t ni=0;ni<Step;ni++)
         for (size_t li=0;li<Step;li++)
         for (size_t mi=0;mi<Step;mi++)
         {
             rho      += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Rho;
-            con      += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Con;
-            vel (0)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel[0];
-            vel (1)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel[1];
-            vel (2)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel[2];
+            temp     += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Temp;
+            gamma    += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->IsSolid;
+            dif      += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Dif;
+            vel (0)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel [0];
+            vel (1)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel [1];
+            vel (2)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel [2];
+            flux(0)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Flux[0];
+            flux(1)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Flux[1];
+            flux(2)  += Lat.GetCell(iVec3_t(n+ni,l+li,m+mi))->Flux[2];
         }
-        rho  /= Step*Step*Step;
-        con  /= Step*Step*Step;
-        vel  /= Step*Step*Step;
-        Rho [i]      = (float) rho;
-        Con [i]      = (float) con;
-        Vel [3*i  ]  = (float) vel (0);
-        Vel [3*i+1]  = (float) vel (1);
-        Vel [3*i+2]  = (float) vel (2);
+        rho   /= Step*Step*Step;
+        temp  /= Step*Step*Step;
+        gamma /= Step*Step*Step;
+        dif   /= Step*Step*Step;
+        vel   /= Step*Step*Step;
+        flux  /= Step*Step*Step;
+        Rho    [i]      = (float) rho;
+        Temp   [i]      = (float) temp;
+        Gamma  [i]      = (float) gamma;
+        Dif    [i]      = (float) dif;
+        Vel    [3*i  ]  = (float) vel (0);
+        Vel    [3*i+1]  = (float) vel (1);
+        Vel    [3*i+2]  = (float) vel (2);
+        Flux   [3*i  ]  = (float) flux(0);
+        Flux   [3*i+1]  = (float) flux(1);
+        Flux   [3*i+2]  = (float) flux(2);
         i++;
     } 
     //Write the data
@@ -140,13 +158,19 @@ inline void Domain::WriteXDMF(char const * FileKey)
     String dsname;
     dsname.Printf("Density");
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Rho );
-    dsname.Printf("Concentration");
-    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Con );
+    dsname.Printf("Temperature");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Temp);
+    dsname.Printf("Gamma");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Gamma);
+    dsname.Printf("Diffusion");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Dif);
     if (PrtVec)
     {
         dims[0] = 3*Nx*Ny*Nz;
         dsname.Printf("Velocity");
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vel );
+        dsname.Printf("HeatFlux");
+        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Flux);
     }
     dims[0] = 1;
     int N[1];
@@ -163,8 +187,11 @@ inline void Domain::WriteXDMF(char const * FileKey)
     H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,N);
 
     delete [] Rho     ;
-    delete [] Con     ;
+    delete [] Temp    ;
+    delete [] Gamma   ;
+    delete [] Dif     ;
     delete [] Vel     ;
+    delete [] Flux    ;
 
 
     //Closing the file
@@ -178,12 +205,24 @@ inline void Domain::WriteXDMF(char const * FileKey)
     oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
     oss << "<Xdmf Version=\"2.0\">\n";
     oss << " <Domain>\n";
-    oss << "   <Grid Name=\"EMLBM_Mesh\" GridType=\"Uniform\">\n";
+    oss << "   <Grid Name=\"ADLBM_Mesh\" GridType=\"Uniform\">\n";
+    if (Lat.Ndim[2]==1)
+    {
+    oss << "     <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"" << Ny << " " << Nx << "\"/>\n";
+    oss << "     <Geometry GeometryType=\"ORIGIN_DXDY\">\n";
+    oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\"> 0.0 0.0\n";
+    oss << "       </DataItem>\n";
+    oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\"> " << Step*Lat.dx  << " " << Step*Lat.dx  << "\n";
+    size_t t = Nz; Nz = Nx; Nx=t;
+    }
+    else
+    {
     oss << "     <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\"/>\n";
     oss << "     <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n";
     oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> 0.0 0.0 0.0\n";
     oss << "       </DataItem>\n";
     oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> " << Step*Lat.dx << " " << Step*Lat.dx  << " " << Step*Lat.dx  << "\n";
+    }
     oss << "       </DataItem>\n";
     oss << "     </Geometry>\n";
     oss << "     <Attribute Name=\"Density" << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
@@ -191,9 +230,19 @@ inline void Domain::WriteXDMF(char const * FileKey)
     oss << "        " << fn.CStr() <<":/Density" << "\n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
-    oss << "     <Attribute Name=\"Concentration" << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "     <Attribute Name=\"Temperature" << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
     oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/Concentration" << "\n";
+    oss << "        " << fn.CStr() <<":/Temperature" << "\n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Gamma" << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Gamma" << "\n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"Diffusion" << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Diffusion" << "\n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     if (PrtVec)
@@ -201,6 +250,11 @@ inline void Domain::WriteXDMF(char const * FileKey)
     oss << "     <Attribute Name=\"Velocity" << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
     oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
     oss << "        " << fn.CStr() <<":/Velocity" << "\n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    oss << "     <Attribute Name=\"HeatFlux" << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/HeatFlux" << "\n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     }
@@ -215,35 +269,6 @@ inline void Domain::WriteXDMF(char const * FileKey)
 }
 
 #endif
-
-void Domain::Collide (size_t Np)
-{
-#ifdef USE_OMP
-    #pragma omp parallel for schedule (static) num_threads(Np)
-#endif
-    for (size_t i=0;i<Lat.Ncells;i++)
-    {
-        Cell * c = Lat.Cells[i];
-        for (size_t k=0;k<c->Nneigh;k++)
-        {
-            if (!c->IsSolid)
-            {
-                c->Ftemp[k] = c->F[k] - (c->F[k] - c->Feq(k))/Lat.Tau;
-                c->Gtemp[k] = c->G[k] - (c->G[k] - c->Geq(k))/Lat.Tauc;
-            }
-            else
-            {
-                c->Ftemp[k] = c->F[Cell::Op[k]];
-                c->Gtemp[k] = c->G[Cell::Op[k]];
-            }
-        }
-        for (size_t k=0;k<c->Nneigh;k++)
-        {
-            c->F[k] = c->Ftemp[k];
-            c->G[k] = c->Gtemp[k];
-        }
-    }   
-}
 
 inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t ptReport,
                           char const * TheFileKey, bool RenderVideo, size_t TheNproc)
@@ -260,14 +285,10 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
     Nproc = TheNproc;
 
-    //for (size_t j=0;j<Lat.Size();j++)
-    //{
-        //for (size_t i=0;i<Lat[j].Ncells;i++)
-        //{
-            //Lat[j].Cells[i]->Initialize();
-            //Lat[j].Cells[i]->CalcProp();
-        //}
-    //}
+    for (size_t i=0;i<Lat.Ncells;i++)
+    {
+        Lat.Cells[i]->Tauc = 3.0*Lat.Cells[i]->Dif*Lat.dt/(Lat.dx*Lat.dx) + 0.5;
+    }
 
 
 
@@ -285,8 +306,6 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
                 {
                     #ifdef USE_HDF5
                     WriteXDMF(fn.CStr());
-                    #else
-                    //WriteVTK (fn.CStr());
                     #endif
                 }
                 if (ptReport!=NULL) (*ptReport) ((*this), UserData);
@@ -297,7 +316,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
 
 #ifdef USE_OMP 
-        Collide(Nproc);
+        Lat.Collide  (Nproc);
         Lat.Stream1  (Nproc);
         Lat.Stream2  (Nproc);
         Lat.CalcProps(Nproc);

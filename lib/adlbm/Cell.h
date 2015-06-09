@@ -52,7 +52,7 @@ public:
     double       Feq(size_t k);                         ///< Calculate the equilibrium distribution function F
     double       Geq(size_t k);                         ///< Calculate the equilibrium distribution function G
     void         CalcProp();                                       ///< Calculate the vectorial properties with the new distributions functions
-    void         Initialize(double TheRho, double TheCon, Vec3_t & TheV);       ///< Initialize cell with a given velocity and density
+    void         Initialize(double TheRho, double TheTemp, Vec3_t & TheV);       ///< Initialize cell with a given velocity and density
 
     // Data
     size_t       ID;       ///< Tag for the particle
@@ -66,9 +66,12 @@ public:
     double        *      G; ///< Distribution functions for vector potentials
     double        *  Gtemp; ///< Temporary distribution functions
     size_t        * Neighs; ///< Array of neighbors indexes
+    double             Dif; ///< Diffusion coefficient
+    double            Tauc; ///< Local Relaxation Time
     double             Rho; ///< Fluid density
-    double             Con; ///< Concentration Density
+    double            Temp; ///< Temperature
     Vec3_t             Vel; ///< Fluid velocity
+    Vec3_t            Flux; ///< Heat Flux
 
 };
 
@@ -108,19 +111,25 @@ inline Cell::Cell(size_t TheID, iVec3_t TheIndexes, iVec3_t TheNdim, double TheC
 
 inline void Cell::CalcProp()
 {
-    Rho = 0.0;
-    Con = 0.0;
-    Vel = OrthoSys::O;
+    Rho  = 0.0;
+    Temp = 0.0;
+    Vel  = OrthoSys::O;
+    Flux = OrthoSys::O;
     if (!IsSolid)
     {
         for (size_t i=0;i<Nneigh;i++)
         {
-            Rho += F[i];
-            Con += G[i];
-            Vel += F[i]*C[i];
+            Rho  += F[i];
+            Vel  += Cs*F[i]*C[i];
         }
         Vel /= Rho;
     }
+    for (size_t i=0;i<Nneigh;i++)
+    {
+        Temp += G[i];
+        Flux += (F[i]-Feq(i))*C[i];
+    }
+    Flux = 6.0*Flux/(Dt*Cs*Cs*(1.0+2.0*Tauc))+Temp*Vel;
 }
 
 inline double Cell::Feq(size_t k)
@@ -133,13 +142,14 @@ inline double Cell::Feq(size_t k)
 inline double Cell::Geq(size_t k)
 {
     double VdotC = dot(Vel,C[k]);
-    return W[k]*Con*(1.0 + 3.0*VdotC/Cs);
+    double VdotV = dot(Vel,Vel);
+    return W[k]*Temp*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
 }
 
-inline void Cell::Initialize(double TheRho, double TheCon, Vec3_t & TheVel)
+inline void Cell::Initialize(double TheRho, double TheTemp, Vec3_t & TheVel)
 {
     Rho = TheRho;
-    Con = TheCon;
+    Temp= TheTemp;
     Vel = TheVel;
 
     for (size_t i=0;i<Nneigh;i++)
@@ -150,7 +160,6 @@ inline void Cell::Initialize(double TheRho, double TheCon, Vec3_t & TheVel)
     if (IsSolid)
     {
         Rho = 0.0;
-        Con = 0.0;
         Vel = OrthoSys::O;
     }
 }

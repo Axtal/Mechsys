@@ -41,9 +41,10 @@ public:
     Lattice (double Thenu, double TheDif, iVec3_t TheNdim, double Thedx, double Thedt);
 
     //Methods
-    void Stream1    (size_t Np);                                      ///< Stream the velocity distributions
-    void Stream2    (size_t Np);                                      ///< Stream the velocity distributions
-    void CalcProps  (size_t Np);                                      ///< Calculate the fluid properties
+    void Collide    (size_t Np = 1);                                  ///< Collision operation                                              ///< Apply the interaction forces and the collision operator
+    void Stream1    (size_t Np = 1);                                  ///< Stream the velocity distributions
+    void Stream2    (size_t Np = 1);                                  ///< Stream the velocity distributions
+    void CalcProps  (size_t Np = 1);                                  ///< Calculate the fluid properties
     Cell * GetCell(iVec3_t const & v);                                ///< Get pointer to cell at v
 
 
@@ -80,9 +81,39 @@ inline Lattice::Lattice(double Thenu, double TheDif, iVec3_t TheNdim, double The
     for (size_t i=0;i<Ndim[0];i++)
     {
         Cells[n] = new Cell(n,iVec3_t(i,j,k),Ndim,dx/dt,dt);
+        Cells[n]->Dif  = Dif;
+        Cells[n]->Tauc = 3.0*Dif*dt/(dx*dx) + 0.5;
         n++;
     } 
     Cells[0]->Cs = dx/dt;
+}
+
+inline void Lattice::Collide(size_t Np)
+{
+#ifdef USE_OMP
+    #pragma omp parallel for schedule (static) num_threads(Np)
+#endif
+    for (size_t i=0;i<Ncells;i++)
+    {
+        Cell * c = Cells[i];
+        for (size_t k=0;k<c->Nneigh;k++)
+        {
+            if (!c->IsSolid)
+            {
+                c->Ftemp[k] = c->F[k] - (c->F[k] - c->Feq(k))/Tau;
+            }
+            else
+            {
+                c->Ftemp[k] = c->F[Cell::Op[k]];
+            }
+            c->Gtemp[k] = c->G[k] - (c->G[k] - c->Geq(k))/c->Tauc;
+        }
+        for (size_t k=0;k<c->Nneigh;k++)
+        {
+            c->F[k] = c->Ftemp[k];
+            c->G[k] = c->Gtemp[k];
+        }
+    }   
 }
 
 inline void Lattice::Stream1(size_t Np)

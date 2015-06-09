@@ -49,8 +49,8 @@ int main(int argc, char **argv) try
     if (argc==2) Nproc=atoi(argv[1]);
     Array<double> nu(2);
     nu[0] = 1.0/6.0;
-    //nu[1] = 1.0/6.0;
-    nu[1] = 1.0/30.0;
+    nu[1] = 1.0/6.0;
+    //nu[1] = 1.0/30.0;
 
     size_t nx = 100, ny = 100;
 

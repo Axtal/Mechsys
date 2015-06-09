@@ -1028,6 +1028,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
                 rho  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Rho;
                 gamma+= Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Gamma;
                 vel  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel;
+                vel  += dt*0.5*Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->BForce;
             }
             rho  /= Step*Step*Step;
             gamma/= Step*Step*Step;
