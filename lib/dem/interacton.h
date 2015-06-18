@@ -684,26 +684,22 @@ inline bool CInteractonSphere::CalcForce(double dt)
         Ftnet += Kt*Fdvv;
         
         //Calculating the rolling resistance torque
+        double Kr = beta*Kt;
         Vec3_t Vr = P1->Props.R*P2->Props.R*cross(Vec3_t(t1 - t2),n)/(P1->Props.R+P2->Props.R);
-        Fdr += Vr*dt;
+        Fdr += Kr*Vr*dt;
         Fdr -= dot(Fdr,n)*n;
         
         tan = Fdr;
         if (norm(tan)>0.0) tan/=norm(tan);
-        double Kr = beta*Kt;
-        if (norm(Fdr)>eta*Mu*norm(Fn)/Kr)
+        if (norm(Fdr)>eta*Mu*norm(Fn))
         {
-            Fdr = eta*Mu*norm(Fn)/Kr*tan;
+            Fdr = eta*Mu*norm(Fn)*tan;
             Nr++;
         }
 
-        Vec3_t Ft = -Kr*Fdr;
+        Vec3_t Ft = -Fdr;
         
-
-
         Vec3_t F = Fn + Kt*Fdvv + Gn*dot(n,vrel)*n + Gt*vt;
-
-
 
         F1   += -F;
         F2   +=  F;
@@ -719,16 +715,18 @@ inline bool CInteractonSphere::CalcForce(double dt)
         Conjugate (P2->Q,q);
         Rotation  (Tt,q,T);
         T2 += T;
+
+        Fn        = Fdr;
     }
 
     //If there is at least a contact, increase the coordination number of the particles
-    if (Nc>0) 
-    {
+    //if (Nc>0) 
+    //{
         //P1->Cn++;
         //P2->Cn++;
         //if (!P1->IsFree()) P2->Bdry = true;
         //if (!P2->IsFree()) P1->Bdry = true;
-    }
+    //}
     //return overlap;
     return false;
 }

@@ -91,24 +91,25 @@ int main(int argc, char **argv) try
 {
     size_t nproc = 1; 
     if (argc==2) nproc=atoi(argv[1]);
-    double u_max  = 0.1;                // Poiseuille's maximum velocity
+    double u_max  = 0.0;                // Poiseuille's maximum velocity
     double Re     = 100.0;                  // Reynold's number
-    size_t nx = 400;
-    size_t ny = 200;
-    size_t W  = 50;
+    size_t nx = 400;                       // Dimension in x
+    size_t ny = 200;                       // Dimension in y
+    size_t W  = 50;                        // Width of the pipe
     double nu     = u_max*(2.0*W)/Re; // viscocity
-    double dif    = 0.01;
+    double dif    = 0.01;             // Overall diffusion coefficient
     
-    ADLBM::Domain Dom(nu, dif, iVec3_t(nx,ny,1), 1.0, 1.0);
+    ADLBM::Domain Dom(nu, dif, iVec3_t(nx,ny,1), 1.0, 1.0); // Declare the LBM domain
     UserData dat;
     Dom.UserData = &dat;
-    dat.templeft   = 2.0;
-    dat.tempright  = 1.0;
+    dat.templeft   = 2.0;                             // Temperature at the Right hand side
+    dat.tempright  = 1.0;                             // Initial temperature 
 
     //std::cout << "1" << std::endl;
 
     dat.vmax = u_max;
     //Assigning the left and right cells
+
     for (size_t i=0;i<ny;i++)
     {
         dat.Left .Push(Dom.Lat.GetCell(iVec3_t(0   ,i,0)));

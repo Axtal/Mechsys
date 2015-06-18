@@ -2868,11 +2868,16 @@ inline void Domain::WriteBF (char const * FileKey)
 {
 
     size_t n_fn = 0;
+    size_t n_rl = 0;
 
     for (size_t i=0;i<CInteractons.Size();i++)
     {
         //if ((norm(CInteractons[i]->Fnet)>1.0e-12)&&(CInteractons[i]->P1->IsFree()&&CInteractons[i]->P2->IsFree())) n_fn++;
-        if (norm(CInteractons[i]->Fnet)>1.0e-12) n_fn++;
+        if (norm(CInteractons[i]->Fnet)>1.0e-12)
+        {
+            n_fn++;
+            if (CInteractons[i]->P1->Verts.Size()==1&&CInteractons[i]->P2->Verts.Size()==1) n_rl++;
+        }
     }
 
     if (n_fn==0) return;
@@ -2884,9 +2889,9 @@ inline void Domain::WriteBF (char const * FileKey)
 
     float  *  Fnnet = new float[3*n_fn];
     float  *  Ftnet = new float[3*n_fn];
+    float  *  Froll = new float[3*n_fn];
     float  * Branch = new float[3*n_fn];
     float  *   Orig = new float[3*n_fn];
-    float  *    Fn  = new float[  n_fn];
     int    *    ID1 = new   int[  n_fn];
     int    *    ID2 = new   int[  n_fn];
 
@@ -2904,6 +2909,12 @@ inline void Domain::WriteBF (char const * FileKey)
             Ftnet [3*idx  ] = float(CInteractons[i]->Ftnet (0));
             Ftnet [3*idx+1] = float(CInteractons[i]->Ftnet (1));
             Ftnet [3*idx+2] = float(CInteractons[i]->Ftnet (2));
+            if (n_rl>0)
+            {
+            Froll [3*idx  ] = float(CInteractons[i]->Fn    (0));
+            Froll [3*idx+1] = float(CInteractons[i]->Fn    (1));
+            Froll [3*idx+2] = float(CInteractons[i]->Fn    (2));
+            }
             Branch[3*idx  ] = float(CInteractons[i]->P1->x(0)-CInteractons[i]->P2->x(0));
             Branch[3*idx+1] = float(CInteractons[i]->P1->x(1)-CInteractons[i]->P2->x(1)); 
             Branch[3*idx+2] = float(CInteractons[i]->P1->x(2)-CInteractons[i]->P2->x(2)); 
@@ -2913,7 +2924,6 @@ inline void Domain::WriteBF (char const * FileKey)
             Orig  [3*idx  ] = float(CInteractons[i]->P2->x(0));
             Orig  [3*idx+1] = float(CInteractons[i]->P2->x(1)); 
             Orig  [3*idx+2] = float(CInteractons[i]->P2->x(2)); 
-            Fn    [idx]     = float(norm(CInteractons[i]->Fnet));
             ID1   [idx]     = int  (CInteractons[i]->P1->Index);
             ID2   [idx]     = int  (CInteractons[i]->P2->Index);
             idx++;
@@ -2927,13 +2937,16 @@ inline void Domain::WriteBF (char const * FileKey)
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Fnnet );
     dsname.Printf("Tangential");
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Ftnet );
+    if (n_rl>0)
+    {
+    dsname.Printf("Rolling");
+    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Froll );
+    }
     dsname.Printf("Branch");
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Branch);
     dsname.Printf("Position");
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Orig);
     dims[0] = n_fn;
-    dsname.Printf("Fn");
-    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Fn);
     dsname.Printf("ID1");
     H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,ID1   );
     dsname.Printf("ID2");
@@ -2942,9 +2955,9 @@ inline void Domain::WriteBF (char const * FileKey)
 
     delete [] Fnnet;
     delete [] Ftnet;
+    delete [] Froll;
     delete [] Branch;
     delete [] Orig;
-    delete [] Fn;
     delete [] ID1;
     delete [] ID2;
 
@@ -3030,14 +3043,17 @@ inline void Domain::WriteBF (char const * FileKey)
     oss << "        " << fn.CStr() <<":/Tangential \n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
+    if (n_rl>0)
+    {
+    oss << "     <Attribute Name=\"Rolling\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "       <DataItem Dimensions=\"" << n_fn << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    oss << "        " << fn.CStr() <<":/Rolling \n";
+    oss << "       </DataItem>\n";
+    oss << "     </Attribute>\n";
+    }
     oss << "     <Attribute Name=\"Branch\" AttributeType=\"Vector\" Center=\"Node\">\n";
     oss << "       <DataItem Dimensions=\"" << n_fn << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
     oss << "        " << fn.CStr() <<":/Branch \n";
-    oss << "       </DataItem>\n";
-    oss << "     </Attribute>\n";
-    oss << "     <Attribute Name=\"Fn\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-    oss << "       <DataItem Dimensions=\"" << n_fn << "\" NumberType=\"Float\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/Fn \n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     oss << "     <Attribute Name=\"ID1\" AttributeType=\"Scalar\" Center=\"Node\">\n";

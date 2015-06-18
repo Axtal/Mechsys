@@ -516,7 +516,7 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     Time   = 0.0;
     dt     = Thedt;
     Alpha  = 10.0;
-    Beta   = 1.0;
+    Beta   = 2.0;
     Step   = 1;
     if (nu.Size()>1) Sc = 0.0;
     else             Sc = 0.17;
@@ -549,7 +549,7 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     Time   = 0.0;
     dt     = Thedt;
     Alpha  = 10.0;
-    Beta   = 1.0;
+    Beta   = 2.0;
     Step   = 1;
     Sc     = 0.17;
     PrtVec = true;
@@ -3884,6 +3884,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
 #endif
     double tout = Time;
+    //std::cout << "3" << std::endl;
     while (Time < Tf)
     {
         //std::cout << Interactons.Size() << " " << CInteractons.Size() << " " << BInteractons.Size() << " " << ParCellPairs.Size() << " " << Particles.Size() << std::endl;
@@ -4086,10 +4087,12 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             Disks[i]->T = Disks[i]->Tf;
         }
 
+        //std::cout << "1" <<std::endl;
         
         //Imprint the particles into the lattice
         ImprintLattice(0,Nproc);
 
+        //std::cout << "2" <<std::endl;
         //Calculate interparticle forces
         #pragma omp parallel for schedule(static) num_threads(Nproc)
         for (size_t i=0; i<Interactons.Size(); i++)
@@ -4111,6 +4114,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             omp_unset_lock(&Interactons[i]->P2->lck);
         }
 
+        //std::cout << "3" <<std::endl;
         //2D case
         #pragma omp parallel for schedule(static) num_threads(Nproc)
         for (size_t i=0; i<DiskPairs.Size(); i++)
@@ -4172,6 +4176,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             if (maxdis<MTD[i].Dmx) maxdis = MTD[i].Dmx;
         }
         
+        //std::cout << "4 " << maxdis << std::endl;
         if (maxdis>Alpha)
         {
             LinkedCell.Resize(0);
@@ -4179,10 +4184,13 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
             LinkedCell.Resize(LCellDim(0)*LCellDim(1)*LCellDim(2));
 
+            //std::cout << "4a" <<std::endl;
             ResetDisplacements();
 
+            //std::cout << "4b" <<std::endl;
             UpdateLinkedCells();
 
+            //std::cout << "4c" <<std::endl;
             ResetContacts();
 
         }
@@ -4207,6 +4215,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             Lat[i].Stream(0,Nproc);
         }
         
+        //std::cout << "5" <<std::endl;
 #else
         //Assigning a vlaue of zero to the particles forces and torques
         for(size_t i=0;i<Particles.Size();i++)

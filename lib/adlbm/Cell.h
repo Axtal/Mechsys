@@ -127,9 +127,10 @@ inline void Cell::CalcProp()
     for (size_t i=0;i<Nneigh;i++)
     {
         Temp += G[i];
-        Flux += (F[i]-Feq(i))*C[i];
+        //Flux += (G[i]-Geq(i))*C[i];
+        Flux += G[i]*C[i];
     }
-    Flux = 6.0*Flux/(Dt*Cs*Cs*(1.0+2.0*Tauc))+Temp*Vel;
+    //Flux = 6.0*Flux/(Dt*Cs*Cs*(1.0+2.0*Tauc))+Temp*Vel;
 }
 
 inline double Cell::Feq(size_t k)
