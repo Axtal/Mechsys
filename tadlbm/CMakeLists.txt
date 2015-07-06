@@ -20,6 +20,7 @@ SET(PROGS
     tadlbm01
     tadlbm02
     tadlbm03
+    tadlbm04
    )
 
 FOREACH(var ${PROGS})

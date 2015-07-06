@@ -38,7 +38,7 @@ public:
 
     //Constructors
     Lattice () {};            //Default
-    Lattice (double Thenu, double TheDif, iVec3_t TheNdim, double Thedx, double Thedt);
+    Lattice (LBMethod Method, double Thenu, double TheDif, iVec3_t TheNdim, double Thedx, double Thedt);
 
     //Methods
     void Collide    (size_t Np = 1);                                  ///< Collision operation                                              ///< Apply the interaction forces and the collision operator
@@ -62,7 +62,7 @@ public:
     Cell                                   ** Cells;            // Array of pointer cells
 };
 
-inline Lattice::Lattice(double Thenu, double TheDif, iVec3_t TheNdim, double Thedx, double Thedt)
+inline Lattice::Lattice(LBMethod TheMethod, double Thenu, double TheDif, iVec3_t TheNdim, double Thedx, double Thedt)
 {
     Ndim = TheNdim;
     dx   = Thedx;
@@ -80,7 +80,7 @@ inline Lattice::Lattice(double Thenu, double TheDif, iVec3_t TheNdim, double The
     for (size_t j=0;j<Ndim[1];j++)
     for (size_t i=0;i<Ndim[0];i++)
     {
-        Cells[n] = new Cell(n,iVec3_t(i,j,k),Ndim,dx/dt,dt);
+        Cells[n] = new Cell(n,TheMethod,iVec3_t(i,j,k),Ndim,dx/dt,dt);
         Cells[n]->Dif  = Dif;
         Cells[n]->Tauc = 3.0*Dif*dt/(dx*dx) + 0.5;
         n++;
@@ -104,9 +104,16 @@ inline void Lattice::Collide(size_t Np)
             }
             else
             {
-                c->Ftemp[k] = c->F[Cell::Op[k]];
+                c->Ftemp[k] = c->F[c->Op[k]];
             }
-            c->Gtemp[k] = c->G[k] - (c->G[k] - c->Geq(k))/c->Tauc;
+            if (!c->IsNodif)
+            {
+                c->Gtemp[k] = c->G[k] - (c->G[k] - c->Geq(k))/c->Tauc;
+            }
+            else
+            {
+                c->Gtemp[k] = c->G[c->Op[k]];
+            }
         }
         for (size_t k=0;k<c->Nneigh;k++)
         {

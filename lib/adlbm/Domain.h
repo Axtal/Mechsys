@@ -45,6 +45,7 @@ public:
 
     //Constructors
     Domain (
+    LBMethod              Method,
     double                Thenu,
     double                Thedif,
     iVec3_t               Ndim,   ///< Cell divisions per side
@@ -74,12 +75,14 @@ public:
     size_t                                             Nproc;         ///< Number of cores used for the simulation
 };
 
-inline Domain::Domain(double Thenu, double Thedif, iVec3_t Ndim, double Thedx, double Thedt)
+inline Domain::Domain(LBMethod Method, double Thenu, double Thedif, iVec3_t Ndim, double Thedx, double Thedt)
 {
     Initialized = false;
     Util::Stopwatch stopwatch;
+    if (Ndim(2) >1&&(Method==D2Q9||Method==D2Q5))  throw new Fatal("LBM::Domain: D2Q9 scheme does not allow for a third dimension, please set Ndim(2)=1 or change to D3Q15");
+    if (Ndim(2)==1&&(Method==D3Q15||Method==D3Q19)) throw new Fatal("LBM::Domain: Ndim(2) is 1. Either change the method to D2Q9 or increase the z-dimension");
     printf("\n%s--- Initializing LBM Domain --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    Lat = Lattice(Thenu, Thedif, Ndim,Thedx,Thedt);
+    Lat = Lattice(Method, Thenu, Thedif, Ndim,Thedx,Thedt);
     Time   = 0.0;
     dt     = Thedt;
     Step   = 1;

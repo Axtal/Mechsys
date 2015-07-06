@@ -83,7 +83,7 @@ int main(int argc, char **argv) try
     double dif    = 10.0;
     size_t nx = 800;
     size_t ny = 100;
-    ADLBM::Domain Dom(0.16, dif, iVec3_t(nx,ny,1), 1.0, 1.0);
+    ADLBM::Domain Dom(D2Q9,0.16, dif, iVec3_t(nx,ny,1), 1.0, 1.0);
     UserData dat;
     Dom.UserData = &dat;
     dat.templeft   = 2.0;

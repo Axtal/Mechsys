@@ -34,19 +34,43 @@
 #include <mechsys/util/fatal.h>
 #include <mechsys/linalg/matvec.h>
 
-
+enum LBMethod
+{
+    D2Q5,     ///< 2D 5 velocities
+    D2Q9,     ///< 2D 9 velocities
+    D3Q15,    ///< 3D 15 velocities
+    D3Q19,    ///< 3D 19 velocities
+    //D3Q27     ///< 3D 27 velocities
+};
 
 class Cell
 {
 public:
-	static const Vec3_t  C   [9]; ///< Local velocities (D2Q9)
-	static const double  W   [9]; ///< Local weights (D2Q9)
-    static       double  Cs;      ///< Speed parameter
-    static const size_t  Op  [9]; ///< Index of opposing cells for bounce back
-    static const size_t  Nneigh;  ///< Number of neighbors
+	static double   WEIGHTSD2Q5   [ 5]; ///< Weights for the equilibrium distribution functions (D2Q5)
+	static double   WEIGHTSD2Q9   [ 9]; ///< Weights for the equilibrium distribution functions (D2Q9)
+	static double   WEIGHTSD3Q15  [15]; ///< Weights for the equilibrium distribution functions (D3Q15)
+	static double   WEIGHTSD3Q19  [19]; ///< Weights for the equilibrium distribution functions (D3Q19)
+	//static double   WEIGHTSD3Q27  [27]; ///< Weights for the equilibrium distribution functions (D3Q27)
+	static Vec3_t   LVELOCD2Q5    [ 5]; ///< Local velocities (D2Q5) 
+	static Vec3_t   LVELOCD2Q9    [ 9]; ///< Local velocities (D2Q9) 
+	static Vec3_t   LVELOCD3Q15   [15]; ///< Local velocities (D3Q15)
+	static Vec3_t   LVELOCD3Q19   [19]; ///< Local velocities (D3Q19)
+	//static Vec3_t   LVELOCD3Q27   [27]; ///< Local velocities (D3Q27)
+	static size_t   OPPOSITED2Q5  [ 5]; ///< Opposite directions (D2Q5) 
+	static size_t   OPPOSITED2Q9  [ 9]; ///< Opposite directions (D2Q9) 
+	static size_t   OPPOSITED3Q15 [15]; ///< Opposite directions (D3Q15)
+	static size_t   OPPOSITED3Q19 [19]; ///< Opposite directions (D3Q19)
+	//static size_t   OPPOSITED3Q27 [27]; ///< Opposite directions (D3Q27)
+    
+
+	Vec3_t *C;       ///< Local velocities
+	double *W;       ///< Local weights
+    static double  Cs;      ///< Speed parameter
+    size_t *Op;      ///< Index of opposing cells for bounce back
+    static size_t  Nneigh;  ///< Number of neighbors
    
     //Constructor
-    Cell (size_t ID, iVec3_t Indexes, iVec3_t Ndim, double Cs, double Dt); ///< Constructor, it receives the grid type, ht einteger position and the total integer dimension of the domain and the spatial and time steps
+    Cell (size_t ID, LBMethod Method, iVec3_t Indexes, iVec3_t Ndim, double Cs, double Dt); ///< Constructor, it receives the grid type, ht einteger position and the total integer dimension of the domain and the spatial and time steps
     
     // Methods
     double       Feq(size_t k);                         ///< Calculate the equilibrium distribution function F
@@ -59,6 +83,7 @@ public:
     double       Dt;       ///< Time step
     
     bool         IsSolid;  ///< It is a solid node
+    bool         IsNodif;  ///< It is a non diffusive node
     iVec3_t      Index;    ///< Vector of indexes
 
     double        *      F; ///< Distribution functions for vector potentials
@@ -75,11 +100,45 @@ public:
 
 };
 
-inline Cell::Cell(size_t TheID, iVec3_t TheIndexes, iVec3_t TheNdim, double TheCs, double TheDt)
+inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t TheNdim, double TheCs, double TheDt)
 {
     ID      = TheID;
     Index   = TheIndexes;
     Dt      = TheDt;
+
+
+    if (TheMethod==D2Q5)
+    {
+        Nneigh = 5;
+        W      = WEIGHTSD2Q5;
+        C      = LVELOCD2Q5;
+        Op     = OPPOSITED2Q5;
+    }
+    if (TheMethod==D2Q9)
+    {
+        Nneigh = 9;
+        W      = WEIGHTSD2Q9;
+        C      = LVELOCD2Q9;
+        Op     = OPPOSITED2Q9;
+    }
+    if (TheMethod==D3Q15)
+    {
+        Nneigh = 15;
+        W      = WEIGHTSD3Q15;
+        C      = LVELOCD3Q15;
+        Op     = OPPOSITED3Q15;
+    }
+    if (TheMethod==D3Q19)
+    {
+        Nneigh = 19;
+        W      = WEIGHTSD3Q19;
+        C      = LVELOCD3Q19;
+        Op     = OPPOSITED3Q19;
+    }
+
+
+
+
     F      = new double [Nneigh];
     Ftemp  = new double [Nneigh];
     G      = new double [Nneigh];
@@ -106,6 +165,9 @@ inline Cell::Cell(size_t TheID, iVec3_t TheIndexes, iVec3_t TheNdim, double TheC
         Neighs[k] =  nindex[0] + nindex[1]*TheNdim[0] + nindex[2]*TheNdim[0]*TheNdim[1];
     }
 
+    
+
+
 }
 
 
@@ -124,13 +186,16 @@ inline void Cell::CalcProp()
         }
         Vel /= Rho;
     }
-    for (size_t i=0;i<Nneigh;i++)
+    if (!IsNodif)
     {
-        Temp += G[i];
-        //Flux += (G[i]-Geq(i))*C[i];
-        Flux += G[i]*C[i];
+        for (size_t i=0;i<Nneigh;i++)
+        {
+            Temp += G[i];
+            //Flux += (G[i]-Geq(i))*C[i];
+            Flux += G[i]*C[i];
+        }
+        //Flux = 6.0*Flux/(Dt*Cs*Cs*(1.0+2.0*Tauc))+Temp*Vel;
     }
-    //Flux = 6.0*Flux/(Dt*Cs*Cs*(1.0+2.0*Tauc))+Temp*Vel;
 }
 
 inline double Cell::Feq(size_t k)
@@ -163,16 +228,46 @@ inline void Cell::Initialize(double TheRho, double TheTemp, Vec3_t & TheVel)
         Rho = 0.0;
         Vel = OrthoSys::O;
     }
+    if (IsNodif)
+    {
+        Temp = 0.0;
+        Flux = OrthoSys::O;
+    }
 }
 
 
 
-const Vec3_t Cell::C   [9] = { {0,0,0}, {1,0,0}, {0,1,0}, {-1,0,0}, {0,-1,0}, {1,1,0}, {-1,1,0}, {-1,-1,0}, {1,-1,0} };
-const double Cell::W   [9] = { 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36., 1./36., 1./36. };
-const size_t Cell::Op  [9] = { 0, 3, 4, 1, 2, 7, 8, 5, 6 }; 
-const size_t Cell::Nneigh  = 9;
-      double Cell::Cs      = 1.0;
 
+double Cell::WEIGHTSD2Q5   [ 5] = { 2./6., 1./6., 1./6., 1./6., 1./6 };
+double Cell::WEIGHTSD2Q9   [ 9] = { 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36., 1./36., 1./36. };
+double Cell::WEIGHTSD3Q15  [15] = { 2./9., 1./9., 1./9., 1./9., 1./9.,  1./9.,  1./9., 1./72., 1./72. , 1./72., 1./72., 1./72., 1./72., 1./72., 1./72.};
+double Cell::WEIGHTSD3Q19  [19] = { 1./3., 1./18., 1./18., 1./18., 1./18., 1./18., 1./18., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36., 1./36.};
+size_t Cell::OPPOSITED2Q5  [ 5] = { 0, 3, 4, 1, 2 };                                                       ///< Opposite directions (D2Q5) 
+size_t Cell::OPPOSITED2Q9  [ 9] = { 0, 3, 4, 1, 2, 7, 8, 5, 6 };                                           ///< Opposite directions (D2Q9) 
+size_t Cell::OPPOSITED3Q15 [15] = { 0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13};                     ///< Opposite directions (D3Q15)
+size_t Cell::OPPOSITED3Q19 [19] = { 0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17};     ///< Opposite directions (D3Q19)
+Vec3_t Cell::LVELOCD2Q5  [ 5] = { {0,0,0}, {1,0,0}, {0,1,0}, {-1,0,0}, {0,-1,0} };
+Vec3_t Cell::LVELOCD2Q9  [ 9] = { {0,0,0}, {1,0,0}, {0,1,0}, {-1,0,0}, {0,-1,0}, {1,1,0}, {-1,1,0}, {-1,-1,0}, {1,-1,0} };
+Vec3_t Cell::LVELOCD3Q15 [15] =
+{
+	{ 0, 0, 0}, { 1, 0, 0}, {-1, 0, 0}, { 0, 1, 0}, { 0,-1, 0}, 
+	{ 0, 0, 1}, { 0, 0,-1}, { 1, 1, 1}, {-1,-1,-1}, { 1, 1,-1}, 
+	{-1,-1, 1}, { 1,-1, 1}, {-1, 1,-1}, { 1,-1,-1}, {-1, 1, 1} 
+};
+Vec3_t Cell::LVELOCD3Q19 [19] =
+{
+	{ 0, 0, 0}, 
+    { 1, 0, 0}, {-1, 0, 0}, { 0, 1, 0}, { 0,-1, 0}, { 0, 0, 1}, { 0, 0,-1}, 
+    { 1, 1, 0}, {-1,-1, 0}, { 1,-1, 0}, {-1, 1, 0}, { 1, 0, 1}, {-1, 0,-1},
+    { 1, 0,-1}, {-1, 0, 1}, { 0, 1, 1}, { 0,-1,-1}, { 0, 1,-1}, { 0,-1, 1}
+};
+
+size_t Cell::Nneigh  = 9;
+double Cell::Cs      = 1.0;
+//Vec3_t Cell::C       = Cell::LVELOCD2Q9;
+//Vec3_t Cell::C       = NULL;
+//double Cell::W   [9] = { 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36., 1./36., 1./36. };
+//size_t Cell::Op  [9] = { 0, 3, 4, 1, 2, 7, 8, 5, 6 }; 
 
 
 #endif // MECHSYS_ADLBM_CELL_H

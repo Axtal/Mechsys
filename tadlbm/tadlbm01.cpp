@@ -106,7 +106,7 @@ int main(int argc, char **argv) try
     double nu     = u_max*(2*radius)/Re; // viscocity
     double dif    = 0.01;
     
-    ADLBM::Domain Dom(nu, dif, iVec3_t(nx,ny,1), 1.0, 1.0);
+    ADLBM::Domain Dom(D2Q9,nu, dif, iVec3_t(nx,ny,1), 1.0, 1.0);
     UserData dat;
     Dom.UserData = &dat;
 
@@ -136,6 +136,7 @@ int main(int argc, char **argv) try
         if ((i-obsX)*(i-obsX)+(j-obsY)*(j-obsY)<radius*radius)
         {
             Dom.Lat.GetCell(iVec3_t(i,j,0))->IsSolid = true;
+            Dom.Lat.GetCell(iVec3_t(i,j,0))->IsNodif = true;
         }
     }
 

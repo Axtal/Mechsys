@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-// FLow in a pipe with obstacle
+// FLow in a pipe with temperature diffusion
 
 //STD
 #include<iostream>
@@ -99,7 +99,7 @@ int main(int argc, char **argv) try
     double nu     = u_max*(2.0*W)/Re; // viscocity
     double dif    = 0.01;             // Overall diffusion coefficient
     
-    ADLBM::Domain Dom(nu, dif, iVec3_t(nx,ny,1), 1.0, 1.0); // Declare the LBM domain
+    ADLBM::Domain Dom(D2Q9,nu, dif, iVec3_t(nx,ny,1), 1.0, 1.0); // Declare the LBM domain
     UserData dat;
     Dom.UserData = &dat;
     dat.templeft   = 2.0;                             // Temperature at the Right hand side
