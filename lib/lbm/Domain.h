@@ -1616,13 +1616,15 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
             Cell * c = Lat[0].Cells[ind1];
             Cell *nb = Lat[1].Cells[ind2];
             double nb_psi,psi,G=Gmix/(dt*dt);
-            if (c->IsSolid)
+            if (c->IsSolid||fabs(c->Gamma-1.0)<1.0e-12)
+            //if (c->IsSolid||c->Gamma>1.0e-12)
             {
                 psi    = 1.0;
                 G      = Lat[1].Gs*c->Gs;
             }
             else psi   = c ->Rho;
-            if (nb->IsSolid)
+            if (nb->IsSolid||fabs(nb->Gamma-1.0)<1.0e-12)
+            //if (nb->IsSolid||nb->Gamma>1.0e-12)
             {
                 nb_psi = 1.0;
                 G      = Lat[0].Gs*nb->Gs;
@@ -1653,13 +1655,15 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
             c  = Lat[1].Cells[ind1];
             nb = Lat[0].Cells[ind2];
             G  = Gmix/(dt*dt);
-            if (c->IsSolid)
+            if (c->IsSolid||fabs(c->Gamma-1.0)<1.0e-12)
+            //if (c->IsSolid||c->Gamma>1.0e-12)
             {
                 psi    = 1.0;
                 G      = Lat[0].Gs;
             }
             else psi   = c ->Rho;
-            if (nb->IsSolid)
+            if (nb->IsSolid||fabs(nb->Gamma-1.0)<1.0e-12)
+            //if (nb->IsSolid||nb->Gamma>1.0e-12)
             {
                 nb_psi = 1.0;
                 G      = Lat[1].Gs;
