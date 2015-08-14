@@ -288,7 +288,7 @@ download_and_compile triangle
 download_and_compile tetgen
 download_and_compile voro
 download_and_compile igraph
-download_and_compile soplex
+#download_and_compile soplex
 download_and_compile wxwidgets
 download_and_compile szip
 

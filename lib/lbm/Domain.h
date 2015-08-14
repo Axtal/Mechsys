@@ -1814,6 +1814,7 @@ void Domain::Collide (size_t n, size_t Np)
 
                 double Bn;
                 rho<10e-12 ? Bn =0.0 : Bn = (c->Gamma*(Lat[j].Tau-0.5))/((1.0-c->Gamma)+(Lat[j].Tau-0.5));
+                //rho<10e-12 ? Bn =0.0 : Bn = c->Gamma;
                 bool valid  = true;
                 double alphal = 1.0;
                 double alphat = 1.0;
@@ -2029,6 +2030,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 Vec3_t VelP   = Pa->v + cross(tmp,B);
                 double rho = cell->Rho;
                 double Bn  = (cell->Gamma*(Tau-0.5))/((1.0-cell->Gamma)+(Tau-0.5));
+                //double Bn  = cell->Gamma;
                 for (size_t k=0;k<cell->Nneigh;k++)
                 {
                     double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
