@@ -86,7 +86,7 @@ inline Cell::Cell(size_t TheID, iVec3_t TheIndexes, iVec3_t TheNdim, double TheC
     Index   = TheIndexes;
     Dt      = TheDt;
     Eps     = 1.0;
-    Mu      = 2.0;
+    Mu      = 1.0;
     Sig     = 0.0;
     Nneigh  = 12;
     Rhof    = 0.0;

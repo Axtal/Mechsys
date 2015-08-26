@@ -58,8 +58,8 @@ int main(int argc, char **argv) try
 {
     size_t nproc = 1; 
     if (argc==2) nproc=atoi(argv[1]);
-    int nx = 10;
-    int ny = 10;
+    int nx = 200;
+    int ny = 1;
     int nz = 200;
     EMLBM::Domain Dom(iVec3_t(nx,ny,nz), 1.0, 1.0);
     UserData dat;
@@ -70,18 +70,26 @@ int main(int argc, char **argv) try
     dat.nz = nz;
     double E0 = 0.001;
     //double B0 = sqrt(2.0)*E0;
-    double B0 = 2.0*E0;
+    double B0 = sqrt(2.0)*E0;
     double alpha = 0.01;
+    //double beta  = 0.0005;
     double z0 = 40;
+    double x0 = 100;
 
     for (int i=0;i<nx;i++)
     for (int j=0;j<ny;j++)
     for (int k=0;k<nz;k++)
     {
+        //Vec3_t E(E0*exp(-alpha*((k-z0)*(k-z0)+(i-x0)*(i-x0))),0.0,0.0);
+        //Vec3_t B(0.0,B0*exp(-alpha*((k-z0)*(k-z0)+(i-x0)*(i-x0))),0.0);
+        //Vec3_t E(E0*exp(-alpha*((k-z0)*(k-z0))-beta*((i-x0)*(i-x0))),0.0,0.0);
+        //Vec3_t B(0.0,B0*exp(-alpha*((k-z0)*(k-z0))-beta*((i-x0)*(i-x0))),0.0);
+        double itz = 0.3*(i-nx/2)+nz/2;
         Vec3_t E(E0*exp(-alpha*(k-z0)*(k-z0)),0.0,0.0);
         Vec3_t B(0.0,B0*exp(-alpha*(k-z0)*(k-z0)),0.0);
         Dom.Lat.GetCell(iVec3_t(i,j,k))->Initialize(0.0,OrthoSys::O,E,B);
-        Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 2.0*tanh(k-nz/2)+3.0;
+        //Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 2.0*tanh(k-nz/2)+3.0;
+        Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 2.0*tanh(k-itz)+3.0;
         //if (k>nz/2) Dom.Lat.GetCell(iVec3_t(i,j,k))->Eps = 5.0;
     }
     //Dom.WriteXDMF("test");
