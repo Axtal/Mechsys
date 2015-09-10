@@ -81,7 +81,7 @@ public:
     // Data
     //LBMethod     Method;   ///< Is 2D, 3D and how many velocities it has
     bool         IsSolid;  ///< It is a solid node
-    //double       Tau;      ///< Relaxation Time
+    double       Tau;      ///< Relaxation Time
     double       Gamma;    ///< Solid/Fluid ratio
     double       Gs;       ///< Interaction constant between solid and fluid
     size_t       Nneigh;   ///< Number of neighbors

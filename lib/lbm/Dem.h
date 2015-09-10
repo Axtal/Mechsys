@@ -109,15 +109,16 @@ inline Disk::Disk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t c
 inline void Disk::Translate(double dt)
 {
     //std::cout << F(0) << " " << M << " " << V(0) << std::endl;
-    if (vf(0)) F(0) = 0.0;
-    if (vf(1)) F(1) = 0.0;
-    if (vf(2)) F(2) = 0.0;
+    Vec3_t Ft = F;
+    if (vf(0)) Ft(0) = 0.0;
+    if (vf(1)) Ft(1) = 0.0;
+    if (vf(2)) Ft(2) = 0.0;
     //if (isnan(norm(F))) 
     //{
         //std::cout << Tag << std::endl;
     //}
 
-    Vec3_t Xa = 2*X - Xb + F*(dt*dt/M);
+    Vec3_t Xa = 2*X - Xb + Ft*(dt*dt/M);
     Vec3_t tp = Xa - X;
     V         = 0.5*(Xa - Xb)/dt;
     Xb        = X;
@@ -132,11 +133,12 @@ inline void Disk::Rotate (double dt)
     q2 = 0.5*Q(2);
     q3 = 0.5*Q(3);
 
+    Vec3_t Tt = T;
     if (wf(0)) T(0) = 0.0;
     if (wf(1)) T(1) = 0.0;
     if (wf(2)) T(2) = 0.0;
 
-    Vec3_t Td = T/I;
+    Vec3_t Td = Tt/I;
     W = Wb+0.5*dt*Td;
     wx = W(0);
     wy = W(1);

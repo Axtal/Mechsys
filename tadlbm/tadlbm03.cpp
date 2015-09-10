@@ -136,7 +136,7 @@ int main(int argc, char **argv) try
         if ((j<ny/2-W/2)||(j>ny/2+W/2))
         {
             Dom.Lat.GetCell(iVec3_t(i,j,0))->IsSolid = true;
-            Dom.Lat.GetCell(iVec3_t(i,j,0))->Dif = 0.1;
+            Dom.Lat.GetCell(iVec3_t(i,j,0))->Dif = 0.0;
         }
     }
 

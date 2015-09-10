@@ -1810,6 +1810,7 @@ void Domain::Collide (size_t n, size_t Np)
                 }
                 Q = sqrt(2.0*Q);
                 Tau = 0.5*(Tau + sqrt(Tau*Tau + 6.0*Q*Sc/rho));
+                c->Tau = Tau;
                 //std::cout << Tau << std::endl;
 
                 double Bn;
@@ -1913,6 +1914,7 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 Rotation(Pa->W,Pa->Q,tmp);
                 Vec3_t VelP   = Pa->V + cross(tmp,B);
                 double rho = cell->Rho;
+                //double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
                 double Bn  = (cell->Gamma*(Tau-0.5))/((1.0-cell->Gamma)+(Tau-0.5));
                 for (size_t k=0;k<cell->Nneigh;k++)
                 {

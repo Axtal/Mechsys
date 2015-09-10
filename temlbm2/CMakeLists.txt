@@ -21,6 +21,7 @@ SET(PROGS
     temlbm202
     temlbm203
     temlbm204
+    temlbm205
    )
 
 FOREACH(var ${PROGS})
