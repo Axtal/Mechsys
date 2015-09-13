@@ -144,20 +144,20 @@ inline void Cell::CalcProp()
     }
     //E /= sqrt(2.0)*Eps;
     E /= Eps;
-    J  = Sig*E/(1.0+0.25*sqrt(2.0*Sig)/Eps);
+    J  = Sig*E/(1.0+0.25*Sig/Eps);
     //J  = Sig*E;
 }
 
 inline double Cell::FEeq(size_t mu,size_t k)
 {
-    if (mu==0) return (1.0/16.0)*dot(C[k],J+Jf)+(/*sqrt(2.0)**/Eps/4.0)*dot(E-sqrt(2.0)/(4.0*Eps)*(J+Jf),D1[k])+(1.0/(8.0/**sqrt(2.0)*/*Mu))*dot(B,H1[k]);
-    else       return (1.0/16.0)*dot(C[k],J+Jf)+(/*sqrt(2.0)**/Eps/4.0)*dot(E-sqrt(2.0)/(4.0*Eps)*(J+Jf),D2[k])+(1.0/(8.0/**sqrt(2.0)*/*Mu))*dot(B,H2[k]);
+    if (mu==0) return (1.0/16.0)*dot(C[k],J+Jf)+(Eps/4.0)*dot(E-1.0/(4.0*Eps)*(J+Jf),D1[k])+(1.0/(8.0*Mu))*dot(B,H1[k]);
+    else       return (1.0/16.0)*dot(C[k],J+Jf)+(Eps/4.0)*dot(E-1.0/(4.0*Eps)*(J+Jf),D2[k])+(1.0/(8.0*Mu))*dot(B,H2[k]);
 }
 
 inline double Cell::FBeq(size_t mu,size_t k)
 {
-    if (mu==0) return (1.0/16.0)*dot(C[k],J+Jf)+(1.0/4.0)*dot(E-sqrt(2.0)/(4.0*Eps)*(J+Jf),D1[k])+(1.0/8.0)*dot(B,H1[k]);
-    else       return (1.0/16.0)*dot(C[k],J+Jf)+(1.0/4.0)*dot(E-sqrt(2.0)/(4.0*Eps)*(J+Jf),D2[k])+(1.0/8.0)*dot(B,H2[k]);
+    if (mu==0) return (1.0/16.0)*dot(C[k],J+Jf)+(1.0/4.0)*dot(E-1.0/(4.0*Eps)*(J+Jf),D1[k])+(1.0/8.0)*dot(B,H1[k]);
+    else       return (1.0/16.0)*dot(C[k],J+Jf)+(1.0/4.0)*dot(E-1.0/(4.0*Eps)*(J+Jf),D2[k])+(1.0/8.0)*dot(B,H2[k]);
 }
 
 inline void Cell::Initialize(double TheRho, Vec3_t & TheJ, Vec3_t & TheE, Vec3_t & TheB)

@@ -59,13 +59,13 @@ int main(int argc, char **argv) try
     size_t nproc = 1; 
     if (argc==2) nproc=atoi(argv[1]);
     int nx = 2000;
-    int ny = 100;
+    int ny = 1;
     int nz = 1;
-    double Sigsol   = 0.1;
-    double Tf       = 1000.0;
-    double dtOut    = 5.0;
+    double Sigsol   = 10.0;
+    double Tf       = 10000.0;
+    double dtOut    = 50.0;
     double J0       = 1.0e-4;
-    double lambda   = 50.0;
+    double lambda   = 200.0;
     EMLBM::Domain Dom(iVec3_t(nx,ny,nz), 1.0, 1.0);
     UserData dat;
     Dom.UserData = &dat;
@@ -82,7 +82,7 @@ int main(int argc, char **argv) try
     for (int k=0;k<nz;k++)
     {
         Dom.Lat.GetCell(iVec3_t(i,j,k))->Initialize(0.0,OrthoSys::O,OrthoSys::O,OrthoSys::O);
-        Dom.Lat.GetCell(iVec3_t(i,j,k))->Sig = Sigsol*0.5*(tanh(i-nx/2)+1.0);
+        Dom.Lat.GetCell(iVec3_t(i,j,k))->Sig = Sigsol*0.5*(tanh(i-nx/4)+1.0);
     }
     Dom.Solve(Tf,dtOut,&Setup,NULL,"temlbm05",true,nproc);
 
