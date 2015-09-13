@@ -49,17 +49,19 @@ public:
 
 
     //Data
-    iVec3_t                                   Ndim;             // Dimensions of the lattice
-    size_t                                    idx_out;          // The discrete time step
-    size_t                                    Ncells;           // Number of cells per lattice
-    double                                    Time;             // The current time
-    double                                    dx;               // grid space
-    double                                    dt;               // time step
-    double                                    Nu;               // Real viscosity
-    double                                    Dif;              // Diffusion coefficient
-    double                                    Tau;              // Relaxation time
-    double                                    Tauc;             // Relaxation time for diffusion 
-    Cell                                   ** Cells;            // Array of pointer cells
+    iVec3_t                                         Ndim;             ///< Dimensions of the lattice
+    size_t                                          idx_out;          ///< The discrete time step
+    size_t                                          Ncells;           ///< Number of cells per lattice
+    double                                          Time;             ///< The current time
+    double                                          dx;               ///< grid space
+    double                                          dt;               ///< time step
+    double                                          Nu;               ///< Real viscosity
+    double                                          Dif;              ///< Diffusion coefficient
+    double                                          Tau;              ///< Relaxation time
+    double                                          Tauc;             ///< Relaxation time for diffusion 
+    Cell                                         ** Cells;            ///< Array of pointer cells
+    Array <double>                                       EEk;         ///< Diadic velocity tensor trace
+    double                                                Sc;         ///< Smagorinsky constant
 };
 
 inline Lattice::Lattice(LBMethod TheMethod, double Thenu, double TheDif, iVec3_t TheNdim, double Thedx, double Thedt)
@@ -86,6 +88,18 @@ inline Lattice::Lattice(LBMethod TheMethod, double Thenu, double TheDif, iVec3_t
         n++;
     } 
     Cells[0]->Cs = dx/dt;
+
+    EEk.Resize(Cells[0]->Nneigh);
+    for (size_t k=0;k<Cells[0]->Nneigh;k++)
+    {
+        EEk[k]    = 0.0;
+        for (size_t n=0;n<3;n++)
+        for (size_t m=0;m<3;m++)
+        {
+            EEk[k] += fabs(Cells[0]->C[k][n]*Cells[0]->C[k][m]);
+        }
+    }
+    Sc = 0.17;
 }
 
 inline void Lattice::Collide(size_t Np)
@@ -96,11 +110,22 @@ inline void Lattice::Collide(size_t Np)
     for (size_t i=0;i<Ncells;i++)
     {
         Cell * c = Cells[i];
+        Array<double> NonEq(c->Nneigh);
+        double TauS = Tau;
+        double Q = 0.0;
+        for (size_t k=0;k<c->Nneigh;k++)
+        {
+            double FDeqn = c->Feq(k);
+            NonEq[k] = c->F[k] - FDeqn;
+            Q += NonEq[k]*NonEq[k]*EEk[k];
+        }
+        Q = sqrt(2.0*Q);
+        TauS = 0.5*(TauS + sqrt(TauS*TauS + 6.0*Q*Sc/c->Rho));
         for (size_t k=0;k<c->Nneigh;k++)
         {
             if (!c->IsSolid)
             {
-                c->Ftemp[k] = c->F[k] - (c->F[k] - c->Feq(k))/Tau;
+                c->Ftemp[k] = c->F[k] - (NonEq[k])/TauS;
             }
             else
             {

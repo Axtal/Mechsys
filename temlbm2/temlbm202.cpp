@@ -84,7 +84,7 @@ int main(int argc, char **argv) try
         //Vec3_t B(0.0,B0*exp(-alpha*((k-z0)*(k-z0)+(i-x0)*(i-x0))),0.0);
         //Vec3_t E(E0*exp(-alpha*((k-z0)*(k-z0))-beta*((i-x0)*(i-x0))),0.0,0.0);
         //Vec3_t B(0.0,B0*exp(-alpha*((k-z0)*(k-z0))-beta*((i-x0)*(i-x0))),0.0);
-        double itz = 0.3*(i-nx/2)+nz/2;
+        double itz = 0.2*(i-nx/2)+nz/2;
         Vec3_t E(E0*exp(-alpha*(k-z0)*(k-z0)),0.0,0.0);
         Vec3_t B(0.0,B0*exp(-alpha*(k-z0)*(k-z0)),0.0);
         Dom.Lat.GetCell(iVec3_t(i,j,k))->Initialize(0.0,OrthoSys::O,E,B);

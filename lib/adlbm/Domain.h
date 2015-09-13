@@ -88,6 +88,7 @@ inline Domain::Domain(LBMethod Method, double Thenu, double Thedif, iVec3_t Ndim
     Step   = 1;
     PrtVec = true;
     printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Ncells,TERM_RST);
+
 }
 
 
@@ -284,7 +285,8 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     // info
     Util::Stopwatch stopwatch;
     printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1   , TERM_RST);
-    printf("%s  Time step                        =  %g%s\n"       ,TERM_CLR2, dt                                   , TERM_RST);
+    printf("%s  Time step                        =  %g%s\n"     ,TERM_CLR2, dt                             , TERM_RST);
+    printf("%s  Tau of Lattice                   =  %g%s\n"     ,TERM_CLR2, Lat.Tau                        , TERM_RST);
 
     Nproc = TheNproc;
 
