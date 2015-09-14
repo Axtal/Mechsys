@@ -91,7 +91,7 @@ int main(int argc, char **argv) try
 {
     size_t nproc = 1; 
     if (argc==2) nproc=atoi(argv[1]);
-    double u_max  = 0.0;                // Poiseuille's maximum velocity
+    double u_max  = 0.1;                // Poiseuille's maximum velocity
     double Re     = 100.0;                  // Reynold's number
     size_t nx = 400;                       // Dimension in x
     size_t ny = 200;                       // Dimension in y
@@ -136,7 +136,7 @@ int main(int argc, char **argv) try
         if ((j<ny/2-W/2)||(j>ny/2+W/2))
         {
             Dom.Lat.GetCell(iVec3_t(i,j,0))->IsSolid = true;
-            Dom.Lat.GetCell(iVec3_t(i,j,0))->Dif = 0.0;
+            Dom.Lat.GetCell(iVec3_t(i,j,0))->Dif = 0.1;
         }
     }
 
