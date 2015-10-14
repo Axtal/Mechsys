@@ -45,7 +45,7 @@ public:
     Torus       * T0; ///< First torus
     Torus       * T1; ///< Second torus
     Vec3_t const *Y0; ///< Lower point of the first torus
-    Vec3_t const *Y1; ///< Lower point of the first torus
+    Vec3_t const *Y1; ///< Lower point of the second torus
     Vec3_t        X0; ///< Center of the first  torus
     Vec3_t        X1; ///< Center of the second torus
     double      Dmax;

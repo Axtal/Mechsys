@@ -199,6 +199,7 @@ int main(int argc, char **argv) try
 
     Dom.Particles[0]->FixVeloc();
     Dom.Particles[0]->w = Vec3_t(0.0,0.0,w);
+    Dom.Alpha = 2.0*dx;
 
     //Solving
     Dom.Solve(Tf,0.01*Tf,Setup,Report,filekey.CStr(),Render,Nproc);

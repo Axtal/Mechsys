@@ -1235,11 +1235,14 @@ inline void Domain::WriteXDMF(char const * FileKey)
         float * Posvec = new float[3*Particles.Size()];
         float * Velvec = new float[3*Particles.Size()];
         float * Omevec = new float[3*Particles.Size()];
+        float * Forvec = new float[3*Particles.Size()];
+        float * Torvec = new float[3*Particles.Size()];
         int   * Tags   = new int  [  Particles.Size()];
         for (size_t i=0;i<Particles.Size();i++)
         {
-            Vec3_t Ome;
+            Vec3_t Ome,Tor;
             Rotation(Particles[i]->w,Particles[i]->Q,Ome);
+            Rotation(Particles[i]->T,Particles[i]->Q,Tor);
             Radius[i]     = (float) Particles[i]->Dmax;
             Posvec[3*i  ] = (float) Particles[i]->x(0);
             Posvec[3*i+1] = (float) Particles[i]->x(1);
@@ -1247,9 +1250,15 @@ inline void Domain::WriteXDMF(char const * FileKey)
             Velvec[3*i  ] = (float) Particles[i]->v(0);
             Velvec[3*i+1] = (float) Particles[i]->v(1);
             Velvec[3*i+2] = (float) Particles[i]->v(2);
-            Omevec[3*i  ] = (float)  Ome(0);
-            Omevec[3*i+1] = (float)  Ome(1);
-            Omevec[3*i+2] = (float)  Ome(2);
+            Omevec[3*i  ] = (float) Ome(0);
+            Omevec[3*i+1] = (float) Ome(1);
+            Omevec[3*i+2] = (float) Ome(2);
+            Forvec[3*i  ] = (float) Particles[i]->F(0);
+            Forvec[3*i+1] = (float) Particles[i]->F(1);
+            Forvec[3*i+2] = (float) Particles[i]->F(2);
+            Torvec[3*i  ] = (float) Tor(0);
+            Torvec[3*i+1] = (float) Tor(1);
+            Torvec[3*i+2] = (float) Tor(2);
             Tags  [i]     = (int)   Particles[i]->Tag;
         }
 
@@ -1262,6 +1271,10 @@ inline void Domain::WriteXDMF(char const * FileKey)
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Velvec);
         dsname.Printf("PAngVel");
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Omevec);
+        dsname.Printf("PForce");
+        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Forvec);
+        dsname.Printf("PTorque");
+        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Torvec);
         dims[0] = Particles.Size();
         dsname.Printf("Radius");
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Radius);
@@ -1273,6 +1286,8 @@ inline void Domain::WriteXDMF(char const * FileKey)
         delete [] Posvec;
         delete [] Velvec;
         delete [] Omevec;
+        delete [] Forvec;
+        delete [] Torvec;
         delete [] Tags  ;
     }
     
@@ -1433,6 +1448,16 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "     <Attribute Name=\"AngVel\" AttributeType=\"Vector\" Center=\"Node\">\n";
         oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/PAngVel\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Force\" AttributeType=\"Vector\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/PForce\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Torque\" AttributeType=\"Vector\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/PTorque\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         oss << "   </Grid>\n";

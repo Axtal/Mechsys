@@ -1,5 +1,5 @@
 sphere     = ptype     Particle type
-0         = Render    Produce visualization files?       
+1         = Render    Produce visualization files?       
 240       = nx        x dimension of lbm grid           
 60        = ny        y dimension of lbm grid             
 60        = nz        z dimension of lbm grid                
