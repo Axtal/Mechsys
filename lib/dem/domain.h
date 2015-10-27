@@ -3755,6 +3755,10 @@ inline void Domain::Save (char const * FileKey)
         data[0] = Particles[i]->Faces.Size();
         H5LTmake_dataset_int(group_id,"n_faces",1,dims,data);
         gv_id = H5Gcreate(group_id,"Faces", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+        // Number of cylinders of the particle
+        data[0] = Particles[i]->Cylinders.Size();
+        H5LTmake_dataset_int(group_id,"n_cylinders",1,dims,data);
         
         // Faces
         for (size_t j=0;j<Particles[i]->Faces.Size();j++)
@@ -3873,7 +3877,21 @@ inline void Domain::Load (char const * FileKey)
 
         }
 
+        // Number of cylinders
+        H5LTread_dataset_int(group_id,"n_cylinders",data);
+        size_t nc = data[0];
+
         Particles.Push (new Particle(-1,V,E,F,OrthoSys::O,OrthoSys::O,0.1,1.0));
+
+        // Loading cylinder data if applicable
+        if (nc>0)
+        {   
+            Vec3_t X0 = 0.5*(*Particles[Particles.Size()-1]->Verts[0] + *Particles[Particles.Size()-1]->Verts[2]);
+            Vec3_t X1 = 0.5*(*Particles[Particles.Size()-1]->Verts[3] + *Particles[Particles.Size()-1]->Verts[5]);
+            Particles[Particles.Size()-1]->Tori.Push     (new Torus(&X0,Particles[Particles.Size()-1]->Verts[0],Particles[Particles.Size()-1]->Verts[1]));
+            Particles[Particles.Size()-1]->Tori.Push     (new Torus(&X1,Particles[Particles.Size()-1]->Verts[3],Particles[Particles.Size()-1]->Verts[4]));
+            Particles[Particles.Size()-1]->Cylinders.Push(new Cylinder(Particles[Particles.Size()-1]->Tori[0],Particles[Particles.Size()-1]->Tori[1],Particles[Particles.Size()-1]->Verts[2],Particles[Particles.Size()-1]->Verts[5]));
+        }
 
         // Loading vectorial variables
         Particles[Particles.Size()-1]->x = Vec3_t(X[0],X[1],X[2]);
@@ -3892,7 +3910,7 @@ inline void Domain::Load (char const * FileKey)
         double cq[4];
         H5LTread_dataset_double(group_id,"Q",cq);
         Particles[Particles.Size()-1]->Q = Quaternion_t(cq[0],cq[1],cq[2],cq[3]);
-
+    
         // Loading the scalar quantities of the particle
         double dat[1];
         H5LTread_dataset_double(group_id,"SR",dat);
@@ -4049,40 +4067,6 @@ inline void Domain::UpdateLinkedCells()
     //std::cout << "Free Particles           " << FreePar.Size()    << std::endl;
     if (n!=FreePar.Size())
     {
-        //ofstream lin("linked.txt");
-        //ofstream pos("position.txt");
-        //for (size_t i=0;i<LinkedCell.Size();i++)
-        //{
-            //lin << i << std::endl;
-            //for (size_t j=0;j<LinkedCell[i].Size();j++)
-            //{
-                //lin << LinkedCell[i][j] << " ";
-            //}
-            //lin << std::endl;
-        //}
-        //for (size_t i=0;i<Particles.Size();i++)
-        //{
-            //iVec3_t cell = (Particles[i]->x - LCxmin)/(2.0*Beta*MaxDmax);
-            //size_t  idx  = Pt2idx(cell,LCellDim);
-            //pos << i << " " << Particles[i]->x << " " << cell << " " << idx << std::endl;
-        //}
-        //lin.close();
-        //pos.close();
-        
-        //for (size_t i=0;i<FreePar.Size();i++)
-        //{
-            //bool found = false;
-            //for (size_t j=0;j<LinkedCell.Size();j++)
-            //{
-                //if (LinkedCell[j].Has(FreePar[i])) found = true;
-            //}
-            //if (!found) 
-            //{
-                //iVec3_t cell = (Particles[FreePar[i]]->x - LCxmin)/(2.0*Beta*MaxDmax);
-                //size_t  idx  = Pt2idx(cell,LCellDim);
-                //if (FreePar[i]==345) std::cout << FreePar[i] << " " << Particles[FreePar[i]]->x << " " << cell << " " << idx << " " << LinkedCell[idx].Size() <<  std::endl;
-            //}
-        //}
         throw new Fatal("Domain::UpdateLinkedCells: Linked cells dont match");
     }
     
@@ -4099,7 +4083,6 @@ inline void Domain::UpdateLinkedCells()
     {
         iVec3_t Pt(i,j,k);
         size_t idx = Pt2idx(Pt,LCellDim);
-        //std::cout << Pt << " " << idx << " " << LinkedCell[idx].Size() << std::endl;
         if (LinkedCell[idx].Size()==0) continue;
 
         for (size_t n=0  ;n<LinkedCell[idx].Size()-1;n++)
@@ -4108,42 +4091,29 @@ inline void Domain::UpdateLinkedCells()
             size_t i1 = LinkedCell[idx][n];
             size_t i2 = LinkedCell[idx][m];
             if (i1==i2) continue;
-            //if (i1==i2) std::cout << i1 << " " << i2 << " " << n << " " << m << " " << idx << std::endl;
             ListPosPairs.Push(std::make_pair(i1,i2));
         }
-        //std::cout << k << " " << std::min(LCellDim(0),k+1) << std::endl;;
         for (size_t knb=std::max(0,int(k)-1);knb<=std::min(LCellDim(2)-1,k+1);knb++)
         for (size_t jnb=std::max(0,int(j)-1);jnb<=std::min(LCellDim(1)-1,j+1);jnb++)
         for (size_t inb=std::max(0,int(i)-1);inb<=std::min(LCellDim(0)-1,i+1);inb++)
         {
-            //std ::cout << inb << " " << jnb << " " << knb << std::endl;
             iVec3_t Ptnb(inb,jnb,knb);
             size_t idxnb = Pt2idx(Ptnb,LCellDim);
-            //std::cout << "a" << Pt << " " << idx << " " << LinkedCell[idx].Size() << std::endl;
-            //std::cout << "b" << Ptnb << " " << idxnb << " " << LinkedCell[idxnb].Size() << std::endl;
             if (idxnb>idx)
             {
                 for (size_t n=0;n<LinkedCell[idx].Size()  ;n++)
                 {
                     for (size_t m=0;m<LinkedCell[idxnb].Size()  ;m++)
                     {
-                        //size_t i1 = LinkedCell[idx  ][n];
-                        //size_t i2 = LinkedCell[idxnb][m];
                         size_t i1 = std::min(LinkedCell[idx  ][n],LinkedCell[idxnb][m]);
                         size_t i2 = std::max(LinkedCell[idx  ][n],LinkedCell[idxnb][m]);
                         if (i1==i2) continue;
-                        //if (i1==i2) std::cout << i1 << " " << i2 << " " << n << " " << m << " " << idx << " " << idxnb << std::endl;
                         ListPosPairs.Push(std::make_pair(i1,i2));
                     }
                 }
             }
         }
     }
-    //std::cout << "b ) Updating linked cells "  << Time << " " << ListPosPairs.Size() << std::endl;
-    //for (size_t i=0;i<ListPosPairs.Size();i++)
-    //{
-        //std::cout << ListPosPairs[i].first << " " << ListPosPairs[i].second << std::endl;
-    //}
 }
 
 #elif USE_OMP

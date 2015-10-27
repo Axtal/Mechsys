@@ -59,7 +59,7 @@ int main(int argc, char **argv) try
     UserData dat;
     Dom.UserData = &dat;
     Dom.Sc       = 0.0;
-    dat.g           = 0.0,-0.0001,0.0;
+    dat.g           = 0.0,0.0001,0.0;
     //dat.g           = 0.0,0.0,0.0;
     for (size_t i=0;i<nx;i++)
     {
@@ -102,7 +102,7 @@ int main(int argc, char **argv) try
     Dom.Lat[0].G = -200.0;
     Dom.Lat[0].Gs= -400.0;
     Dom.Lat[1].G =  0.0;
-    Dom.Lat[1].Gs=  0.0;
+    Dom.Lat[1].Gs=  400.0;
     Dom.Gmix     =  0.001;
 
     Dom.Solve(1.0e4,1.0e2,Setup,NULL,"multicomp",true,Nproc);

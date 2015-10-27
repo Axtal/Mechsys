@@ -72,7 +72,12 @@ void Setup (ADLBM::Domain & dom, void * UD)
 	for (size_t i=0; i<dat.Right.Size(); ++i)
 	{
 		Cell * c = dat.Right[i];
-        c->Initialize(1.0,dat.tempright,c->Vel);
+        c->Initialize(1.0,c->Temp,c->Vel);
+        for (size_t k=0;k<c->Nneigh;k++)
+        {
+            c->G[k] = dom.Lat.Cells[c->Neighs[3]]->G[k];
+        }
+        //c->Initialize(1.0,dat.tempright,c->Vel);
 		//if (c->IsSolid) continue;
 		//double vx = -1.0 + (c->F[0]+c->F[2]+c->F[4] + 2.0*(c->F[1]+c->F[5]+c->F[8]))/dat.rho;
 		//c->F[3] = c->F[1] - (2.0/3.0)*dat.rho*vx; 

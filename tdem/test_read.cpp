@@ -32,6 +32,7 @@ int main( void )
     Domain dom;
     dom.Load("domainwrite");
     dom.WriteXDMF("domainread");
+    dom.WritePOV("domainread");
     dom.Save("domainread");
     return 0;
 
