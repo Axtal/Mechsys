@@ -1,6 +1,5 @@
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
- * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
  * Copyright (C) 2009 Sergio Galindo                                    *
  * Copyright (C) 2013 William Oquendo                                   *
  *                                                                      *
