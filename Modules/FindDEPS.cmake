@@ -105,7 +105,7 @@ SET (Boost_USE_STATIC_LIBS ON)
 ENABLE_LANGUAGE (Fortran)
 
 FIND_PACKAGE (wxWidgets COMPONENTS ${WXW_COMPONENTS})       #  1
-INCLUDE      (FindMPI)                                      #  2
+#INCLUDE      (FindMPI)                                      #  2
 INCLUDE      (FindVTK)                                      #  3
 FIND_PACKAGE (HDF5 COMPONENTS     HL)                       #  4
 #FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
