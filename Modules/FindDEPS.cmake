@@ -110,7 +110,7 @@ INCLUDE      (FindVTK)                                      #  3
 #FIND_PACKAGE (HDF5 COMPONENTS     HL)                       #  4
 #FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  4
-INCLUDE      (FindBoost)                                    #  5
+#INCLUDE      (FindBoost)                                    #  5
 #INCLUDE      (FindLAPACK)                                   #  6
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindLocLAPACK.cmake) #  6
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindBLITZ.cmake    ) #  7
@@ -185,11 +185,11 @@ else(HDF5_FOUND AND A_USE_HDF5)
 endif(HDF5_FOUND AND A_USE_HDF5)
 
 # 5
-if(Boost_FOUND)
-	INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS})
-else(Boost_FOUND)
-    SET (MISSING "${MISSING} boost")
-endif(Boost_FOUND)
+#if(Boost_FOUND)
+	#INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS})
+#else(Boost_FOUND)
+    #SET (MISSING "${MISSING} boost")
+#endif(Boost_FOUND)
 
 # 6
 if(LAPACK_FOUND)

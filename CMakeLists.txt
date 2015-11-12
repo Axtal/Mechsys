@@ -49,21 +49,21 @@ endif(MISSING)
 
 ### PYTHON MODULE #######################################################################################
 
-if(A_WITH_PYTHON_MODULE)
-    INCLUDE (FindPythonLibs)
-    if(PYTHONLIBS_FOUND)
-        INCLUDE_DIRECTORIES (${PYTHON_INCLUDE_PATH})
-        EXECUTE_PROCESS (COMMAND python -c "from distutils.sysconfig import get_python_lib; print get_python_lib()" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
-        FIND_LIBRARY (BOOST_PYTHON NAMES boost_python-mt PATHS /usr/lib)
-        IF(NOT BOOST_PYTHON)
-            FIND_LIBRARY (BOOST_PYTHON NAMES boost_python PATHS /usr/lib)
-        ENDIF(NOT BOOST_PYTHON)
-        SET(LIBS ${LIBS} ${PYTHON_LIBRARIES} ${BOOST_PYTHON})
-    else(PYTHONLIBS_FOUND)
-        MESSAGE("To compile the Python module, boost-python must be installed")
-    endif(PYTHONLIBS_FOUND)
-endif(A_WITH_PYTHON_MODULE)
-
+#if(A_WITH_PYTHON_MODULE)
+    #INCLUDE (FindPythonLibs)
+    #if(PYTHONLIBS_FOUND)
+        #INCLUDE_DIRECTORIES (${PYTHON_INCLUDE_PATH})
+        #EXECUTE_PROCESS (COMMAND python -c "from distutils.sysconfig import get_python_lib; print get_python_lib()" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
+        #FIND_LIBRARY (BOOST_PYTHON NAMES boost_python-mt PATHS /usr/lib)
+        #IF(NOT BOOST_PYTHON)
+            #FIND_LIBRARY (BOOST_PYTHON NAMES boost_python PATHS /usr/lib)
+        #ENDIF(NOT BOOST_PYTHON)
+        #SET(LIBS ${LIBS} ${PYTHON_LIBRARIES} ${BOOST_PYTHON})
+    #else(PYTHONLIBS_FOUND)
+        #MESSAGE("To compile the Python module, boost-python must be installed")
+    #endif(PYTHONLIBS_FOUND)
+#endif(A_WITH_PYTHON_MODULE)
+#
 ### FEATURES ############################################################################################
 
 SET(ALLDIRS src) # sub-directories
