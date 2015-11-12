@@ -20,16 +20,24 @@
 
 SET(HDF5_INCLUDE_SEARCH_PATH
     $ENV{MECHSYS_ROOT}/pkg/szip-2.1/src
-#  $ENV{HOME}/pkg/zlib-1.2.5
     $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.15-patch1/src
-    $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.15-patch1/hl/src)
+    $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.15-patch1/hl/src
+    $ENV{HOME}/pkg/szip-2.1/src
+    $ENV{HOME}/pkg/hdf5-1.8.15-patch1/src
+    $ENV{HOME}/pkg/hdf5-1.8.15-patch1/hl/src
+#   $ENV{HOME}/pkg/zlib-1.2.5
+    )
   #/usr/include)
 
 SET(HDF5_LIBRARY_SEARCH_PATH
     $ENV{MECHSYS_ROOT}/pkg/szip-2.1/src/.libs
-#  $ENV{HOME}/pkg/zlib-1.2.5
     $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.15-patch1/src/.libs
-    $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.15-patch1/hl/src/.libs)
+    $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.15-patch1/hl/src/.libs
+    $ENV{HOME}/pkg/szip-2.1/src/.libs
+    $ENV{HOME}/pkg/hdf5-1.8.15-patch1/src/.libs
+    $ENV{HOME}/pkg/hdf5-1.8.15-patch1/hl/src/.libs
+#   $ENV{HOME}/pkg/zlib-1.2.5
+    )
   #/usr/lib)
 
 #MESSAGE(${HDF5_HL})
@@ -41,9 +49,9 @@ FIND_PATH(HDF5_HL_H hdf5_hl.h ${HDF5_INCLUDE_SEARCH_PATH})
 #MESSAGE(${HDF5_LIBRARY_SEARCH_PATH})
 
 FIND_LIBRARY(SZ      NAMES sz      PATHS ${HDF5_LIBRARY_SEARCH_PATH})
-#FIND_LIBRARY(LZ      NAMES z       PATHS ${HDF5_LIBRARY_SEARCH_PATH})
 FIND_LIBRARY(HDF5    NAMES hdf5    PATHS ${HDF5_LIBRARY_SEARCH_PATH})
 FIND_LIBRARY(HDF5_HL NAMES hdf5_hl PATHS ${HDF5_LIBRARY_SEARCH_PATH})
+#FIND_LIBRARY(LZ      NAMES z       PATHS ${HDF5_LIBRARY_SEARCH_PATH})
 
 SET(HDF5_FOUND 1)
 #FOREACH(var LZ SZ HDF5_H HDF5_HL_H HDF5 HDF5_HL)
