@@ -47,7 +47,8 @@ ADD_DEFINITIONS(-fmessage-length=0) # Each error message will appear on a single
 #ADD_DEFINITIONS(-std=gnu++11)       # New C++ standard
 ADD_DEFINITIONS(-std=c++0x)         # New C++ standard
 ADD_DEFINITIONS(-fpermissive)       # New C++ standard
-#INCLUDE_DIRECTORIES ($ENV{HOME}/pkg/boost_1_49_0)
+INCLUDE_DIRECTORIES (${INCLUDE_DIRECTORIES} $ENV{HOME}/pkg/boost_1_59_0)
+INCLUDE_DIRECTORIES (${INCLUDE_DIRECTORIES} $ENV{MECHSYS_ROOT}/pkg/boost_1_59_0)
 
 ### FLAGS ###############################################################################################
 

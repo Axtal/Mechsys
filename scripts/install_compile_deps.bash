@@ -77,6 +77,7 @@ VER_VORO=0.4.5
 VER_IGRAPH=0.5.4
 #VER_SOPLEX=1.6.0
 #VER_WXWIDGETS=2.9.4
+VER_BOOST=1_59_0
 VER_LAPACK=3.5.0
 VER_HDF5=1.8.15-patch1
 VER_SZIP=2.1
@@ -147,6 +148,13 @@ download_and_compile() {
             #DO_MAKE_INST=1
             #CONF_PRMS="-enable-monolithic --disable-compat26 --disable-compat28 --with-opengl"
             #;;
+        boost)
+            PKG=boost_$VER_BOOST
+            EXT=tar.bz2
+            LOCATION=http://internode.dl.sourceforge.net/project/boost/boost/1.59.0/$PKG.$EXT
+            DO_CONF=1
+            DO_MAKE=1
+            ;;
         lapack)
             PKG=lapack-$VER_LAPACK
             EXT=tgz
@@ -307,6 +315,7 @@ download_and_compile voro
 download_and_compile igraph
 #download_and_compile soplex
 #download_and_compile wxwidgets
+download_and_compile boost
 download_and_compile lapack
 download_and_compile hdf5
 download_and_compile szip
