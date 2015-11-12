@@ -1,6 +1,6 @@
 ########################################################################
 # MechSys - Open Library for Mechanical Systems                        #
-# Copyright (C) 2005 Dorival M. Pedroso, Raúl D. D. Farfan             #
+# Copyright (C) 2010 Serigo Torres                                     #
 #                                                                      #
 # This program is free software: you can redistribute it and/or modify #
 # it under the terms of the GNU General Public License as published by #
@@ -34,7 +34,7 @@ OPTION(A_USE_OMP            "Use OpenMP  ?"                                     
 #OPTION(A_USE_MPI            "Use OpenMPI ?"                                        OFF)
 OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
 OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
-OPTION(A_USE_VTK            "Use VTK ?"                                            ON )
+OPTION(A_USE_VTK            "Use VTK ?"                                            OFF)
 OPTION(A_USE_HDF5           "Use HDF5 ?"                                           ON )
 #OPTION(A_USE_SUPERLU        "Use SuperLU"                                          OFF)
 #OPTION(A_USE_SUPERLUD       "Use SuperLUd"                                         OFF)
@@ -104,15 +104,15 @@ SET (MISSING "")
 SET (Boost_USE_STATIC_LIBS ON)
 ENABLE_LANGUAGE (Fortran)
 
-FIND_PACKAGE (wxWidgets COMPONENTS ${WXW_COMPONENTS})       #  1
+#FIND_PACKAGE (wxWidgets COMPONENTS ${WXW_COMPONENTS})       #  1
 #INCLUDE      (FindMPI)                                      #  2
 INCLUDE      (FindVTK)                                      #  3
-FIND_PACKAGE (HDF5 COMPONENTS     HL)                       #  4
+#FIND_PACKAGE (HDF5 COMPONENTS     HL)                       #  4
 #FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  4
+INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  4
 INCLUDE      (FindBoost)                                    #  5
-INCLUDE      (FindLAPACK)                                   #  6
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindLocLAPACK.cmake) #  6
+#INCLUDE      (FindLAPACK)                                   #  6
+INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindLocLAPACK.cmake) #  6
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindBLITZ.cmake    ) #  7
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindGSL.cmake      ) #  8
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindMTL.cmake      ) #  9

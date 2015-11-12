@@ -1,7 +1,6 @@
 #####################################################################################
 # MechSys - A C++ library to simulate (Continuum) Mechanical Systems                #
-# Copyright (C) 2005 Dorival de Moraes Pedroso <dorival.pedroso at gmail.com>       #
-# Copyright (C) 2005 Raul Dario Durand Farfan  <raul.durand at gmail.com>           #
+# Copyright (C) 2010 Sergio Galindo Torres     <sagalindot at gmail.com>            #
 #                                                                                   #
 # This file is part of MechSys.                                                     #
 #                                                                                   #
@@ -20,21 +19,26 @@
 #####################################################################################
 
 SET(HDF5_INCLUDE_SEARCH_PATH
-  $ENV{HOME}/pkg/szip-2.1/src
+    $ENV{MECHSYS_ROOT}/pkg/szip-2.1/src
 #  $ENV{HOME}/pkg/zlib-1.2.5
-  $ENV{HOME}/pkg/hdf5-1.8.8/src
-  $ENV{HOME}/pkg/hdf5-1.8.8/hl/src
-  /usr/include)
+    $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.15-patch1/src
+    $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.15-patch1/hl/src)
+  #/usr/include)
 
 SET(HDF5_LIBRARY_SEARCH_PATH
-  $ENV{HOME}/pkg/szip-2.1/src/.libs
+    $ENV{MECHSYS_ROOT}/pkg/szip-2.1/src/.libs
 #  $ENV{HOME}/pkg/zlib-1.2.5
-  $ENV{HOME}/pkg/hdf5-1.8.8/src/.libs
-  $ENV{HOME}/pkg/hdf5-1.8.8/hl/src/.libs
-  /usr/lib)
+    $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.15-patch1/src/.libs
+    $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.15-patch1/hl/src/.libs)
+  #/usr/lib)
+
+#MESSAGE(${HDF5_HL})
 
 FIND_PATH(HDF5_H    hdf5.h    ${HDF5_INCLUDE_SEARCH_PATH})
 FIND_PATH(HDF5_HL_H hdf5_hl.h ${HDF5_INCLUDE_SEARCH_PATH})
+
+
+#MESSAGE(${HDF5_LIBRARY_SEARCH_PATH})
 
 FIND_LIBRARY(SZ      NAMES sz      PATHS ${HDF5_LIBRARY_SEARCH_PATH})
 #FIND_LIBRARY(LZ      NAMES z       PATHS ${HDF5_LIBRARY_SEARCH_PATH})
@@ -54,3 +58,5 @@ IF(HDF5_FOUND)
 #  SET(HDF5_LIBRARIES    ${HDF5_HL} ${HDF5} ${LZ} ${SZ})
   SET(HDF5_LIBRARIES    ${HDF5_HL} ${HDF5} ${SZ})
 ENDIF(HDF5_FOUND)
+
+#MESSAGE(${HDF5_HL})

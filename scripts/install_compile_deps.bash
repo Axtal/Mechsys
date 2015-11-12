@@ -75,8 +75,10 @@ VER_TETGEN=1.4.3
 #VER_VORO=0.3.1
 VER_VORO=0.4.5
 VER_IGRAPH=0.5.4
-VER_SOPLEX=1.6.0
-VER_WXWIDGETS=2.9.4
+#VER_SOPLEX=1.6.0
+#VER_WXWIDGETS=2.9.4
+VER_LAPACK=3.5.0
+VER_HDF5=1.8.15-patch1
 VER_SZIP=2.1
 
 error_message() {
@@ -131,19 +133,34 @@ download_and_compile() {
             LOCATION=http://sourceforge.net/projects/igraph/files/C%20library/$VER_IGRAPH/$PKG.$EXT
             DO_CONF=1
             ;;
-        soplex)
-            PKG=soplex-$VER_SOPLEX
-            EXT=tgz
-            LOCATION=http://soplex.zib.de/download/$PKG.$EXT
+        #soplex)
+            #PKG=soplex-$VER_SOPLEX
+            #EXT=tgz
+            #LOCATION=http://soplex.zib.de/download/$PKG.$EXT
             #NPROCS=1 # it seems soples cannot be compiled in parallel...
+            #;;
+        #wxwidgets)
+            #PKG=wxWidgets-$VER_WXWIDGETS
+            #EXT=tar.bz2
+            #LOCATION=http://downloads.sourceforge.net/project/wxwindows/$VER_WXWIDGETS/wxWidgets-$VER_WXWIDGETS.$EXT
+            #DO_CONF=1
+            #DO_MAKE_INST=1
+            #CONF_PRMS="-enable-monolithic --disable-compat26 --disable-compat28 --with-opengl"
+            #;;
+        lapack)
+            PKG=lapack-$VER_LAPACK
+            EXT=tgz
+            LOCATION=http://www.netlib.org/lapack/$PKG.$EXT
+            DO_CONF=0
+            DO_CMAKECONF=1
+            DO_MAKE=1
             ;;
-        wxwidgets)
-            PKG=wxWidgets-$VER_WXWIDGETS
-            EXT=tar.bz2
-            LOCATION=http://downloads.sourceforge.net/project/wxwindows/$VER_WXWIDGETS/wxWidgets-$VER_WXWIDGETS.$EXT
+        hdf5)
+            PKG=hdf5-$VER_HDF5
+            EXT=tar.gz
+            LOCATION=https://www.hdfgroup.org/ftp/HDF5/releases/hdf5-$VER_HDF5/src/$PKG.$EXT
             DO_CONF=1
-            DO_MAKE_INST=1
-            CONF_PRMS="-enable-monolithic --disable-compat26 --disable-compat28 --with-opengl"
+            DO_MAKE=1
             ;;
         szip)
             PKG=szip-$VER_SZIP
@@ -289,7 +306,9 @@ download_and_compile tetgen
 download_and_compile voro
 download_and_compile igraph
 #download_and_compile soplex
-download_and_compile wxwidgets
+#download_and_compile wxwidgets
+download_and_compile lapack
+download_and_compile hdf5
 download_and_compile szip
 
 echo

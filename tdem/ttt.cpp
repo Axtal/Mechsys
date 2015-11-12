@@ -328,7 +328,7 @@ void Report (DEM::Domain & dom, void *UD)
     {
         String ff;
         ff.Printf    ("%s_bf_%04d",dom.FileKey.CStr(), dom.idx_out);
-        dom.WriteVTKContacts (ff.CStr());
+        //dom.WriteVTKContacts (ff.CStr());
         dom.WriteBF(ff.CStr());
     }
     if (!dom.Finished) 
