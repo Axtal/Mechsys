@@ -38,11 +38,11 @@ IF(NOT INSTALL_ROOT)
 ENDIF(NOT INSTALL_ROOT)
 
 INCLUDE_DIRECTORIES (${MECHSYS_SOURCE_DIR})
-#INCLUDE_DIRECTORIES ($ENV{HOME}/pkg/boost_1_49_0)
 
 ### DEPENDENCIES ########################################################################################
 
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindDEPS.cmake)
+#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindDEPSFL.cmake)
 if(MISSING)
     MESSAGE("Missing dependencies =${MISSING}")
 endif(MISSING)
