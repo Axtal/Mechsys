@@ -1,7 +1,6 @@
 #####################################################################################
 # MechSys - A C++ library to simulate (Continuum) Mechanical Systems                #
-# Copyright (C) 2005 Dorival de Moraes Pedroso <dorival.pedroso at gmail.com>       #
-# Copyright (C) 2005 Raul Dario Durand Farfan  <raul.durand at gmail.com>           #
+# Copyright (C) 2009 Sergio Torres             <sagalindot at gmail.com>            #
 #                                                                                   #
 # This file is part of MechSys.                                                     #
 #                                                                                   #
@@ -20,14 +19,16 @@
 #####################################################################################
 
 SET(GSL_INCLUDE_SEARCH_PATH
-  $ENV{MECHSYS_ROOT}/pkg/gsl-1.13
-  $ENV{HOME}/pkg/gsl-1.13
+  $ENV{MECHSYS_ROOT}/pkg/gsl-2.1
+  $ENV{HOME}/pkg/gsl-2.1
   /usr/include
   /usr/local/include)
 
 SET(GSL_LIBRARY_SEARCH_PATH
-  $ENV{MECHSYS_ROOT}/pkg/gsl-1.13
-  $ENV{HOME}/pkg/gsl-1.13
+  $ENV{MECHSYS_ROOT}/pkg/gsl-2.1/.libs
+  $ENV{HOME}/pkg/gsl-2.1/.libs
+  $ENV{MECHSYS_ROOT}/pkg/gsl-2.1/cblas/.libs
+  $ENV{HOME}/pkg/gsl-2.1/cblas/.libs
   /usr/lib
   /usr/local/lib)
 

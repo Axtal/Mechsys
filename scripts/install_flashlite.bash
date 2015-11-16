@@ -77,6 +77,7 @@ VER_VORO=0.4.5
 VER_IGRAPH=0.5.4
 #VER_SOPLEX=1.6.0
 #VER_WXWIDGETS=2.9.4
+VER_GSL=2.1
 VER_BOOST=1_59_0
 VER_LAPACK=3.5.0
 VER_HDF5=1.8.15-patch1
@@ -148,6 +149,13 @@ download_and_compile() {
             #DO_MAKE_INST=1
             #CONF_PRMS="-enable-monolithic --disable-compat26 --disable-compat28 --with-opengl"
             #;;
+        gsl)
+            PKG=gsl-$VER_GSL
+            EXT=tar.gz
+            LOCATION=ftp://ftp.gnu.org/gnu/gsl/$PKG.$EXT
+            DO_CONF=1
+            DO_MAKE=1
+            ;;
         boost)
             PKG=boost_$VER_BOOST
             EXT=tar.bz2
@@ -315,6 +323,7 @@ download_and_compile voro
 download_and_compile igraph
 #download_and_compile soplex
 #download_and_compile wxwidgets
+download_and_compile gsl
 download_and_compile boost
 download_and_compile lapack
 download_and_compile hdf5
