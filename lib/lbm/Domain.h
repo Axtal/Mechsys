@@ -1734,7 +1734,8 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
                 bool solid = false;
                 Cell * c = Lat[j].Cells[ind1];
                 double psi;
-                if (c->IsSolid||c->Gamma>0.0)
+                if (c->IsSolid||fabs(c->Gamma-1.0)<1.0e-12)
+                //if (c->IsSolid||c->Gamma>0.0)
                 {
                     psi   = 1.0;
                     solid = true;
@@ -1744,7 +1745,8 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
                 {
                     Cell * nb = Lat[k].Cells[ind2];
                     double nb_psi;
-                    if (nb->IsSolid||nb->Gamma>0.0)
+                    if (nb->IsSolid||fabs(nb->Gamma-1.0)<1.0e-12)
+                    //if (nb->IsSolid||nb->Gamma>0.0)
                     {
                         nb_psi = 1.0;
                         solid  = true;
@@ -1817,7 +1819,7 @@ void Domain::Collide (size_t n, size_t Np)
             double rho = c->Rho;
             //if (rho<1.0e-12) continue;
             //if (c->IsSolid||rho<1.0e-12) continue;
-            if (fabs(c->Gamma-1.0)<1.0e-12&&fabs(Lat[j].G)>1.0e-12) continue;
+            if (fabs(c->Gamma-1.0)<1.0e-12&&(fabs(Lat[j].G)>1.0e-12||Gmix>1.0e-12)) continue;
             //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
             if (!c->IsSolid)
             {
@@ -2045,9 +2047,11 @@ void Domain::ImprintLattice (size_t n,size_t Np)
             {
                 double Tau = Lat[j].Tau;
                 cell = Lat[j].Cells[ParCellPairs[i].ICell];
-                cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
+                //cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
+                double gamma  = len/(12.0*Lat[0].dx);
+                cell->Gamma   = std::min(gamma+cell->Gamma,1.0);
                 //if (fabs(cell->Gamma-1.0)<1.0e-12)
-                if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
+                if (fabs(cell->Gamma-1.0)<1.0e-12&&(fabs(Lat[0].G)>1.0e-12||Gmix>1.0e-12)) 
                 {
                     continue;
                 }
@@ -2056,43 +2060,50 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 Rotation(Pa->w,Pa->Q,tmp);
                 Vec3_t VelP   = Pa->v + cross(tmp,B);
                 double rho = cell->Rho;
-                double Bn  = (cell->Gamma*(Tau-0.5))/((1.0-cell->Gamma)+(Tau-0.5));
+                double Bn  = (gamma*(Tau-0.5))/((1.0-gamma)+(Tau-0.5));
                 //double Bn  = cell->Gamma;
-                for (size_t k=0;k<cell->Nneigh;k++)
+                size_t ncells = cell->Nneigh;
+                Vec3_t Flbm = OrthoSys::O;
+                for (size_t k=0;k<ncells;k++)
                 {
-                    double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
-                    double Fvp     = cell->Feq(k          ,VelP,rho);
-                    cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
-                    Vec3_t Flbm    = -Fconv*Bn*cell->Omeis[k]*cell->C[k]*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx;
-                    Vec3_t T,Tt;
-                    Tt =           cross(B,Flbm);
-                    Quaternion_t q;
-                    Conjugate    (Pa->Q,q);
-                    Rotation     (Tt,q,T);
-                    //std::cout << "1" << std::endl;
-    #ifdef USE_THREAD
-                    pthread_mutex_lock(&Pa->lck);
-    #elif USE_OMP
-                    omp_set_lock      (&Pa->lck);
-    #endif
-                    Pa->F          += Flbm;
-                    Pa->T          += T;
-    #ifdef USE_THREAD
-                    pthread_mutex_unlock(&Pa->lck);
-    #elif USE_OMP
-                    omp_unset_lock    (&Pa->lck);
-    #endif
-                    //std::cout << "2" << std::endl;
-    //#ifdef USE_THREAD
-                    //pthread_mutex_lock  (&cell->lck);
-    //#endif
-                    //cell->Omeis[k] = Omeis;
-                    //cell->Gamma    = Gamma;
-    //#ifdef USE_THREAD
-                    //pthread_mutex_unlock(&cell->lck);
-    //#endif
-                    //std::cout << "3" << std::endl;
+                    double Fvpp     = cell->Feq(cell->Op[k],VelP,rho);
+                    double Fvp      = cell->Feq(k          ,VelP,rho);
+                    double Omega    = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
+                    cell->Omeis[k] += Omega;
+                    Cell *nb        = Lat[j].Cells[cell->Neighs[k]];
+
+                    
+                    Flbm += -(Fconv*Bn*Omega*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx-Lat[j].Gs*cell->W[k]*nb->Rho*floor(nb->Gammap))*cell->C[k];
                 }
+                Vec3_t T,Tt;
+                Tt =           cross(B,Flbm);
+                Quaternion_t q;
+                Conjugate    (Pa->Q,q);
+                Rotation     (Tt,q,T);
+                //std::cout << "1" << std::endl;
+    #ifdef USE_THREAD
+                pthread_mutex_lock(&Pa->lck);
+    #elif USE_OMP
+                omp_set_lock      (&Pa->lck);
+    #endif
+                Pa->F          += Flbm;
+                Pa->T          += T;
+    #ifdef USE_THREAD
+                pthread_mutex_unlock(&Pa->lck);
+    #elif USE_OMP
+                omp_unset_lock    (&Pa->lck);
+    #endif
+                //std::cout << "2" << std::endl;
+    //#ifdef USE_THREAD
+                //pthread_mutex_lock  (&cell->lck);
+    //#endif
+                //cell->Omeis[k] = Omeis;
+                //cell->Gamma    = Gamma;
+    //#ifdef USE_THREAD
+                //pthread_mutex_unlock(&cell->lck);
+    //#endif
+                //std::cout << "3" << std::endl;
+                
             }
             //std::cout << "3" << std::endl;
         }

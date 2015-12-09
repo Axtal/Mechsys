@@ -32,8 +32,8 @@ OPTION(A_MAKE_CHECK_OVERLAP "Check for maximun overlapping in DEM simulations"  
 OPTION(A_USE_THREAD         "Use (p)Threads ?"                                     OFF)
 OPTION(A_USE_OMP            "Use OpenMP  ?"                                        ON )
 #OPTION(A_USE_MPI            "Use OpenMPI ?"                                        OFF)
-OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
-OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
+#OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
+#OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
 OPTION(A_USE_VTK            "Use VTK ?"                                            OFF)
 OPTION(A_USE_HDF5           "Use HDF5 ?"                                           ON )
 #OPTION(A_USE_SUPERLU        "Use SuperLU"                                          OFF)
@@ -47,8 +47,8 @@ ADD_DEFINITIONS(-fmessage-length=0) # Each error message will appear on a single
 #ADD_DEFINITIONS(-std=gnu++11)       # New C++ standard
 ADD_DEFINITIONS(-std=c++0x)         # New C++ standard
 ADD_DEFINITIONS(-fpermissive)       # New C++ standard
-INCLUDE_DIRECTORIES (${INCLUDE_DIRECTORIES} $ENV{HOME}/pkg/boost_1_59_0)
-INCLUDE_DIRECTORIES (${INCLUDE_DIRECTORIES} $ENV{MECHSYS_ROOT}/pkg/boost_1_59_0)
+#INCLUDE_DIRECTORIES (${INCLUDE_DIRECTORIES} $ENV{HOME}/pkg/boost_1_59_0)
+#INCLUDE_DIRECTORIES (${INCLUDE_DIRECTORIES} $ENV{MECHSYS_ROOT}/pkg/boost_1_59_0)
 
 ### FLAGS ###############################################################################################
 
@@ -109,14 +109,14 @@ ENABLE_LANGUAGE (Fortran)
 #INCLUDE      (FindMPI)                                      #  2
 INCLUDE      (FindVTK)                                      #  3
 #FIND_PACKAGE (HDF5 COMPONENTS     HL)                       #  4
-#FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  4
+FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
+#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  4
 INCLUDE      (FindBoost)                                    #  5
-#INCLUDE      (FindLAPACK)                                   #  6
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindLocLAPACK.cmake) #  6
+INCLUDE      (FindLAPACK)                                   #  6
+#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindLocLAPACK.cmake) #  6
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindBLITZ.cmake    ) #  7
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindGSL.cmake      ) #  8
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindMTL.cmake      ) #  9
+#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindMTL.cmake      ) #  9
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindVORO.cmake     ) # 10
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindTETGEN.cmake   ) # 11
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindTRIANGLE.cmake ) # 12

@@ -69,7 +69,7 @@ public:
     size_t                                    Ncells;           // Number of cells per lattice
     double                                    Time;             // The current time
     double                                    G;                // Interaction strength
-    double                                    Gs;               // Interaction strength
+    double                                    Gs;               // Interaction strength with solids
     double                                    Nu;               // Real viscosity
     iVec3_t                                   Ndim;             // Integer dimension of the domain
     double                                    dx;               // grid space
@@ -93,6 +93,7 @@ inline Lattice::Lattice(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, doubl
     Rhoref = 200.0;
     Psiref = 4.0;
     G      = 0.0;
+    Gs     = 0.0;
 
     //Cells.Resize(Ndim[0]*Ndim[1]*Ndim[2]);
     Cells = new Cell * [Ndim[0]*Ndim[1]*Ndim[2]];
@@ -232,8 +233,14 @@ inline void Lattice::SetZeroGamma(size_t n, size_t Np)
 #endif
     for (size_t i=In;i<Fn;i++)
     {
+        Cells[i]->Gammap = Cells[i]->Gamma;
         Cells[i]->Gamma  = 0.0;
         Cells[i]->BForce = Cells[i]->BForcef;
+        size_t ncells = Cells[i]->Nneigh;
+        for (size_t j=0;j<ncells;j++)
+        {
+            Cells[i]->Omeis[j] = 0.0;
+        }
     }
 }
 

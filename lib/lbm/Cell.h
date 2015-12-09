@@ -83,6 +83,7 @@ public:
     bool         IsSolid;  ///< It is a solid node
     double       Tau;      ///< Relaxation Time
     double       Gamma;    ///< Solid/Fluid ratio
+    double       Gammap;   ///< Solid/Fluid ratio on the previous time step
     double       Gs;       ///< Interaction constant between solid and fluid
     size_t       Nneigh;   ///< Number of neighbors
     size_t       ID;       ///< Tag for the particle
@@ -116,6 +117,7 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
     Index  = TheIndexes;
     Cs     = TheCs;
     Gamma  = 0.0;
+    Gammap = 0.0;
     Gs     = 1.0;
     //Tau    = TheTau;
     if (TheMethod==D2Q5)
