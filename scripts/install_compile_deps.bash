@@ -126,7 +126,8 @@ download_and_compile() {
             ;;
         voro)
             PKG=voro++-$VER_VORO
-            LOCATION=http://math.lbl.gov/voro++/download/dir/voro++-$VER_VORO.$EXT
+            LOCATION=http://mechsys.nongnu.org/software/voro++-$VER_VORO.$EXT
+            #LOCATION=http://math.lbl.gov/voro++/download/dir/voro++-$VER_VORO.$EXT
             #DO_PATCH=1
             DO_MAKE=1
             ;;
