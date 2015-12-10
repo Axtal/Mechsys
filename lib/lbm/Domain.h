@@ -1819,7 +1819,8 @@ void Domain::Collide (size_t n, size_t Np)
             double rho = c->Rho;
             //if (rho<1.0e-12) continue;
             //if (c->IsSolid||rho<1.0e-12) continue;
-            if (fabs(c->Gamma-1.0)<1.0e-12&&(fabs(Lat[j].G)>1.0e-12||Gmix>1.0e-12)) continue;
+            //if (fabs(c->Gamma-1.0)<1.0e-12&&(fabs(Lat[j].G)>1.0e-12||Gmix>1.0e-12)) continue;
+            if (fabs(c->Gamma-1.0)<1.0e-12&&(fabs(Lat[j].G)>1.0e-12)) continue;
             //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
             if (!c->IsSolid)
             {
@@ -1834,6 +1835,7 @@ void Domain::Collide (size_t n, size_t Np)
                     double FDeqn = c->Feq(k,DV,rho);
                     NonEq[k] = c->F[k] - FDeqn;
                     Q += NonEq[k]*NonEq[k]*EEk[k];
+                    if(c->Gamma>1.0e-12) c->Omeis[k] /= c->Gamma;
                 }
                 Q = sqrt(2.0*Q);
                 Tau = 0.5*(Tau + sqrt(Tau*Tau + 6.0*Q*Sc/rho));
@@ -1843,6 +1845,7 @@ void Domain::Collide (size_t n, size_t Np)
                 double Bn;
                 rho<10e-12 ? Bn =0.0 : Bn = (c->Gamma*(Lat[j].Tau-0.5))/((1.0-c->Gamma)+(Lat[j].Tau-0.5));
                 //rho<10e-12 ? Bn =0.0 : Bn = c->Gamma;
+                //Bn = (c->Gamma*(Lat[j].Tau-0.5))/((1.0-c->Gamma)+(Lat[j].Tau-0.5));
                 bool valid  = true;
                 double alphal = 1.0;
                 double alphat = 1.0;
@@ -2051,7 +2054,8 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 double gamma  = len/(12.0*Lat[0].dx);
                 cell->Gamma   = std::min(gamma+cell->Gamma,1.0);
                 //if (fabs(cell->Gamma-1.0)<1.0e-12)
-                if (fabs(cell->Gamma-1.0)<1.0e-12&&(fabs(Lat[0].G)>1.0e-12||Gmix>1.0e-12)) 
+                //if (fabs(cell->Gamma-1.0)<1.0e-12&&(fabs(Lat[0].G)>1.0e-12||Gmix>1.0e-12)) 
+                if (fabs(cell->Gamma-1.0)<1.0e-12&&(fabs(Lat[0].G)>1.0e-12)) 
                 {
                     continue;
                 }
@@ -2069,11 +2073,13 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                     double Fvpp     = cell->Feq(cell->Op[k],VelP,rho);
                     double Fvp      = cell->Feq(k          ,VelP,rho);
                     double Omega    = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
-                    cell->Omeis[k] += Omega;
+                    //cell->Omeis[k] += Omega;
+                    cell->Omeis[k] += gamma*Omega;
                     Cell *nb        = Lat[j].Cells[cell->Neighs[k]];
 
-                    
-                    Flbm += -(Fconv*Bn*Omega*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx-Lat[j].Gs*cell->W[k]*nb->Rho*floor(nb->Gammap))*cell->C[k];
+                    double Fcontact;
+                    (cell->Gammap>0.0)&&(cell->Gammap<1.0) ? Fcontact = Lat[j].Gs*cell->W[k]*cell->Rho*floor(nb->Gammap) : Fcontact = 0.0;
+                    Flbm += -(Fconv*Bn*Omega*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx - Fcontact)*cell->C[k];
                 }
                 Vec3_t T,Tt;
                 Tt =           cross(B,Flbm);
@@ -4240,7 +4246,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         }
 
         //Apply molecular forces
-        if (Lat.Size()>1||fabs(Lat[0].G)>1.0e-12)
+        if (Lat.Size()>1||(fabs(Lat[0].G)+fabs(Lat[0].Gs)>1.0e-12))
         {
             bool MC = false;
             if (Lat.Size()==2)
