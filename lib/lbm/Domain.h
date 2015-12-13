@@ -3209,10 +3209,11 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
 
 inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf, double rho, bool Cohesion)
 {
-    Center();
     Vec3_t minX,maxX;
     BoundingBox(minX,maxX);
+    Center();
     GenBox(InitialTag, maxX(0)-minX(0)+2*R, maxX(1)-minX(1)+2*R, maxX(2)-minX(2)+2*R, R, Cf, rho, Cohesion);
+    Center(0.5*(minX+maxX));
 }
 
 inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool Cohesion, bool MC, double thickness)
