@@ -1,20 +1,22 @@
-########################################################################
-# MechSys - Open Library for Mechanical Systems                        #
-# Copyright (C) 2010 Serigo Torres                                     #
-#                                                                      #
-# This program is free software: you can redistribute it and/or modify #
-# it under the terms of the GNU General Public License as published by #
-# the Free Software Foundation, either version 3 of the License, or    #
-# any later version.                                                   #
-#                                                                      #
-# This program is distributed in the hope that it will be useful,      #
-# but WITHOUT ANY WARRANTY; without even the implied warranty of       #
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the         #
-# GNU General Public License for more details.                         #
-#                                                                      #
-# You should have received a copy of the GNU General Public License    #
-# along with this program. If not, see <http://www.gnu.org/licenses/>  #
-########################################################################
+#####################################################################################
+# MechSys - A C++ library to simulate Mechanical Systems                            #
+# Copyright (C) 2010 Sergio Galindo                                                 #
+#                                                                                   #
+# This file is part of MechSys.                                                     #
+#                                                                                   #
+# MechSys is free software; you can redistribute it and/or modify it under the      #
+# terms of the GNU General Public License as published by the Free Software         #
+# Foundation; either version 2 of the License, or (at your option) any later        #
+# version.                                                                          #
+#                                                                                   #
+# MechSys is distributed in the hope that it will be useful, but WITHOUT ANY        #
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A   #
+# PARTICULAR PURPOSE. See the GNU General Public License for more details.          #
+#                                                                                   #
+# You should have received a copy of the GNU General Public License along with      #
+# MechSys; if not, write to the Free Software Foundation, Inc., 51 Franklin Street, #
+# Fifth Floor, Boston, MA 02110-1301, USA                                           #
+#####################################################################################
 
 # Flags
 OPTION(A_MAKE_VERBOSE       "Show additional messages during compilation/linking?" ON )
@@ -29,7 +31,6 @@ OPTION(A_MAKE_STDVECTOR     "Use std::vector instead of own implemenatation ?"  
 OPTION(A_MAKE_CHECK_OVERLAP "Check for maximun overlapping in DEM simulations"     ON )
                                                                                    
 # Options                                                                          
-OPTION(A_USE_THREAD         "Use (p)Threads ?"                                     OFF)
 OPTION(A_USE_OMP            "Use OpenMP  ?"                                        ON )
 #OPTION(A_USE_MPI            "Use OpenMPI ?"                                        OFF)
 OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
@@ -373,16 +374,16 @@ else(IGRAPH_FOUND)
 endif(IGRAPH_FOUND)
 
 # 25
-if(Threads_FOUND AND A_USE_THREAD)
-    SET (LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
-    ADD_DEFINITIONS (-DUSE_THREAD)
-    SET (LFLAGS "${LFLAGS} -pthread")
-else(Threads_FOUND AND A_USE_THREAD)
-    if(A_USE_THREAD)
-        SET (MISSING "${MISSING} (p)Threads")
-    endif(A_USE_THREAD)
-endif(Threads_FOUND AND A_USE_THREAD)
-
+#if(Threads_FOUND AND A_USE_THREAD)
+    #SET (LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
+    #ADD_DEFINITIONS (-DUSE_THREAD)
+    #SET (LFLAGS "${LFLAGS} -pthread")
+#else(Threads_FOUND AND A_USE_THREAD)
+    #if(A_USE_THREAD)
+        #SET (MISSING "${MISSING} (p)Threads")
+    #endif(A_USE_THREAD)
+#endif(Threads_FOUND AND A_USE_THREAD)
+#
 # 26
 if(OPENMP_FOUND AND A_USE_OMP)
     ADD_DEFINITIONS (-DUSE_OMP)

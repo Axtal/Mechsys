@@ -160,14 +160,7 @@ public:
     void   AngularMomentum (Vec3_t & L);                    ///< Return total angular momentum of the system
     double CalcEnergy      (double & Ekin, double & Epot);  ///< Return total energy of the system
 
-#ifdef USE_THREAD
-    pthread_mutex_t                                   lck;                         ///< to protect variables in multithreading
-    Array<std::pair<size_t, size_t> >                 ListPosPairs;                ///< List of all possible particles pairs
-    iVec3_t                                           LCellDim;                    ///< Dimensions of the linked cell array
-    Array<Array <size_t> >                            LinkedCell;                  ///< Linked Cell array for optimization.
-    Vec3_t                                            LCxmin;                      ///< Bounding box low   limit for the linked cell array
-    Vec3_t                                            LCxmax;                      ///< Bounding box upper limit for the linked cell array
-#elif USE_OMP
+#ifdef USE_OMP
     omp_lock_t                                        lck;                         ///< to protect variables in multithreading
     Array<std::pair<size_t, size_t> >                 ListPosPairs;                ///< List of all possible particles pairs
     iVec3_t                                           LCellDim;                    ///< Dimensions of the linked cell array
@@ -217,38 +210,6 @@ public:
     FrictionMap_t                                     RollSpheres;                 ///< Map storing the rolling resistance between spheres
     void     CalcForceSphere();                                                    ///< Calculate force between only spheres spheres
     
-#ifdef USE_BOOST_PYTHON
-    void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
-    void PyAddCube   (int Tag, BPy::tuple const & X, double R, double L, double rho, double Ang, BPy::tuple const & Ax)            { Vec3_t a(Tup2Vec3(Ax)); AddCube  (Tag,Tup2Vec3(X),R,L,rho,Ang,&a); }
-    void PyAddTetra  (int Tag, BPy::tuple const & X, double R, double L, double rho, double Ang, BPy::tuple const & Ax)            { Vec3_t a(Tup2Vec3(Ax)); AddTetra (Tag,Tup2Vec3(X),R,L,rho,Ang,&a); }
-    void PyAddRice   (int Tag, BPy::tuple const & X, double R, double L, double rho, double Ang, BPy::tuple const & Ax)            { Vec3_t a(Tup2Vec3(Ax)); AddRice  (Tag,Tup2Vec3(X),R,L,rho,Ang,&a); }
-    void PyAddPlane  (int Tag, BPy::tuple const & X, double R, double Lx,double Ly, double rho, double Ang, BPy::tuple const & Ax) { Vec3_t a(Tup2Vec3(Ax)); AddPlane (Tag,Tup2Vec3(X),R,Lx,Ly,rho,Ang,&a); }
-    void PySetCamPos (BPy::tuple const & PyCamPos)                                                                                 { CamPos = Tup2Vec3(PyCamPos); }
-    void PyGetParticles(BPy::list & P)
-    {
-        for (size_t i=0; i<Particles.Size(); ++i)
-        {
-            BPy::list p,V,E,F;
-            double radius = Particles[i]->PyGetFeatures (V, E, F);
-            p.append (radius);
-            p.append (V);
-            p.append (E);
-            p.append (F);
-            P.append (p);
-        }
-    }
-    void PyGetGSD (BPy::list & X, BPy::list & Y, BPy::list & D, int NDiv=10)
-    {
-        Array<double> x, y, d;
-        GetGSD (x, y, d, NDiv);
-        for (size_t i=0; i<x.Size(); ++i)
-        {
-            X.append (x[i]);
-            Y.append (y[i]);
-        }
-    }
-#endif
-
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -269,380 +230,6 @@ struct MtData   /// A structure for the multi-thread data
     Array<std::pair<iVec3_t,size_t> > LLC; ///< A temporal array of possible linked cells locations
     Array<std::pair<size_t,size_t> >  LPP; ///< A temporal array of possible partcle types
 };
-
-#ifdef USE_THREAD
-
-void * GlobalIni(void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-    Array<Particle * > * P = &dat.Dom->Particles;
-	size_t Ni = P->Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
-	for (size_t i=In;i<Fn;i++)
-	{
-        // set the force and torque to the fixed values
-        (*P)[i]->F = (*P)[i]->Ff;
-        (*P)[i]->T = (*P)[i]->Tf;
-        for (size_t n=0;n<3;n++)
-        {
-            for (size_t m=0;m<3;m++)  
-            {
-                (*P)[i]->M(n,m)=0.0;
-                (*P)[i]->B(n,m)=0.0;
-            }
-        }
-
-        // initialize the coordination (number of contacts per particle) number and the Bdry flag
-        (*P)[i]->Comp = 0.0;
-        (*P)[i]->Cn   = 0.0;
-        //(*P)[i]->Bdry = false;
-    }
-    return NULL;
-}
-
-void * GlobalForce(void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-    Array<Interacton * > * I = &dat.Dom->Interactons;
-	size_t Ni = I->Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = I->Size() : Fn = (dat.ProcRank+1)*Ni;
-	for (size_t i=In;i<Fn;i++)
-	{
-		if ((*I)[i]->CalcForce(dat.Dom->Dt))
-        {
-            dat.Dom->Save     ("error");
-            dat.Dom->WriteXDMF("error");
-            std::cout << "Maximun overlap detected between particles at time " << dat.Dom->Time << std::endl;
-            sleep(1);
-            throw new Fatal("Maximun overlap detected between particles");
-        }
-#ifdef USE_THREAD
-        pthread_mutex_lock  (&(*I)[i]->P1->lck);
-#endif
-        (*I)[i]->P1->F += (*I)[i]->F1;
-        (*I)[i]->P1->T += (*I)[i]->T1;
-#ifdef USE_THREAD
-        pthread_mutex_unlock(&(*I)[i]->P1->lck);
-        pthread_mutex_lock  (&(*I)[i]->P2->lck);
-#endif
-        (*I)[i]->P2->F += (*I)[i]->F2;
-        (*I)[i]->P2->T += (*I)[i]->T2;
-#ifdef USE_THREAD
-        pthread_mutex_unlock(&(*I)[i]->P2->lck);
-#endif
-	}
-    //std::cout << "Im finished " << dat.ProcRank << " " << Fn-In << std::endl;
-    return NULL;
-}
-
-void * GlobalMove(void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-    Array<Particle * > * P = &dat.Dom->Particles;
-	size_t Ni = P->Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
-    dat.Dmx = 0.0;
-	for (size_t i=In;i<Fn;i++)
-	{
-        //std::cout << "1" << std::endl;
-		(*P)[i]->Translate(dat.Dom->Dt);
-        //std::cout << "2" << std::endl;
-		(*P)[i]->Rotate(dat.Dom->Dt);
-        //std::cout << "3" << std::endl;
-        if ((*P)[i]->MaxDisplacement()>dat.Dmx) dat.Dmx = (*P)[i]->MaxDisplacement();
-	}
-    //std::cout << "Im finished " << dat.ProcRank << " " << Fn-In << std::endl;
-    return NULL;
-}
-
-void * GlobalResetDisplacement(void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-    Array<Particle * > * P = &dat.Dom->Particles;
-	size_t Ni = P->Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
-    dat.Dmx = 0.0;
-    dat.LLC.Resize(0);
-	for (size_t i=In;i<Fn;i++)
-    {
-        (*P)[i]->ResetDisplacements();
-        if ((*P)[i]->IsFree())
-        {
-            iVec3_t idx = ((*P)[i]->x - dat.Dom->LCxmin)/(2.0*dat.Dom->Beta*dat.Dom->MaxDmax);
-            dat.LLC.Push(std::make_pair(idx,i));
-        }
-    }
-    return NULL;
-}
-
-void * GlobalUpdateLinkedCells(void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-	size_t Ni = dat.Dom->FreePar.Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->FreePar.Size() : Fn = (dat.ProcRank+1)*Ni;
-    dat.LPP.Resize(0);
-    for (size_t i=In;i<Fn;i++)
-    for (size_t j=0;j<dat.Dom->NoFreePar.Size();j++)
-    {
-        size_t i1 = std::min(dat.Dom->FreePar[i],dat.Dom->NoFreePar[j]);
-        size_t i2 = std::max(dat.Dom->FreePar[i],dat.Dom->NoFreePar[j]);
-        dat.LPP.Push(std::make_pair(i1,i2));
-    }
-	Ni = dat.Dom->LinkedCell.Size()/dat.N_Proc;
-    In = dat.ProcRank*Ni;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->LinkedCell.Size() : Fn = (dat.ProcRank+1)*Ni;
-    for (size_t idx=In;idx<Fn;idx++)
-    {
-        if (dat.Dom->LinkedCell[idx].Size()==0) continue;
-        iVec3_t index;
-        idx2Pt(idx,index,dat.Dom->LCellDim);
-        for (size_t n=0  ;n<dat.Dom->LinkedCell[idx].Size()-1;n++)
-        for (size_t m=n+1;m<dat.Dom->LinkedCell[idx].Size()  ;m++)
-        {
-            size_t i1 = dat.Dom->LinkedCell[idx][n];
-            size_t i2 = dat.Dom->LinkedCell[idx][m];
-            if (i1==i2) continue;
-            dat.LPP.Push(std::make_pair(i1,i2));
-        }
-        size_t i = index(0);
-        size_t j = index(1);
-        size_t k = index(2);
-        for (size_t knb=std::max(0,int(k)-1);knb<=std::min(dat.Dom->LCellDim(2)-1,k+1);knb++)
-        for (size_t jnb=std::max(0,int(j)-1);jnb<=std::min(dat.Dom->LCellDim(1)-1,j+1);jnb++)
-        for (size_t inb=std::max(0,int(i)-1);inb<=std::min(dat.Dom->LCellDim(0)-1,i+1);inb++)
-        {
-            iVec3_t Ptnb(inb,jnb,knb);
-            size_t idxnb = Pt2idx(Ptnb,dat.Dom->LCellDim);
-            if (idxnb>idx)
-            {
-                for (size_t n=0;n<dat.Dom->LinkedCell[idx].Size()  ;n++)
-                {
-                    for (size_t m=0;m<dat.Dom->LinkedCell[idxnb].Size()  ;m++)
-                    {
-                        size_t i1 = std::min(dat.Dom->LinkedCell[idx  ][n],dat.Dom->LinkedCell[idxnb][m]);
-                        size_t i2 = std::max(dat.Dom->LinkedCell[idx  ][n],dat.Dom->LinkedCell[idxnb][m]);
-                        if (i1==i2) continue;
-                        dat.LPP.Push(std::make_pair(i1,i2));
-                    }
-                }
-            }
-        }
-    }
-    //std::cout << "Im finished " << dat.ProcRank << std::endl;
-    return NULL;
-}
-
-void * GlobalResetContacts1 (void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-	size_t Ni = dat.Dom->ListPosPairs.Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->ListPosPairs.Size() : Fn = (dat.ProcRank+1)*Ni;
-    dat.LC.Resize(0);
-
-    //std::cout << dat.Dom->ListPosPairs.Size() << " " << Ni << std::endl;
-
-    for (size_t n=In;n<Fn;n++)
-    {
-        size_t i = dat.Dom->ListPosPairs[n].first;
-        size_t j = dat.Dom->ListPosPairs[n].second;
-        bool pi_has_vf = !dat.Dom->Particles[i]->IsFree();
-        bool pj_has_vf = !dat.Dom->Particles[j]->IsFree();
-
-        bool close = (Distance(dat.Dom->Particles[i]->x,dat.Dom->Particles[j]->x)<=dat.Dom->Particles[i]->Dmax+dat.Dom->Particles[j]->Dmax+2*dat.Dom->Alpha);
-        if ((pi_has_vf && pj_has_vf) || !close) continue;
-        //if (!close) continue;
-        
-        // checking if the interacton exist for that pair of particles
-        std::set<std::pair<Particle *, Particle *> >::iterator it = dat.Dom->Listofpairs.find(std::make_pair(dat.Dom->Particles[i],dat.Dom->Particles[j]));
-        if (it != dat.Dom->Listofpairs.end())
-        {
-            continue;
-        }
-        dat.LC.Push(std::make_pair(i,j));
-    }
-    return NULL;
-}
-
-void * GlobalResetContacts2 (void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-	size_t Ni = dat.Dom->CInteractons.Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->CInteractons.Size() : Fn = (dat.ProcRank+1)*Ni;
-    dat.LCI.Resize(0);
-    for (size_t n=In;n<Fn;n++)
-    {
-        if(dat.Dom->CInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LCI.Push(n);
-    }
-	Ni = dat.Dom->BInteractons.Size()/dat.N_Proc;
-    In = dat.ProcRank*Ni;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->BInteractons.Size() : Fn = (dat.ProcRank+1)*Ni;
-    dat.LCB.Resize(0);
-    for (size_t n=In;n<Fn;n++)
-    {
-        if(dat.Dom->BInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LCB.Push(n);
-    }
-    return NULL;
-}
-
-void * GlobalResetBoundaries1 (void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-    Array<Particle * > * P = &dat.Dom->Particles;
-	size_t Ni = P->Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
-    dat.LBP.Resize(0);
-	for (size_t i=In;i<Fn;i++)
-    {
-        Particle * Pa = (*P)[i];
-        if ((Pa->MinX()>dat.Dom->Xmax)&&Pa->IsFree())
-        {
-            Vec3_t v(dat.Dom->Xmin-dat.Dom->Xmax,0.0,0.0);
-            Pa->Translate(v);
-        }
-        if ((Pa->MaxX()<dat.Dom->Xmin)&&Pa->IsFree())
-        {
-            Vec3_t v(dat.Dom->Xmax-dat.Dom->Xmin,0.0,0.0);
-            Pa->Translate(v);
-        }
-        if ((Pa->MaxX()>dat.Dom->Xmax-2.0*dat.Dom->Alpha-2.0*dat.Dom->MaxDmax)&&Pa->IsFree())
-        {
-            dat.LBP.Push(i);
-        }
-    }
-    return NULL;
-}
-
-void * GlobalResetBoundaries2 (void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-    Array<Particle * > * P = &dat.Dom->ParXmax;
-	size_t Ni = P->Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
-    dat.LPC.Resize(0);
-    Vec3_t v(dat.Dom->Xmin-dat.Dom->Xmax,0.0,0.0);
-	for (size_t i=In;i<Fn;i++)
-    {
-        Particle * P1 = (*P)[i];
-        P1->Translate(v);
-        for (size_t j=0; j<dat.Dom->Particles.Size(); j++)
-        {
-            Particle * P2 = dat.Dom->Particles[j];
-            if (P1==P2||!P2->IsFree()||P->Has(P2)) continue;
-            bool close = (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*dat.Dom->Alpha);
-            if (!close) continue;
-            std::set<std::pair<Particle *, Particle *> >::iterator it = dat.Dom->PListofpairs.find(std::make_pair(P1,P2));
-            if (it != dat.Dom->PListofpairs.end())
-            {
-                continue;
-            }
-            dat.LPC.Push(std::make_pair(i,j));
-        }
-    }
-    return NULL;
-}
-
-void * GlobalResetBoundaries3 (void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-	size_t Ni = dat.Dom->CPInteractons.Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = dat.Dom->CPInteractons.Size() : Fn = (dat.ProcRank+1)*Ni;
-    dat.LPCI.Resize(0);
-    for (size_t n=In;n<Fn;n++)
-    {
-        if(dat.Dom->CPInteractons[n]->UpdateContacts(dat.Dom->Alpha)) dat.LPCI.Push(n);
-    }
-    return NULL;
-}
-
-void * GlobalPerTranslate(void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-    Array<Particle * > * P = &dat.Dom->ParXmax;
-	size_t Ni = P->Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
-    Vec3_t v(dat.Dom->Xmin-dat.Dom->Xmax,0.0,0.0);
-	for (size_t i=In;i<Fn;i++)
-    {
-        (*P)[i]->Translate(v);
-    }
-    return NULL;
-}
-
-void * GlobalPerTranslateBack(void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-    Array<Particle * > * P = &dat.Dom->ParXmax;
-	size_t Ni = P->Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = P->Size() : Fn = (dat.ProcRank+1)*Ni;
-    Vec3_t v(dat.Dom->Xmax-dat.Dom->Xmin,0.0,0.0);
-	for (size_t i=In;i<Fn;i++)
-    {
-        (*P)[i]->Translate(v);
-    }
-    return NULL;
-}
-
-void * GlobalPerForce(void * Data)
-{
-    DEM::MtData & dat = (*static_cast<DEM::MtData *>(Data));
-    Array<Interacton * > * I = &dat.Dom->PInteractons;
-	size_t Ni = I->Size()/dat.N_Proc;
-    size_t In = dat.ProcRank*Ni;
-    size_t Fn;
-    dat.ProcRank == dat.N_Proc-1 ? Fn = I->Size() : Fn = (dat.ProcRank+1)*Ni;
-	for (size_t i=In;i<Fn;i++)
-	{
-		if ((*I)[i]->CalcForce(dat.Dom->Dt))
-        {
-            dat.Dom->Save     ("error");
-            dat.Dom->WriteXDMF("error");
-            std::cout << "Maximun overlap detected between particles at Time" << dat.Dom->Time << std::endl;
-            sleep(1);
-            throw new Fatal("Maximun overlap detected between particles");
-        }
-#ifdef USE_THREAD
-        pthread_mutex_lock  (&(*I)[i]->P1->lck);
-#endif
-        (*I)[i]->P1->F += (*I)[i]->F1;
-        (*I)[i]->P1->T += (*I)[i]->T1;
-#ifdef USE_THREAD
-        pthread_mutex_unlock(&(*I)[i]->P1->lck);
-        pthread_mutex_lock  (&(*I)[i]->P2->lck);
-#endif
-        (*I)[i]->P2->F += (*I)[i]->F2;
-        (*I)[i]->P2->T += (*I)[i]->T2;
-#ifdef USE_THREAD
-        pthread_mutex_unlock(&(*I)[i]->P2->lck);
-#endif
-	}
-    return NULL;
-}
-
-#endif
 
 // Constructor & Destructor
 
@@ -2158,155 +1745,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     //iVec3_t iv;
     //idx2Pt(16,iv,LCellDim);
     //std::cout << iv << std::endl;
-#ifdef USE_THREAD
-    pthread_t thrs[Nproc];
-    
-
-    for (size_t i=0;i<Nproc;i++)
-    {
-        pthread_create(&thrs[i], NULL, GlobalResetDisplacement, &MTD[i]);
-    }
-    for (size_t i=0;i<Nproc;i++)
-    {
-        pthread_join(thrs[i], NULL);
-        for (size_t j=0;j<MTD[i].LLC.Size();j++)
-        {
-            size_t idx = Pt2idx(MTD[i].LLC[j].first,LCellDim);
-            LinkedCell[idx].Push(MTD[i].LLC[j].second);
-        }
-    }
-
-    //std::cout << "2 " << CInteractons.Size() << std::endl;
-    for (size_t i=0;i<Nproc;i++)
-    {
-        pthread_create(&thrs[i], NULL, GlobalUpdateLinkedCells, &MTD[i]);
-    }
-    size_t Npp = 0;
-    for (size_t i=0;i<Nproc;i++)
-    {
-        pthread_join(thrs[i], NULL);
-        Npp += MTD[i].LPP.Size();
-    }
-    ListPosPairs.Resize(Npp);
-    size_t idx = 0;
-    for (size_t i=0;i<Nproc;i++)
-    {
-        for (size_t j=0;j<MTD[i].LPP.Size();j++)
-        {
-            ListPosPairs[idx] = MTD[i].LPP[j];
-            idx++;
-        }
-    }
-    //UpdateLinkedCells();
-
-    //std::cout << "3 " << CInteractons.Size() << std::endl;
-    for (size_t i=0;i<Nproc;i++)
-    {
-        pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
-    }
-    for (size_t i=0;i<Nproc;i++)
-    {
-        pthread_join(thrs[i], NULL);
-        //std::cout << MTD[i].LC.Size() << std::endl;
-        for (size_t j=0;j<MTD[i].LC.Size();j++)
-        {
-        //std::cout << MTD[i].LC.Size() << std::endl;
-            size_t n = MTD[i].LC[j].first;
-            size_t m = MTD[i].LC[j].second;
-            Listofpairs.insert(std::make_pair(Particles[n],Particles[m]));
-            if (Particles[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
-            {
-                CInteractons.Push (new CInteractonSphere(Particles[n],Particles[m]));
-            }
-            else
-            {
-                CInteractons.Push (new CInteracton(Particles[n],Particles[m]));
-            }
-        }
-    }
-    //std::cout << ListPosPairs.Size() << endl;
-    //std::cout << "4 " << CInteractons.Size() << std::endl;
-    for (size_t i=0;i<Nproc;i++)
-    {
-        pthread_create(&thrs[i], NULL, GlobalResetContacts2, &MTD[i]);
-    }
-    Interactons.Resize(0);
-    for (size_t i=0;i<Nproc;i++)
-    {
-        pthread_join(thrs[i], NULL);
-        for (size_t j=0;j<MTD[i].LCI.Size();j++)
-        {
-            Interactons.Push(CInteractons[MTD[i].LCI[j]]);
-        }
-        for (size_t j=0;j<MTD[i].LCB.Size();j++)
-        {
-            Interactons.Push(BInteractons[MTD[i].LCB[j]]);
-        }
-    }
-
-    if (Xmax-Xmin>Alpha)
-    {
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_create(&thrs[i], NULL, GlobalResetBoundaries1, &MTD[i]);
-        }
-        ParXmax.Resize(0);
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_join(thrs[i], NULL);
-            for (size_t j=0;j<MTD[i].LBP.Size();j++)
-            {
-                ParXmax.Push(Particles[MTD[i].LBP[j]]);
-            }
-        }
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_create(&thrs[i], NULL, GlobalResetBoundaries2, &MTD[i]);
-        }
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_join(thrs[i], NULL);
-            for (size_t j=0;j<MTD[i].LPC.Size();j++)
-            {
-                size_t n = MTD[i].LPC[j].first;
-                size_t m = MTD[i].LPC[j].second;
-                PListofpairs.insert(std::make_pair(ParXmax[n],Particles[m]));
-                if (ParXmax[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
-                {
-                    CPInteractons.Push (new CInteractonSphere(ParXmax[n],Particles[m]));
-                }
-                else
-                {
-                    CPInteractons.Push (new CInteracton(ParXmax[n],Particles[m]));
-                }
-            }
-        }
-        //std::cout << "2 " << CPInteractons.Size() << std::endl;
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_create(&thrs[i], NULL, GlobalResetBoundaries3, &MTD[i]);
-        }
-        PInteractons.Resize(0);
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_join(thrs[i], NULL);
-            for (size_t j=0;j<MTD[i].LPCI.Size();j++)
-            {
-                PInteractons.Push(CPInteractons[MTD[i].LPCI[j]]);
-            }
-        }
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_create(&thrs[i], NULL, GlobalPerTranslateBack, &MTD[i]);
-        }
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_join(thrs[i], NULL);
-        }
-        //std::cout << ParXmax.Size() << std::endl;
-    }
-
-#elif USE_OMP
+#ifdef USE_OMP
     //std::cout << "2 " << CInteractons.Size() << std::endl;
     //ResetDisplacements
     ResetDisplacements();
@@ -2359,235 +1798,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             idx_out++;
             tout += dtOut;
         }
-#ifdef USE_THREAD
-        //Initialize particles
-        //std::cout << "1" << std::endl;
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_create(&thrs[i], NULL, GlobalIni, &MTD[i]);
-        }
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_join(thrs[i], NULL);
-        }
-
-        //Calculate forces
-        //std::cout << "2" << std::endl;
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_create(&thrs[i], NULL, GlobalForce, &MTD[i]);
-        }
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_join(thrs[i], NULL);
-        }
-        //for (size_t i=0;i<Interactons.Size();i++)
-        //{
-            //Interactons[i]->P1->F += Interactons[i]->F1;
-            //Interactons[i]->P1->T += Interactons[i]->T1;
-            //Interactons[i]->P2->F += Interactons[i]->F2;
-            //Interactons[i]->P2->T += Interactons[i]->T2;
-        //}
-        //
-        // Periodic Boundary
-        //std::cout << "3" << std::endl;
-        if (Xmax-Xmin>Alpha)
-        {
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_create(&thrs[i], NULL, GlobalPerTranslate, &MTD[i]);
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_join(thrs[i], NULL);
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_create(&thrs[i], NULL, GlobalPerForce, &MTD[i]);
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_join(thrs[i], NULL);
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_create(&thrs[i], NULL, GlobalPerTranslateBack, &MTD[i]);
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_join(thrs[i], NULL);
-            }
-        }
-
-        // tell the user function to update its data
-        //std::cout << "4" << std::endl;
-        if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
-
-        // Move Particles
-        //std::cout << "5" << std::endl;
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_create(&thrs[i], NULL, GlobalMove, &MTD[i]);
-        }
-        double maxdis = 0.0;
-        for (size_t i=0;i<Nproc;i++)
-        {
-            pthread_join(thrs[i], NULL);
-            if (maxdis<MTD[i].Dmx) maxdis = MTD[i].Dmx;
-        }
-
-        //Update Linked Cells
-        //std::cout << "6" << std::endl;
-        if (maxdis>Alpha)
-        {
-            //std::cout << "A" <<  std::endl;
-            LinkedCell.Resize(0);
-            BoundingBox(LCxmin,LCxmax);
-            LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
-            LinkedCell.Resize(LCellDim(0)*LCellDim(1)*LCellDim(2));
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_create(&thrs[i], NULL, GlobalResetDisplacement, &MTD[i]);
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_join(thrs[i], NULL);
-                for (size_t j=0;j<MTD[i].LLC.Size();j++)
-                {
-                    size_t idx = Pt2idx(MTD[i].LLC[j].first,LCellDim);
-                    LinkedCell[idx].Push(MTD[i].LLC[j].second);
-                }
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_create(&thrs[i], NULL, GlobalUpdateLinkedCells, &MTD[i]);
-            }
-            Npp = 0;
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_join(thrs[i], NULL);
-                Npp += MTD[i].LPP.Size();
-            }
-            ListPosPairs.Resize(Npp);
-            idx = 0;
-            for (size_t i=0;i<Nproc;i++)
-            {
-                for (size_t j=0;j<MTD[i].LPP.Size();j++)
-                {
-                    ListPosPairs[idx] = MTD[i].LPP[j];
-                    idx++;
-                }
-            }
-            //UpdateLinkedCells();
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_create(&thrs[i], NULL, GlobalResetContacts1, &MTD[i]);
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_join(thrs[i], NULL);
-                for (size_t j=0;j<MTD[i].LC.Size();j++)
-                {
-                    size_t n = MTD[i].LC[j].first;
-                    size_t m = MTD[i].LC[j].second;
-                    Listofpairs.insert(std::make_pair(Particles[n],Particles[m]));
-                    if (Particles[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
-                    {
-                        CInteractons.Push (new CInteractonSphere(Particles[n],Particles[m]));
-                    }
-                    else
-                    {
-                        CInteractons.Push (new CInteracton(Particles[n],Particles[m]));
-                    }
-                }
-            }
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_create(&thrs[i], NULL, GlobalResetContacts2, &MTD[i]);
-            }
-            Interactons.Resize(0);
-            for (size_t i=0;i<Nproc;i++)
-            {
-                pthread_join(thrs[i], NULL);
-                for (size_t j=0;j<MTD[i].LCI.Size();j++)
-                {
-                    Interactons.Push(CInteractons[MTD[i].LCI[j]]);
-                }
-                for (size_t j=0;j<MTD[i].LCB.Size();j++)
-                {
-                    Interactons.Push(BInteractons[MTD[i].LCB[j]]);
-                }
-            }
-
-
-            ///////////////// Periodic Boundaries ////////////////////////
-            //std::cout << "1" << std::endl;
-            if (Xmax-Xmin>Alpha)
-            {
-                for (size_t i=0;i<Nproc;i++)
-                {
-                    pthread_create(&thrs[i], NULL, GlobalResetBoundaries1, &MTD[i]);
-                }
-                ParXmax.Resize(0);
-                for (size_t i=0;i<Nproc;i++)
-                {
-                    pthread_join(thrs[i], NULL);
-                    for (size_t j=0;j<MTD[i].LBP.Size();j++)
-                    {
-                        ParXmax.Push(Particles[MTD[i].LBP[j]]);
-                    }
-                }
-                for (size_t i=0;i<Nproc;i++)
-                {
-                    pthread_create(&thrs[i], NULL, GlobalResetBoundaries2, &MTD[i]);
-                }
-                for (size_t i=0;i<Nproc;i++)
-                {
-                    pthread_join(thrs[i], NULL);
-                    for (size_t j=0;j<MTD[i].LPC.Size();j++)
-                    {
-                        size_t n = MTD[i].LPC[j].first;
-                        size_t m = MTD[i].LPC[j].second;
-                        PListofpairs.insert(std::make_pair(ParXmax[n],Particles[m]));
-                        if (ParXmax[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
-                        {
-                            CPInteractons.Push (new CInteractonSphere(ParXmax[n],Particles[m]));
-                        }
-                        else
-                        {
-                            CPInteractons.Push (new CInteracton(ParXmax[n],Particles[m]));
-                        }
-                    }
-                }
-                //std::cout << "2 " << CPInteractons.Size() << std::endl;
-                for (size_t i=0;i<Nproc;i++)
-                {
-                    pthread_create(&thrs[i], NULL, GlobalResetBoundaries3, &MTD[i]);
-                }
-                PInteractons.Resize(0);
-                for (size_t i=0;i<Nproc;i++)
-                {
-                    pthread_join(thrs[i], NULL);
-                    for (size_t j=0;j<MTD[i].LPCI.Size();j++)
-                    {
-                        PInteractons.Push(CPInteractons[MTD[i].LPCI[j]]);
-                    }
-                }
-                for (size_t i=0;i<Nproc;i++)
-                {
-                    pthread_create(&thrs[i], NULL, GlobalPerTranslateBack, &MTD[i]);
-                }
-                for (size_t i=0;i<Nproc;i++)
-                {
-                    pthread_join(thrs[i], NULL);
-                }
-                //std::cout << ParXmax.Size() << std::endl;
-            }
-        }
-
-
-        //std::cout << "4 " << Time << std::endl;
-#elif USE_OMP        
+#ifdef USE_OMP 
         //Initialize particles
         //std::cout << "1" << std::endl;
         #pragma omp parallel for schedule(static) num_threads(Nproc)
@@ -2596,18 +1807,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             // set the force and torque to the fixed values
             Particles[i]->F = Particles[i]->Ff;
             Particles[i]->T = Particles[i]->Tf;
-            for (size_t n=0;n<3;n++)
-            {
-                for (size_t m=0;m<3;m++)  
-                {
-                    Particles[i]->M(n,m)=0.0;
-                    Particles[i]->B(n,m)=0.0;
-                }
-            }
 
-            // initialize the coordination (number of contacts per particle) number and the flag of the particle begin in contact with the container
-            Particles[i]->Cn   = 0.0;
-            Particles[i]->Comp = 0.0;
             //Particles[i]->Bdry = false;
         }
 
@@ -2618,8 +1818,9 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         {
 		    if (Interactons[i]->CalcForce(Dt))
             {
-                Save     ("error");
-                WriteXDMF("error");
+                String f_error(FileKey+"_error");
+                Save     (f_error.CStr());
+                WriteXDMF(f_error.CStr());
                 std::cout << "Maximun overlap detected between particles at time " << Time << std::endl;
                 sleep(1);
                 throw new Fatal("Maximun overlap detected between particles");
@@ -2727,17 +1928,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             // set the force and torque to the fixed values
             Particles[i]->F = Particles[i]->Ff;
             Particles[i]->T = Particles[i]->Tf;
-            for (size_t n=0;n<3;n++)
-            {
-                for (size_t m=0;m<3;m++)  
-                {
-                    Particles[i]->M(n,m)=0.0;
-                    Particles[i]->B(n,m)=0.0;
-                }
-            }
-
-            // initialize the coordination (number of contacts per particle) number and the flag of the particle begin in contact with the container
-            Particles[i]->Cn   = 0.0;
             //Particles[i]->Bdry = false;
 
             // external work added to the system by the fixed forces Ff
@@ -3143,7 +2333,6 @@ inline void Domain::WriteXDMF (char const * FileKey)
         int    * Clus    = new int   [  N_Faces];
         float  * Vel     = new float [  N_Faces];
         float  * Ome     = new float [  N_Faces];
-        float  * FComp   = new float [  N_Faces];
         //float  * Stress  = new float [9*N_Faces];
 
         size_t n_verts = 0;
@@ -3202,7 +2391,6 @@ inline void Domain::WriteXDMF (char const * FileKey)
                     Clus  [n_attrs] = size_t(Pa->Cluster);
                     Vel   [n_attrs] = float(norm(Pa->v));
                     Ome   [n_attrs] = float(norm(Pa->w));
-                    FComp [n_attrs] = float(Pa->Comp);
                     n_attrs++;
 
                     //Vel [n_attrv  ] = (float) Pa->v(0);
@@ -3245,12 +2433,6 @@ inline void Domain::WriteXDMF (char const * FileKey)
         dims[0] = N_Faces;
         dsname.Printf("AngVelocity");
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Ome);
-        dims[0] = N_Faces;
-        dsname.Printf("FaceComp");
-        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,FComp);
-        //dims[0] = 9*N_Faces;
-        //dsname.Printf("Stress");
-        //H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Stress);
         
         //Erasing the data
         delete [] Verts;
@@ -3259,7 +2441,6 @@ inline void Domain::WriteXDMF (char const * FileKey)
         delete [] Clus;
         delete [] Vel;
         delete [] Ome;
-        delete [] FComp;
         //delete [] Stress;
     }
     // Storing center of mass data
@@ -3269,7 +2450,6 @@ inline void Domain::WriteXDMF (char const * FileKey)
     float * Velvec = new float[3*Particles.Size()];
     float * Omevec = new float[3*Particles.Size()];
     int   * Tag    = new int  [  Particles.Size()];
-    float * Comp   = new float[  Particles.Size()];
     for (size_t i=0;i<Particles.Size();i++)
     {
         Vec3_t Ome;
@@ -3285,8 +2465,6 @@ inline void Domain::WriteXDMF (char const * FileKey)
         Omevec[3*i+1] = float(Ome(1)); 
         Omevec[3*i+2] = float(Ome(2)); 
         Tag   [i]     = int  (Particles[i]->Tag);  
-        //Comp  [i]     = float(Particles[i]->M(0,0) + Particles[i]->M(1,1) + Particles[i]->M(2,2));
-        Comp[i]       = float(Particles[i]->Comp);
     }
 
     hsize_t dims[1];
@@ -3303,8 +2481,6 @@ inline void Domain::WriteXDMF (char const * FileKey)
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Radius);
     dsname.Printf("PTag");
     H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,Tag   );
-    dsname.Printf("PComp");
-    H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Comp  );
 
 
     delete [] Radius;
@@ -3312,7 +2488,6 @@ inline void Domain::WriteXDMF (char const * FileKey)
     delete [] Velvec;
     delete [] Omevec;
     delete [] Tag;
-    delete [] Comp;
 
 
     //Closing the file
@@ -3359,22 +2534,6 @@ inline void Domain::WriteXDMF (char const * FileKey)
     oss << "        " << fn.CStr() <<":/AngVelocity \n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
-    oss << "     <Attribute Name=\"FaceComp\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
-    oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Float\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/FaceComp \n";
-    oss << "       </DataItem>\n";
-    oss << "     </Attribute>\n";
-    //oss << "     </Attribute>\n";
-    //oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Cell\">\n";
-    //oss << "       <DataItem Dimensions=\"" << N_Faces << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    //oss << "        " << fn.CStr() <<":/AngVelocity \n";
-    //oss << "       </DataItem>\n";
-    //oss << "     </Attribute>\n";
-    //oss << "     <Attribute Name=\"Stress\" AttributeType=\"Tensor\" Center=\"Cell\">\n";
-    //oss << "       <DataItem Dimensions=\"" << N_Faces << " 3 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    //oss << "        " << fn.CStr() <<":/Stress \n";
-    //oss << "       </DataItem>\n";
-    //oss << "     </Attribute>\n";
     oss << "   </Grid>\n";
     }
     oss << "   <Grid Name=\"DEM_Center\" GridType=\"Uniform\">\n";
@@ -3392,11 +2551,6 @@ inline void Domain::WriteXDMF (char const * FileKey)
     oss << "     <Attribute Name=\"Tag\" AttributeType=\"Scalar\" Center=\"Node\">\n";
     oss << "       <DataItem Dimensions=\"" << Particles.Size() << "\" NumberType=\"Int\" Format=\"HDF\">\n";
     oss << "        " << fn.CStr() <<":/PTag \n";
-    oss << "       </DataItem>\n";
-    oss << "     </Attribute>\n";
-    oss << "     <Attribute Name=\"Compression\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-    oss << "       <DataItem Dimensions=\"" << Particles.Size() << "\" NumberType=\"Int\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/PComp \n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Node\">\n";
@@ -4043,80 +3197,7 @@ void Domain::WriteVTKContacts  (char const * FileKey)
 
 #endif // USE_VTK
 
-#ifdef USE_THREAD
-
-inline void Domain::UpdateLinkedCells()
-{
-    //std::cout << "a ) Updating linked cells "  << Time << std::endl;
-    //
-    
-    size_t n = 0;
-    for (size_t i=0;i<LinkedCell.Size();i++)
-    {
-        //for (size_t j=0;j<LinkedCell[i].Size();j++)
-        //{
-            //std::cout << LinkedCell[i][j] << " ";
-        //}
-        //std::cout << std::endl;
-        n += LinkedCell[i].Size();
-    }
-
-    //std::cout << "Number of linked cells   " << LinkedCell.Size() << " " << LCellDim << std::endl;
-    //std::cout << "Limits                   " << LCxmin            << " " << LCxmax   << " " << MaxDmax << std::endl;
-    //std::cout << "Particles in linked cells" << n                 << std::endl;
-    //std::cout << "Free Particles           " << FreePar.Size()    << std::endl;
-    if (n!=FreePar.Size())
-    {
-        throw new Fatal("Domain::UpdateLinkedCells: Linked cells dont match");
-    }
-    
-    ListPosPairs.Resize(0);
-    for (size_t i=0;i<FreePar.Size();i++)
-    for (size_t j=0;j<NoFreePar.Size();j++)
-    {
-        ListPosPairs.Push(std::make_pair(FreePar[i],NoFreePar[j]));
-    }
-
-    for (size_t k=0;k<LCellDim(2);k++)
-    for (size_t j=0;j<LCellDim(1);j++)
-    for (size_t i=0;i<LCellDim(0);i++)
-    {
-        iVec3_t Pt(i,j,k);
-        size_t idx = Pt2idx(Pt,LCellDim);
-        if (LinkedCell[idx].Size()==0) continue;
-
-        for (size_t n=0  ;n<LinkedCell[idx].Size()-1;n++)
-        for (size_t m=n+1;m<LinkedCell[idx].Size()  ;m++)
-        {
-            size_t i1 = LinkedCell[idx][n];
-            size_t i2 = LinkedCell[idx][m];
-            if (i1==i2) continue;
-            ListPosPairs.Push(std::make_pair(i1,i2));
-        }
-        for (size_t knb=std::max(0,int(k)-1);knb<=std::min(LCellDim(2)-1,k+1);knb++)
-        for (size_t jnb=std::max(0,int(j)-1);jnb<=std::min(LCellDim(1)-1,j+1);jnb++)
-        for (size_t inb=std::max(0,int(i)-1);inb<=std::min(LCellDim(0)-1,i+1);inb++)
-        {
-            iVec3_t Ptnb(inb,jnb,knb);
-            size_t idxnb = Pt2idx(Ptnb,LCellDim);
-            if (idxnb>idx)
-            {
-                for (size_t n=0;n<LinkedCell[idx].Size()  ;n++)
-                {
-                    for (size_t m=0;m<LinkedCell[idxnb].Size()  ;m++)
-                    {
-                        size_t i1 = std::min(LinkedCell[idx  ][n],LinkedCell[idxnb][m]);
-                        size_t i2 = std::max(LinkedCell[idx  ][n],LinkedCell[idxnb][m]);
-                        if (i1==i2) continue;
-                        ListPosPairs.Push(std::make_pair(i1,i2));
-                    }
-                }
-            }
-        }
-    }
-}
-
-#elif USE_OMP
+#ifdef USE_OMP
 
 inline void Domain::UpdateLinkedCells()
 {

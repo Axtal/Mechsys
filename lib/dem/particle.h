@@ -23,9 +23,7 @@
 // Std lib
 #include <iostream>
 #include <fstream>
-#ifdef USE_THREAD
-    #include <pthread.h>
-#elif USE_OMP
+#ifdef USE_OMP
     #include <omp.h>
 #endif
 
@@ -112,10 +110,7 @@ public:
     void   FixVeloc           (double vx=0.0, double vy=0.0, double vz=0.0);                  ///< Fix all velocities
     //bool   IsFree             () {return !vxf&&!vyf&&!vzf&&!wxf&&!wyf&&!wzf;};              ///< Ask if the particle has any constrain in its movement
     bool   IsFree             () {return !vxf&&!vyf&&!vzf;};                                  ///< Ask if the particle has any constrain in its movement
-#ifdef USE_THREAD
-    pthread_mutex_t lck;             ///< to protect variables in multithreading
-    //std::mutex mtex;               ///< to protect variables in multithreading
-#elif USE_OMP
+#ifdef USE_OMP
     omp_lock_t      lck;             ///< to protect variables in multithreading
 #endif
 
@@ -138,14 +133,10 @@ public:
     Vec3_t          Tf;              ///< Fixed Torque over the particle
     Vec3_t          I;               ///< Vector containing the principal components of the inertia tensor
     Quaternion_t    Q;               ///< The quaternion representing the rotation
-    Mat3_t          M;               ///< Momment tensor for the calculation of stress
-    Mat3_t          B;               ///< Branch tensor for the study of isotropy
     double          Erot;            ///< Rotational energy of the particle
     double          Ekin;            ///< Kinetical energy of the particle
     double          Dmax;            ///< Maximal distance from the center of mass to the surface of the body
     double          Diam;            ///< Diameter of the parallelogram containing the particle
-    double          Comp;            ///< Compression over the particle
-    double          Cn;              ///< Coordination number (number of contacts)
 
     ParticleProps       Props;       ///< Properties
     Array<Vec3_t*>      Verts;       ///< Vertices
@@ -182,43 +173,6 @@ public:
     double Ixz (double * X); ///< Calculate the inertia tensor at X
     double Iyz (double * X); ///< Calculate the inertia tensor at X
 
-#ifdef USE_BOOST_PYTHON
-    double PyGetFeatures (BPy::list & V, BPy::list & E, BPy::list & F) const
-    {
-        // vertex-ID map
-        typedef std::map<Vec3_t const *,int> VertID_t;
-        VertID_t vids;
-
-        // vertices
-        for (size_t i=0; i<Verts.Size(); ++i)
-        {
-            V.append (BPy::make_tuple((*Verts[i])(0),(*Verts[i])(1),(*Verts[i])(2)));
-            vids[Verts[i]] = i;
-        }
-
-        // edges
-        for (size_t i=0; i<Edges.Size(); ++i)
-            E.append (BPy::make_tuple(vids[Edges[i]->X0], vids[Edges[i]->X1]));
-
-        // faces
-        for (size_t i=0; i<Faces.Size(); ++i)
-        {
-            /* // list of edges
-            BPy::list edges;
-            for (size_t j=0; j<Faces[i]->Edges.Size(); ++j)
-                edges.append (BPy::make_tuple(vids[Faces[i]->Edges[j]->X0], vids[Faces[i]->Edges[j]->X1]));
-            F.append (edges);
-            */
-            // list of vertices
-            BPy::list verts;
-            for (size_t j=0; j<Faces[i]->Edges.Size(); ++j)
-                verts.append (vids[Faces[i]->Edges[j]->X0]);
-            F.append (verts);
-        }
-
-        return Props.R;
-    }
-#endif
 };
 
 
@@ -240,13 +194,10 @@ std::ostream & operator<< (std::ostream & os, Particle const & P)
     os << "Tf            = "  << PrintVector(P.Tf);
     os << "I             = "  << PrintVector(P.I );
     os << "Q             = "  << P.Q << std::endl;
-    os << "M             =\n" << PrintMatrix(P.M );
-    os << "B             =\n" << PrintMatrix(P.B );
     os << "Erot          = "  << P.Erot << std::endl;
     os << "Ekin          = "  << P.Ekin << std::endl;
     os << "Dmax          = "  << P.Dmax << std::endl;
     os << "Diam          = "  << P.Diam << std::endl;
-    os << "Cn            = "  << P.Cn   << std::endl;
     os << "Kn            = "  << P.Props.Kn   << std::endl; 
     os << "Kt            = "  << P.Props.Kt   << std::endl; 
     os << "Bn            = "  << P.Props.Bn   << std::endl; 
@@ -363,9 +314,7 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
         Faces.Push (new Face(verts));
     }
     for (size_t i=0; i<E.Size(); i++) Edges.Push (new Edge((*Verts[E[i][0]]), (*Verts[E[i][1]])));
-#ifdef USE_THREAD
-    pthread_mutex_init(&lck,NULL);
-#elif USE_OMP
+#ifdef USE_OMP
     omp_init_lock(&lck);
 #endif
     
@@ -433,9 +382,7 @@ inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, dou
     // calculate properties
     poly_calc_props(V);
 
-#ifdef USE_THREAD
-    pthread_mutex_init(&lck,NULL);
-#elif USE_OMP
+#ifdef USE_OMP
     omp_init_lock(&lck);
 #endif
 }
@@ -609,9 +556,7 @@ inline Particle::Particle(int TheTag, char const * TheFileKey, double TheR, doub
         //}
     //}
 
-#ifdef USE_THREAD
-    pthread_mutex_init(&lck,NULL);
-#elif USE_OMP
+#ifdef USE_OMP
     omp_init_lock(&lck);
 #endif
 }
@@ -676,9 +621,7 @@ inline void Particle::ConstructFromJson (int Tag, char const * Filename, double 
     // calculate properties
     poly_calc_props(V);
 
-#ifdef USE_THREAD
-    pthread_mutex_init(&lck,NULL);
-#elif USE_OMP
+#ifdef USE_OMP
     omp_init_lock(&lck);
 #endif
 }

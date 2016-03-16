@@ -1,6 +1,6 @@
 #####################################################################################
-# MechSys - A C++ library to simulate (Continuum) Mechanical Systems                #
-# Copyright (C) 2009 Sergio Torres             <sagalindot at gmail.com>            #
+# MechSys - A C++ library to simulate Mechanical Systems                            #
+# Copyright (C) 2010 Sergio Galindo                                                 #
 #                                                                                   #
 # This file is part of MechSys.                                                     #
 #                                                                                   #

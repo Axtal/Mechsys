@@ -1,6 +1,5 @@
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
- * Copyright (C) 2005 Dorival M. Pedroso, Raúl D. D. Farfan             *
  * Copyright (C) 2009 Sergio Galindo                                    *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
@@ -31,9 +30,9 @@ int main(int argc, char **argv) try
 {
     size_t Nproc = 1; 
     if (argc==2) Nproc=atoi(argv[1]);
-    size_t nx = 100;
-    size_t ny = 100;
-    //size_t nz = 100;
+    size_t nx = 400;
+    size_t ny = 400;
+    //size_t nz = 300;
     size_t nz = 1;
     double nu = 1.0/6.0;
     double dx = 1.0;

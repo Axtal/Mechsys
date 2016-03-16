@@ -103,9 +103,9 @@ int main(int argc, char **argv) try
     double err_p = norm(p1-p0);
     double err_E = fabs(E1-E0);
     double error = err_l + err_p + err_E;
-    cout << "Error in energy           = " << err_E <<endl;
-    cout << "Error in angular momentum = " << err_l <<endl;
-    cout << "Error in linear  momentum = " << err_p <<endl;
+    std::cout << "Error in energy           = " << err_E << std::endl;
+    std::cout << "Error in angular momentum = " << err_l << std::endl;
+    std::cout << "Error in linear  momentum = " << err_p << std::endl;
 
 
     // results

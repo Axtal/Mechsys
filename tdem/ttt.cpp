@@ -321,7 +321,7 @@ void Report (DEM::Domain & dom, void *UD)
         // contacts and sliding contacts Nc,Nsc and the number of bonds and broken bonds Nb Nbb
         dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz";
         dat.oss_ss <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez";
-        dat.oss_ss << Util::_8s   << "e"    << Util::_8s << "Cn" << Util::_8s << "Nc" << Util::_8s << "Nsc";         
+        dat.oss_ss << Util::_8s   << "e"                         << Util::_8s << "Nc" << Util::_8s << "Nsc";         
         dat.oss_ss <<                                               Util::_8s << "Nb" << Util::_8s << "Nbb" << "\n";
     }
     if (dat.RenderVideo)
@@ -349,7 +349,6 @@ void Report (DEM::Domain & dom, void *UD)
         dat.oss_ss << Util::_8s << (volumecontainer-dom.Vs)/dom.Vs;
 
         // Number of contacts Nc, number of sliding contacts Nsc and Coordination number Cn
-        double Cn = 0;
         size_t Nc = 0;
         size_t Nsc = 0;
         for (size_t i=0; i<dom.CInteractons.Size(); i++)
@@ -371,19 +370,7 @@ void Report (DEM::Domain & dom, void *UD)
             }
         }
 
-        size_t n_inside = 0; // Number of particles not in contact with the boundaries
-        for (size_t i=0; i<dom.Particles.Size(); i++)
-        {
-            //if (!dom.Particles[i]->Bdry&&dom.Particles[i]->IsFree())
-            if (dom.Particles[i]->IsFree())
-            {
-                Cn += dom.Particles[i]->Cn;
-                n_inside++;
-            }
-        }
-        Cn/=n_inside;
-
-        dat.oss_ss << Util::_8s << Cn << Util::_8s << Nc << Util::_8s << Nsc << Util::_8s << Nb << Util::_8s << Nbb;
+        dat.oss_ss << Util::_8s << Nc << Util::_8s << Nsc << Util::_8s << Nb << Util::_8s << Nbb;
 
         dat.oss_ss << std::endl;
     }
