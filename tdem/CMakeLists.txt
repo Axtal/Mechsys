@@ -37,7 +37,6 @@ SET(EXES
   figure
   test_01
   test_02
-  viewbucket
 )
 
 SET(TESTS

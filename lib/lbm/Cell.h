@@ -20,9 +20,7 @@
 #define MECHSYS_LBM_CELL_H
 
 // Std lib
-#ifdef USE_THREAD
-    #include <pthread.h>
-#elif USE_OMP
+#ifdef USE_OMP
     #include <omp.h>
 #endif
 
@@ -70,10 +68,7 @@ public:
     void         Initialize(double Rho, Vec3_t const & V);         ///< Initialize cell with a given velocity and density
     void         BounceBack();                                     ///< Apply the bounceback rule to this cell
 
-#ifdef USE_THREAD
-    pthread_mutex_t lck;
-    //std::mutex mtex;       ///< to protect variables in multithreading
-#elif USE_OMP
+#ifdef USE_OMP
     omp_lock_t      lck;             ///< to protect variables in multithreading
 #endif
 
@@ -174,9 +169,7 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
 
         Neighs[k] =  nindex[0] + nindex[1]*TheNdim[0] + nindex[2]*TheNdim[0]*TheNdim[1];
     }
-#ifdef USE_THREAD
-    pthread_mutex_init(&lck,NULL);
-#elif USE_OMP
+#ifdef USE_OMP
     omp_init_lock(&lck);
 #endif
 }
