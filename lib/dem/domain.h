@@ -1849,8 +1849,9 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             {
 		        if (PInteractons[i]->CalcForce(Dt))
                 {
-                    Save     ("error");
-                    WriteXDMF("error");
+                    String f_error(FileKey+"_error");
+                    Save     (f_error.CStr());
+                    WriteXDMF(f_error.CStr());
                     std::cout << "Maximun overlap detected between particles at time " << Time << std::endl;
                     sleep(1);
                     throw new Fatal("Maximun overlap detected between particles");
