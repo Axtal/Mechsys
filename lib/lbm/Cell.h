@@ -218,6 +218,7 @@ inline double Cell::VelDen(Vec3_t & V)
         throw new Fatal("NaN found in one of the cells");
     }
     V *= Cs/rho;
+    //V += 0.5*BForce/rho;
     return rho;
 }
 

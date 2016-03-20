@@ -38,7 +38,7 @@ public:
     //Methods
     void Translate   (double dt);
     void Rotate      (double dt);
-    void FixVelocity () {vf=true,true,true; wf=true,true,true;};
+    void FixVeloc    () {vf=true,true,true; wf=true,true,true;};
     bool IsFree () {return !vf(0)&&!vf(1)&&!vf(2)&&!wf(0)&&!wf(1)&&!wf(2);}; ///< Ask if the particle has any constrain in its movement
 
 #ifdef USE_THREAD

@@ -30,8 +30,8 @@ int main(int argc, char **argv) try
 {
     size_t Nproc = 1; 
     if (argc==2) Nproc=atoi(argv[1]);
-    size_t nx = 400;
-    size_t ny = 400;
+    size_t nx = 100;
+    size_t ny = 100;
     //size_t nz = 300;
     size_t nz = 1;
     double nu = 1.0/6.0;

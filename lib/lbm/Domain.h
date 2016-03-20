@@ -111,10 +111,13 @@ public:
 #endif
     void UpdateLinkedCells ();                                                                                  ///< Update the linked cells
 
-    void Initialize     (double dt=0.0);                                                                                              ///< Set the particles to a initial state and asign the possible insteractions
-    void ApplyForce     (size_t n = 0, size_t Np = 1, bool MC=false);                                                                 ///< Apply the interaction forces and the collision operator
-    void Collide        (size_t n = 0, size_t Np = 1);                                                                                ///< Apply the interaction forces and the collision operator
-    void ImprintLattice (size_t n = 0, size_t Np = 1);                                                                                ///< Imprint the DEM particles into the lattices
+    void Initialize       (double dt=0.0);                                                                                              ///< Set the particles to a initial state and asign the possible insteractions
+    void ApplyForce       (size_t n = 0, size_t Np = 1, bool MC=false);                                                                 ///< Apply the interaction forces
+    void CollideSC        (size_t n = 0, size_t Np = 1);                                                                                ///< Apply the collision operator with DEM particles in the case of single component fluid
+    void CollideMC        (size_t n = 0, size_t Np = 1);                                                                                ///< Apply the collision operator with DEM particles in the case of multiple component fluid
+    void CollideNoPar     (size_t n = 0, size_t Np = 1);                                                                                ///< Apply the collision operator for the case of no DEM particles
+    void ImprintLatticeSC (size_t n = 0, size_t Np = 1);                                                                                ///< Imprint the DEM particles into the lattices when there is a single fluid component
+    void ImprintLatticeMC (size_t n = 0, size_t Np = 1);                                                                                ///< Imprint the DEM particles into the lattices when there are multiple fluids
     void Solve(double Tf, double dtOut, ptDFun_t ptSetup=NULL, ptDFun_t ptReport=NULL,
     char const * FileKey=NULL, bool RenderVideo=true, size_t Nproc=1);                                                                ///< Solve the Domain dynamics
     void ResetContacts();                                                                                                             ///< Reset contacts for verlet method DEM
@@ -1325,11 +1328,13 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
             Cell * c = Lat[0].Cells[ind1];
             Cell *nb = Lat[1].Cells[ind2];
             double nb_psi,psi,G=Gmix/(dt*dt);
+            bool check = false;
             if (c->IsSolid||fabs(c->Gamma-1.0)<1.0e-12)
             //if (c->IsSolid||c->Gamma>1.0e-12)
             {
                 psi    = 1.0;
                 G      = Lat[1].Gs*c->Gs;
+                check  = true;
             }
             else psi   = c ->Rho;
             if (nb->IsSolid||fabs(nb->Gamma-1.0)<1.0e-12)
@@ -1337,38 +1342,35 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
             {
                 nb_psi = 1.0;
                 G      = Lat[0].Gs*nb->Gs;
+                // this is to ignore forces where both are solid nodes
+                if (check) G = 0.0;
             }
             else nb_psi = nb->Rho;
             Vec3_t  BF = -G*psi*nb_psi*c->W[vec]*c->C[vec];
 
-#ifdef USE_THREAD
-            pthread_mutex_lock  (&c ->lck);
-#elif USE_OMP
+#ifdef USE_OMP
             omp_set_lock        (&c->lck);
 #endif
             c ->BForce += BF;
-#ifdef USE_THREAD
-            pthread_mutex_unlock(&c ->lck);
-            pthread_mutex_lock  (&nb->lck);
-#elif USE_OMP
+#ifdef USE_OMP
             omp_unset_lock      (&c ->lck);
             omp_set_lock        (&nb->lck);
 #endif
             nb->BForce -= BF;
-#ifdef USE_THREAD
-            pthread_mutex_unlock(&nb->lck);
-#elif USE_OMP
+#ifdef USE_OMP
             omp_unset_lock      (&nb->lck);
 #endif
 
             c  = Lat[1].Cells[ind1];
             nb = Lat[0].Cells[ind2];
             G  = Gmix/(dt*dt);
+            check = false;
             if (c->IsSolid||fabs(c->Gamma-1.0)<1.0e-12)
             //if (c->IsSolid||c->Gamma>1.0e-12)
             {
                 psi    = 1.0;
                 G      = Lat[0].Gs;
+                check  = true;
             }
             else psi   = c ->Rho;
             if (nb->IsSolid||fabs(nb->Gamma-1.0)<1.0e-12)
@@ -1376,27 +1378,21 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
             {
                 nb_psi = 1.0;
                 G      = Lat[1].Gs;
+                if (check) G = 0.0;
             }
             else nb_psi = nb->Rho;
             BF = -G*psi*nb_psi*c->W[vec]*c->C[vec];
 
-#ifdef USE_THREAD
-            pthread_mutex_lock  (&c ->lck);
-#elif USE_OMP
+#ifdef USE_OMP
             omp_set_lock        (&c->lck);
 #endif
             c ->BForce += BF;
-#ifdef USE_THREAD
-            pthread_mutex_unlock(&c ->lck);
-            pthread_mutex_lock  (&nb->lck);
-#elif USE_OMP
+#ifdef USE_OMP
             omp_unset_lock      (&c ->lck);
             omp_set_lock        (&nb->lck);
 #endif
             nb->BForce -= BF;
-#ifdef USE_THREAD
-            pthread_mutex_unlock(&nb->lck);
-#elif USE_OMP
+#ifdef USE_OMP
             omp_unset_lock      (&nb->lck);
 #endif
         }
@@ -1472,8 +1468,112 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
     }
 }
 
-void Domain::Collide (size_t n, size_t Np)
+void Domain::CollideSC (size_t n, size_t Np)
 {
+    //std::cout << "SCP" << std::endl;
+	size_t Ni = Lat[0].Ncells/Np;
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = Lat[0].Ncells : Fn = (n+1)*Ni;
+#ifdef USE_OMP
+    In = 0;
+    Fn = Lat[0].Ncells;
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+#endif
+    for (size_t i=In;i<Fn;i++)
+    {
+        Cell * c = Lat[0].Cells[i];
+        double rho = c->Rho;
+        //if (rho<1.0e-12) continue;
+        //if (c->IsSolid||rho<1.0e-12) continue;
+        //if (fabs(c->Gamma-1.0)<1.0e-12&&(fabs(Lat[j].G)>1.0e-12||Gmix>1.0e-12)) continue;
+        //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
+        if (!c->IsSolid)
+        {
+            //Calculate Smagorinsky LES model
+            Array<double> NonEq(c->Nneigh);
+            //Array<double> FEq  (c->Nneigh);
+            double Tau = Lat[0].Tau;
+            Vec3_t DV  = c->Vel + c->BForce*dt/rho;
+            //Vec3_t DV  = Vmix + c->BForce*Tau/rho;
+            double Q = 0.0;
+            for (size_t k=0;k<c->Nneigh;k++)
+            {
+                double FDeqn = c->Feq(k,DV,rho);
+                NonEq[k] = c->F[k] - FDeqn;
+                //FEq  [k] = FDeqn;
+                Q += NonEq[k]*NonEq[k]*EEk[k];
+                if(c->Gamma>1.0e-12) c->Omeis[k] /= c->Gamma;
+            }
+            Q = sqrt(2.0*Q);
+            Tau = 0.5*(Tau + sqrt(Tau*Tau + 6.0*Q*Sc/rho));
+            c->Tau = Tau;
+            //std::cout << Tau << std::endl;
+
+            double Bn;
+            //rho<10e-12 ? Bn =0.0 : Bn = (c->Gamma*(Lat[j].Tau-0.5))/((1.0-c->Gamma)+(Lat[j].Tau-0.5));
+            //rho<10e-12 ? Bn =0.0 : Bn = c->Gamma;
+            Bn = (c->Gamma*(Lat[0].Tau-0.5))/((1.0-c->Gamma)+(Lat[0].Tau-0.5));
+            //Bn = floor(c->Gamma);
+            bool valid  = true;
+            double alphal = 1.0;
+            double alphat = 1.0;
+            size_t num = 0;
+            while (valid)
+            {
+                num++;
+                valid = false;
+                alphal  = alphat;
+                for (size_t k=0;k<c->Nneigh;k++)
+                {
+                    //double FDeqn = c->Feq(k,DV,rho);
+                    //c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
+                    c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k]);
+                    //newrho += c->Ftemp[k];
+                    if (c->Ftemp[k]<-1.0e-12&&num<2)
+                    {
+                        //double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
+                        double temp = fabs(c->F[k]/((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k]));
+                        if (temp<alphat) alphat = temp;
+                        valid = true;
+                    }
+                }
+            }
+            for (size_t k=0;k<c->Nneigh;k++)
+            {
+                if (std::isnan(c->Ftemp[k]))
+                {
+                    //c->Gamma = 2.0;
+                    #ifdef USE_HDF5
+                    //WriteXDMF("error");
+                    #endif
+                    std::cout << "CollideSC: Nan found, resetting" << std::endl;
+                    std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << 0 << " " << k << " " << std::endl;
+                    c->Ftemp[k] = c->F[k];
+                    //throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
+                }
+                c->F[k] = fabs(c->Ftemp[k]);
+                //c->F[k] = fabs(c->Ftemp[k])*c->Rho/newrho;
+                //std::cout << newrho << std::endl;
+            }
+        }
+        else
+        {
+            for (size_t j = 1;j<c->Nneigh;j++)
+            {
+                c->Ftemp[j] = c->F[j];
+            }
+            for (size_t j = 1;j<c->Nneigh;j++)
+            {
+                c->F[j]     = c->Ftemp[c->Op[j]];
+            }
+        }
+    }
+}
+
+void Domain::CollideMC (size_t n, size_t Np)
+{
+    //std::cout << "MCP" << std::endl;
 	size_t Ni = Lat[0].Ncells/Np;
     size_t In = n*Ni;
     size_t Fn;
@@ -1504,32 +1604,19 @@ void Domain::Collide (size_t n, size_t Np)
             //if (rho<1.0e-12) continue;
             //if (c->IsSolid||rho<1.0e-12) continue;
             //if (fabs(c->Gamma-1.0)<1.0e-12&&(fabs(Lat[j].G)>1.0e-12||Gmix>1.0e-12)) continue;
-            if (fabs(c->Gamma-1.0)<1.0e-12&&(fabs(Lat[j].G)>1.0e-12)) continue;
             //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
             if (!c->IsSolid)
             {
-                //Calculate Smagorinsky LES model
-                Array<double> NonEq(c->Nneigh);
+                //Array<double> FEq  (c->Nneigh);
                 double Tau = Lat[j].Tau;
                 Vec3_t DV  = Vmix + c->BForce*dt/rho;
                 //Vec3_t DV  = Vmix + c->BForce*Tau/rho;
-                double Q = 0.0;
-                for (size_t k=0;k<c->Nneigh;k++)
-                {
-                    double FDeqn = c->Feq(k,DV,rho);
-                    NonEq[k] = c->F[k] - FDeqn;
-                    Q += NonEq[k]*NonEq[k]*EEk[k];
-                    if(c->Gamma>1.0e-12) c->Omeis[k] /= c->Gamma;
-                }
-                Q = sqrt(2.0*Q);
-                Tau = 0.5*(Tau + sqrt(Tau*Tau + 6.0*Q*Sc/rho));
-                c->Tau = Tau;
-                //std::cout << Tau << std::endl;
 
                 double Bn;
-                rho<10e-12 ? Bn =0.0 : Bn = (c->Gamma*(Lat[j].Tau-0.5))/((1.0-c->Gamma)+(Lat[j].Tau-0.5));
+                //rho<10e-12 ? Bn =0.0 : Bn = (c->Gamma*(Lat[j].Tau-0.5))/((1.0-c->Gamma)+(Lat[j].Tau-0.5));
                 //rho<10e-12 ? Bn =0.0 : Bn = c->Gamma;
                 //Bn = (c->Gamma*(Lat[j].Tau-0.5))/((1.0-c->Gamma)+(Lat[j].Tau-0.5));
+                Bn = floor(c->Gamma);
                 bool valid  = true;
                 double alphal = 1.0;
                 double alphat = 1.0;
@@ -1541,14 +1628,15 @@ void Domain::Collide (size_t n, size_t Np)
                     alphal  = alphat;
                     for (size_t k=0;k<c->Nneigh;k++)
                     {
-                        //double FDeqn = c->Feq(k,DV,rho);
-                        //c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
-                        c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k]);
+                        if (num==1&&c->Omeis[k]>1.0e-12) c->Omeis[k] /= c->Gamma;
+                        double FDeqn = c->Feq(k,DV,rho);
+                        c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
+                        //c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k]);
                         //newrho += c->Ftemp[k];
                         if (c->Ftemp[k]<-1.0e-12&&num<2)
                         {
-                            //double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
-                            double temp = fabs(c->F[k]/((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k]));
+                            double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
+                            //double temp = fabs(c->F[k]/((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k]));
                             if (temp<alphat) alphat = temp;
                             valid = true;
                         }
@@ -1562,7 +1650,7 @@ void Domain::Collide (size_t n, size_t Np)
                         #ifdef USE_HDF5
                         //WriteXDMF("error");
                         #endif
-                        std::cout << "Nan found, resetting" << std::endl;
+                        std::cout << "CollideMC: Nan found, resetting" << std::endl;
                         std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << " " << std::endl;
                         c->Ftemp[k] = c->F[k];
                         //throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
@@ -1587,7 +1675,310 @@ void Domain::Collide (size_t n, size_t Np)
     }   
 }
 
-void Domain::ImprintLattice (size_t n,size_t Np)
+void Domain::CollideNoPar (size_t n, size_t Np)
+{
+    //std::cout << "CNP" << std::endl;
+	size_t Ni = Lat[0].Ncells/Np;
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = Lat[0].Ncells : Fn = (n+1)*Ni;
+#ifdef USE_OMP
+    In = 0;
+    Fn = Lat[0].Ncells;
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+#endif
+    for (size_t i=In;i<Fn;i++)
+    {
+        Vec3_t num(0.0,0.0,0.0);
+        double den = 0.0;
+        for (size_t j=0;j<Lat.Size();j++)
+        {
+            Cell * c = Lat[j].Cells[i];
+            double tau = Lat[j].Tau;
+            num += c->Vel*c->Rho/tau;
+            den += c->Rho/tau;
+        }
+        Vec3_t Vmix = num/den;
+
+
+        for (size_t j=0;j<Lat.Size();j++)
+        {
+            Cell * c = Lat[j].Cells[i];
+            double rho = c->Rho;
+            //if (rho<1.0e-12) continue;
+            //if (c->IsSolid||rho<1.0e-12) continue;
+            //if (fabs(c->Gamma-1.0)<1.0e-12&&(fabs(Lat[j].G)>1.0e-12||Gmix>1.0e-12)) continue;
+            //if (fabs(c->Gamma-1.0)<1.0e-12) continue;
+            if (!c->IsSolid)
+            {
+                //Calculate Smagorinsky LES model
+                Array<double> NonEq(c->Nneigh);
+                //Array<double> FEq  (c->Nneigh);
+                double Tau = Lat[j].Tau;
+                Vec3_t DV  = Vmix + c->BForce*dt/rho;
+                //Vec3_t DV  = Vmix + c->BForce*Tau/rho;
+                double Q = 0.0;
+                for (size_t k=0;k<c->Nneigh;k++)
+                {
+                    double FDeqn = c->Feq(k,DV,rho);
+                    NonEq[k] = c->F[k] - FDeqn;
+                    //FEq  [k] = FDeqn;
+                    Q += NonEq[k]*NonEq[k]*EEk[k];
+                }
+                Q = sqrt(2.0*Q);
+                Tau = 0.5*(Tau + sqrt(Tau*Tau + 6.0*Q*Sc/rho));
+                c->Tau = Tau;
+                //std::cout << Tau << std::endl;
+
+                bool valid  = true;
+                double alphal = 1.0;
+                double alphat = 1.0;
+                size_t num = 0;
+                while (valid)
+                {
+                    num++;
+                    valid = false;
+                    alphal  = alphat;
+                    for (size_t k=0;k<c->Nneigh;k++)
+                    {
+                        c->Ftemp[k] = c->F[k] - alphal*((NonEq[k])/Tau);
+                        //newrho += c->Ftemp[k];
+                        if (c->Ftemp[k]<-1.0e-12&&num<2)
+                        {
+                            double temp = fabs(c->F[k]/(NonEq[k]/Tau));
+                            if (temp<alphat) alphat = temp;
+                            valid = true;
+                        }
+                    }
+                }
+                for (size_t k=0;k<c->Nneigh;k++)
+                {
+                    if (std::isnan(c->Ftemp[k]))
+                    {
+                        //c->Gamma = 2.0;
+                        #ifdef USE_HDF5
+                        //WriteXDMF("error");
+                        #endif
+                        std::cout << "CollideNoPar: Nan found, resetting" << std::endl;
+                        std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << " " << std::endl;
+                        c->Ftemp[k] = c->F[k];
+                        //throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
+                    }
+                    c->F[k] = fabs(c->Ftemp[k]);
+                    //c->F[k] = fabs(c->Ftemp[k])*c->Rho/newrho;
+                    //std::cout << newrho << std::endl;
+                }
+            }
+            else
+            {
+                for (size_t j = 1;j<c->Nneigh;j++)
+                {
+                    c->Ftemp[j] = c->F[j];
+                }
+                for (size_t j = 1;j<c->Nneigh;j++)
+                {
+                    c->F[j]     = c->Ftemp[c->Op[j]];
+                }
+            }
+        }
+    }   
+}
+
+void Domain::ImprintLatticeSC (size_t n,size_t Np)
+{
+    
+	size_t Ni = ParCellPairs.Size()/Np;
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = ParCellPairs.Size() : Fn = (n+1)*Ni;
+    //std::cout << "Im proccess = " << n << std::endl;
+    // 2D imprint
+    if (Lat[0].Ndim(2)==1)
+    {
+    #ifdef USE_OMP
+        In = 0;
+        Fn = ParCellPairs.Size();
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+    #endif
+        for (size_t i = In;i<Fn;i++)
+        {
+            LBM::Disk      * Pa   = Disks[ParCellPairs[i].IPar];
+            Cell           * cell = Lat[0].Cells[ParCellPairs[i].ICell];
+            double x              = Lat[0].dx*(cell->Index(0));
+            double y              = Lat[0].dx*(cell->Index(1));
+            double z              = Lat[0].dx*(cell->Index(2));
+            Vec3_t  C(x,y,z);
+            double len = DEM::DiskSquare(Pa->X,C,Pa->R,Lat[0].dx);
+            if (fabs(len)<1.0e-12) continue;
+            double Tau = Lat[0].Tau;
+            cell = Lat[0].Cells[ParCellPairs[i].ICell];
+            double gamma  = len/(4.0*Lat[0].dx);
+            cell->Gamma   = std::min(gamma+cell->Gamma,1.0);
+            //if (fabs(cell->Gamma-1.0)<1.0e-12) 
+            if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
+            {
+                continue;
+            }
+            Vec3_t B      = C - Pa->X;
+            Vec3_t tmp;
+            Rotation(Pa->W,Pa->Q,tmp);
+            Vec3_t VelP   = Pa->V + cross(tmp,B);
+            double rho = cell->Rho;
+            double Bn  = (cell->Gamma*(Tau-0.5))/((1.0-cell->Gamma)+(Tau-0.5));
+            //double Bn  = cell->Gamma;
+            //double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
+            //double Bn  = floor(cell->Gamma);
+            size_t ncells = cell->Nneigh;
+            Vec3_t Flbm = OrthoSys::O;
+            for (size_t k=0;k<ncells;k++)
+            {
+                double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
+                double Fvp     = cell->Feq(k          ,VelP,rho);
+                double Omega   = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
+
+                cell->Omeis[k] += gamma*Omega;
+                Flbm += -Fconv*Bn*Omega*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx*cell->C[k];
+            }
+            Vec3_t T,Tt;
+            Tt =           cross(B,Flbm);
+            Quaternion_t q;
+            Conjugate    (Pa->Q,q);
+            Rotation     (Tt,q,T);
+            //std::cout << "1" << std::endl;
+    #ifdef USE_OMP
+            omp_set_lock      (&Pa->lck);
+    #endif
+            Pa->F          += Flbm;
+            Pa->T          += T;
+    #ifdef USE_OMP
+            omp_unset_lock    (&Pa->lck);
+    #endif
+
+        }
+    }
+
+    //3D imprint
+    else
+    {
+    #ifdef USE_OMP
+        In = 0;
+        Fn = ParCellPairs.Size();
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+    #endif
+        for (size_t i = In;i<Fn;i++)
+        {
+            DEM::Particle  * Pa   = Particles[ParCellPairs[i].IPar];
+            Cell           * cell = Lat[0].Cells[ParCellPairs[i].ICell];
+            double x              = Lat[0].dx*(cell->Index(0));
+            double y              = Lat[0].dx*(cell->Index(1));
+            double z              = Lat[0].dx*(cell->Index(2));
+            Vec3_t  C(x,y,z);
+            Vec3_t  Xtemp,Xs,Xstemp;
+            double len,minl = Pa->Dmax;
+    
+            //std::cout << "1" << std::endl;
+            if (Pa->IsInsideFaceOnly(C)) len = 12.0*Lat[0].dx;
+            else if (ParCellPairs[i].IGeo.Size()==0) continue;
+            else
+            {
+                if (Pa->Faces.Size()>0)
+                {
+                    DEM::Distance(C,*Pa->Faces[ParCellPairs[i].IGeo[0]],Xtemp,Xs);
+                    minl = norm(Xtemp-Xs);
+                    for (size_t j=1;j<ParCellPairs[i].IGeo.Size();j++)
+                    {
+                        DEM::Distance(C,*Pa->Faces[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
+                        if (norm(Xtemp-Xstemp) < minl)
+                        {
+                            minl = norm(Xtemp-Xstemp);
+                            Xs   = Xstemp;
+                        }
+                    }
+                }
+                else if (Pa->Edges.Size()>0)
+                {
+                    DEM::Distance(C,*Pa->Edges[ParCellPairs[i].IGeo[0]],Xtemp,Xs);
+                    minl = norm(Xtemp-Xs);
+                    for (size_t j=1;j<ParCellPairs[i].IGeo.Size();j++)
+                    {
+                        DEM::Distance(C,*Pa->Edges[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
+                        if (norm(Xtemp-Xstemp) < minl)
+                        {
+                            minl = norm(Xtemp-Xstemp);
+                            Xs   = Xstemp;
+                        }
+                    }
+                }
+                else if (Pa->Verts.Size()>0)
+                {
+                    DEM::Distance(C,*Pa->Verts[ParCellPairs[i].IGeo[0]],Xtemp,Xs);
+                    minl = norm(Xtemp-Xs);
+                    for (size_t j=1;j<ParCellPairs[i].IGeo.Size();j++)
+                    {
+                        DEM::Distance(C,*Pa->Verts[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
+                        if (norm(Xtemp-Xstemp) < minl)
+                        {
+                            minl = norm(Xtemp-Xstemp);
+                            Xs   = Xstemp;
+                        }
+                    }
+                }
+                len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
+            }
+            //std::cout << "2" << std::endl;
+            if (fabs(len)<1.0e-12) continue;
+    
+            double Tau = Lat[0].Tau;
+            cell = Lat[0].Cells[ParCellPairs[i].ICell];
+            //cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
+            double gamma  = len/(12.0*Lat[0].dx);
+            cell->Gamma   = std::min(gamma+cell->Gamma,1.0);
+            //if (fabs(cell->Gamma-1.0)<1.0e-12)
+            //if (fabs(cell->Gamma-1.0)<1.0e-12&&(fabs(Lat[0].G)>1.0e-12||Gmix>1.0e-12)) 
+            if (fabs(cell->Gamma-1.0)<1.0e-12&&(fabs(Lat[0].G)>1.0e-12)) 
+            {
+                continue;
+            }
+            Vec3_t B      = C - Pa->x;
+            Vec3_t tmp;
+            Rotation(Pa->w,Pa->Q,tmp);
+            Vec3_t VelP   = Pa->v + cross(tmp,B);
+            double rho = cell->Rho;
+            double Bn  = (gamma*(Tau-0.5))/((1.0-gamma)+(Tau-0.5));
+            //double Bn  = cell->Gamma;
+            //double Bn  = floor(cell->Gamma);
+            size_t ncells = cell->Nneigh;
+            Vec3_t Flbm = OrthoSys::O;
+            for (size_t k=0;k<ncells;k++)
+            {
+                double Fvpp     = cell->Feq(cell->Op[k],VelP,rho);
+                double Fvp      = cell->Feq(k          ,VelP,rho);
+                double Omega    = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
+                //cell->Omeis[k] += Omega;
+                cell->Omeis[k] += gamma*Omega;
+
+                Flbm += -Fconv*Bn*Omega*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx*cell->C[k];
+            }
+            Vec3_t T,Tt;
+            Tt =           cross(B,Flbm);
+            Quaternion_t q;
+            Conjugate    (Pa->Q,q);
+            Rotation     (Tt,q,T);
+            //std::cout << "1" << std::endl;
+    #ifdef USE_OMP
+            omp_set_lock      (&Pa->lck);
+    #endif
+            Pa->F          += Flbm;
+            Pa->T          += T;
+    #ifdef USE_OMP
+            omp_unset_lock    (&Pa->lck);
+    #endif
+                //std::cout << "3" << std::endl;
+        }
+    }
+}
+
+void Domain::ImprintLatticeMC (size_t n,size_t Np)
 {
     
 	size_t Ni = ParCellPairs.Size()/Np;
@@ -1615,9 +2006,9 @@ void Domain::ImprintLattice (size_t n,size_t Np)
             if (fabs(len)<1.0e-12) continue;
             for (size_t j=0;j<Lat.Size();j++)
             {
-                double Tau = Lat[j].Tau;
                 cell = Lat[j].Cells[ParCellPairs[i].ICell];
-                cell->Gamma   = std::max(len/(4.0*Lat[0].dx),cell->Gamma);
+                double gamma  = len/(4.0*Lat[0].dx);
+                cell->Gamma   = std::min(gamma+cell->Gamma,1.0);
                 //if (fabs(cell->Gamma-1.0)<1.0e-12) 
                 if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
                 {
@@ -1628,32 +2019,39 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 Rotation(Pa->W,Pa->Q,tmp);
                 Vec3_t VelP   = Pa->V + cross(tmp,B);
                 double rho = cell->Rho;
+                //double Bn  = (cell->Gamma*(Tau-0.5))/((1.0-cell->Gamma)+(Tau-0.5));
+                //double Bn  = cell->Gamma;
                 //double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
-                double Bn  = (cell->Gamma*(Tau-0.5))/((1.0-cell->Gamma)+(Tau-0.5));
-                for (size_t k=0;k<cell->Nneigh;k++)
+                double Bn  = floor(cell->Gamma);
+                size_t ncells = cell->Nneigh;
+                Vec3_t Flbm = OrthoSys::O;
+                for (size_t k=0;k<ncells;k++)
                 {
                     double Fvpp    = cell->Feq(cell->Op[k],VelP,rho);
                     double Fvp     = cell->Feq(k          ,VelP,rho);
-                    cell->Omeis[k] = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
-                    Vec3_t Flbm    = -Fconv*Bn*cell->Omeis[k]*cell->C[k]*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx;
-                    Vec3_t T,Tt;
-                    Tt =           cross(B,Flbm);
-                    Quaternion_t q;
-                    Conjugate    (Pa->Q,q);
-                    Rotation     (Tt,q,T);
-    #ifdef USE_THREAD
-                    pthread_mutex_lock(&Pa->lck);
-    #elif USE_OMP
-                    omp_set_lock      (&Pa->lck);
-    #endif
-                    Pa->F          += Flbm;
-                    Pa->T          += T;
-    #ifdef USE_THREAD
-                    pthread_mutex_unlock(&Pa->lck);
-    #elif USE_OMP
-                    omp_unset_lock    (&Pa->lck);
-    #endif
+                    double Omega   = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
+
+                    cell->Omeis[k] += gamma*Omega;
+                    Cell *nb        = Lat[j].Cells[cell->Neighs[k]];
+
+                    double Fcontact;
+                    (cell->Gammap>0.0)&&(cell->Gammap<1.0) ? Fcontact = Lat[j].Gs*cell->W[k]*cell->Rho*floor(nb->Gammap) : Fcontact = 0.0;
+                    Flbm += -(Fconv*Bn*Omega*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx - Fcontact)*cell->C[k];
                 }
+                Vec3_t T,Tt;
+                Tt =           cross(B,Flbm);
+                Quaternion_t q;
+                Conjugate    (Pa->Q,q);
+                Rotation     (Tt,q,T);
+                //std::cout << "1" << std::endl;
+    #ifdef USE_OMP
+                omp_set_lock      (&Pa->lck);
+    #endif
+                Pa->F          += Flbm;
+                Pa->T          += T;
+    #ifdef USE_OMP
+                omp_unset_lock    (&Pa->lck);
+    #endif
             }
 
         }
@@ -1732,7 +2130,6 @@ void Domain::ImprintLattice (size_t n,size_t Np)
     
             for (size_t j=0;j<Lat.Size();j++)
             {
-                double Tau = Lat[j].Tau;
                 cell = Lat[j].Cells[ParCellPairs[i].ICell];
                 //cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
                 double gamma  = len/(12.0*Lat[0].dx);
@@ -1748,8 +2145,9 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 Rotation(Pa->w,Pa->Q,tmp);
                 Vec3_t VelP   = Pa->v + cross(tmp,B);
                 double rho = cell->Rho;
-                double Bn  = (gamma*(Tau-0.5))/((1.0-gamma)+(Tau-0.5));
+                //double Bn  = (gamma*(Tau-0.5))/((1.0-gamma)+(Tau-0.5));
                 //double Bn  = cell->Gamma;
+                double Bn  = floor(cell->Gamma);
                 size_t ncells = cell->Nneigh;
                 Vec3_t Flbm = OrthoSys::O;
                 for (size_t k=0;k<ncells;k++)
@@ -1771,31 +2169,17 @@ void Domain::ImprintLattice (size_t n,size_t Np)
                 Conjugate    (Pa->Q,q);
                 Rotation     (Tt,q,T);
                 //std::cout << "1" << std::endl;
-    #ifdef USE_THREAD
-                pthread_mutex_lock(&Pa->lck);
-    #elif USE_OMP
+    #ifdef USE_OMP
                 omp_set_lock      (&Pa->lck);
     #endif
                 Pa->F          += Flbm;
                 Pa->T          += T;
-    #ifdef USE_THREAD
-                pthread_mutex_unlock(&Pa->lck);
-    #elif USE_OMP
+    #ifdef USE_OMP
                 omp_unset_lock    (&Pa->lck);
     #endif
-                //std::cout << "2" << std::endl;
-    //#ifdef USE_THREAD
-                //pthread_mutex_lock  (&cell->lck);
-    //#endif
-                //cell->Omeis[k] = Omeis;
-                //cell->Gamma    = Gamma;
-    //#ifdef USE_THREAD
-                //pthread_mutex_unlock(&cell->lck);
-    //#endif
                 //std::cout << "3" << std::endl;
                 
             }
-            //std::cout << "3" << std::endl;
         }
     }
 }
@@ -3525,11 +3909,11 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     ResetContacts();
 
     //std::cout << "4" << std::endl;
-    ImprintLattice(1,Nproc);    
+    ImprintLatticeSC(0,Nproc);    
 #else
 
     //Connect particles and lattice
-    ImprintLattice();
+    ImprintLatticeSC();
 
     // build the map of possible contacts (for the Halo)
     ResetContacts();
@@ -3589,7 +3973,17 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         //std::cout << "1" <<std::endl;
         
         //Imprint the particles into the lattice
-        ImprintLattice(0,Nproc);
+        if (Particles.Size()>0||Disks.Size()>0)
+        {
+            if (Lat.Size()>1)
+            {
+                ImprintLatticeMC(0,Nproc);
+            }
+            else
+            {
+                ImprintLatticeSC(0,Nproc);
+            }
+        }
 
         //std::cout << "2" <<std::endl;
         //Calculate interparticle forces
@@ -3706,7 +4100,21 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         }
 
         //Apply collision operator
-        Collide(0,Nproc);
+        if (Particles.Size()>0||Disks.Size()>0)
+        {
+            if (Lat.Size()>1)
+            {
+                CollideMC(0,Nproc);
+            }
+            else
+            {
+                CollideSC(0,Nproc);
+            }
+        }
+        else
+        {
+            CollideNoPar(0,Nproc);
+        }
 
         //Stream the distribution functions
         for (size_t i=0;i<Lat.Size();i++)
