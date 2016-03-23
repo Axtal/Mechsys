@@ -1514,6 +1514,7 @@ void Domain::CollideSC (size_t n, size_t Np)
             //rho<10e-12 ? Bn =0.0 : Bn = (c->Gamma*(Lat[j].Tau-0.5))/((1.0-c->Gamma)+(Lat[j].Tau-0.5));
             //rho<10e-12 ? Bn =0.0 : Bn = c->Gamma;
             Bn = (c->Gamma*(Lat[0].Tau-0.5))/((1.0-c->Gamma)+(Lat[0].Tau-0.5));
+            //Bn = c->Gamma;
             //Bn = floor(c->Gamma);
             bool valid  = true;
             double alphal = 1.0;
@@ -1814,20 +1815,14 @@ void Domain::ImprintLatticeSC (size_t n,size_t Np)
             cell = Lat[0].Cells[ParCellPairs[i].ICell];
             double gamma  = len/(4.0*Lat[0].dx);
             cell->Gamma   = std::min(gamma+cell->Gamma,1.0);
-            //if (fabs(cell->Gamma-1.0)<1.0e-12) 
-            if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
-            {
-                continue;
-            }
             Vec3_t B      = C - Pa->X;
             Vec3_t tmp;
             Rotation(Pa->W,Pa->Q,tmp);
             Vec3_t VelP   = Pa->V + cross(tmp,B);
             double rho = cell->Rho;
-            double Bn  = (cell->Gamma*(Tau-0.5))/((1.0-cell->Gamma)+(Tau-0.5));
-            //double Bn  = cell->Gamma;
-            //double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
-            //double Bn  = floor(cell->Gamma);
+            double Bn  = (gamma*(Tau-0.5))/((1.0-gamma)+(Tau-0.5));
+            //double Bn  = gamma;
+            //double Bn  = floor(gamma);
             size_t ncells = cell->Nneigh;
             Vec3_t Flbm = OrthoSys::O;
             for (size_t k=0;k<ncells;k++)
@@ -1935,18 +1930,14 @@ void Domain::ImprintLatticeSC (size_t n,size_t Np)
             cell->Gamma   = std::min(gamma+cell->Gamma,1.0);
             //if (fabs(cell->Gamma-1.0)<1.0e-12)
             //if (fabs(cell->Gamma-1.0)<1.0e-12&&(fabs(Lat[0].G)>1.0e-12||Gmix>1.0e-12)) 
-            if (fabs(cell->Gamma-1.0)<1.0e-12&&(fabs(Lat[0].G)>1.0e-12)) 
-            {
-                continue;
-            }
             Vec3_t B      = C - Pa->x;
             Vec3_t tmp;
             Rotation(Pa->w,Pa->Q,tmp);
             Vec3_t VelP   = Pa->v + cross(tmp,B);
             double rho = cell->Rho;
             double Bn  = (gamma*(Tau-0.5))/((1.0-gamma)+(Tau-0.5));
-            //double Bn  = cell->Gamma;
-            //double Bn  = floor(cell->Gamma);
+            //double Bn  = gamma;
+            //double Bn  = floor(gamma);
             size_t ncells = cell->Nneigh;
             Vec3_t Flbm = OrthoSys::O;
             for (size_t k=0;k<ncells;k++)
@@ -2010,19 +2001,14 @@ void Domain::ImprintLatticeMC (size_t n,size_t Np)
                 double gamma  = len/(4.0*Lat[0].dx);
                 cell->Gamma   = std::min(gamma+cell->Gamma,1.0);
                 //if (fabs(cell->Gamma-1.0)<1.0e-12) 
-                if (fabs(cell->Gamma-1.0)<1.0e-12&&fabs(Lat[0].G)>1.0e-12) 
-                {
-                    continue;
-                }
                 Vec3_t B      = C - Pa->X;
                 Vec3_t tmp;
                 Rotation(Pa->W,Pa->Q,tmp);
                 Vec3_t VelP   = Pa->V + cross(tmp,B);
                 double rho = cell->Rho;
-                //double Bn  = (cell->Gamma*(Tau-0.5))/((1.0-cell->Gamma)+(Tau-0.5));
-                //double Bn  = cell->Gamma;
-                //double Bn  = (cell->Gamma*(cell->Tau-0.5))/((1.0-cell->Gamma)+(cell->Tau-0.5));
-                double Bn  = floor(cell->Gamma);
+                //double Bn  = (gamma*(Tau-0.5))/((1.0-gamma)+(Tau-0.5));
+                //double Bn  = gamma;
+                double Bn  = floor(gamma);
                 size_t ncells = cell->Nneigh;
                 Vec3_t Flbm = OrthoSys::O;
                 for (size_t k=0;k<ncells;k++)
@@ -2136,18 +2122,14 @@ void Domain::ImprintLatticeMC (size_t n,size_t Np)
                 cell->Gamma   = std::min(gamma+cell->Gamma,1.0);
                 //if (fabs(cell->Gamma-1.0)<1.0e-12)
                 //if (fabs(cell->Gamma-1.0)<1.0e-12&&(fabs(Lat[0].G)>1.0e-12||Gmix>1.0e-12)) 
-                if (fabs(cell->Gamma-1.0)<1.0e-12&&(fabs(Lat[0].G)>1.0e-12)) 
-                {
-                    continue;
-                }
                 Vec3_t B      = C - Pa->x;
                 Vec3_t tmp;
                 Rotation(Pa->w,Pa->Q,tmp);
                 Vec3_t VelP   = Pa->v + cross(tmp,B);
                 double rho = cell->Rho;
                 //double Bn  = (gamma*(Tau-0.5))/((1.0-gamma)+(Tau-0.5));
-                //double Bn  = cell->Gamma;
-                double Bn  = floor(cell->Gamma);
+                //double Bn  = gamma;
+                double Bn  = floor(gamma);
                 size_t ncells = cell->Nneigh;
                 Vec3_t Flbm = OrthoSys::O;
                 for (size_t k=0;k<ncells;k++)

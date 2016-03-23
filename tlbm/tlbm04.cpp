@@ -186,7 +186,7 @@ int main(int argc, char **argv) try
 		double yc = grains["Yc"][i]*ny;
 		double r  = grains["R" ][i]*nx*0.9;
         Dom.AddDisk(0,Vec3_t(xc,yc,0.0),OrthoSys::O,OrthoSys::O,3.0,r,1.0);
-        Dom.Disks[Dom.Disks.Size()-1]->FixVelocity();
+        Dom.Disks[Dom.Disks.Size()-1]->FixVeloc();
         Dom.Disks[Dom.Disks.Size()-1]->Kn = Kn;
 	}
 

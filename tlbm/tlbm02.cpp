@@ -67,7 +67,7 @@ void Report (LBM::Domain & dom, void * UD)
         M   /=nc;
         double CD  = 2.0*dom.Disks[0]->F(0)/(Flux(0)*Flux(0)/M*2.0*dat.R);
         double Re  = 2.0*Flux(0)*dat.R/(M*dat.nu);
-        double CDt = 24.0/Re + 6.0/(1.0+sqrt(Re)) + 0.4;
+        double CDt = 10.7*pow(Re,-0.7239)+0.9402;
         if (Flux(0)<1.0e-12) 
         {
             Flux = OrthoSys::O;
@@ -119,14 +119,14 @@ void Setup (LBM::Domain & dom, void * UD)
 	{
 		Cell * c = dat.Right[i];
 		if (c->IsSolid) continue;
-		double vx = -1.0 + (c->F[0]+c->F[2]+c->F[4] + 2.0*(c->F[1]+c->F[5]+c->F[8]))/c->RhoBC;
-		c->F[3] = c->F[1] - (2.0/3.0)*c->RhoBC*vx; 
-		c->F[7] = c->F[5] - (1.0/6.0)*c->RhoBC*vx + 0.5*(c->F[2]-c->F[4]);
-		c->F[6] = c->F[8] - (1.0/6.0)*c->RhoBC*vx - 0.5*(c->F[2]-c->F[4]);
-		//double rho = (c->F[0]+c->F[2]+c->F[4] + 2.0*(c->F[3]+c->F[6]+c->F[7]))/(1.0-dat.Vel[i]);
-		//c->F[1] = c->F[3] + (2.0/3.0)*rho*vel;
-		//c->F[5] = c->F[7] + (1.0/6.0)*rho*vel - 0.5*(c->F[2]-c->F[4]);
-		//c->F[8] = c->F[6] + (1.0/6.0)*rho*vel + 0.5*(c->F[2]-c->F[4]);
+		//double vx = -1.0 + (c->F[0]+c->F[2]+c->F[4] + 2.0*(c->F[1]+c->F[5]+c->F[8]))/c->RhoBC;
+		//c->F[3] = c->F[1] - (2.0/3.0)*c->RhoBC*vx; 
+		//c->F[7] = c->F[5] - (1.0/6.0)*c->RhoBC*vx + 0.5*(c->F[2]-c->F[4]);
+		//c->F[6] = c->F[8] - (1.0/6.0)*c->RhoBC*vx - 0.5*(c->F[2]-c->F[4]);
+		double rho = (c->F[0]+c->F[2]+c->F[4] + 2.0*(c->F[1]+c->F[5]+c->F[8]))/(1.0+vel);
+		c->F[3] = c->F[1] - (2.0/3.0)*rho*vel;
+		c->F[7] = c->F[5] - (1.0/6.0)*rho*vel + 0.5*(c->F[2]-c->F[4]);
+		c->F[6] = c->F[8] - (1.0/6.0)*rho*vel - 0.5*(c->F[2]-c->F[4]);
         c->Rho = c->VelDen(c->Vel);
 	}
 }
@@ -150,7 +150,7 @@ int main(int argc, char **argv) try
     dat.R = radius;
     dat.nu = nu;
     dat.Tf = 80000.0;
-    Dom.Sc = 0.01;
+    //Dom.Sc = 0.01;
 
     dat.vmax = u_max;
     //Assigning the left and right cells
@@ -173,7 +173,7 @@ int main(int argc, char **argv) try
     dat.rho  = 1.0;
 
 	// set inner obstacle
-	int obsX   = nx/2;   // x position
+	int obsX   = nx/4;   // x position
 	int obsY   = ny/2+3; // y position
     //for (size_t i=0;i<nx;i++)
     //for (size_t j=0;j<ny;j++)
