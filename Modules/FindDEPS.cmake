@@ -46,7 +46,7 @@ OPTION(A_USE_HDF5           "Use HDF5 ?"                                        
 
 ADD_DEFINITIONS(-fmessage-length=0) # Each error message will appear on a single line; no line-wrapping will be done.
 #ADD_DEFINITIONS(-std=gnu++11)       # New C++ standard
-#ADD_DEFINITIONS(-std=c++0x)         # New C++ standard
+ADD_DEFINITIONS(-std=c++11)         # New C++ standard
 ADD_DEFINITIONS(-fpermissive)       # New C++ standard
 #INCLUDE_DIRECTORIES (${INCLUDE_DIRECTORIES} $ENV{HOME}/pkg/boost_1_59_0)
 #INCLUDE_DIRECTORIES (${INCLUDE_DIRECTORIES} $ENV{MECHSYS_ROOT}/pkg/boost_1_59_0)
