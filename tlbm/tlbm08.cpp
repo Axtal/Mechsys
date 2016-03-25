@@ -157,7 +157,8 @@ int main(int argc, char **argv) try
 
     LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
     Dom.Step     = 1;
-    Dom.Sc       = 0.0;
+    //Dom.Sc       = 0.0;
+    Dom.Alpha    = dx;
     UserData dat;
     Dom.UserData = &dat;
     dat.acc      = Vec3_t(Dp,0.0,0.0);

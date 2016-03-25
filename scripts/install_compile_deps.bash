@@ -327,7 +327,7 @@ download_and_compile igraph
 #download_and_compile gsl
 #download_and_compile boost
 #download_and_compile lapack
-#download_and_compile hdf5
+download_and_compile hdf5
 download_and_compile szip
 
 echo

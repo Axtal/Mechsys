@@ -46,7 +46,7 @@ OPTION(A_USE_HDF5           "Use HDF5 ?"                                        
 
 ADD_DEFINITIONS(-fmessage-length=0) # Each error message will appear on a single line; no line-wrapping will be done.
 #ADD_DEFINITIONS(-std=gnu++11)       # New C++ standard
-ADD_DEFINITIONS(-std=c++0x)         # New C++ standard
+#ADD_DEFINITIONS(-std=c++0x)         # New C++ standard
 ADD_DEFINITIONS(-fpermissive)       # New C++ standard
 #INCLUDE_DIRECTORIES (${INCLUDE_DIRECTORIES} $ENV{HOME}/pkg/boost_1_59_0)
 #INCLUDE_DIRECTORIES (${INCLUDE_DIRECTORIES} $ENV{MECHSYS_ROOT}/pkg/boost_1_59_0)
@@ -72,6 +72,7 @@ ENDIF(A_MAKE_PROFILING)
 
 IF(A_MAKE_OPTIMIZED)
 	ADD_DEFINITIONS (-O3)
+	#ADD_DEFINITIONS (-Ofast)
 ENDIF(A_MAKE_OPTIMIZED)
 
 IF(A_MAKE_WXW_MONO)
@@ -112,8 +113,8 @@ if(A_USE_VTK)
 INCLUDE      (FindVTK)                                      #  3
 endif(A_USE_VTK)
 #FIND_PACKAGE (HDF5 COMPONENTS     HL)                       #  4
-FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  4
+#FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
+INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  4
 INCLUDE      (FindBoost)                                    #  5
 INCLUDE      (FindLAPACK)                                   #  6
 #INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindLocLAPACK.cmake) #  6

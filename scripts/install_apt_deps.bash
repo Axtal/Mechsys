@@ -11,7 +11,8 @@ sudo apt-get install \
     libxml2-dev \
     libmumps-dev libparmetis-dev libvtk5-dev \
     libgtk-3-dev libfltk1.3-dev libxml2-dev \
-    libcgal-dev libhdf5-serial-dev libcgal-dev
+    libcgal-dev libcgal-dev \
+    #libhdf5-serial-dev
 
 # note: libxml2-dev is for igraph
 #       libmumps-dev will install libopenmpi-dev

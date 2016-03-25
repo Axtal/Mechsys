@@ -21,16 +21,11 @@ CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
 ENABLE_TESTING         ()
 
 # Features                                                                         
-#OPTION(A_WITH_PYTHON_MODULE "Create python module (mechsys)" OFF)
-#OPTION(A_WITH_TEST          "Compile general tests"          OFF)
-#OPTION(A_WITH_TFEM          "Compile FEM tests"              OFF)
 OPTION(A_WITH_TLBM          "Compile LBM tests"              ON )
 OPTION(A_WITH_TEMLBM        "Compile EMLBM tests"            ON )
 OPTION(A_WITH_TADLBM        "Compile ADLBM tests"            ON )
 OPTION(A_WITH_TDEM          "Compile DEM tests"              ON )
 #OPTION(A_WITH_TSPH          "Compile SPH tests"              OFF)
-#OPTION(A_WITH_TMPM          "Compile MPM tests"              OFF)
-#OPTION(A_WITH_TDOC          "Compile documentation tests"    OFF)
 
 # needed when building Debian package
 IF(NOT INSTALL_ROOT)
@@ -68,14 +63,6 @@ endif(MISSING)
 
 SET(ALLDIRS src) # sub-directories
 
-#IF(A_WITH_TEST)
-	#SET(ALLDIRS ${ALLDIRS} test)
-#ENDIF(A_WITH_TEST)
-#
-#IF(A_WITH_TFEM)
-	#SET(ALLDIRS ${ALLDIRS} tfem)
-#ENDIF(A_WITH_TFEM)
-#
 IF(A_WITH_TLBM)
 	SET(ALLDIRS ${ALLDIRS} tlbm)
 ENDIF(A_WITH_TLBM)
@@ -95,14 +82,6 @@ ENDIF(A_WITH_TDEM)
 #IF(A_WITH_TSPH)
 	#SET(ALLDIRS ${ALLDIRS} tsph)
 #ENDIF(A_WITH_TSPH)
-#
-#IF(A_WITH_TMPM)
-	#SET(ALLDIRS ${ALLDIRS} tmpm)
-#ENDIF(A_WITH_TMPM)
-#
-#IF(A_WITH_TDOC)
-	#SET(ALLDIRS ${ALLDIRS} tdoc)
-#ENDIF(A_WITH_TDOC)
 
 IF(ALLDIRS)
     SUBDIRS(${ALLDIRS})
