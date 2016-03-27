@@ -258,6 +258,7 @@ inline void Particle::init_default_values(int tag, double r, double rho)
     wzf = false;
 
     F  = 0.0,0.0,0.0;
+    T  = 0.0,0.0,0.0;
     Ff = 0.0,0.0,0.0;
     Tf = 0.0,0.0,0.0;
 }

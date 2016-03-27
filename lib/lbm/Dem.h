@@ -85,6 +85,8 @@ inline Disk::Disk(int TheTag, Vec3_t const & TheX, Vec3_t const & TheV, Vec3_t c
     I   = 0.5*M*R*R;
     Xb  = X - dt*V;
     Wb  = W;
+    F   = 0.0,0.0,0.0;
+    T   = 0.0,0.0,0.0;
     Ff  = 0.0,0.0,0.0;
     Tf  = 0.0,0.0,0.0;
     vf  = false,false,false;

@@ -2023,6 +2023,7 @@ void Domain::ImprintLatticeMC (size_t n,size_t Np)
                     double Fcontact;
                     (cell->Gammap>0.0)&&(cell->Gammap<1.0) ? Fcontact = Lat[j].Gs*cell->W[k]*cell->Rho*floor(nb->Gammap) : Fcontact = 0.0;
                     Flbm += -(Fconv*Bn*Omega*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx - Fcontact)*cell->C[k];
+
                 }
                 Vec3_t T,Tt;
                 Tt =           cross(B,Flbm);
@@ -3826,6 +3827,9 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     {
     printf("%s  Tau of Lattice %zd                 =  %g%s\n"       ,TERM_CLR2, i, Lat[i].Tau                        , TERM_RST);
     }
+
+    if (FreePar.Size()>0)
+    {
     printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
     printf("%s  Suggested Verlet distance        =  %g or %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
 
@@ -3836,6 +3840,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     }
 
     if (Alpha < 0.0) throw new Fatal("Verlet distance cannot be negative");
+    }
 
 
 
