@@ -50,16 +50,18 @@ void Setup (ADLBM::Domain & dom, void * UD)
 	for (size_t i=0; i<dat.Left.Size(); ++i)
 	{
 		Cell * c = dat.Left[i];
-		if (c->IsSolid) continue;
-		double rho = (c->F[0]+c->F[2]+c->F[4] + 2.0*(c->F[3]+c->F[6]+c->F[7]))/(1.0-dat.Vel[i]);
-		c->F[1] = c->F[3] + (2.0/3.0)*rho*dat.Vel[i];
-		c->F[5] = c->F[7] + (1.0/6.0)*rho*dat.Vel[i] - 0.5*(c->F[2]-c->F[4]);
-		c->F[8] = c->F[6] + (1.0/6.0)*rho*dat.Vel[i] + 0.5*(c->F[2]-c->F[4]);
-        for (size_t k=0;k<c->Nneigh;k++)
-        {
-            c->G[k] = dom.Lat.Cells[c->Neighs[1]]->G[k];
-        }
-        c->CalcProp();
+        c->Vel   = Vec3_t(dat.Vel[i],0.0,0.0);
+        c->Initialize(1.0,c->Temp,c->Vel);
+		//if (c->IsSolid) continue;
+		//double rho = (c->F[0]+c->F[2]+c->F[4] + 2.0*(c->F[3]+c->F[6]+c->F[7]))/(1.0-dat.Vel[i]);
+		//c->F[1] = c->F[3] + (2.0/3.0)*rho*dat.Vel[i];
+		//c->F[5] = c->F[7] + (1.0/6.0)*rho*dat.Vel[i] - 0.5*(c->F[2]-c->F[4]);
+		//c->F[8] = c->F[6] + (1.0/6.0)*rho*dat.Vel[i] + 0.5*(c->F[2]-c->F[4]);
+        //for (size_t k=0;k<c->Nneigh;k++)
+        //{
+            //c->G[k] = dom.Lat.Cells[c->Neighs[1]]->G[k];
+        //}
+        //c->CalcProp();
 	}
 
 	// Cells with prescribed density
@@ -69,16 +71,17 @@ void Setup (ADLBM::Domain & dom, void * UD)
 	for (size_t i=0; i<dat.Right.Size(); ++i)
 	{
 		Cell * c = dat.Right[i];
-		if (c->IsSolid) continue;
-		double vx = -1.0 + (c->F[0]+c->F[2]+c->F[4] + 2.0*(c->F[1]+c->F[5]+c->F[8]))/dat.rho;
-		c->F[3] = c->F[1] - (2.0/3.0)*dat.rho*vx; 
-		c->F[7] = c->F[5] - (1.0/6.0)*dat.rho*vx + 0.5*(c->F[2]-c->F[4]);
-		c->F[6] = c->F[8] - (1.0/6.0)*dat.rho*vx - 0.5*(c->F[2]-c->F[4]);
-        for (size_t k=0;k<c->Nneigh;k++)
-        {
-            c->G[k] = dom.Lat.Cells[c->Neighs[3]]->G[k];
-        }
-        c->CalcProp();
+        c->Initialize(1.0,c->Temp,c->Vel);
+		//if (c->IsSolid) continue;
+		//double vx = -1.0 + (c->F[0]+c->F[2]+c->F[4] + 2.0*(c->F[1]+c->F[5]+c->F[8]))/dat.rho;
+		//c->F[3] = c->F[1] - (2.0/3.0)*dat.rho*vx; 
+		//c->F[7] = c->F[5] - (1.0/6.0)*dat.rho*vx + 0.5*(c->F[2]-c->F[4]);
+		//c->F[6] = c->F[8] - (1.0/6.0)*dat.rho*vx - 0.5*(c->F[2]-c->F[4]);
+        //for (size_t k=0;k<c->Nneigh;k++)
+        //{
+            //c->G[k] = dom.Lat.Cells[c->Neighs[3]]->G[k];
+        //}
+        //c->CalcProp();
 	}
 
 #ifdef USE_OMP
@@ -99,7 +102,7 @@ int main(int argc, char **argv) try
     size_t nproc = 1; 
     if (argc==2) nproc=atoi(argv[1]);
     double u_max  = 0.1;                // Poiseuille's maximum velocity
-    double Re     = 1000.0;                  // Reynold's number
+    double Re     = 40000.0;                  // Reynold's number
     size_t nx = 800;
     size_t ny = 100;
     int radius = ny/10 + 1;           // radius of inner circle (obstacle)

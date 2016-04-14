@@ -5,13 +5,11 @@ set -e
 sudo apt-get install \
     wget patch \
     g++ gfortran make cmake-curses-gui \
-    libgsl0-dev libsuitesparse-dev \
+    libgsl0-dev \
     libboost-python-dev \
     python-tk python-numpy python-scipy python-matplotlib \
-    libxml2-dev \
-    libmumps-dev libparmetis-dev libvtk5-dev \
-    libgtk-3-dev libfltk1.3-dev libxml2-dev \
-    libcgal-dev libcgal-dev \
+    libvtk5-dev \
+    libxml2-dev \ 
     #libhdf5-serial-dev
 
 # note: libxml2-dev is for igraph

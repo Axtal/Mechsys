@@ -24,6 +24,7 @@ ENABLE_TESTING         ()
 OPTION(A_WITH_TLBM          "Compile LBM tests"              ON )
 OPTION(A_WITH_TEMLBM        "Compile EMLBM tests"            ON )
 OPTION(A_WITH_TADLBM        "Compile ADLBM tests"            ON )
+OPTION(A_WITH_TFLBM         "Compile FLBM  tests"            ON )
 OPTION(A_WITH_TDEM          "Compile DEM tests"              ON )
 #OPTION(A_WITH_TSPH          "Compile SPH tests"              OFF)
 
@@ -74,6 +75,10 @@ ENDIF(A_WITH_TEMLBM)
 IF(A_WITH_TADLBM)
 	SET(ALLDIRS ${ALLDIRS} tadlbm)
 ENDIF(A_WITH_TADLBM)
+
+IF(A_WITH_TFLBM)
+	SET(ALLDIRS ${ALLDIRS} tflbm)
+ENDIF(A_WITH_TFLBM)
 
 IF(A_WITH_TDEM)
 	SET(ALLDIRS ${ALLDIRS} tdem)

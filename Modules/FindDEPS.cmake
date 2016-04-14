@@ -32,17 +32,9 @@ OPTION(A_MAKE_CHECK_OVERLAP "Check for maximun overlapping in DEM simulations"  
                                                                                    
 # Options                                                                          
 OPTION(A_USE_OMP            "Use OpenMP  ?"                                        ON )
-#OPTION(A_USE_MPI            "Use OpenMPI ?"                                        OFF)
-#OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" OFF)
-#OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
+OPTION(A_USE_OCL            "Use OpenCL for GPU computations ?"                    OFF)
 OPTION(A_USE_VTK            "Use VTK ?"                                            OFF)
 OPTION(A_USE_HDF5           "Use HDF5 ?"                                           ON )
-#OPTION(A_USE_SUPERLU        "Use SuperLU"                                          OFF)
-#OPTION(A_USE_SUPERLUD       "Use SuperLUd"                                         OFF)
-#OPTION(A_USE_FLTK           "Use FLTK"                                             OFF)
-#OPTION(A_USE_CGAL           "Use CGAL"                                             OFF)
-#OPTION(A_USE_PARMETIS       "Use ParMETIS"                                         OFF)
-#OPTION(A_USE_MUMPS          "Use MUMPS"                                            OFF)
 
 ADD_DEFINITIONS(-fmessage-length=0) # Each error message will appear on a single line; no line-wrapping will be done.
 #ADD_DEFINITIONS(-std=gnu++11)       # New C++ standard
@@ -107,66 +99,27 @@ SET (MISSING "")
 SET (Boost_USE_STATIC_LIBS ON)
 ENABLE_LANGUAGE (Fortran)
 
-#FIND_PACKAGE (wxWidgets COMPONENTS ${WXW_COMPONENTS})       #  1
-#INCLUDE      (FindMPI)                                      #  2
 if(A_USE_VTK)
-INCLUDE      (FindVTK)                                      #  3
+INCLUDE      (FindVTK)                                      #  1
 endif(A_USE_VTK)
-#FIND_PACKAGE (HDF5 COMPONENTS     HL)                       #  4
-#FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  4
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  4
-INCLUDE      (FindBoost)                                    #  5
-INCLUDE      (FindLAPACK)                                   #  6
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindLocLAPACK.cmake) #  6
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindBLITZ.cmake    ) #  7
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindGSL.cmake      ) #  8
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindMTL.cmake      ) #  9
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindVORO.cmake     ) # 10
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindTETGEN.cmake   ) # 11
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindTRIANGLE.cmake ) # 12
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindUMFPACK.cmake  ) # 13
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindMUMPS.cmake    ) # 14
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindSCALAPACK.cmake) # 15
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindPARMETIS.cmake ) # 16
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindSUPERLU.cmake  ) # 17
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindSUPERLUD.cmake ) # 18
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindFLTK.cmake     ) # 19
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindCGAL.cmake     ) # 20
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindPROC.cmake     ) # 21
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindSPHASH.cmake   ) # 22
-#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindTENSORS.cmake  ) # 23
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindIGRAPH.cmake   ) # 24
-#INCLUDE (FindThreads)                                       # 25
-INCLUDE (FindOpenMP )                                       # 26
+#FIND_PACKAGE (HDF5 COMPONENTS     HL)                       #  2
+#FIND_PACKAGE (HDF5 COMPONENTS CXX HL)                       #  2
+INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake     ) #  2
+INCLUDE      (FindBoost)                                    #  3
+INCLUDE      (FindLAPACK)                                   #  4
+#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindLocLAPACK.cmake) #  4
+#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindBLAZE.cmake    ) #  5
+#INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindARMA.cmake     ) #  5
+INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindBLITZ.cmake    ) #  5
+INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindGSL.cmake      ) #  6
+INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindVORO.cmake     ) # 7
+INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindTETGEN.cmake   ) # 8
+INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindTRIANGLE.cmake ) # 9
+INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindIGRAPH.cmake   ) # 10
+INCLUDE (FindOpenMP )                                       # 11
+INCLUDE (FindOpenCL )                                       # 12
 
 # 1
-#if(wxWidgets_FOUND AND A_USE_WXW)
-    #INCLUDE (${wxWidgets_USE_FILE})
-    #SET (LIBS ${LIBS} ${wxWidgets_LIBRARIES})
-    #ADD_DEFINITIONS (-DHAS_WXW)
-#else(wxWidgets_FOUND AND A_USE_WXW)
-    #if(A_USE_WXW)
-        #SET (MISSING "${MISSING} wxWidgets")
-    #endif(A_USE_WXW)
-#endif(wxWidgets_FOUND AND A_USE_WXW)
-
-# 2
-#if(MPI_FOUND AND A_USE_MPI)
-    #SET(A_USE_MUMPS TRUE)
-#endif(MPI_FOUND AND A_USE_MPI)
-#if(MPI_FOUND AND A_USE_MPI OR A_USE_MUMPS)
-    #INCLUDE_DIRECTORIES (${MPI_INCLUDE_PATH})
-    #SET (FLAGS  "${FLAGS}  ${MPI_COMPILE_FLAGS}")
-    #SET (LIBS    ${LIBS}   ${MPI_LIBRARIES}     )
-    #SET (LFLAGS "${LFLAGS} ${MPI_LINK_FLAGS}"   )
-    #ADD_DEFINITIONS (-DHAS_MPI)
-#else(MPI_FOUND AND A_USE_MPI OR A_USE_MUMPS)
-    #if(A_USE_MPI OR A_USE_MUMPS)
-        #SET (MISSING "${MISSING} OpenMPI")
-    #endif(A_USE_MPI OR A_USE_MUMPS)
-#endif(MPI_FOUND AND A_USE_MPI OR A_USE_MUMPS)
-
-# 3
 if(VTK_FOUND AND A_USE_VTK)
     ADD_DEFINITIONS (-DUSE_VTK)
     INCLUDE_DIRECTORIES (${VTK_INCLUDE_DIRS})
@@ -178,7 +131,7 @@ else(VTK_FOUND AND A_USE_VTK)
     endif(A_USE_VTK)
 endif(VTK_FOUND AND A_USE_VTK)
 
-# 4
+# 2
 if(HDF5_FOUND AND A_USE_HDF5)
     ADD_DEFINITIONS (-DH5_NO_DEPRECATED_SYMBOLS -DH5Gcreate_vers=2 -DH5Gopen_vers=2 -DUSE_HDF5)
 	INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIR})
@@ -189,14 +142,7 @@ else(HDF5_FOUND AND A_USE_HDF5)
     endif(A_USE_HDF5)
 endif(HDF5_FOUND AND A_USE_HDF5)
 
-# 5
-#if(Boost_FOUND)
-	#INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS})
-#else(Boost_FOUND)
-    #SET (MISSING "${MISSING} boost")
-#endif(Boost_FOUND)
-
-# 6
+# 4
 if(LAPACK_FOUND)
     SET (LIBS ${LIBS} ${LAPACK_LIBRARIES})
 else(LAPACK_FOUND)
@@ -208,14 +154,28 @@ else(LAPACK_FOUND)
     endif(LocLAPACK_FOUND)
 endif(LAPACK_FOUND)
 
-# 7
+# 5
+#if(BLAZE_FOUND)
+	#INCLUDE_DIRECTORIES (${BLAZE_INCLUDE_DIRS})
+#else(BLAZE_FOUND)
+    #SET (MISSING "${MISSING} blaze")
+#endif(BLAZE_FOUND)
+
+# 5
+#if(ARMA_FOUND)
+	#INCLUDE_DIRECTORIES (${ARMA_INCLUDE_DIRS})
+#else(ARMA_FOUND)
+    #SET (MISSING "${MISSING} armadillo")
+#endif(ARMA_FOUND)
+
+# 5
 if(BLITZ_FOUND)
 	INCLUDE_DIRECTORIES (${BLITZ_INCLUDE_DIRS})
 else(BLITZ_FOUND)
     SET (MISSING "${MISSING} blitz++")
 endif(BLITZ_FOUND)
 
-# 8
+# 6
 if(GSL_FOUND)
 	INCLUDE_DIRECTORIES (${GSL_INCLUDE_DIRS})
 	SET (LIBS ${LIBS} ${GSL_LIBRARIES})
@@ -223,17 +183,7 @@ else(GSL_FOUND)
     SET (MISSING "${MISSING} GSL")
 endif(GSL_FOUND)
 
-# 9
-#if(MTL_FOUND AND A_USE_MTL4)
-	#INCLUDE_DIRECTORIES (${MTL_INCLUDE_DIRS})
-    #ADD_DEFINITIONS (-DUSE_MTL4)
-#else(MTL_FOUND AND A_USE_MTL4)
-    #if(A_USE_MTL4)
-        #SET (MISSING "${MISSING} MTL4")
-    #endif(A_USE_MTL4)
-#endif(MTL_FOUND AND A_USE_MTL4)
-
-# 10
+# 7
 if(VORO_FOUND)
 	INCLUDE_DIRECTORIES (${VORO_INCLUDE_DIRS})
     SET (LIBS ${LIBS} ${VORO_LIBRARIES})
@@ -241,7 +191,7 @@ else(VORO_FOUND)
     SET (MISSING "${MISSING} Voro++")
 endif(VORO_FOUND)
 
-# 11
+# 8
 if(TETGEN_FOUND)
 	INCLUDE_DIRECTORIES (${TETGEN_INCLUDE_DIRS})
 	SET (LIBS ${LIBS} ${TETGEN_LIBRARIES})
@@ -249,7 +199,7 @@ else(TETGEN_FOUND)
     SET (MISSING "${MISSING} Tetgen")
 endif(TETGEN_FOUND)
 
-# 12
+# 9
 if(TRIANGLE_FOUND)
 	INCLUDE_DIRECTORIES (${TRIANGLE_INCLUDE_DIRS})
 	SET (LIBS ${LIBS} ${TRIANGLE_LIBRARIES})
@@ -257,137 +207,16 @@ else(TRIANGLE_FOUND)
     SET (MISSING "${MISSING} Triangle")
 endif(TRIANGLE_FOUND)
 
-# 13
-#if(UMFPACK_FOUND)
-	#INCLUDE_DIRECTORIES (${UMFPACK_INCLUDE_DIRS})
-	#SET(LIBS ${LIBS} ${UMFPACK_LIBRARIES})
-    #ADD_DEFINITIONS (-DHAS_UMFPACK)
-#else(UMFPACK_FOUND)
-    #SET (MISSING "${MISSING} UMFPACK")
-#endif(UMFPACK_FOUND)
-
-# 14
-#if(MUMPS_FOUND AND A_USE_MUMPS)
-	#INCLUDE_DIRECTORIES (${MUMPS_INCLUDE_DIRS})
-	#SET(LIBS ${LIBS} ${MUMPS_LIBRARIES} -lmpi_f77)
-    #ADD_DEFINITIONS (-DHAS_MUMPS)
-#else(MUMPS_FOUND AND A_USE_MUMPS)
-    #if(A_USE_MUMPS)
-        #SET (MISSING "${MISSING} MUMPS")
-    #endif(A_USE_MUMPS)
-#endif(MUMPS_FOUND AND A_USE_MUMPS)
-
-# 15
-#if(SCALAPACK_FOUND AND A_USE_MUMPS)
-#	SET(LIBS ${LIBS} ${SCALAPACK_LIBRARIES}) # must be after MUMPS
-#else(SCALAPACK_FOUND AND A_USE_MUMPS)
-#    if(A_USE_MUMPS)
-#        SET (MISSING "${MISSING} ScaLAPACK")
-#    endif(A_USE_MUMPS)
-#endif(SCALAPACK_FOUND AND A_USE_MUMPS)
-
-# 16
-#if(PARMETIS_FOUND AND A_USE_PARMETIS OR A_USE_MUMPS)
-    #INCLUDE_DIRECTORIES (${PARMETIS_INCLUDE_DIRS})
-    #SET (LIBS ${LIBS} ${PARMETIS_LIBRARIES})
-    #ADD_DEFINITIONS (-DHAS_PARMETIS)
-#else(PARMETIS_FOUND AND A_USE_PARMETIS OR A_USE_MUMPS)
-    #if(A_USE_PARMETIS OR A_USE_MUMPS)
-        #SET (MISSING "${MISSING} ParMETIS")
-    #endif(A_USE_PARMETIS OR A_USE_MUMPS)
-#endif(PARMETIS_FOUND AND A_USE_PARMETIS OR A_USE_MUMPS)
-
-# 17
-#if(SUPERLU_FOUND AND A_USE_SUPERLU)
-	#INCLUDE_DIRECTORIES (${SUPERLU_INCLUDE_DIRS})
-	#SET (LIBS ${LIBS} ${SUPERLU_LIBRARIES})
-    #ADD_DEFINITIONS (-DHAS_SUPERLU)
-#else(SUPERLU_FOUND AND A_USE_SUPERLU)
-    #if(A_USE_SUPERLU)
-        #SET (MISSING "${MISSING} SuperLU")
-    #endif(A_USE_SUPERLU)
-#endif(SUPERLU_FOUND AND A_USE_SUPERLU)
-
-# 18
-#if(SUPERLUD_FOUND AND A_USE_SUPERLUD)
-	#INCLUDE_DIRECTORIES (${SUPERLUD_INCLUDE_DIRS})
-	#SET (LIBS ${LIBS} ${SUPERLUD_LIBRARIES})
-    #ADD_DEFINITIONS (-DHAS_SUPERLUD)
-#else(SUPERLUD_FOUND AND A_USE_SUPERLUD)
-    #if(A_USE_SUPERLUD)
-        #SET (MISSING "${MISSING} SuperLUd")
-    #endif(A_USE_SUPERLUD)
-#endif(SUPERLUD_FOUND AND A_USE_SUPERLUD)
-
-# 19
-#if(FLTK_FOUND AND A_USE_FLTK)
-	#SET(FLAGS "${FLAGS} ${FLTK_CFLAGS}")
-	#SET(LFLAGS "${LFLAGS} ${FLTK_LFLAGS}")
-    #ADD_DEFINITIONS(-DHAS_FLTK)
-#else(FLTK_FOUND AND A_USE_FLTK)
-    #if(A_USE_FLTK)
-        #SET (MISSING "${MISSING} FLTK")
-    #endif(A_USE_FLTK)
-#endif(FLTK_FOUND AND A_USE_FLTK)
-
-# 20
-#if(CGAL_FOUND AND A_USE_CGAL)
-    #SET (LIBS ${LIBS} ${CGAL_LIBRARIES} "gfortran" boost_thread gmp)
-	#ADD_DEFINITIONS(-DHAS_CGAL -frounding-math)
-#else(CGAL_FOUND AND A_USE_CGAL)
-    #if(A_USE_CGAL)
-        #SET (MISSING "${MISSING} CGAL")
-    #endif(A_USE_CGAL)
-#endif(CGAL_FOUND AND A_USE_CGAL)
-
-# 21
-#if(PROC_FOUND)
-    #INCLUDE_DIRECTORIES (${PROC_INCLUDE_DIRS})
-    #SET (LIBS ${LIBS} ${PROC_LIBRARIES})
-	#ADD_DEFINITIONS(-DHAS_PROC)
-#else(PROC_FOUND)
-    #SET (MISSING "${MISSING} proc")
-#endif(PROC_FOUND)
-
-# 22
-#if(SPHASH_FOUND)
-    #INCLUDE_DIRECTORIES (${SPHASH_INCLUDE_DIRS})
-    #SET (LIBS ${LIBS} ${SPHASH_LIBRARIES})
-	#ADD_DEFINITIONS(-DHAS_SPHASH)
-#else(SPHASH_FOUND)
-    #SET (MISSING "${MISSING} sparsehash")
-#endif(SPHASH_FOUND)
-
-# 23
-#if(TENSORS_FOUND)
-    #INCLUDE_DIRECTORIES (${TENSORS_INCLUDE_DIRS})
-    #SET (LIBS ${LIBS} ${TENSORS_LIBRARIES})
-	#ADD_DEFINITIONS(-DHAS_TENSORS)
-#else(TENSORS_FOUND)
-    #SET (MISSING "${MISSING} Tensors")
-#endif(TENSORS_FOUND)
-
-# 24
+# 10
 if(IGRAPH_FOUND)
     INCLUDE_DIRECTORIES (${IGRAPH_INCLUDE_DIRS})
     SET (LIBS ${LIBS} ${IGRAPH_LIBRARIES})
 	ADD_DEFINITIONS(-DHAS_IGRAPH)
 else(IGRAPH_FOUND)
-    #SET (MISSING "${MISSING} IGraph")
+    SET (MISSING "${MISSING} IGraph")
 endif(IGRAPH_FOUND)
 
-# 25
-#if(Threads_FOUND AND A_USE_THREAD)
-    #SET (LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
-    #ADD_DEFINITIONS (-DUSE_THREAD)
-    #SET (LFLAGS "${LFLAGS} -pthread")
-#else(Threads_FOUND AND A_USE_THREAD)
-    #if(A_USE_THREAD)
-        #SET (MISSING "${MISSING} (p)Threads")
-    #endif(A_USE_THREAD)
-#endif(Threads_FOUND AND A_USE_THREAD)
-
-# 26
+# 11
 if(OPENMP_FOUND AND A_USE_OMP)
     ADD_DEFINITIONS (-DUSE_OMP)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -398,3 +227,16 @@ else(OPENMP_FOUND AND A_USE_OMP)
         SET (MISSING "${MISSING} OpenMP")
     endif(A_USE_OMP)
 endif(OPENMP_FOUND AND A_USE_OMP)
+
+# 12
+if(OpenCL_FOUND AND A_USE_OCL)
+    ADD_DEFINITIONS (-DUSE_OCL)
+    INCLUDE_DIRECTORIES (${OpenCL_INCLUDE_DIR})
+    SET (LIBS ${LIBS} ${OpenCL_LIBRARIES})
+else(OpenCL_FOUND AND A_USE_OCL)
+    if(A_USE_OCL)
+        SET (MISSING "${MISSING} OpenCL")
+    endif(A_USE_OCL)
+endif(OpenCL_FOUND AND A_USE_OCL)
+
+#MESSAGE("miuu")

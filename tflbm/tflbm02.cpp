@@ -1,3 +1,4 @@
+
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2009 Sergio Galindo                                    *
@@ -21,7 +22,7 @@
 #include <stdlib.h>
 
 // MechSys
-#include <mechsys/lbm/Domain.h>
+#include <mechsys/flbm/Domain.h>
 
 using std::cout;
 using std::endl;
@@ -38,28 +39,14 @@ int main(int argc, char **argv) try
     double dx = 1.0;
     double dt = 1.0;
     double Tf = 10000.0;
-    LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
-    //LBM::Domain Dom(D3Q19, nu, iVec3_t(nx,ny,nz), dx, dt);
-    //LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,nz), dx, dt);
-    //Dom.Lat[0].Rhoref =  2.0;
-    //Dom.Lat[0].G      = -4.0;
-    //Dom.Lat[0].Gs     =  0.0;
-    Dom.Lat[0].G      = -200.0;
-    Dom.Lat[0].Gs     = -100.0;
+    FLBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
+    //FLBM::Domain Dom(D3Q19, nu, iVec3_t(nx,ny,nz), dx, dt);
+    //FLBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,nz), dx, dt);
+    //Dom.Rhoref[0] =  2.0;
+    //Dom.G     [0] = -4.0;
+    //Dom.Gs    [0] =  0.0;
+    Dom.G[0]     = -200.0;
     
-    for (size_t i=0;i<nx;i++)
-    //for (size_t j=0;j<ny;j++)
-    {
-        //Dom.Lat[0].GetCell(iVec3_t(i,0   ,j))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(i,ny-1,j))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(i,j,ny-1))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(0   ,i,j))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(ny-1,i,j))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(i,0   ,0))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(i,ny-1,0))->IsSolid = true;
-    }
-
 	for (size_t i=0; i<nx; ++i)
 	for (size_t j=0; j<ny; ++j)
 	for (size_t k=0; k<nz; ++k)
@@ -68,10 +55,10 @@ int main(int argc, char **argv) try
 		double rho0 = (200.0 +(1.0*rand())/RAND_MAX)*dx*dx;
 		//double rho0 = (400.0 +(2.0*rand())/RAND_MAX)*dx*dx;
 		//double rho0 = (2.0 +(0.02*rand())/RAND_MAX)*dx*dx;
-		Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize (rho0, OrthoSys::O);
+		Dom.Initialize (0,iVec3_t(i,j,k),rho0, OrthoSys::O);
 	}
 
 	// Solve
-    Dom.Solve(Tf,50.0,NULL,NULL,"bubble",true,Nproc);
+    Dom.Solve(Tf,50.0,NULL,NULL,"tflbm02",true,Nproc);
 }
 MECHSYS_CATCH
