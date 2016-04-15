@@ -17,7 +17,7 @@
 ########################################################################
 
 PROJECT                (MECHSYS)
-CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED (VERSION 3.2)
 ENABLE_TESTING         ()
 
 # Features                                                                         

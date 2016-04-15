@@ -2,6 +2,10 @@
 
 set -e
 
+sudo apt-get install software-properties-common
+sudo add-apt-repository ppa:george-edison55/cmake-3.x
+sudo apt-get update
+
 sudo apt-get install \
     wget patch \
     g++ gfortran make cmake-curses-gui \
@@ -9,8 +13,11 @@ sudo apt-get install \
     libboost-python-dev \
     python-tk python-numpy python-scipy python-matplotlib \
     libvtk5-dev \
-    libxml2-dev \ 
+    libxml2-dev \
+    cmake 
     #libhdf5-serial-dev
+
+sudo apt-get upgrade
 
 # note: libxml2-dev is for igraph
 #       libmumps-dev will install libopenmpi-dev
