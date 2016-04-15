@@ -78,7 +78,7 @@ public:
     virtual void UpdateParameters ();              ///< Update the parameters
 
     // Data
-    bool        First;        ///< Is it the first collision?
+    bool           First;     ///< Is it the first collision?
     double         Kn;        ///< Normal stiffness
     double         Kt;        ///< Tengential stiffness
     double         Gn;        ///< Normal viscous coefficient

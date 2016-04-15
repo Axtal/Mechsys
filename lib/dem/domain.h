@@ -1700,13 +1700,15 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     // info
     Util::Stopwatch stopwatch;
     printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    printf("%s  Total mass   of free particles   =  %g%s\n"       ,TERM_CLR4, Ms                                   , TERM_RST);
-    printf("%s  Total volume of free particles   =  %g%s\n"       ,TERM_CLR4, Vs                                   , TERM_RST);
-    printf("%s  Total number of particles        =  %zd%s\n"      ,TERM_CLR2, Particles.Size()                     , TERM_RST);
-    printf("%s  Time step                        =  %g%s\n"       ,TERM_CLR2, dt                                   , TERM_RST);
-    printf("%s  Verlet distance                  =  %g%s\n"       ,TERM_CLR2, Alpha                                , TERM_RST);
-    printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
-    printf("%s  Suggested Verlet distance        =  %g or %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
+    printf("%s  Total mass   of free particles       =  %g%s\n"        ,TERM_CLR4, Ms                                   , TERM_RST);
+    printf("%s  Total volume of free particles       =  %g%s\n"        ,TERM_CLR4, Vs                                   , TERM_RST);
+    printf("%s  Total number of particles            =  %zd%s\n"       ,TERM_CLR2, Particles.Size()                     , TERM_RST);
+    printf("%s  Time step                            =  %g%s\n"        ,TERM_CLR2, dt                                   , TERM_RST);
+    printf("%s  Verlet distance                      =  %g%s\n"        ,TERM_CLR2, Alpha                                , TERM_RST);
+    printf("%s  Suggested Time Step                  =  %g%s\n"        ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
+    printf("%s  Suggested Verlet distance            =  %g or  %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
+    if (fabs(Xmax-Xmin)>1.0e-12)
+    printf("%s  Periodic Boundary conditions between =  %g and %g%s\n" ,TERM_CLR5, Xmin, Xmax                           , TERM_RST);
 
     if (Alpha > Beta*MaxDmax)
     {
