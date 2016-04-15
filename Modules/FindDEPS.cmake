@@ -117,7 +117,9 @@ INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindTETGEN.cmake   ) # 8
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindTRIANGLE.cmake ) # 9
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindIGRAPH.cmake   ) # 10
 INCLUDE (FindOpenMP )                                       # 11
+if(A_USE_OCL)
 INCLUDE (FindOpenCL )                                       # 12
+endif(A_USE_OCL)
 
 # 1
 if(VTK_FOUND AND A_USE_VTK)
