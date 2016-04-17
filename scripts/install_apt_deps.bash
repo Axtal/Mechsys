@@ -14,10 +14,10 @@ sudo apt-get install \
     python-tk python-numpy python-scipy python-matplotlib \
     libvtk5-dev \
     libxml2-dev \
-    cmake 
+    cmake opencl-headers
     #libhdf5-serial-dev
 
-sudo apt-get upgrade
+#sudo apt-get upgrade
 
 # note: libxml2-dev is for igraph
 #       libmumps-dev will install libopenmpi-dev
