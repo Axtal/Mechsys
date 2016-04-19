@@ -34,11 +34,14 @@ int main(int argc, char **argv) try
     size_t nx = 200;
     size_t ny = 200;
     size_t nz = 200;
+    //size_t nx = 10;
+    //size_t ny = 10;
     //size_t nz = 1;
     double nu = 1.0/6.0;
     double dx = 1.0;
     double dt = 1.0;
     double Tf = 10000.0;
+    //double Tf = 200.0;
     FLBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
     //FLBM::Domain Dom(D3Q19, nu, iVec3_t(nx,ny,nz), dx, dt);
     //FLBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,nz), dx, dt);
@@ -59,6 +62,6 @@ int main(int argc, char **argv) try
 	}
 
 	// Solve
-    Dom.Solve(Tf,50.0,NULL,NULL,"tflbm02",true,Nproc);
+    Dom.Solve(Tf,Tf/200,NULL,NULL,"tflbm02",true,Nproc);
 }
 MECHSYS_CATCH

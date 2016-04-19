@@ -737,7 +737,7 @@ inline void Particle::Translate (double dt)
         std::cout << "Mass     = " << Props.m << std::endl;
         std::cout << "Inertia  = " << I       << std::endl;
         printf("Particle::Translate: The force is not a number %zd(%d), try reducing the time step \n",Index,Tag);
-        throw new Fatal("Particle::Translate: The force is not a number %zd(%d), try reducing the time step",Index,Tag);
+        throw new Fatal("Particle::Translate: The force is not a number %zd(%d)",Index,Tag);
     }
     Vec3_t temp,xa;
     xa    = 2.0*x - xb + Ft*(dt*dt/Props.m);

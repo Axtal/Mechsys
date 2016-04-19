@@ -58,19 +58,22 @@ namespace FLBM
 #ifdef USE_OCL
 typedef struct lbm_aux
 {
-    size_t     Nl;          ///< Numver of Lattices
-    size_t     Nneigh;      ///< Number of Neighbors
-    cl_uint3   Ndim;        ///< Integer vector with the dimensions of the LBM domain
-    cl_uint3   CellPairs;   ///< Vector with the cell pair system for for calculation
-    cl_double3 C[27];       ///< Collection of discrete velocity vectors
-    double     Ekk[27];     ///< Dyadic product of discrete velocities for LES calculation
-    double     W[27];       ///< Collection of discrete weights
-    double     Tau[2];      ///< Collection of characteristic collision times
-    double     G[2];        ///< Collection of cohesive constants for multiphase simulation
-    double     Rhoref[2];   ///< Collection of cohesive constants for multiphase simulation
-    double     Psi[2];      ///< Collection of cohesive constants for multiphase simulation
-    double     Gmix;        ///< Repulsion constant for multicomponent simulation
-    double     Cs;          ///< Lattice speed
+    size_t        Nl;          ///< Numver of Lattices
+    size_t        Nneigh;      ///< Number of Neighbors
+    size_t        NCPairs;     ///< Number of cell pairs
+    size_t        Nx;          ///< Integer vector with the dimensions of the LBM domain
+    size_t        Ny;          ///< Integer vector with the dimensions of the LBM domain
+    size_t        Nz;          ///< Integer vector with the dimensions of the LBM domain
+    size_t        Op[27];      ///< Array with the opposite directions for bounce back calculation
+    cl_double3    C[27];       ///< Collection of discrete velocity vectors
+    double        EEk[27];     ///< Dyadic product of discrete velocities for LES calculation
+    double        W[27];       ///< Collection of discrete weights
+    double        Tau[2];      ///< Collection of characteristic collision times
+    double        G[2];        ///< Collection of cohesive constants for multiphase simulation
+    double        Rhoref[2];   ///< Collection of cohesive constants for multiphase simulation
+    double        Psi[2];      ///< Collection of cohesive constants for multiphase simulation
+    double        Gmix;        ///< Repulsion constant for multicomponent simulation
+    double        Cs;          ///< Lattice speed
     
 } d_lbm_aux;
 #endif
@@ -190,13 +193,16 @@ public:
 
     #ifdef USE_OCL
     cl::CommandQueue CL_Queue;                ///< CL Queue for coprocessor commands 
+    cl::Context      CL_Context;              ///< CL Context for coprocessor commands
+    cl::Program      CL_Program;              ///< CL program object containing the kernel routines
     cl::Buffer bF;                            ///< Buffer with the distribution functions
     cl::Buffer bFtemp;                        ///< Buffer with the distribution functions temporal
     cl::Buffer bIsSolid;                      ///< Buffer with the solid bool information
     cl::Buffer bBForce;                       ///< Buffer with the body forces
     cl::Buffer bVel;                          ///< Buffer with the cell velocities
     cl::Buffer bRho;                          ///< Buffer with the cell densities
-    cl::Buffer bNdim;                         ///< Buffer with the lattice dimensions
+    cl::Buffer bCellPair;                     ///< Buffer with the pair cell information for force calculation
+    cl::Buffer blbmaux;                       ///< Buffer with the strcuture containing generic lbm information
     #endif
 };
 
@@ -206,8 +212,8 @@ inline Domain::Domain(LBMethod TheMethod, Array<double> nu, iVec3_t TheNdim, dou
     Util::Stopwatch stopwatch;
     printf("\n%s--- Initializing LBM Domain --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     if (nu.Size()==0) throw new Fatal("LBM::Domain: Declare at leat one fluid please");
-    if (TheNdim(2) >1&&TheMethod==D2Q9)  throw new Fatal("LBM::Domain: D2Q9 scheme does not allow for a third dimension, please set Ndim(2)=1 or change to D3Q15");
-    if (TheNdim(2)==1&&TheMethod==D3Q15) throw new Fatal("LBM::Domain: Ndim(2) is 1. Either change the method to D2Q9 or increase the z-dimension");
+    if (TheNdim(2) >1&&(TheMethod==D2Q9 ||TheMethod==D2Q5 ))  throw new Fatal("LBM::Domain: D2Q9 scheme does not allow for a third dimension, please set Ndim(2)=1 or change to D3Q15");
+    if (TheNdim(2)==1&&(TheMethod==D3Q15||TheMethod==D3Q19))  throw new Fatal("LBM::Domain: Ndim(2) is 1. Either change the method to D2Q9 or increase the z-dimension");
    
     if (TheMethod==D2Q5)
     {
@@ -336,8 +342,8 @@ inline Domain::Domain(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, double 
     Util::Stopwatch stopwatch;
     printf("\n%s--- Initializing LBM Domain --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     if (nu.Size()==0) throw new Fatal("LBM::Domain: Declare at leat one fluid please");
-    if (TheNdim(2) >1&&TheMethod==D2Q9)  throw new Fatal("LBM::Domain: D2Q9 scheme does not allow for a third dimension, please set Ndim(2)=1 or change to D3Q15");
-    if (TheNdim(2)==1&&TheMethod==D3Q15) throw new Fatal("LBM::Domain: Ndim(2) is 1. Either change the method to D2Q9 or increase the z-dimension");
+    if (TheNdim(2) >1&&(TheMethod==D2Q9 ||TheMethod==D2Q5 ))  throw new Fatal("LBM::Domain: D2Q9 scheme does not allow for a third dimension, please set Ndim(2)=1 or change to D3Q15");
+    if (TheNdim(2)==1&&(TheMethod==D3Q15||TheMethod==D3Q19))  throw new Fatal("LBM::Domain: Ndim(2) is 1. Either change the method to D2Q9 or increase the z-dimension");
    
     if (TheMethod==D2Q5)
     {
@@ -862,19 +868,62 @@ inline void Domain::StreamMP()
 #ifdef USE_OCL
 inline void Domain::UpLoadDevice()
 {
+
+    bF         = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Ncells*Nneigh);            
+    bFtemp     = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Ncells*Nneigh); 
+    bIsSolid   = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(bool      )*Ncells       );
+    bBForce    = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(cl_double3)*Ncells       );     
+    bVel       = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(cl_double3)*Ncells       ); 
+    bRho       = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Ncells       ); 
+    //bCellPair  = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(cl_uint3  )*NCellPairs   );
+    blbmaux    = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(lbm_aux   )              );
+
+
     bool       *IsSolidCL;
     double     *FCL,*FtempCL,*RhoCL;
-    cl_double3 *VelCL,*BForceCL;    
+    cl_double3 *VelCL,*BForceCL;
+    //cl_uint3   *CellPairCL;
     lbm_aux    *lbmaux;
     FCL        = new double    [Ncells*Nneigh];
     FtempCL    = new double    [Ncells*Nneigh];
-    IsSolidCL  = new bool      [Ncells*Nneigh];
+    IsSolidCL  = new bool      [Ncells       ];
     RhoCL      = new double    [Ncells       ];
     VelCL      = new cl_double3[Ncells       ];
     BForceCL   = new cl_double3[Ncells       ];
+    //CellPairCL = new cl_uint3  [NCellPairs   ];
     lbmaux     = new lbm_aux   [1];
 
 
+    lbmaux[0].Nx = Ndim(0);
+    lbmaux[0].Ny = Ndim(1);
+    lbmaux[0].Nz = Ndim(2);
+    lbmaux[0].Nneigh    = Nneigh;
+    lbmaux[0].NCPairs   = NCellPairs;
+    lbmaux[0].Nl        = Nl;
+    lbmaux[0].Gmix      = Gmix;
+    lbmaux[0].Cs        = Cs;
+    
+    //std::cout << "1" << std::endl;
+
+    for (size_t nn=0;nn<Nneigh;nn++)
+    {
+       lbmaux[0].C  [nn].s[0] = C  [nn](0); 
+       lbmaux[0].C  [nn].s[1] = C  [nn](1); 
+       lbmaux[0].C  [nn].s[2] = C  [nn](2); 
+       lbmaux[0].EEk[nn]      = EEk[nn]   ; 
+       lbmaux[0].W  [nn]      = W  [nn]   ;
+       lbmaux[0].Op [nn]      = Op [nn]   ;
+    }
+    
+    //for (size_t nn=0;nn<NCellPairs;nn++)
+    //{
+       //CellPairCL[nn].s[0] = CellPairs[nn](0);
+       //CellPairCL[nn].s[1] = CellPairs[nn](1);
+       //CellPairCL[nn].s[2] = CellPairs[nn](2);
+       //std::cout << CellPairCL[nn].s[0] << " " << CellPairCL[nn].s[1] << " " << CellPairCL[nn].s[2] << " " << std::endl;
+    //}
+   
+    //std::cout << "2" << std::endl;
 
     size_t Nn = 0;
     size_t Nm = 0;
@@ -884,20 +933,21 @@ inline void Domain::UpLoadDevice()
         lbmaux[0].G       [i]    = G       [i];
         lbmaux[0].Rhoref  [i]    = Rhoref  [i];
         lbmaux[0].Psi     [i]    = Psi     [i];
-        for (size_t nx=0;nx<Ndim(0);nx++)
+        for (size_t nz=0;nz<Ndim(2);nz++)
         {
             for (size_t ny=0;ny<Ndim(1);ny++)
             {
-                for (size_t nz=0;nz<Ndim(2);nz++)
+                for (size_t nx=0;nx<Ndim(0);nx++)
                 {
-                    IsSolidCL[Nm]      = IsSolid  [Nl][nx][ny][nz];
-                    RhoCL    [Nm]      = Rho      [Nl][nx][ny][nz];
-                    VelCL    [Nm].s[0] = Vel      [Nl][nx][ny][nz][0];
-                    VelCL    [Nm].s[1] = Vel      [Nl][nx][ny][nz][1];
-                    VelCL    [Nm].s[2] = Vel      [Nl][nx][ny][nz][2];
-                    BForceCL [Nm].s[0] = BForce   [Nl][nx][ny][nz][0];
-                    BForceCL [Nm].s[1] = BForce   [Nl][nx][ny][nz][1];
-                    BForceCL [Nm].s[2] = BForce   [Nl][nx][ny][nz][2];
+                    //std::cout << iVec3_t(nx,ny,nz) << Nl << std::endl;
+                    IsSolidCL[Nm]      = IsSolid  [i][nx][ny][nz];
+                    RhoCL    [Nm]      = Rho      [i][nx][ny][nz];
+                    VelCL    [Nm].s[0] = Vel      [i][nx][ny][nz][0];
+                    VelCL    [Nm].s[1] = Vel      [i][nx][ny][nz][1];
+                    VelCL    [Nm].s[2] = Vel      [i][nx][ny][nz][2];
+                    BForceCL [Nm].s[0] = BForce   [i][nx][ny][nz][0];
+                    BForceCL [Nm].s[1] = BForce   [i][nx][ny][nz][1];
+                    BForceCL [Nm].s[2] = BForce   [i][nx][ny][nz][2];
                     Nm++;
                     for (size_t nn=0;nn<Nneigh;nn++)
                     {
@@ -910,18 +960,115 @@ inline void Domain::UpLoadDevice()
         }
     }
 
+    //std::cout << "3" << std::endl;
 
+    CL_Queue.enqueueWriteBuffer(bF       ,CL_TRUE,0,sizeof(double    )*Ncells*Nneigh,FCL       );  
+    CL_Queue.enqueueWriteBuffer(bFtemp   ,CL_TRUE,0,sizeof(double    )*Ncells*Nneigh,FtempCL   );  
+    CL_Queue.enqueueWriteBuffer(bIsSolid ,CL_TRUE,0,sizeof(bool      )*Ncells       ,IsSolidCL );  
+    CL_Queue.enqueueWriteBuffer(bBForce  ,CL_TRUE,0,sizeof(cl_double3)*Ncells       ,BForceCL  );  
+    CL_Queue.enqueueWriteBuffer(bVel     ,CL_TRUE,0,sizeof(cl_double3)*Ncells       ,VelCL     );  
+    CL_Queue.enqueueWriteBuffer(bRho     ,CL_TRUE,0,sizeof(double    )*Ncells       ,RhoCL     );  
+    //CL_Queue.enqueueWriteBuffer(bCellPair,CL_TRUE,0,sizeof(cl_uint3  )*NCellPairs   ,CellPairCL);  
+    CL_Queue.enqueueWriteBuffer(blbmaux  ,CL_TRUE,0,sizeof(lbm_aux   )              ,lbmaux    );  
 
+    cl::Kernel kernel = cl::Kernel(CL_Program,"CheckUpLoad");
+    kernel.setArg(0,blbmaux );
+    CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(1),cl::NullRange);
+    CL_Queue.finish();
     
-    delete [] FCL      ;
-    delete [] FtempCL  ;
-    delete [] IsSolidCL;
-    delete [] RhoCL    ;
-    delete [] VelCL    ;
-    delete [] BForceCL ;
-    delete [] lbmaux   ;
+
+    delete [] FCL       ;
+    delete [] FtempCL   ;
+    delete [] IsSolidCL ;
+    delete [] RhoCL     ;
+    delete [] VelCL     ;
+    delete [] BForceCL  ;
+    //delete [] CellPairCL;
+    delete [] lbmaux    ;
 
 }
+
+inline void Domain::DnLoadDevice()
+{
+    double     * RhoCL;
+    cl_double3 * VelCL;
+    RhoCL      = new double    [Ncells       ];
+    VelCL      = new cl_double3[Ncells       ];
+
+    CL_Queue.enqueueReadBuffer(bRho,CL_TRUE,0,sizeof(double    )*Ncells,RhoCL);
+    CL_Queue.enqueueReadBuffer(bVel,CL_TRUE,0,sizeof(cl_double3)*Ncells,VelCL);
+
+    size_t Nm = 0;
+    for (size_t i=0;i<Nl;i++)
+    {
+        for (size_t nz=0;nz<Ndim(2);nz++)
+        {
+            for (size_t ny=0;ny<Ndim(1);ny++)
+            {
+                for (size_t nx=0;nx<Ndim(0);nx++)
+                {
+                    //std::cout << iVec3_t(nx,ny,nz) << Nl << std::endl;
+                    Rho[i][nx][ny][nz]    =  RhoCL[Nm]     ;
+                    Vel[i][nx][ny][nz][0] =  VelCL[Nm].s[0];
+                    Vel[i][nx][ny][nz][1] =  VelCL[Nm].s[1];
+                    Vel[i][nx][ny][nz][2] =  VelCL[Nm].s[2];
+                    Nm++;
+                }
+            }
+        }
+    }
+
+    delete [] RhoCL     ;
+    delete [] VelCL     ;
+}
+
+inline void Domain::ApplyForceCL()
+{
+    cl::Kernel kernel = cl::Kernel(CL_Program,"ApplyForcesSC");
+    kernel.setArg(0,bIsSolid );
+    kernel.setArg(1,bBForce  );
+    kernel.setArg(2,bRho     );
+    kernel.setArg(3,blbmaux  );
+    //CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(NCellPairs),cl::NullRange);
+    CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
+    CL_Queue.finish();
+}
+
+inline void Domain::CollideCL()
+{
+    cl::Kernel kernel = cl::Kernel(CL_Program,"CollideSC");
+    kernel.setArg(0,bIsSolid );
+    kernel.setArg(1,bF       );
+    kernel.setArg(2,bFtemp   );
+    kernel.setArg(3,bBForce  );
+    kernel.setArg(4,bVel     );
+    kernel.setArg(5,bRho     );
+    kernel.setArg(6,blbmaux  );
+    CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
+    CL_Queue.finish();
+}
+
+inline void Domain::StreamCL()
+{
+    cl::Kernel kernel = cl::Kernel(CL_Program,"Stream1");
+    kernel.setArg(0,bF       );
+    kernel.setArg(1,bFtemp   );
+    kernel.setArg(2,blbmaux  );
+    CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
+    CL_Queue.finish();
+
+    kernel            = cl::Kernel(CL_Program,"Stream2");
+    kernel.setArg(0,bIsSolid );
+    kernel.setArg(1,bF       );
+    kernel.setArg(2,bFtemp   );
+    kernel.setArg(3,bBForce  );
+    kernel.setArg(4,bVel     );
+    kernel.setArg(5,bRho     );
+    kernel.setArg(6,blbmaux  );
+    CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
+    CL_Queue.finish();
+}
+
 #endif
 
 
@@ -940,7 +1087,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
     cl::Device default_device = all_devices[0];
     
-    cl::Context context(default_device);
+    CL_Context = cl::Context(default_device);
  
     cl::Program::Sources sources;
 
@@ -956,11 +1103,13 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
     sources.push_back({kernel_code.c_str(),kernel_code.length()}); 
 
-    cl::Program program(context,sources);
-    if(program.build({default_device})!=CL_SUCCESS){
-        std::cout<<" Error building: "<<program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(default_device)<<"\n";
+    CL_Program = cl::Program(CL_Context,sources);
+    if(CL_Program.build({default_device})!=CL_SUCCESS){
+        std::cout<<" Error building: "<<CL_Program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(default_device)<<"\n";
         exit(1);
     }
+
+    CL_Queue   = cl::CommandQueue(CL_Context,default_device);
     #endif
 
 
@@ -989,9 +1138,9 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         size_t ny = Ndim(1);
         size_t nz = Ndim(2);
 
-        for (size_t ix=0;ix<nx;ix++)
-        for (size_t iy=0;iy<ny;iy++)
         for (size_t iz=0;iz<nz;iz++)
+        for (size_t iy=0;iy<ny;iy++)
+        for (size_t ix=0;ix<nx;ix++)
         {
             size_t nc = Pt2idx(iVec3_t(ix,iy,iz),Ndim);
             for (size_t k=1;k<Nneigh;k++)
@@ -1014,6 +1163,10 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             CellPairs[n] = CPP[n];
         }
     }
+
+    #ifdef USE_OCL
+    UpLoadDevice();
+    #endif
     
 
     double tout = Time;
@@ -1022,6 +1175,9 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
         if (Time >= tout)
         {
+            #ifdef USE_OCL
+            DnLoadDevice();
+            #endif
             if (TheFileKey!=NULL)
             {
                 String fn;
@@ -1041,12 +1197,18 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         }
 
         //The LBM dynamics
+        #ifdef USE_OCL
+        ApplyForceCL();
+        CollideCL();
+        StreamCL();
+        #else
         if (Nl==1)
         {
             if (fabs(G[0])>1.0e-12) ApplyForcesSC();
             CollideSC();
             StreamSC();
         }
+        #endif
 
         Time += dt;
         //std::cout << Time << std::endl;
