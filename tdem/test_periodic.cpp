@@ -57,11 +57,15 @@ void Setup1 (DEM::Domain & dom, void * UD)
 void Setup2 (DEM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
-    Vec3_t trans = Vec3_t(dom.GetParticle(-6)->xb(0) - dom.GetParticle(-6)->x(0),0.0,0.0);
+    //Vec3_t trans = Vec3_t(dom.GetParticle(-6)->xb(0) - dom.GetParticle(-6)->x(0),0.0,0.0);
+    Vec3_t trans = Vec3_t(0.0,dom.GetParticle(-6)->xb(1) - dom.GetParticle(-6)->x(1),0.0);
     dom.GetParticle(-6)->Translate(trans);
-    trans = Vec3_t(dom.GetParticle(-7)->xb(0) - dom.GetParticle(-7)->x(0),0.0,0.0);
+    //trans = Vec3_t(dom.GetParticle(-7)->xb(0) - dom.GetParticle(-7)->x(0),0.0,0.0);
+    trans = Vec3_t(0.0,dom.GetParticle(-7)->xb(1) - dom.GetParticle(-7)->x(1),0.0);
     dom.GetParticle(-7)->Translate(trans);
-    double Area = (dom.Xmax-dom.Xmin)*(dom.GetParticle(-4)->x(1)-dom.GetParticle(-5)->x(1));
+    //double Area = (dom.Xmax-dom.Xmin)*(dom.GetParticle(-4)->x(1)-dom.GetParticle(-5)->x(1));
+    //double Area = (dom.Ymax-dom.Ymin)*(dom.GetParticle(-2)->x(1)-dom.GetParticle(-3)->x(1));
+    double Area = (dom.Xmax-dom.Xmin)*(dom.Ymax-dom.Ymin);
     dat.Sig = (dom.GetParticle(-6)->F-dom.GetParticle(-7)->F)/Area;
 }
 
@@ -336,11 +340,15 @@ int main(int argc, char **argv) try
 
         dom.Xmax = dom.GetParticle(-2)->x(0) - dom.GetParticle(-2)->Props.R;
         dom.Xmin = dom.GetParticle(-3)->x(0) + dom.GetParticle(-3)->Props.R;
+        dom.Ymax = dom.GetParticle(-4)->x(1) - dom.GetParticle(-4)->Props.R;
+        dom.Ymin = dom.GetParticle(-5)->x(1) + dom.GetParticle(-5)->Props.R;
 
         dom.ClearInteractons();
 
-        Array<int> idxs(2);
-        idxs[0] = -2; idxs[1] = -3;
+        Array<int> idxs(4);
+        idxs[0] = -2; idxs[1] = -3; idxs[2] = -4; idxs[3] = -5;
+        //Array<int> idxs(2);
+        //idxs[0] = -4; idxs[1] = -5;
         dom.DelParticles(idxs);
         
         dom.Solve (/*tf*/   T0, /*dt*/dt, /*dtOut*/dtOut, NULL, NULL, fkey_b.CStr(),RenderVideo,Nproc);
@@ -349,15 +357,17 @@ int main(int argc, char **argv) try
 
         Dict B2;
         B2.Set(-1,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,Gt ,Mu     ,Beta,Eta,Bn,Bt ,Bm ,     Eps);
-        B2.Set(-4,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
-        B2.Set(-5,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        //B2.Set(-2,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        //B2.Set(-3,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        //B2.Set(-4,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
+        //B2.Set(-5,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,0.0    ,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
         B2.Set(-6,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,50.0*Mu,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
         B2.Set(-7,"Kn Kt Gn Gt Mu Beta Eta Bn Bt Bm Eps",Kn,Kt,Gn,0.0,50.0*Mu,Beta,Eta,Bn,0.0,0.0,-0.1*Eps);
         dom.SetProps(B2);
 
         double vel = 0.5*str*(dom.GetParticle(-6)->x(2)-dom.GetParticle(-7)->x(2));
-        dom.GetParticle(-6)->v = Vec3_t( vel,0.0,0.0);
-        dom.GetParticle(-7)->v = Vec3_t(-vel,0.0,0.0);
+        dom.GetParticle(-6)->v = Vec3_t(0.0, vel,0.0);
+        dom.GetParticle(-7)->v = Vec3_t(0.0,-vel,0.0);
 
         // stage 2: shearing stage         //////////////////////////////////////////////////////////////////////
         dom.Solve (/*tf*/T0+Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup2, &Report, fkey_c.CStr(),RenderVideo,Nproc);

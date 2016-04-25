@@ -616,8 +616,8 @@ inline bool CInteractonSphere::CalcForce(double dt)
             std::cout << "Sradius particle 2      " << P2->Props.R       << std::endl;
             std::cout << "Number of faces  1      " << P1->Faces.Size()  << std::endl;
             std::cout << "Number of faces  2      " << P2->Faces.Size()  << std::endl;
-            //P1->Tag = 10000;
-            //P2->Tag = 10000;
+            P1->Tag = 10000;
+            P2->Tag = 20000;
             return true;
         }
 #endif

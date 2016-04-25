@@ -176,12 +176,18 @@ public:
     Array<size_t>                                     FreePar;                     ///< Particles that are free
     Array<size_t>                                     NoFreePar;                   ///< Particles that are not free
     Array<Particle*>                                  Particles;                   ///< All particles in domain
-    Array<Particle*>                                  ParXmax;                     ///< Particles that are on the Xmax boundary for periodic boudary conditions
+    Array<Particle*>                                  ParXmax;                     ///< Particles that are on the Xmax boundary for periodic boudary conditions along the x direction
+    Array<Particle*>                                  ParYmax;                     ///< Particles that are on the Ymax boundary for periodic boudary conditions along the y direction
+    Array<Particle*>                                  ParXYmax;                    ///< Particles that are on the XYmax boundary for periodic boudary conditions along the y direction
     Array<Interacton*>                                Interactons;                 ///< All interactons
     Array<CInteracton*>                               CInteractons;                ///< Contact interactons
     Array<BInteracton*>                               BInteractons;                ///< Cohesion interactons
-    Array<Interacton*>                                PInteractons;                ///< Interactons for periodic conditions
-    Array<CInteracton*>                               CPInteractons;               ///< Contact interacton for periodic conditions
+    Array<Interacton*>                                PxInteractons;               ///< Interactons for periodic conditions along the x direction
+    Array<CInteracton*>                               CPxInteractons;              ///< Contact interacton for periodic conditions along x
+    Array<Interacton*>                                PyInteractons;               ///< Interactons for periodic conditions along the y direction
+    Array<CInteracton*>                               CPyInteractons;              ///< Contact interacton for periodic conditions along y
+    Array<Interacton*>                                PxyInteractons;              ///< Interactons for periodic conditions along the xy direction
+    Array<CInteracton*>                               CPxyInteractons;             ///< Contact interacton for periodic conditions along xy
     Vec3_t                                            CamPos;                      ///< Camera position for POV
     double                                            Time;                        ///< Current time
     double                                            Dt;                          ///< Time step
@@ -194,13 +200,17 @@ public:
     double                                            Beta;                        ///< Binmultiplier
     double                                            Xmax;                        ///< Maximun distance along the X axis (Periodic Boundary)
     double                                            Xmin;                        ///< Minimun distance along the X axis (Periodic Boundary)
+    double                                            Ymax;                        ///< Maximun distance along the Y axis (Periodic Boundary)
+    double                                            Ymin;                        ///< Minimun distance along the Y axis (Periodic Boundary)
     double                                            MaxDmax;                     ///< Maximun value for the radious of the spheres surronding each particle
     void *                                            UserData;                    ///< Some user data
     String                                            FileKey;                     ///< File Key for output files
     size_t                                            Nproc;                       ///< Number of cores for multithreading
     size_t                                            idx_out;                     ///< Index of output
     std::set<std::pair<Particle *, Particle *> >      Listofpairs;                 ///< List of pair of particles associated per interacton for memory optimization
-    std::set<std::pair<Particle *, Particle *> >      PListofpairs;                ///< List of pair of particles associated per interacton for memory optimization under periodic boundary conditions
+    std::set<std::pair<Particle *, Particle *> >      PxListofpairs;               ///< List of pair of particles associated per interacton for memory optimization under periodic boundary conditions
+    std::set<std::pair<Particle *, Particle *> >      PyListofpairs;               ///< List of pair of particles associated per interacton for memory optimization under periodic boundary conditions
+    std::set<std::pair<Particle *, Particle *> >      PxyListofpairs;              ///< List of pair of particles associated per interacton for memory optimization under periodic boundary conditions
     Array<Array <int> >                               Listofclusters;              ///< List of particles belonging to bounded clusters (applies only for cohesion simulations)
     MtData *                                          MTD;                         ///< Multithread data
 
@@ -237,11 +247,9 @@ inline Domain::Domain (void * UD)
     :  Initialized(false), Dilate(false), Time(0.0), Alpha(0.05), Beta(1.0), UserData(UD)
 {
     MostlySpheres = false;
-    Xmax = Xmin = 0.0;
+    Xmax = Xmin = Ymax = Ymin = 0.0;
     CamPos = 1.0, 2.0, 3.0;
-#ifdef USE_THREAD
-    pthread_mutex_init(&lck,NULL);
-#elif USE_OMP
+#ifdef USE_OMP
     omp_init_lock(&lck);
 #endif
 }
@@ -252,1285 +260,9 @@ inline Domain::~Domain ()
     for (size_t i=0; i<Interactons.Size(); ++i) if (Interactons[i]!=NULL) delete Interactons[i];
 }
 
-// Particle generation
+//All the methods for particle generation
 
-inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char const * Type, size_t Randomseed, double fraction, double RminFraction)
-{
-    // find radius from the edge's length
-    Util::Stopwatch stopwatch;
-    printf("\n%s--- Generating packing of spheres -----------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    srand(Randomseed);
-    double R = L/(2.0*N);
-    if (strcmp(Type,"Normal")==0)
-    {
-        for (size_t n=0; n<N*N*N; ++n) 
-        {
-            Vec3_t pos(-L/2.0+R, -L/2.0+R, -L/2.0+R);
-            size_t i = (n%N);
-            size_t j = (n/N)%N;
-            size_t k = (n/(N*N));
-            pos += Vec3_t(2.0*i*R, 2.0*j*R, 2.0*k*R);
-            if (rand()<fraction*RAND_MAX) AddSphere (Tag,pos,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
-        }
-    }
-    else if (strcmp(Type,"HCP")==0)
-    {
-        size_t nx = N;
-        size_t ny = int(L/(sqrt(3.0)*R));
-        size_t nz = int(L/(sqrt(8.0/3.0)*R));
-        for (size_t k = 0; k < nz; k++)
-        {
-            for (size_t j = 0; j < ny; j++)
-            {
-                Vec3_t X;
-                if (k%2==0) X = Vec3_t(-2*R-L/2.0,R-L/2.0,2*R-L/2.0+k*sqrt(8.0/3.0)*R);
-                else X = Vec3_t(-R-L/2.0,R+sqrt(1.0/3.0)*R-L/2.0,2*R-L/2.0+k*sqrt(8.0/3.0)*R);
-                if (j%2==0) X += Vec3_t(R,j*sqrt(3.0)*R,0.0);
-                else X += Vec3_t(0.0,j*sqrt(3.0)*R,0.0);
-                for (size_t i = 0; i < nx; i++)
-                {
-                    X += Vec3_t(2*R,0.0,0.0);
-                    if (rand()<fraction*RAND_MAX) AddSphere(Tag,X,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
-                }
-            }
-        }
-    }
-    else throw new Fatal ("Right now there are only two possible packings available the Normal and the HCP, packing %s is not implemented yet",Type);
-    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
-}
-
-inline void Domain::GenSpheresBox (int Tag, Vec3_t const & X0, Vec3_t const & X1, double R, double rho, char const * Type, size_t Randomseed, double fraction, double RminFraction)
-{
-    // find radius from the edge's length
-    Util::Stopwatch stopwatch;
-    printf("\n%s--- Generating packing of spheres -----------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    srand(Randomseed);
-    if (strcmp(Type,"Normal")==0)
-    {
-        size_t nx = 0.5*(X1(0)-X0(0))/R;
-        size_t ny = 0.5*(X1(1)-X0(1))/R;
-        size_t nz = 0.5*(X1(2)-X0(2))/R;
-        for (size_t i = 0; i < nx; i++)
-        for (size_t j = 0; j < ny; j++)
-        for (size_t k = 0; k < nz; k++)
-        {
-            //Vec3_t pos(-(X1(0)-X0(0))/2.0+R, -(X1(1)-X0(1))/2.0+R, -(X1(2)-X0(2))/2.0+R);
-            Vec3_t pos(X0(0)+R,X0(1)+R,X0(2)+R);
-            pos += Vec3_t(2.0*i*R, 2.0*j*R, 2.0*k*R);
-            if (rand()<fraction*RAND_MAX) AddSphere (Tag,pos,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
-        }
-    }
-
-    else if (strcmp(Type,"HCP")==0)
-    {
-        size_t nx = 0.5*(X1(0)-X0(0))/R-1;
-        size_t ny = int((X1(1)-X0(1))/(sqrt(3.0)*R));
-        size_t nz = int((X1(2)-X0(2))/(sqrt(8.0/3.0)*R));
-        for (size_t k = 0; k < nz; k++)
-        {
-            for (size_t j = 0; j < ny; j++)
-            {
-                Vec3_t X;
-                if (k%2==0) X = Vec3_t(-R,R,2*R+k*sqrt(8.0/3.0)*R) + X0;
-                else X = Vec3_t(0.0,R+sqrt(1.0/3.0)*R,2*R+k*sqrt(8.0/3.0)*R) + X0;
-                if (j%2==0) X += Vec3_t(R,j*sqrt(3.0)*R,0.0);
-                else X += Vec3_t(0.0,j*sqrt(3.0)*R,0.0);
-                for (size_t i = 0; i < nx; i++)
-                {
-                    X += Vec3_t(2*R,0.0,0.0);
-                    //std::cout << X << X0 << X1 << std::endl;
-                    if ((X(0)<X0(0))||(X(0)>X1(0))) continue;
-                    if ((X(1)<X0(1))||(X(1)>X1(1))) continue;
-                    if ((X(2)<X0(2))||(X(2)>X1(2))) continue;
-                    if (rand()<fraction*RAND_MAX) AddSphere (Tag,X,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
-                }
-            }
-        }
-    }
-    
-    else throw new Fatal ("Right now there are only two possible packings available the Normal and the HCP, packing %s is not implemented yet",Type);
-    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
-}
-
-inline void Domain::GenRice (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction)
-{
-    Util::Stopwatch stopwatch;
-    printf("\n%s--- Generating packing of 'rices' -----------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    srand(Randomseed);
-    double dL = L/N;
-    for (size_t n=0; n<N*N*N; ++n) 
-    {
-        Vec3_t pos(-L/2.0+dL, -L/2.0+dL, -L/2.0+dL);
-        size_t i = (n%N);
-        size_t j = (n/N)%N;
-        size_t k = (n/(N*N));
-        pos += Vec3_t(2.0*i*dL, 2.0*j*dL, 2.0*k*dL);
-        if (rand()<fraction*RAND_MAX) AddRice (Tag, pos, R, dL-2*R, rho);
-    }
-    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
-}
-
-inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, bool Cohesion)
-{
-    /*                         +----------------+
-     *                       ,'|              ,'|
-     *                     ,'  |  ___       ,'  |
-     *     z             ,'    |,'4,'  [1],'    |
-     *     |           ,'      |~~~     ,'      |
-     *    ,+--y      +'===============+'  ,'|   |
-     *  x'           |   ,'|   |      |   |2|   |
-     *               |   |3|   |      |   |,'   |
-     *               |   |,'   +- - - | +- - - -+
-     *               |       ,'       |       ,'
-     *               |     ,' [0]  ___|     ,'
-     *               |   ,'      ,'5,'|   ,'
-     *               | ,'        ~~~  | ,'
-     *               +----------------+'
-     */
-
-    
-    // add faces of box
-    Vec3_t axis0(OrthoSys::e0); // rotation of face
-    Vec3_t axis1(OrthoSys::e1); // rotation of face
-    size_t IIndex = Particles.Size();  // First face index
-    AddPlane (InitialTag,   Vec3_t(Lx/2.0,0.0,0.0),  R, Cf*Lz, Cf*Ly, 1.0, M_PI/2.0, &axis1);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-1, Vec3_t(-Lx/2.0,0.0,0.0), R, Cf*Lz, Cf*Ly, 1.0, 3.0*M_PI/2.0, &axis1);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-2, Vec3_t(0.0,Ly/2.0,0.0),  R, Cf*Lx, Cf*Lz, 1.0, 3.0*M_PI/2.0, &axis0);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-3, Vec3_t(0.0,-Ly/2.0,0.0), R, Cf*Lx, Cf*Lz, 1.0, M_PI/2.0, &axis0);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-4, Vec3_t(0.0,0.0,Lz/2.0),  R, Cf*Lx, Cf*Ly, 1.0);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-5, Vec3_t(0.0,0.0,-Lz/2.0), R, Cf*Lx, Cf*Ly, 1.0, M_PI, &axis0);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-
-    // define some tolerance for comparissions
-    if (Cohesion)
-    {
-        double tol1 = 1.0e-8;
-        double tol2 = 1.0e-3;
-        for (size_t i=0;i<IIndex;i++)
-        {
-            Particle * P1 = Particles[i];
-            for (size_t j=IIndex;j<Particles.Size();j++)
-            {
-                Particle * P2 = Particles[j];
-                for (size_t k=0;k<P1->Faces.Size();k++)
-                {
-                    Face * F1 = P1->Faces[k];
-                    Vec3_t n1,c1;
-                    F1->Normal  (n1);
-                    F1->Centroid(c1);
-                    Face * F2 = P2->Faces[0];
-                    Vec3_t n2,c2;
-                    F2->Normal  (n2);
-                    F2->Centroid(c2);
-                    Vec3_t n = 0.5*(n1-n2);
-                    n/=norm(n);
-                    if ((fabs(dot(n1,n2)+1.0)<tol1)
-                       &&(fabs(dot(c2-c1,n)-2*R)<tol2))
-                    {
-                        BInteractons.Push(new BInteracton(P1,P2,k,1));
-                        break;
-                    }
-                }
-            }        
-        }
-    }
-}
-
-inline void Domain::GenOpenBox (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf)
-{
-    /*                         +----------------+
-     *                       ,'|              ,'|
-     *                     ,'  |  ___       ,'  |
-     *     z             ,'    |,'N,'  [1],'    |
-     *     |           ,'      |~~~     ,'      |
-     *    ,+--y      +'===============+'  ,'|   |
-     *  x'           |   ,'|   |      |   |2|   |
-     *               |   |3|   |      |   |,'   |
-     *               |   |,'   +- - - | +- - - -+
-     *               |       ,'       |       ,'
-     *               |     ,' [0]  ___|     ,'
-     *               |   ,'      ,'4,'|   ,'
-     *               | ,'        ~~~  | ,'
-     *               +----------------+'
-     */
-
-
-    // Creates an open box without the top lid, acts as a container
-    
-    // add faces of box
-    Vec3_t axis0(OrthoSys::e0); // rotation of face
-    Vec3_t axis1(OrthoSys::e1); // rotation of face
-    AddPlane (InitialTag,   Vec3_t(Lx/2.0,0.0,0.0),  R, Cf*Lz, Cf*Ly, 1.0, M_PI/2.0, &axis1);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-1, Vec3_t(-Lx/2.0,0.0,0.0), R, Cf*Lz, Cf*Ly, 1.0, 3.0*M_PI/2.0, &axis1);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-2, Vec3_t(0.0,Ly/2.0,0.0),  R, Cf*Lx, Cf*Lz, 1.0, 3.0*M_PI/2.0, &axis0);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-3, Vec3_t(0.0,-Ly/2.0,0.0), R, Cf*Lx, Cf*Lz, 1.0, M_PI/2.0, &axis0);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-4, Vec3_t(0.0,0.0,-Lz/2.0), R, Cf*Lx, Cf*Ly, 1.0, M_PI, &axis0);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-}
-
-inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf,bool Cohesion)
-{
-    Center();
-    Vec3_t minX,maxX;
-    BoundingBox(minX,maxX);
-    GenBox(InitialTag, maxX(0)-minX(0)+2*R, maxX(1)-minX(1)+2*R, maxX(2)-minX(2)+2*R, R, Cf,Cohesion);
-}
-
-inline void Domain::GenBoundingPlane (int InitialTag, double R, double Cf,bool Cohesion)
-{
-    Center();
-    Vec3_t minX,maxX;
-    BoundingBox(minX,maxX);
-    Vec3_t axis0(OrthoSys::e0); // rotation of face
-    Vec3_t axis1(OrthoSys::e1); // rotation of face
-    size_t IIndex = Particles.Size();  // First face index
-    double Lx = maxX(0)-minX(0)+2*R;
-    double Ly = maxX(1)-minX(1)+2*R;
-    double Lz = maxX(2)-minX(2)+2*R;
-    AddPlane (InitialTag  , Vec3_t(0.0,Ly/2.0,0.0),  R, Cf*Lx, Cf*Lz, 1.0, 3.0*M_PI/2.0, &axis0);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-    AddPlane (InitialTag-1, Vec3_t(0.0,-Ly/2.0,0.0), R, Cf*Lx, Cf*Lz, 1.0, M_PI/2.0, &axis0);
-    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
-
-    // define some tolerance for comparissions
-    if (Cohesion)
-    {
-        double tol1 = 1.0e-8;
-        double tol2 = 1.0e-3;
-        for (size_t i=0;i<IIndex;i++)
-        {
-            Particle * P1 = Particles[i];
-            for (size_t j=IIndex;j<Particles.Size();j++)
-            {
-                Particle * P2 = Particles[j];
-                for (size_t k=0;k<P1->Faces.Size();k++)
-                {
-                    Face * F1 = P1->Faces[k];
-                    Vec3_t n1,c1;
-                    F1->Normal  (n1);
-                    F1->Centroid(c1);
-                    Face * F2 = P2->Faces[0];
-                    Vec3_t n2,c2;
-                    F2->Normal  (n2);
-                    F2->Centroid(c2);
-                    Vec3_t n = 0.5*(n1-n2);
-                    n/=norm(n);
-                    if ((fabs(dot(n1,n2)+1.0)<tol1)
-                       &&(fabs(dot(c2-c1,n)-2*R)<tol2))
-                    {
-                        BInteractons.Push(new BInteracton(P1,P2,k,1));
-                        break;
-                    }
-                }
-            }        
-        }
-    }
-}
-
-inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool Cohesion, bool MC, double thickness)
-{
-    // info
-    Util::Stopwatch stopwatch;
-    printf("\n%s--- Generating particles from mesh ----------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-
-    size_t IIndex = Particles.Size();
-
-    for (size_t i=0; i<M.Cells.Size(); ++i)
-    {
-
-        Array<Vec3_t> V;             // Array of vertices
-        Array<Array <int> > E;       // Array of edges
-        Array<Array <int> > F;       // array of faces
-        if (M.NDim==3)
-        {
-            if (thickness > 0.0) throw new Fatal("Domain::GenFromMesh: Thickness should not be used in a 3D mesh");
-            Array<Mesh::Vertex*> const & verts = M.Cells[i]->V;
-            size_t nverts = verts.Size();
-
-            // verts
-            V.Resize(nverts);
-            for (size_t j=0; j<nverts; ++j)
-            {
-                V[j] = verts[j]->C;
-            }
-
-            // edges
-            size_t nedges = Mesh::NVertsToNEdges3D[nverts];
-            E.Resize(nedges);
-            for (size_t j=0; j<nedges; ++j)
-            {
-                E[j].Push (Mesh::NVertsToEdge3D[nverts][j][0]);
-                E[j].Push (Mesh::NVertsToEdge3D[nverts][j][1]);
-            }
-
-            size_t nfaces = Mesh::NVertsToNFaces3D[nverts];
-            size_t nvperf = Mesh::NVertsToNVertsPerFace3D[nverts];
-            F.Resize(nfaces);
-            for (size_t j=0; j<nfaces; ++j)
-            {
-                for (size_t k=0; k<nvperf; ++k)
-                {
-                    // TODO: check if face is planar or not
-                    F[j].Push(Mesh::NVertsToFace3D[nverts][j][k]);
-                }
-            }
-        }
-        else if (M.NDim==2)
-        {
-            if (thickness <= 0.0) throw new Fatal("Domain::GenFromMesh: Thickness should be positive in a 2D mesh");
-            Array<Mesh::Vertex*> const & verts = M.Cells[i]->V;
-            size_t nverts = verts.Size();
-            V.Resize(2*nverts);
-            for (size_t j=0; j<nverts; ++j)
-            {
-                V[j] = verts[j]->C;
-                V[j+nverts] = verts[j]->C + Vec3_t(0.0,0.0,thickness);
-            }
-            size_t nedges = 3*nverts;
-            E.Resize(nedges);
-            for (size_t j=0; j<nverts; ++j)
-            {
-                E[j].Push (Mesh::NVertsToEdge2D[nverts][j][0]);
-                E[j].Push (Mesh::NVertsToEdge2D[nverts][j][1]);
-                E[j+nverts].Push (Mesh::NVertsToEdge2D[nverts][j][0]+nverts);
-                E[j+nverts].Push (Mesh::NVertsToEdge2D[nverts][j][1]+nverts);
-                E[j+2*nverts].Push(j);
-                E[j+2*nverts].Push(j+nverts);
-            }
-            size_t nfaces = nverts+2;
-            F.Resize(nfaces);
-            for (size_t j=0; j<nverts; ++j)
-            {
-                F[j].Push (Mesh::NVertsToEdge2D[nverts][j][0]);
-                F[j].Push (Mesh::NVertsToEdge2D[nverts][j][1]);
-                F[j].Push (Mesh::NVertsToEdge2D[nverts][j][1]+nverts);
-                F[j].Push (Mesh::NVertsToEdge2D[nverts][j][0]+nverts);
-                F[nverts].Push(nverts-1-j);
-                F[nverts+1].Push(j+nverts);
-            }
-        }
-
-        double vol; // volume of the polyhedron
-        Vec3_t CM;  // Center of mass of the polyhedron
-        Mat3_t It;  // Inertia tensor of the polyhedron
-        PolyhedraMP(V,F,vol,CM,It);
-        Erosion(V,E,F,R);
-
-        // add particle
-        Particles.Push (new Particle(M.Cells[i]->Tag, V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-        Particles[Particles.Size()-1]->Eroded = true;
-        Particles[Particles.Size()-1]->Index = Particles.Size()-1;
-        if (!MC)
-        {
-            Particles[Particles.Size()-1]->x       = CM;
-            Particles[Particles.Size()-1]->Props.V = vol;
-            Particles[Particles.Size()-1]->Props.m = vol*rho;
-            Vec3_t I;
-            Quaternion_t Q;
-            Vec3_t xp,yp,zp;
-            Eig(It,I,xp,yp,zp);
-            CheckDestroGiro(xp,yp,zp);
-            I *= rho;
-            Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
-            Q(1) = (yp(2)-zp(1))/(4*Q(0));
-            Q(2) = (zp(0)-xp(2))/(4*Q(0));
-            Q(3) = (xp(1)-yp(0))/(4*Q(0));
-            Q = Q/norm(Q);
-            Particles[Particles.Size()-1]->I     = I;
-            Particles[Particles.Size()-1]->Q     = Q;
-            double Dmax = Distance(CM,V[0])+R;
-            for (size_t i=1; i<V.Size(); ++i)
-            {
-                if (Distance(CM,V[i])+R > Dmax) Dmax = Distance(CM,V[i])+R;
-            }
-            Particles[Particles.Size()-1]->Ekin = 0.0;
-            Particles[Particles.Size()-1]->Erot = 0.0;
-            Particles[Particles.Size()-1]->Dmax  = Dmax;
-            Particles[Particles.Size()-1]->PropsReady = true;
-        }
-    }
-
-    Array<Array <int> > Neigh(Particles.Size()-IIndex);
-    Array<Array <int> > FNeigh(Particles.Size()-IIndex);
-    if(Cohesion)
-    {
-        M.FindNeigh();
-        //std::cout << M;
-        for (size_t i=0; i<M.Cells.Size(); ++i) 
-        {
-            for (Mesh::Neighs_t::const_iterator p=M.Cells[i]->Neighs.begin(); p!=M.Cells[i]->Neighs.end(); ++p)
-            {
-                Neigh[i].Push(p->second.second->ID);
-                FNeigh[i].Push(p->second.first);
-            }           
-        }
-        for (size_t i=0; i<Neigh.Size(); ++i)
-        {
-            for (size_t j=0; j<Neigh[i].Size(); ++j)
-            {
-                size_t index = Neigh[Neigh[i][j]].Find(i);
-                if ((size_t)Neigh[i][j]>i) BInteractons.Push(new BInteracton(Particles[i+IIndex],Particles[Neigh[i][j]+IIndex],FNeigh[i][j],FNeigh[Neigh[i][j]][index]));
-            }
-        }
-        
-    }
-
-    // info
-    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
-}
-
-inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho
-                                 , bool Cohesion, bVec3_t Periodic,size_t Randomseed, double fraction, Vec3_t qin)
-{
-    // info
-    Util::Stopwatch stopwatch;
-    printf("\n%s--- Adding Voronoi particles packing --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-
-    srand(Randomseed);
-    const double x_min=-(nx/2.0), x_max=nx/2.0;
-    const double y_min=-(ny/2.0), y_max=ny/2.0;
-    const double z_min=-(nz/2.0), z_max=nz/2.0;
-    voro::container con(x_min,x_max,y_min,y_max,z_min,z_max,nx,ny,nz, Periodic(0),Periodic(1),Periodic(2),8);
-    int n = 0;
-    for (size_t i=0; i<nx; i++)
-    {
-        for (size_t j=0; j<ny; j++)
-        {
-            for (size_t k=0; k<nz; k++)
-            {
-                double x = x_min+(i+0.5*qin(0)+(1-qin(0))*double(rand())/RAND_MAX)*(x_max-x_min)/nx;
-                double y = y_min+(j+0.5*qin(1)+(1-qin(1))*double(rand())/RAND_MAX)*(y_max-y_min)/ny;
-                double z = z_min+(k+0.5*qin(2)+(1-qin(2))*double(rand())/RAND_MAX)*(z_max-z_min)/nz;
-                con.put (n,x,y,z);
-                n++;
-            }
-        }
-    }
-
-    Array<Array <size_t> > ListBpairs(n);
-    size_t IIndex = Particles.Size();
-    voro::c_loop_all vl(con);
-    voro::voronoicell c;
-    if(vl.start()) do if(con.compute_cell(c,vl)) 
-    {
-        {
-            if (rand()<fraction*RAND_MAX)
-            {
-                AddVoroCell(Tag,c,R,rho,true,Vec3_t(Lx/nx,Ly/ny,Lz/nz));
-                double *pp = con.p[vl.ijk]+3*vl.q;
-                Vec3_t trans(Lx*pp[0]/nx,Ly*pp[1]/ny,Lz*pp[2]/nz);
-                Particle * P = Particles[Particles.Size()-1];
-                P->Translate(trans);
-            }
-        }
-    } while(vl.inc());
-
-
-    // info
-    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
-
-
-    if (Cohesion)
-    {
-        //if (fraction<1.0) throw new Fatal("Domain::AddVoroPack: With the Cohesion all particles should be considered, plese change the fraction to 1.0");
-
-        // define some tolerance for comparissions
-        double tol1 = 1.0e-8;
-        double tol2 = 1.0e-3;
-        for (size_t i=IIndex;i<Particles.Size()-1;i++)
-        {
-            Particle * P1 = Particles[i];
-            for (size_t j=i+1;j<Particles.Size();j++)
-            {
-                Particle * P2 = Particles[j];
-                if (Distance(P1->x,P2->x)<P1->Dmax+P2->Dmax)
-                {
-                    for (size_t k=0;k<P1->Faces.Size();k++)
-                    {
-                        Face * F1 = P1->Faces[k];
-                        Vec3_t n1,c1;
-                        F1->Normal  (n1);
-                        F1->Centroid(c1);
-                        bool found = false;
-                        for (size_t l=0;l<P2->Faces.Size();l++)
-                        {
-                            Face * F2 = P2->Faces[l];
-                            Vec3_t n2,c2;
-                            F2->Normal  (n2);
-                            F2->Centroid(c2);
-                            Vec3_t n = 0.5*(n1-n2);
-                            n/=norm(n);
-                            if ((fabs(dot(n1,n2)+1.0)<tol1)
-                               &&(fabs(Distance(c1,*F2)-2*R)<tol2)
-                               &&(fabs(Distance(c2,*F1)-2*R)<tol2))
-                            {
-                                BInteractons.Push(new BInteracton(P1,P2,k,l));
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (found) break;
-                    }
-                }
-            }
-        }
-    }
-}
-
-inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho
-                                 , bool Cohesion, bool Periodic,size_t Randomseed, double fraction, Vec3_t qin)
-{
-    AddVoroPack(Tag,R,Lx,Ly,Lz,nx,ny,nz,rho,Cohesion,bVec3_t(Periodic,Periodic,Periodic),Randomseed,fraction,qin);
-}
-// Sihgle particle addition
-
-inline void Domain::AddSphere (int Tag,Vec3_t const & X, double R, double rho)
-{
-    // vertices
-    Array<Vec3_t> V(1);
-    V[0] = X;
-
-    // edges
-    Array<Array <int> > E(0); // no edges
-
-    // faces
-    Array<Array <int> > F(0); // no faces
-
-    // add particle
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-
-    Quaternion_t q;
-    q(0) = 1.0;
-    q(1) = 0.0;
-    q(2) = 0.0;
-    q(3) = 0.0;
-    q = q/norm(q);
-
-    Particles[Particles.Size()-1]->Q          = q;
-    Particles[Particles.Size()-1]->Props.V    = (4.0/3.0)*M_PI*R*R*R;
-    Particles[Particles.Size()-1]->Props.m    = rho*(4.0/3.0)*M_PI*R*R*R;
-    Particles[Particles.Size()-1]->I          = (2.0/5.0)*Particles[Particles.Size()-1]->Props.m*R*R;
-    Particles[Particles.Size()-1]->x          = X;
-    Particles[Particles.Size()-1]->Ekin       = 0.0;
-    Particles[Particles.Size()-1]->Erot       = 0.0;
-    Particles[Particles.Size()-1]->Dmax       = R;
-    Particles[Particles.Size()-1]->PropsReady = true;
-    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
-
-}
-
-inline void Domain::AddCube (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
-{
-    // vertices
-    Array<Vec3_t> V(8);
-    double l = L/2.0;
-    V[0] = -l, -l, -l;
-    V[1] =  l, -l, -l;
-    V[2] =  l,  l, -l;
-    V[3] = -l,  l, -l;
-    V[4] = -l, -l,  l;
-    V[5] =  l, -l,  l;
-    V[6] =  l,  l,  l;
-    V[7] = -l,  l,  l;
-
-    // edges
-    Array<Array <int> > E(12);
-    for (size_t i=0; i<12; ++i) E[i].Resize(2);
-    E[ 0] = 0, 1;
-    E[ 1] = 1, 2;
-    E[ 2] = 2, 3;
-    E[ 3] = 3, 0;
-    E[ 4] = 4, 5;
-    E[ 5] = 5, 6;
-    E[ 6] = 6, 7;
-    E[ 7] = 7, 4;
-    E[ 8] = 0, 4;
-    E[ 9] = 1, 5;
-    E[10] = 2, 6;
-    E[11] = 3, 7;
-
-    // faces
-    Array<Array <int> > F(6);
-    for (size_t i=0; i<6; i++) F[i].Resize(4);
-    F[0] = 4, 7, 3, 0;
-    F[1] = 1, 2, 6, 5;
-    F[2] = 0, 1, 5, 4;
-    F[3] = 2, 3, 7, 6;
-    F[4] = 0, 3, 2, 1;
-    F[5] = 4, 5, 6, 7;
-
-    // calculate the rotation
-    bool ThereisanAxis = true;
-    if (Axis==NULL)
-    {
-        Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
-        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
-        ThereisanAxis = false;
-    }
-    Quaternion_t q;
-    NormalizeRotation (Angle,(*Axis),q);
-    for (size_t i=0; i<V.Size(); i++)
-    {
-        Vec3_t t;
-        Rotation (V[i],q,t);
-        V[i] = t+X;
-    }
-
-    // add particle
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-
-    // clean up
-    if (!ThereisanAxis) delete Axis;
-    q(0) = 1.0;
-    q(1) = 0.0;
-    q(2) = 0.0;
-    q(3) = 0.0;
-    q = q/norm(q);
-
-    Particles[Particles.Size()-1]->Q          = q;
-    Particles[Particles.Size()-1]->Props.V    = L*L*L;
-    Particles[Particles.Size()-1]->Props.m    = rho*L*L*L;
-    Particles[Particles.Size()-1]->I          = L*L, L*L, L*L;
-    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m/6.0;
-    Particles[Particles.Size()-1]->x          = X;
-    Particles[Particles.Size()-1]->Ekin       = 0.0;
-    Particles[Particles.Size()-1]->Erot       = 0.0;
-    Particles[Particles.Size()-1]->Dmax       = sqrt(3.0*L*L/4.0)+R;
-    Particles[Particles.Size()-1]->PropsReady = true;
-    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
-    
-
-}
-
-inline void Domain::AddRecBox (int Tag, Vec3_t const & X, Vec3_t const & L, double R, double rho, double Angle, Vec3_t * Axis)
-{
-    // vertices
-    Array<Vec3_t> V(8);
-    double lx = L(0)/2.0;
-    double ly = L(1)/2.0;
-    double lz = L(2)/2.0;
-    V[0] = -lx, -ly, -lz;
-    V[1] =  lx, -ly, -lz;
-    V[2] =  lx,  ly, -lz;
-    V[3] = -lx,  ly, -lz;
-    V[4] = -lx, -ly,  lz;
-    V[5] =  lx, -ly,  lz;
-    V[6] =  lx,  ly,  lz;
-    V[7] = -lx,  ly,  lz;
-
-    // edges
-    Array<Array <int> > E(12);
-    for (size_t i=0; i<12; ++i) E[i].Resize(2);
-    E[ 0] = 0, 1;
-    E[ 1] = 1, 2;
-    E[ 2] = 2, 3;
-    E[ 3] = 3, 0;
-    E[ 4] = 4, 5;
-    E[ 5] = 5, 6;
-    E[ 6] = 6, 7;
-    E[ 7] = 7, 4;
-    E[ 8] = 0, 4;
-    E[ 9] = 1, 5;
-    E[10] = 2, 6;
-    E[11] = 3, 7;
-
-    // faces
-    Array<Array <int> > F(6);
-    for (size_t i=0; i<6; i++) F[i].Resize(4);
-    F[0] = 4, 7, 3, 0;
-    F[1] = 1, 2, 6, 5;
-    F[2] = 0, 1, 5, 4;
-    F[3] = 2, 3, 7, 6;
-    F[4] = 0, 3, 2, 1;
-    F[5] = 4, 5, 6, 7;
-
-    // calculate the rotation
-    bool ThereisanAxis = true;
-    if (Axis==NULL)
-    {
-        Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
-        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
-        ThereisanAxis = false;
-    }
-    Quaternion_t q;
-    NormalizeRotation (Angle,(*Axis),q);
-    for (size_t i=0; i<V.Size(); i++)
-    {
-        Vec3_t t;
-        Rotation (V[i],q,t);
-        V[i] = t+X;
-    }
-
-    // add particle
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-
-    // clean up
-    if (!ThereisanAxis) delete Axis;
-    //q(0) = 1.0;
-    //q(1) = 0.0;
-    //q(2) = 0.0;
-    //q(3) = 0.0;
-    q = q/norm(q);
-
-    Particles[Particles.Size()-1]->Q          = q;
-    Particles[Particles.Size()-1]->Props.V    = L(0)*L(1)*L(2);
-    Particles[Particles.Size()-1]->Props.m    = rho*L(0)*L(1)*L(2);
-    Particles[Particles.Size()-1]->I          = L(1)*L(1) + L(2)*L(2), L(0)*L(0) + L(2)*L(2), L(0)*L(0) + L(1)*L(1);
-    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m/12.0;
-    Particles[Particles.Size()-1]->x          = X;
-    Particles[Particles.Size()-1]->Ekin       = 0.0;
-    Particles[Particles.Size()-1]->Erot       = 0.0;
-    Particles[Particles.Size()-1]->Dmax       = 0.5*norm(L)+R;
-    Particles[Particles.Size()-1]->PropsReady = true;
-    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
-    
-
-}
-
-inline void Domain::AddTetra (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
-{
-    // vertices
-    double sq8 = sqrt(8.0);
-    Array<Vec3_t> V(4);
-    V[0] =  L/sq8,  L/sq8, L/sq8;
-    V[1] = -L/sq8, -L/sq8, L/sq8;
-    V[2] = -L/sq8,  L/sq8,-L/sq8;
-    V[3] =  L/sq8, -L/sq8,-L/sq8;
-
-    // edges
-    Array<Array <int> > E(6);
-    for (size_t i=0; i<6; ++i) E[i].Resize(2);
-    E[0] = 0, 1;
-    E[1] = 1, 2;
-    E[2] = 2, 0;
-    E[3] = 0, 3;
-    E[4] = 1, 3;
-    E[5] = 2, 3;
-
-    // face
-    Array<Array <int> > F;
-    F.Resize(4);
-    for (size_t i=0; i<4; ++i) F[i].Resize(3);
-    F[0] = 0, 3, 2;
-    F[1] = 0, 1, 3;
-    F[2] = 0, 2, 1;
-    F[3] = 1, 2, 3;
-
-    // calculate the rotation
-    bool ThereisanAxis = true;
-    if (Axis==NULL)
-    {
-        Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
-        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
-        ThereisanAxis = false;
-    }
-    Quaternion_t q;
-    NormalizeRotation (Angle,(*Axis),q);
-    for (size_t i=0; i<V.Size(); i++)
-    {
-        Vec3_t t;
-        Rotation (V[i],q,t);
-        V[i] = t+X;
-    }
-
-    // add particle
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-
-    // clean up
-    if (!ThereisanAxis) delete Axis;
-    q(0) = 1.0;
-    q(1) = 0.0;
-    q(2) = 0.0;
-    q(3) = 0.0;
-    q = q/norm(q);
-
-    Particles[Particles.Size()-1]->Q          = q;
-    Particles[Particles.Size()-1]->Props.V    = sqrt(2.0)*L*L*L/12.0;
-    Particles[Particles.Size()-1]->Props.m    = rho*sqrt(2.0)*L*L*L/12.0;
-    Particles[Particles.Size()-1]->I          = L*L, L*L, L*L;
-    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m/20.0;
-    Particles[Particles.Size()-1]->x          = X;
-    Particles[Particles.Size()-1]->Ekin       = 0.0;
-    Particles[Particles.Size()-1]->Erot       = 0.0;
-    Particles[Particles.Size()-1]->Dmax       = sqrt(3.0*L*L/8.0)+R;
-    Particles[Particles.Size()-1]->PropsReady = true;
-    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
-}
-
-inline void Domain::AddDrill (int Tag, const Vec3_t & X, double R, double Lt, double Ll, double rho)
-{
-    Array<Vec3_t> V(9);
-    V[0] =  Lt/2.0,  Lt/2.0, Ll/2.0;
-    V[1] = -Lt/2.0,  Lt/2.0, Ll/2.0;
-    V[2] = -Lt/2.0, -Lt/2.0, Ll/2.0;
-    V[3] =  Lt/2.0, -Lt/2.0, Ll/2.0;
-    V[4] =  Lt/2.0,  Lt/2.0,    0.0;
-    V[5] = -Lt/2.0,  Lt/2.0,    0.0;
-    V[6] = -Lt/2.0, -Lt/2.0,    0.0;
-    V[7] =  Lt/2.0, -Lt/2.0,    0.0;
-    V[8] =     0.0,     0.0,-Ll/2.0;
-    
-    Array<Array <int> > E(12);
-    for (size_t i=0; i<12; ++i) E[i].Resize(2);
-    for (size_t i=0;i<4;i++)
-    {
-        E[i]   = i  , (i+1)%4    ;
-        E[i+4] = i+4, (i+5)%4 + 4;
-        E[i+8] = i+4, 8;
-    }
-
-    Array<Array <int> > F;
-    F.Resize(9);
-    F[0].Resize(4);
-    F[0] = 0, 1, 2, 3;
-    F[1].Resize(4);
-    F[1] = 0, 4, 5, 1;
-    F[2].Resize(4);
-    F[2] = 1, 5, 6, 2;
-    F[3].Resize(4);
-    F[3] = 2, 6, 7, 3;
-    F[4].Resize(4);
-    F[4] = 3, 7, 4, 0;
-    F[5].Resize(3);
-    F[5] = 4, 8, 5;
-    F[6].Resize(3);
-    F[6] = 5, 8, 6;
-    F[7].Resize(3);
-    F[7] = 6, 8, 7;
-    F[8].Resize(3);
-    F[8] = 7, 8, 4;
-
-
-    double vol; // volume of the polyhedron
-    Vec3_t CM;  // Center of mass of the polyhedron
-    Mat3_t It;  // Inertia tensor of the polyhedron
-    PolyhedraMP(V,F,vol,CM,It);
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-    Particles[Particles.Size()-1]->x       = CM;
-    Particles[Particles.Size()-1]->Props.V = vol;
-    Particles[Particles.Size()-1]->Props.m = vol*rho;
-    Vec3_t I;
-    Quaternion_t Q;
-    Vec3_t xp,yp,zp;
-    Eig(It,I,xp,yp,zp);
-    CheckDestroGiro(xp,yp,zp);
-    I *= rho;
-    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
-    Q(1) = (yp(2)-zp(1))/(4*Q(0));
-    Q(2) = (zp(0)-xp(2))/(4*Q(0));
-    Q(3) = (xp(1)-yp(0))/(4*Q(0));
-    Q = Q/norm(Q);
-    Particles[Particles.Size()-1]->I     = I;
-    Particles[Particles.Size()-1]->Q     = Q;
-    double Dmax = Distance(CM,V[0])+R;
-    for (size_t i=1; i<V.Size(); ++i)
-    {
-        if (Distance(CM,V[i])+R > Dmax) Dmax = Distance(CM,V[i])+R;
-    }
-    Particles[Particles.Size()-1]->Ekin = 0.0;
-    Particles[Particles.Size()-1]->Erot = 0.0;
-    Particles[Particles.Size()-1]->Dmax  = Dmax;
-    Particles[Particles.Size()-1]->PropsReady = true;
-    Particles[Particles.Size()-1]->Index = Particles.Size()-1;
-
-    Vec3_t Y = X;
-    Particles[Particles.Size()-1]->Translate(Y);
-
-}
-
-inline void Domain::AddRice (int Tag, const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
-{
-    // vertices
-    Array<Vec3_t> V(2);
-    V[0] = 0.0, 0.0,  L/2;
-    V[1] = 0.0, 0.0, -L/2;
-
-    // edges
-    Array<Array <int> > E(1);
-    E[0].Resize(2);
-    E[0] = 0, 1;
-
-    // faces
-    Array<Array <int> > F(0); // no faces
-
-    // calculate the rotation
-    bool ThereisanAxis = true;
-    if (Axis==NULL)
-    {
-        Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
-        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
-        ThereisanAxis = false;
-    }
-    Quaternion_t q;
-    NormalizeRotation (Angle,(*Axis),q);
-    for (size_t i=0; i<V.Size(); i++)
-    {
-        Vec3_t t;
-        Rotation (V[i],q,t);
-        V[i] = t+X;
-    }
-
-    // add particle
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-
-    Particles[Particles.Size()-1]->Q          = q;
-    Particles[Particles.Size()-1]->Props.V    = (4.0/3.0)*M_PI*R*R*R + M_PI*L*R*R;
-    Particles[Particles.Size()-1]->Props.m    = rho*Particles[Particles.Size()-1]->Props.V;
-    Particles[Particles.Size()-1]->I          = (1.0/3.0)*M_PI*rho*R*R*R*L*L + (1.0/12.0)*M_PI*rho*R*R*L*L*L + (3.0/4.0)*M_PI*rho*R*R*R*R*L + (8.0/15.0)*M_PI*rho*R*R*R*R*R,
-                                                (1.0/3.0)*M_PI*rho*R*R*R*L*L + (1.0/12.0)*M_PI*rho*R*R*L*L*L + (3.0/4.0)*M_PI*rho*R*R*R*R*L + (8.0/15.0)*M_PI*rho*R*R*R*R*R,
-                                                0.5*M_PI*rho*R*R*R*R*L + (8.0/15.0)*M_PI*rho*R*R*R*R*R;
-    Particles[Particles.Size()-1]->x          = X;
-    Particles[Particles.Size()-1]->Ekin       = 0.0;
-    Particles[Particles.Size()-1]->Erot       = 0.0;
-    Particles[Particles.Size()-1]->Dmax       = 0.5*L + R;
-    Particles[Particles.Size()-1]->PropsReady = true;
-    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
-
-    // clean up
-    if (!ThereisanAxis) delete Axis;
-}
-
-inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, double Ly, double rho, double Angle, Vec3_t * Axis)
-{
-    // vertices
-    Array<Vec3_t> V(4);
-    double lx = Lx/2.0, ly = Ly/2.0;
-    V[0] = -lx, -ly, 0.0;
-    V[1] =  lx, -ly, 0.0;
-    V[2] =  lx,  ly, 0.0;
-    V[3] = -lx,  ly, 0.0;
-
-    // edges
-    Array<Array <int> > E(4);
-    for (size_t i=0; i<4; ++i) E[i].Resize(2);
-    E[ 0] = 0, 1;
-    E[ 1] = 1, 2;
-    E[ 2] = 2, 3;
-    E[ 3] = 3, 0;
-
-    // faces
-    Array<Array <int> > F(1);
-    F[0].Resize(4);
-    F[0] = 0, 3, 2, 1;
-
-    bool ThereisanAxis = true;
-    if (Axis==NULL)
-    {
-        Angle   = 0.;
-        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
-        ThereisanAxis = false;
-    }
-    Quaternion_t q;
-    NormalizeRotation (Angle,(*Axis),q);
-    for (size_t i=0; i<V.Size(); i++)
-    {
-        Vec3_t t;
-        Rotation (V[i],q,t);
-        V[i] = t+X;
-    }
-
-    // add particle
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-    Particles[Particles.Size()-1]->Q          = q;
-    Particles[Particles.Size()-1]->Props.V    = Lx*Ly*2*R;
-    Particles[Particles.Size()-1]->Props.m    = rho*Lx*Ly*2*R;
-    Particles[Particles.Size()-1]->I          = (1.0/12.0)*(Ly*Ly+4*R*R),(1.0/12.0)*(Lx*Lx+4*R*R),(1.0/12.0)*(Lx*Lx+Ly*Ly);
-    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m;
-    Particles[Particles.Size()-1]->x          = X;
-    Particles[Particles.Size()-1]->Ekin       = 0.0;
-    Particles[Particles.Size()-1]->Erot       = 0.0;
-    Particles[Particles.Size()-1]->Dmax       = sqrt(Lx*Lx+Ly*Ly)+R;
-    Particles[Particles.Size()-1]->PropsReady = true;
-    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
-    // clean up
-    if (!ThereisanAxis) delete Axis;
-}
-
-inline void Domain::AddVoroCell (int Tag, voro::voronoicell & VC, double R, double rho, bool Erode, Vec3_t nv)
-{
-    Array<Vec3_t> V(VC.p);
-    Array<Array <int> > E;
-    Array<int> Eaux(2);
-    for(int i=0;i<VC.p;i++) 
-    {
-        V[i] = Vec3_t(0.5*VC.pts[3*i]*nv(0),0.5*VC.pts[3*i+1]*nv(1),0.5*VC.pts[3*i+2]*nv(2));
-        for(int j=0;j<VC.nu[i];j++) 
-        {
-            int k=VC.ed[i][j];
-            if (VC.ed[i][j]<i) 
-            {
-                Eaux[0] = i;
-                Eaux[1] = k;
-                E.Push(Eaux);
-            }
-        }
-    }
-    Array<Array <int> > F;
-    Array<int> Faux;
-    for(int i=0;i<VC.p;i++) 
-    {
-        for(int j=0;j<VC.nu[i];j++) 
-        {
-            int k=VC.ed[i][j];
-            if (k>=0) 
-            {
-                Faux.Push(i);
-                VC.ed[i][j]=-1-k;
-                int l=VC.cycle_up(VC.ed[i][VC.nu[i]+j],k);
-                do 
-                {
-                    Faux.Push(k);
-                    int m=VC.ed[k][l];
-                    VC.ed[k][l]=-1-m;
-                    l=VC.cycle_up(VC.ed[k][VC.nu[k]+l],m);
-                    k=m;
-                } while (k!=i);
-                Array<int> Faux2(Faux.Size());
-                for (size_t l = 0; l < Faux.Size();l++)
-                {
-                    Faux2[l] = Faux[Faux.Size()-1-l];
-                }
-
-                F.Push(Faux2);
-                Faux.Clear();
-                Faux2.Clear();
-            }
-        }
-    }
-    //VC.reset_edges();
-    double vol; // volume of the polyhedron
-    Vec3_t CM;  // Center of mass of the polyhedron
-    Mat3_t It;  // Inertia tensor of the polyhedron
-    PolyhedraMP(V,F,vol,CM,It);
-    if (Erode) Erosion(V,E,F,R);
-    // add particle
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-    if (Erode) Particles[Particles.Size()-1]->Eroded = true;
-    Particles[Particles.Size()-1]->x       = CM;
-    Particles[Particles.Size()-1]->Props.V = vol;
-    Particles[Particles.Size()-1]->Props.m = vol*rho;
-    Vec3_t I;
-    Quaternion_t Q;
-    Vec3_t xp,yp,zp;
-    Eig(It,I,xp,yp,zp);
-    CheckDestroGiro(xp,yp,zp);
-    I *= rho;
-    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
-    Q(1) = (yp(2)-zp(1))/(4*Q(0));
-    Q(2) = (zp(0)-xp(2))/(4*Q(0));
-    Q(3) = (xp(1)-yp(0))/(4*Q(0));
-    Q = Q/norm(Q);
-    Particles[Particles.Size()-1]->I     = I;
-    Particles[Particles.Size()-1]->Q     = Q;
-    double Dmax = Distance(CM,V[0])+R;
-    for (size_t i=1; i<V.Size(); ++i)
-    {
-        if (Distance(CM,V[i])+R > Dmax) Dmax = Distance(CM,V[i])+R;
-    }
-    Particles[Particles.Size()-1]->Ekin = 0.0;
-    Particles[Particles.Size()-1]->Erot = 0.0;
-    Particles[Particles.Size()-1]->Dmax  = Dmax;
-    Particles[Particles.Size()-1]->PropsReady = true;
-    Particles[Particles.Size()-1]->Index = Particles.Size()-1;
-}
-
-inline void Domain::AddTorus (int Tag, Vec3_t const & X, Vec3_t const & N, double Rmax, double R, double rho)
-{
-    // Normalize normal vector
-    Vec3_t n = N/norm(N);
-
-    // Create the 2 vertices that define the torus
-    Vec3_t P1 = OrthoSys::e0 - dot(OrthoSys::e0,n)*n;
-    if (norm(P1)<1.0e-12) P1 = OrthoSys::e1 - dot(OrthoSys::e1,n)*n;
-    P1       /= norm(P1);
-    Vec3_t P2 = cross(n,P1);
-    P2       /= norm(P2);
-    Array<Vec3_t > V(2);
-    V[0] = X + Rmax*P1;
-    V[1] = X + Rmax*P2;
-
-    // the torus has no edges or faces
-    Array<Array <int> > E(0);
-    Array<Array <int> > F(0);
-
-    //Add the particle just with two vertices
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-
-    //Input all the mass properties
-    Vec3_t xp,yp,zp;
-    xp = P1;
-    zp = P2;
-    yp = cross(zp,xp);
-    CheckDestroGiro(xp,yp,zp);
-    Quaternion_t q;
-    q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
-    q(1) = (yp(2)-zp(1))/(4*q(0));
-    q(2) = (zp(0)-xp(2))/(4*q(0));
-    q(3) = (xp(1)-yp(0))/(4*q(0));
-    q = q/norm(q);
-
-    if (isnan(norm(q))) q = 1.0,0.0,0.0,0.0;
-
-    Particles[Particles.Size()-1]->Q          = q;
-    Particles[Particles.Size()-1]->Props.V    = 2*M_PI*M_PI*R*R*Rmax;
-    Particles[Particles.Size()-1]->Props.m    = rho*2*M_PI*M_PI*R*R*Rmax;
-    Particles[Particles.Size()-1]->I          = 0.125*(4*Rmax*Rmax + 5*R*R), (Rmax*Rmax+0.75*R*R), 0.125*(4*Rmax*Rmax + 5*R*R);
-    Particles[Particles.Size()-1]->I         *= Particles[Particles.Size()-1]->Props.m;
-    Particles[Particles.Size()-1]->x          = X;
-    Particles[Particles.Size()-1]->Ekin       = 0.0;
-    Particles[Particles.Size()-1]->Erot       = 0.0;
-    Particles[Particles.Size()-1]->Dmax       = Rmax + R;
-    Particles[Particles.Size()-1]->PropsReady = true;
-    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
-    
-    Particles[Particles.Size()-1]->Tori.Push(new Torus(&Particles[Particles.Size()-1]->x,Particles[Particles.Size()-1]->Verts[0],Particles[Particles.Size()-1]->Verts[1]));
-
-}
-
-inline void Domain::AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t const & X1, double R1, double R, double rho)
-{
-    // Define all key variables of the cylinder
-    Vec3_t n = X1 - X0;
-    n /= norm(n);
-    Vec3_t P1 = OrthoSys::e0 - dot(OrthoSys::e0,n)*n;
-    if (norm(P1)<1.0e-12) P1 = OrthoSys::e2 - dot(OrthoSys::e2,n)*n;
-    P1       /= norm(P1);
-    Vec3_t P2 = cross(n,P1);
-    P2       /= norm(P2);
-
-    //The cylinder is defined by 6 vertices
-    Array<Vec3_t > V(6);
-    V[0] = X0 + R0*P1;
-    V[1] = X0 + R0*P2;
-    V[2] = X0 - R0*P1;
-    V[3] = X1 + R1*P1;
-    V[4] = X1 + R1*P2;
-    V[5] = X1 - R1*P1;
-
-    // It has no edges or faces
-    Array<Array <int> > E(0);
-    Array<Array <int> > F(0);
-
-    //Add the particle just with the vertices
-    //
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-
-    //Input all the mass properties
-    Vec3_t xp,yp,zp;
-    xp = P1;
-    zp = P2;
-    yp = cross(zp,xp);
-    CheckDestroGiro(xp,yp,zp);
-    Quaternion_t q;
-    q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
-    q(1) = (yp(2)-zp(1))/(4*q(0));
-    q(2) = (zp(0)-xp(2))/(4*q(0));
-    q(3) = (xp(1)-yp(0))/(4*q(0));
-    q = q/norm(q);
-
-    if (isnan(norm(q))) q = 1.0,0.0,0.0,0.0;
-
-    Particles[Particles.Size()-1]->Q          = q;
-    Particles[Particles.Size()-1]->Props.V    = 4.0*M_PI*R0*R*norm(X1-X0);
-    Particles[Particles.Size()-1]->Props.m    = rho*4.0*M_PI*R0*R*norm(X1-X0);
-    Particles[Particles.Size()-1]->I          = 1.0, 1.0, 1.0;
-    Particles[Particles.Size()-1]->x          = 0.5*(X0 + X1);
-    Particles[Particles.Size()-1]->Ekin       = 0.0;
-    Particles[Particles.Size()-1]->Erot       = 0.0;
-    Particles[Particles.Size()-1]->Dmax       = sqrt(0.25*dot(X1-X0,X1-X0)+std::max(R0,R1)*std::max(R0,R1)) + R;
-    Particles[Particles.Size()-1]->PropsReady = true;
-    Particles[Particles.Size()-1]->Index      = Particles.Size()-1;
-    Particles[Particles.Size()-1]->Tori.Push     (new Torus(&X0,Particles[Particles.Size()-1]->Verts[0],Particles[Particles.Size()-1]->Verts[1]));
-    Particles[Particles.Size()-1]->Tori.Push     (new Torus(&X1,Particles[Particles.Size()-1]->Verts[3],Particles[Particles.Size()-1]->Verts[4]));
-    Particles[Particles.Size()-1]->Cylinders.Push(new Cylinder(Particles[Particles.Size()-1]->Tori[0],Particles[Particles.Size()-1]->Tori[1],Particles[Particles.Size()-1]->Verts[2],Particles[Particles.Size()-1]->Verts[5]));
-
-    //std::cout << *Particles[Particles.Size()-1] << std::endl;
-}
-
-inline void Domain::AddFromJson (int Tag, char const * Filename, double R, double rho, double scale, bool Erode)
-{
-
-    Array<Vec3_t>       V;
-    Array<Array <int> > E;
-    Array<Array <int> > F;
-
-    try {
-        boost::property_tree::ptree pt;
-        boost::property_tree::read_json(Filename, pt);
-        BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("verts")) {
-            Vec3_t coords;
-            int i = 0;
-            BOOST_FOREACH(boost::property_tree::ptree::value_type & b, a.second.get_child("c")) {
-                coords[i] = scale * boost::lexical_cast<double>(b.second.data());
-                i++;
-            }
-            V.Push(coords);
-        }
-        BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("edges")) {
-            Array<int> vids(2);
-            int i = 0;
-            BOOST_FOREACH(boost::property_tree::ptree::value_type & b, a.second.get_child("verts")) {
-                vids[i] = boost::lexical_cast<int>(b.second.data());
-                i++;
-            }
-            E.Push(vids);
-        }
-        BOOST_FOREACH(boost::property_tree::ptree::value_type & a, pt.get_child("faces")) {
-            Array<int>     vids;
-            BOOST_FOREACH(boost::property_tree::ptree::value_type & b, a.second.get_child("verts")) {
-                int vid = boost::lexical_cast<int>(b.second.data());
-                vids .Push(vid);
-            }
-            F.Push(vids);
-        }
-        printf("[1;32mDEM::domain.h ConstructFromJson: finished[0m\n");
-    } catch (std::exception & e) {
-        throw new Fatal("DEM::domain.h: ConstructFromJson failed:\n\t%s", e.what());
-    }
-    double vol; // volume of the polyhedron
-    Vec3_t CM;  // Center of mass of the polyhedron
-    Mat3_t It;  // Inertia tensor of the polyhedron
-    PolyhedraMP(V,F,vol,CM,It);
-    if (Erode) Erosion(V,E,F,R);
-    // add particle
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-    if (Erode) Particles[Particles.Size()-1]->Eroded = true;
-    Particles[Particles.Size()-1]->x       = CM;
-    Particles[Particles.Size()-1]->Props.V = vol;
-    Particles[Particles.Size()-1]->Props.m = vol*rho;
-    Vec3_t I;
-    Quaternion_t Q;
-    Vec3_t xp,yp,zp;
-    Eig(It,I,xp,yp,zp);
-    CheckDestroGiro(xp,yp,zp);
-    I *= rho;
-    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
-    Q(1) = (yp(2)-zp(1))/(4*Q(0));
-    Q(2) = (zp(0)-xp(2))/(4*Q(0));
-    Q(3) = (xp(1)-yp(0))/(4*Q(0));
-    Q = Q/norm(Q);
-    Particles[Particles.Size()-1]->I     = I;
-    Particles[Particles.Size()-1]->Q     = Q;
-    double Dmax = Distance(CM,V[0])+R;
-    for (size_t i=1; i<V.Size(); ++i)
-    {
-        if (Distance(CM,V[i])+R > Dmax) Dmax = Distance(CM,V[i])+R;
-    }
-    Particles[Particles.Size()-1]->Ekin = 0.0;
-    Particles[Particles.Size()-1]->Erot = 0.0;
-    Particles[Particles.Size()-1]->Dmax  = Dmax;
-    Particles[Particles.Size()-1]->PropsReady = true;
-    Particles[Particles.Size()-1]->Index = Particles.Size()-1;
-}
+#include<mechsys/dem/dompargen.h>
 
 // Methods
 
@@ -1700,15 +432,17 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     // info
     Util::Stopwatch stopwatch;
     printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    printf("%s  Total mass   of free particles       =  %g%s\n"        ,TERM_CLR4, Ms                                   , TERM_RST);
-    printf("%s  Total volume of free particles       =  %g%s\n"        ,TERM_CLR4, Vs                                   , TERM_RST);
-    printf("%s  Total number of particles            =  %zd%s\n"       ,TERM_CLR2, Particles.Size()                     , TERM_RST);
-    printf("%s  Time step                            =  %g%s\n"        ,TERM_CLR2, dt                                   , TERM_RST);
-    printf("%s  Verlet distance                      =  %g%s\n"        ,TERM_CLR2, Alpha                                , TERM_RST);
-    printf("%s  Suggested Time Step                  =  %g%s\n"        ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
-    printf("%s  Suggested Verlet distance            =  %g or  %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
+    printf("%s  Total mass   of free particles            =  %g%s\n"        ,TERM_CLR4, Ms                                   , TERM_RST);
+    printf("%s  Total volume of free particles            =  %g%s\n"        ,TERM_CLR4, Vs                                   , TERM_RST);
+    printf("%s  Total number of particles                 =  %zd%s\n"       ,TERM_CLR2, Particles.Size()                     , TERM_RST);
+    printf("%s  Time step                                 =  %g%s\n"        ,TERM_CLR2, dt                                   , TERM_RST);
+    printf("%s  Verlet distance                           =  %g%s\n"        ,TERM_CLR2, Alpha                                , TERM_RST);
+    printf("%s  Suggested Time Step                       =  %g%s\n"        ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
+    printf("%s  Suggested Verlet distance                 =  %g or  %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
     if (fabs(Xmax-Xmin)>1.0e-12)
-    printf("%s  Periodic Boundary conditions between =  %g and %g%s\n" ,TERM_CLR5, Xmin, Xmax                           , TERM_RST);
+    printf("%s  Periodic Boundary conditions in X between =  %g and %g%s\n" ,TERM_CLR5, Xmin, Xmax                           , TERM_RST);
+    if (fabs(Ymax-Ymin)>1.0e-12)
+    printf("%s  Periodic Boundary conditions in Y between =  %g and %g%s\n" ,TERM_CLR5, Ymin, Ymax                           , TERM_RST);
 
     if (Alpha > Beta*MaxDmax)
     {
@@ -1742,6 +476,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     LinkedCell.Resize(0);
     BoundingBox(LCxmin,LCxmax);
     LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
+    //LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax);
     LinkedCell.Resize(LCellDim(0)*LCellDim(1)*LCellDim(2));
     //std::cout << LCellDim << " " << MaxDmax << std::endl;
     //iVec3_t iv;
@@ -1768,6 +503,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     // build the map of possible contacts (for the Halo)
     ResetContacts();
     if (fabs(Xmax-Xmin)>Alpha) ResetBoundaries();
+    if (fabs(Ymax-Ymin)>Alpha) ResetBoundaries();
 
 #endif
 
@@ -1847,25 +583,29 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             for (size_t i=0; i<ParXmax.Size(); i++) ParXmax[i]->Translate(v);
 
             #pragma omp parallel for schedule(static) num_threads(Nproc)
-            for (size_t i=0; i<PInteractons.Size(); i++)
+            for (size_t i=0; i<PxInteractons.Size(); i++)
             {
-		        if (PInteractons[i]->CalcForce(Dt))
+		        if (PxInteractons[i]->CalcForce(Dt))
                 {
                     String f_error(FileKey+"_error");
                     Save     (f_error.CStr());
                     WriteXDMF(f_error.CStr());
-                    std::cout << "Maximun overlap detected between particles at time " << Time << std::endl;
+                    std::cout << "Maximun overlap detected between particles at the periodic X boundary at time " << Time << std::endl;
+                    std::cout << ParYmax.Has(PxInteractons[i]->P1) << std::endl;
+                    std::cout << ParYmax.Has(PxInteractons[i]->P2) << std::endl;
+                    std::cout << ParXmax.Has(PxInteractons[i]->P1) << std::endl;
+                    std::cout << ParXmax.Has(PxInteractons[i]->P2) << std::endl;
                     sleep(1);
                     throw new Fatal("Maximun overlap detected between particles");
                 }
-                omp_set_lock  (&PInteractons[i]->P1->lck);
-                PInteractons[i]->P1->F += PInteractons[i]->F1;
-                PInteractons[i]->P1->T += PInteractons[i]->T1;
-                omp_unset_lock(&PInteractons[i]->P1->lck);
-                omp_set_lock  (&PInteractons[i]->P2->lck);
-                PInteractons[i]->P2->F += PInteractons[i]->F2;
-                PInteractons[i]->P2->T += PInteractons[i]->T2;
-                omp_unset_lock(&PInteractons[i]->P2->lck);
+                omp_set_lock  (&PxInteractons[i]->P1->lck);
+                PxInteractons[i]->P1->F += PxInteractons[i]->F1;
+                PxInteractons[i]->P1->T += PxInteractons[i]->T1;
+                omp_unset_lock(&PxInteractons[i]->P1->lck);
+                omp_set_lock  (&PxInteractons[i]->P2->lck);
+                PxInteractons[i]->P2->F += PxInteractons[i]->F2;
+                PxInteractons[i]->P2->T += PxInteractons[i]->T2;
+                omp_unset_lock(&PxInteractons[i]->P2->lck);
             }
 
             v = Vec3_t(Xmax-Xmin,0.0,0.0);
@@ -1873,6 +613,71 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             for (size_t i=0; i<ParXmax.Size(); i++) ParXmax[i]->Translate(v);
         }
         
+        if (Ymax-Ymin>Alpha)
+        {
+            Vec3_t v(0.0,Ymin-Ymax,0.0);
+            #pragma omp parallel for schedule(static) num_threads(Nproc)
+            for (size_t i=0; i<ParYmax.Size(); i++) ParYmax[i]->Translate(v);
+
+            #pragma omp parallel for schedule(static) num_threads(Nproc)
+            for (size_t i=0; i<PyInteractons.Size(); i++)
+            {
+		        if (PyInteractons[i]->CalcForce(Dt))
+                {
+                    String f_error(FileKey+"_error");
+                    Save     (f_error.CStr());
+                    WriteXDMF(f_error.CStr());
+                    std::cout << "Maximun overlap detected between particles at the periodic Y boundary at time " << Time << std::endl;
+                    sleep(1);
+                    throw new Fatal("Maximun overlap detected between particles");
+                }
+                omp_set_lock  (&PyInteractons[i]->P1->lck);
+                PyInteractons[i]->P1->F += PyInteractons[i]->F1;
+                PyInteractons[i]->P1->T += PyInteractons[i]->T1;
+                omp_unset_lock(&PyInteractons[i]->P1->lck);
+                omp_set_lock  (&PyInteractons[i]->P2->lck);
+                PyInteractons[i]->P2->F += PyInteractons[i]->F2;
+                PyInteractons[i]->P2->T += PyInteractons[i]->T2;
+                omp_unset_lock(&PyInteractons[i]->P2->lck);
+            }
+
+            v = Vec3_t(0.0,Ymax-Ymin,0.0);
+            #pragma omp parallel for schedule(static) num_threads(Nproc)
+            for (size_t i=0; i<ParYmax.Size(); i++) ParYmax[i]->Translate(v);
+        }
+        
+        if ((Ymax-Ymin>Alpha)&&(Xmax-Xmin>Alpha))
+        {
+            Vec3_t v(Xmin-Xmax,Ymin-Ymax,0.0);
+            #pragma omp parallel for schedule(static) num_threads(Nproc)
+            for (size_t i=0; i<ParXYmax.Size(); i++) ParXYmax[i]->Translate(v);
+
+            #pragma omp parallel for schedule(static) num_threads(Nproc)
+            for (size_t i=0; i<PxyInteractons.Size(); i++)
+            {
+		        if (PxyInteractons[i]->CalcForce(Dt))
+                {
+                    String f_error(FileKey+"_error");
+                    Save     (f_error.CStr());
+                    WriteXDMF(f_error.CStr());
+                    std::cout << "Maximun overlap detected between particles at the periodic XY boundary at time " << Time << std::endl;
+                    sleep(1);
+                    throw new Fatal("Maximun overlap detected between particles");
+                }
+                omp_set_lock  (&PxyInteractons[i]->P1->lck);
+                PxyInteractons[i]->P1->F += PxyInteractons[i]->F1;
+                PxyInteractons[i]->P1->T += PxyInteractons[i]->T1;
+                omp_unset_lock(&PxyInteractons[i]->P1->lck);
+                omp_set_lock  (&PxyInteractons[i]->P2->lck);
+                PxyInteractons[i]->P2->F += PxyInteractons[i]->F2;
+                PxyInteractons[i]->P2->T += PxyInteractons[i]->T2;
+                omp_unset_lock(&PxyInteractons[i]->P2->lck);
+            }
+
+            v = Vec3_t(Xmax-Xmin,Ymax-Ymin,0.0);
+            #pragma omp parallel for schedule(static) num_threads(Nproc)
+            for (size_t i=0; i<ParXYmax.Size(); i++) ParXYmax[i]->Translate(v);
+        }
         // tell the user function to update its data
         //std::cout << "4" << std::endl;
         if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
@@ -1910,6 +715,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             LinkedCell.Resize(0);
             BoundingBox(LCxmin,LCxmax);
             LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax) + iVec3_t(1,1,1);
+            //LCellDim = (LCxmax - LCxmin)/(2.0*Beta*MaxDmax);
             LinkedCell.Resize(LCellDim(0)*LCellDim(1)*LCellDim(2));
 
             //ResetDisplacements
@@ -2457,7 +1263,7 @@ inline void Domain::WriteXDMF (char const * FileKey)
     {
         Vec3_t Ome;
         Rotation(Particles[i]->w,Particles[i]->Q,Ome);
-        Radius[i]     = float(Particles[i]->Dmax);
+        Particles[i]->Verts.Size()==1 ? Radius[i] = float(Particles[i]->Dmax) : Radius[i] = 0.0;
         Posvec[3*i  ] = float(Particles[i]->x(0));
         Posvec[3*i+1] = float(Particles[i]->x(1));
         Posvec[3*i+2] = float(Particles[i]->x(2));
@@ -3320,13 +2126,20 @@ inline void Domain::ClearInteractons()
     Interactons.Resize(0);
     Listofpairs.clear();
 
-    for (size_t i=0; i<CPInteractons.Size(); ++i)
+    for (size_t i=0; i<CPxInteractons.Size(); ++i)
     {
-        if (CPInteractons[i]!=NULL) delete CPInteractons[i];
+        if (CPxInteractons[i]!=NULL) delete CPxInteractons[i];
     }
-    CPInteractons.Resize(0);
-    PInteractons.Resize(0);
-    PListofpairs.clear();
+    CPxInteractons.Resize(0);
+    PxInteractons.Resize(0);
+    PxListofpairs.clear();
+    for (size_t i=0; i<CPyInteractons.Size(); ++i)
+    {
+        if (CPyInteractons[i]!=NULL) delete CPyInteractons[i];
+    }
+    CPyInteractons.Resize(0);
+    PyInteractons.Resize(0);
+    PyListofpairs.clear();
 }
 
 inline void Domain::ResetInteractons()
@@ -3525,18 +2338,36 @@ inline void Domain::ResetContacts()
         {
             Particle * P1 = ParXmax[i];
             P1->Translate(v);
-            for (size_t j=0; j<Particles.Size(); j++)
+            iVec3_t index = (P1->x - LCxmin)/(2.0*Beta*MaxDmax);
+            size_t ic = index(0);
+            size_t jc = index(1);
+            size_t kc = index(2);
+            if (index(0)>LCellDim(0)) ic = 0;
+            for (size_t knb=std::max(0,int(kc)-1);knb<=std::min(LCellDim(2)-1,kc+1);knb++)
+            for (size_t jnb=std::max(0,int(jc)-1);jnb<=std::min(LCellDim(1)-1,jc+1);jnb++)
+            for (size_t inb=std::max(0,int(ic)-1);inb<=std::min(LCellDim(0)-1,ic+1);inb++)
             {
-                Particle * P2 = Particles[j];
-                if (P1==P2||!P2->IsFree()||ParXmax.Has(P2)) continue;
-                bool close = (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*Alpha);
-                if (!close) continue;
-                std::set<std::pair<Particle *, Particle *> >::iterator it = PListofpairs.find(std::make_pair(P1,P2));
-                if (it != PListofpairs.end())
+                iVec3_t Ptnb(inb,jnb,knb);
+                size_t idxnb = Pt2idx(Ptnb,LCellDim);
+                for (size_t m=0;m<LinkedCell[idxnb].Size()  ;m++)
                 {
-                    continue;
+                    size_t i2 = LinkedCell[idxnb][m];
+                    Particle * P2 = Particles[i2];
+                    if (P1==P2||ParXmax.Has(P2))
+                    {
+                        //std::cout << P1->x << " " << P2->x << std::endl;
+                        continue;
+                    }
+
+                    bool close = (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*Alpha);
+                    if (!close) continue;
+                    std::set<std::pair<Particle *, Particle *> >::iterator it = PxListofpairs.find(std::make_pair(P1,P2));
+                    if (it != PxListofpairs.end())
+                    {
+                        continue;
+                    }
+                    MTD[omp_get_thread_num()].LPC.Push(std::make_pair(i,i2));
                 }
-                MTD[omp_get_thread_num()].LPC.Push(std::make_pair(i,j));
             }
         }
 
@@ -3546,29 +2377,29 @@ inline void Domain::ResetContacts()
             {
                 size_t n = MTD[i].LPC[j].first;
                 size_t m = MTD[i].LPC[j].second;
-                PListofpairs.insert(std::make_pair(ParXmax[n],Particles[m]));
+                PxListofpairs.insert(std::make_pair(ParXmax[n],Particles[m]));
                 if (ParXmax[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
                 {
-                    CPInteractons.Push (new CInteractonSphere(ParXmax[n],Particles[m]));
+                    CPxInteractons.Push (new CInteractonSphere(ParXmax[n],Particles[m]));
                 }
                 else
                 {
-                    CPInteractons.Push (new CInteracton(ParXmax[n],Particles[m]));
+                    CPxInteractons.Push (new CInteracton(ParXmax[n],Particles[m]));
                 }
             }
         }
 
         #pragma omp parallel for schedule(static) num_threads(Nproc)
-        for (size_t n=0;n<CPInteractons.Size();n++)
+        for (size_t n=0;n<CPxInteractons.Size();n++)
         {
-            if(CPInteractons[n]->UpdateContacts(Alpha)) MTD[omp_get_thread_num()].LPCI.Push(n);
+            if(CPxInteractons[n]->UpdateContacts(Alpha)) MTD[omp_get_thread_num()].LPCI.Push(n);
         }
-        PInteractons.Resize(0);
+        PxInteractons.Resize(0);
         for (size_t i=0;i<Nproc;i++)
         {
             for (size_t j=0;j<MTD[i].LPCI.Size();j++)
             {
-                PInteractons.Push(CPInteractons[MTD[i].LPCI[j]]);
+                PxInteractons.Push(CPxInteractons[MTD[i].LPCI[j]]);
             }
         }
         v = Vec3_t(Xmax-Xmin,0.0,0.0);
@@ -3576,6 +2407,226 @@ inline void Domain::ResetContacts()
         for (size_t i=0;i<ParXmax.Size();i++)
         {
             Particle * P1 = ParXmax[i];
+            P1->Translate(v);
+        }
+    }
+    if (Ymax-Ymin>Alpha)
+    {
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0;i<Nproc;i++)
+        {
+            MTD[i].LBP.Resize(0);
+            MTD[i].LPC.Resize(0);
+            MTD[i].LPCI.Resize(0);
+        }
+
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0;i<Particles.Size();i++)
+        {
+            Particle * Pa = Particles[i];
+            if ((Pa->MinY()>Ymax)&&Pa->IsFree())
+            {
+                Vec3_t v(0.0,Ymin-Ymax,0.0);
+                Pa->Translate(v);
+            }
+            if ((Pa->MaxY()<Ymin)&&Pa->IsFree())
+            {
+                Vec3_t v(0.0,Ymax-Ymin,0.0);
+                Pa->Translate(v);
+            }
+            if ((Pa->MaxY()>Ymax-2.0*Alpha-2.0*MaxDmax)&&Pa->IsFree())
+            {
+                MTD[omp_get_thread_num()].LBP.Push(i);
+            }
+        }
+        ParYmax.Resize(0);
+        for (size_t i=0;i<Nproc;i++)
+        {
+            for (size_t j=0;j<MTD[i].LBP.Size();j++)
+            {
+                ParYmax.Push(Particles[MTD[i].LBP[j]]);
+            }
+        }
+
+        Vec3_t v(0.0,Ymin-Ymax,0.0);
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0;i<ParYmax.Size();i++)
+        {
+            Particle * P1 = ParYmax[i];
+            P1->Translate(v);
+            iVec3_t index = (P1->x - LCxmin)/(2.0*Beta*MaxDmax);
+            size_t ic = index(0);
+            size_t jc = index(1);
+            size_t kc = index(2);
+            if (index(1)>LCellDim(1)) jc = 0;
+            for (size_t knb=std::max(0,int(kc)-1);knb<=std::min(LCellDim(2)-1,kc+1);knb++)
+            for (size_t jnb=std::max(0,int(jc)-1);jnb<=std::min(LCellDim(1)-1,jc+1);jnb++)
+            for (size_t inb=std::max(0,int(ic)-1);inb<=std::min(LCellDim(0)-1,ic+1);inb++)
+            {
+                iVec3_t Ptnb(inb,jnb,knb);
+                size_t idxnb = Pt2idx(Ptnb,LCellDim);
+                for (size_t m=0;m<LinkedCell[idxnb].Size()  ;m++)
+                {
+                    size_t i2 = LinkedCell[idxnb][m];
+                    Particle * P2 = Particles[i2];
+                    if (P1==P2||ParYmax.Has(P2))
+                    {
+                        //std::cout << P1->x << " " << P2->x << std::endl;
+                        continue;
+                    }
+
+                    bool close = (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*Alpha);
+                    if (!close) continue;
+                    std::set<std::pair<Particle *, Particle *> >::iterator it = PyListofpairs.find(std::make_pair(P1,P2));
+                    if (it != PyListofpairs.end())
+                    {
+                        continue;
+                    }
+                    MTD[omp_get_thread_num()].LPC.Push(std::make_pair(i,i2));
+                }
+            }
+        }
+
+        for (size_t i=0;i<Nproc;i++)
+        {
+            for (size_t j=0;j<MTD[i].LPC.Size();j++)
+            {
+                size_t n = MTD[i].LPC[j].first;
+                size_t m = MTD[i].LPC[j].second;
+                PyListofpairs.insert(std::make_pair(ParYmax[n],Particles[m]));
+                if (ParYmax[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
+                {
+                    CPyInteractons.Push (new CInteractonSphere(ParYmax[n],Particles[m]));
+                }
+                else
+                {
+                    CPyInteractons.Push (new CInteracton(ParYmax[n],Particles[m]));
+                }
+            }
+        }
+
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t n=0;n<CPyInteractons.Size();n++)
+        {
+            if(CPyInteractons[n]->UpdateContacts(Alpha)) MTD[omp_get_thread_num()].LPCI.Push(n);
+        }
+        PyInteractons.Resize(0);
+        for (size_t i=0;i<Nproc;i++)
+        {
+            for (size_t j=0;j<MTD[i].LPCI.Size();j++)
+            {
+                PyInteractons.Push(CPyInteractons[MTD[i].LPCI[j]]);
+            }
+        }
+        v = Vec3_t(0.0,Ymax-Ymin,0.0);
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0;i<ParYmax.Size();i++)
+        {
+            Particle * P1 = ParYmax[i];
+            P1->Translate(v);
+        }
+    }
+    if ((Xmax-Xmin>Alpha)&&(Ymax-Ymin>Alpha))
+    {
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0;i<Nproc;i++)
+        {
+            MTD[i].LBP.Resize(0);
+            MTD[i].LPC.Resize(0);
+            MTD[i].LPCI.Resize(0);
+        }
+
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0;i<ParXmax.Size();i++)
+        {
+            if (ParYmax.Has(ParXmax[i]))
+            {
+                MTD[omp_get_thread_num()].LBP.Push(ParXmax[i]->Index);
+            }
+        }
+
+        ParXYmax.Resize(0);
+        for (size_t i=0;i<Nproc;i++)
+        {
+            for (size_t j=0;j<MTD[i].LBP.Size();j++)
+            {
+                ParXYmax.Push(Particles[MTD[i].LBP[j]]);
+            }
+        }
+        Vec3_t v(Xmin-Xmax,Ymin-Ymax,0.0);
+        for (size_t i=0;i<ParXYmax.Size();i++)
+        {
+            Particle * P1 = ParXYmax[i];
+            P1->Translate(v);
+            iVec3_t index = (P1->x - LCxmin)/(2.0*Beta*MaxDmax);
+            size_t ic = index(0);
+            size_t jc = index(1);
+            size_t kc = index(2);
+            if (index(0)>LCellDim(0)) ic = 0;
+            if (index(1)>LCellDim(1)) jc = 0;
+            for (size_t knb=std::max(0,int(kc)-1);knb<=std::min(LCellDim(2)-1,kc+1);knb++)
+            for (size_t jnb=std::max(0,int(jc)-1);jnb<=std::min(LCellDim(1)-1,jc+1);jnb++)
+            for (size_t inb=std::max(0,int(ic)-1);inb<=std::min(LCellDim(0)-1,ic+1);inb++)
+            {
+                iVec3_t Ptnb(inb,jnb,knb);
+                size_t idxnb = Pt2idx(Ptnb,LCellDim);
+                for (size_t m=0;m<LinkedCell[idxnb].Size()  ;m++)
+                {
+                    size_t i2 = LinkedCell[idxnb][m];
+                    Particle * P2 = Particles[i2];
+                    if (P1==P2||ParXYmax.Has(P2))
+                    {
+                        //std::cout << P1->x << " " << P2->x << std::endl;
+                        continue;
+                    }
+
+                    bool close = (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*Alpha);
+                    if (!close) continue;
+                    std::set<std::pair<Particle *, Particle *> >::iterator it = PxyListofpairs.find(std::make_pair(P1,P2));
+                    if (it != PxyListofpairs.end())
+                    {
+                        continue;
+                    }
+                    MTD[omp_get_thread_num()].LPC.Push(std::make_pair(i,i2));
+                }
+            }
+        }
+        for (size_t i=0;i<Nproc;i++)
+        {
+            for (size_t j=0;j<MTD[i].LPC.Size();j++)
+            {
+                size_t n = MTD[i].LPC[j].first;
+                size_t m = MTD[i].LPC[j].second;
+                PxyListofpairs.insert(std::make_pair(ParXYmax[n],Particles[m]));
+                if (ParXYmax[n]->Verts.Size()==1 && Particles[m]->Verts.Size()==1)
+                {
+                    CPxyInteractons.Push (new CInteractonSphere(ParXYmax[n],Particles[m]));
+                }
+                else
+                {
+                    CPxyInteractons.Push (new CInteracton(ParXYmax[n],Particles[m]));
+                }
+            }
+        }
+
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t n=0;n<CPxyInteractons.Size();n++)
+        {
+            if(CPxyInteractons[n]->UpdateContacts(Alpha)) MTD[omp_get_thread_num()].LPCI.Push(n);
+        }
+        PxyInteractons.Resize(0);
+        for (size_t i=0;i<Nproc;i++)
+        {
+            for (size_t j=0;j<MTD[i].LPCI.Size();j++)
+            {
+                PxyInteractons.Push(CPxyInteractons[MTD[i].LPCI[j]]);
+            }
+        }
+        v = Vec3_t(Xmax-Xmin,Ymax-Ymin,0.0);
+        #pragma omp parallel for schedule(static) num_threads(Nproc)
+        for (size_t i=0;i<ParXYmax.Size();i++)
+        {
+            Particle * P1 = ParXYmax[i];
             P1->Translate(v);
         }
     }
@@ -3625,6 +2676,7 @@ inline void Domain::ResetContacts()
 
 inline void Domain::ResetBoundaries()
 {
+    /*
     ParXmax.Resize(0);
     for (size_t i=0;i<Particles.Size();i++)
     {
@@ -3682,6 +2734,7 @@ inline void Domain::ResetBoundaries()
     }
     Vec3_t vmin(Xmax-Xmin,0.0,0.0);
     for (size_t i=0;i<ParXmax.Size();i++) ParXmax[i]->Translate(vmin);
+    */
 }
 
 inline void Domain::CalcForceSphere()
