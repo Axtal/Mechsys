@@ -155,6 +155,7 @@ public:
     set<pair<LBM::Disk *, LBM::Disk *> >     ListofDiskPairs;         ///< List of pair of disks associated per interacton for memory optimization
     double                                              Time;         ///< Time of the simulation
     double                                                dt;         ///< Timestep
+    double                                             dtdem;         ///< Timestep for DEM
     double                                             Alpha;         ///< Verlet distance
     double                                              Beta;         ///< Binmultiplier
     double                                              Gmix;         ///< Interaction constant for the mixture
@@ -202,6 +203,7 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     }
     Time   = 0.0;
     dt     = Thedt;
+    dtdem  = 0.0;
     Alpha  = 10.0;
     Beta   = 2.0;
     Step   = 1;
@@ -235,6 +237,7 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     if (Ndim(2)==1&&Method==D3Q15) throw new Fatal("LBM::Domain: Ndim(2) is greater than 1. Either change the method to D2Q9 or increse the z-dimension");
     Time   = 0.0;
     dt     = Thedt;
+    dtdem  = 0.0;
     Alpha  = 10.0;
     Beta   = 2.0;
     Step   = 1;
@@ -2364,6 +2367,7 @@ inline void Domain::ResetContacts()
 
     else
     {
+        //std::cout << "1" << std::endl;
         #pragma omp parallel for schedule(static) num_threads(Nproc)
         for (size_t n=0;n<ListPosPairs.Size();n++)
         {
@@ -2380,6 +2384,7 @@ inline void Domain::ResetContacts()
             }
             MTD[omp_get_thread_num()].LC.Push(std::make_pair(i,j));
         }
+        //std::cout << "2" << std::endl;
         for (size_t i=0;i<Nproc;i++)
         {
             //std::cout << MTD[i].LC.Size() << std::endl;
@@ -2404,11 +2409,13 @@ inline void Domain::ResetContacts()
         {
             if(CInteractons[n]->UpdateContacts(Alpha)) MTD[omp_get_thread_num()].LCI.Push(n);
         }
+        //std::cout << "3" << std::endl;
         #pragma omp parallel for schedule(static) num_threads(Nproc)
         for (size_t n=0;n<BInteractons.Size();n++)
         {
             if(BInteractons[n]->UpdateContacts(Alpha)) MTD[omp_get_thread_num()].LCB.Push(n);
         }
+        //std::cout << "4" << std::endl;
         Interactons.Resize(0);
         for (size_t i=0;i<Nproc;i++)
         {
@@ -2422,18 +2429,19 @@ inline void Domain::ResetContacts()
             }
         }
 
+        //std::cout << "5" << std::endl;
         #pragma omp parallel for schedule(static) num_threads(Nproc)
 	    for (size_t i=0;i<Particles.Size();i++)
         {
             //Cell  * cell = dat.Dom->Lat[0].Cells[i];
             DEM::Particle * Pa = Particles[i];
+            if (Pa->Bdry) continue;
             //std::cout << std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " " 
                       //<< std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " " 
                       //<< std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*dat.Dom->Alpha-dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " " << std::endl;
             //std::cout << std::min(double(dat.Dom->Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " "
                       //<< std::min(double(dat.Dom->Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " "
                       //<< std::min(double(dat.Dom->Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*dat.Dom->Alpha+dat.Dom->Lat[0].dx)/dat.Dom->Lat[0].dx) << " " << std::endl;
-
             for (size_t n=std::max(0.0,double(Pa->x(0)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);n<=std::min(double(Lat[0].Ndim(0)-1),double(Pa->x(0)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);n++)
             for (size_t m=std::max(0.0,double(Pa->x(1)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);m<=std::min(double(Lat[0].Ndim(1)-1),double(Pa->x(1)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);m++)
             for (size_t l=std::max(0.0,double(Pa->x(2)-Pa->Dmax-2.0*Alpha-Lat[0].dx)/Lat[0].dx);l<=std::min(double(Lat[0].Ndim(2)-1),double(Pa->x(2)+Pa->Dmax+2.0*Alpha+Lat[0].dx)/Lat[0].dx);l++)
@@ -2445,7 +2453,7 @@ inline void Domain::ResetContacts()
                 double y     = Lat[0].dx*(cell->Index(1));
                 double z     = Lat[0].dx*(cell->Index(2));
                 Vec3_t  C(x,y,z);
-                if ((norm(C-Pa->x)>2.0*Alpha+2.0*Lat[0].dx+Pa->Dmax)||(Pa->Bdry==true)) continue;
+                if ((norm(C-Pa->x)>2.0*Alpha+2.0*Lat[0].dx+Pa->Dmax)) continue;
                 ParticleCellPair NewPCP;
                 NewPCP.IPar = i;
                 //NewPCP.IPar = n;
@@ -2496,7 +2504,7 @@ inline void Domain::ResetContacts()
             }
         }
     }
-
+    //std::cout << "6" << std::endl;
 
     ParCellPairs.Resize(0);
     for (size_t i=0;i<Nproc;i++)
@@ -3782,8 +3790,10 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     Finished = false;
     Nproc = TheNproc;
 
+    if (dtdem<1.0e-12||dtdem>dt) dtdem = dt;
+
     // initialize particles
-    Initialize (dt);
+    Initialize (dtdem);
     // calc the total volume of particles (solids)
     FreePar.Resize(0);
     NoFreePar.Resize(0);
@@ -3814,14 +3824,17 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         if (pbn > MaxBn||(MinDmax<0.0)) MaxBn = pbn;
     }
 
+
     // info
     Util::Stopwatch stopwatch;
     printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1   , TERM_RST);
     printf("%s  Porosity                         =  %g%s\n"       ,TERM_CLR4, 1.0 - Lat[0].SolidFraction()         , TERM_RST);
+    printf("%s  Lattice velocity C = dx/dt       =  %g%s\n"       ,TERM_CLR4, Lat[0].dx/Lat[0].dt                  , TERM_RST);
     printf("%s  Total mass   of free particles   =  %g%s\n"       ,TERM_CLR4, Ms                                   , TERM_RST);
     printf("%s  Total volume of free particles   =  %g%s\n"       ,TERM_CLR4, Vs                                   , TERM_RST);
     printf("%s  Total number of particles        =  %zd%s\n"      ,TERM_CLR2, Particles.Size()                     , TERM_RST);
     printf("%s  Time step                        =  %g%s\n"       ,TERM_CLR2, dt                                   , TERM_RST);
+    printf("%s  Time step for DEM                =  %g%s\n"       ,TERM_CLR2, dtdem                                , TERM_RST);
     printf("%s  Verlet distance                  =  %g%s\n"       ,TERM_CLR2, Alpha                                , TERM_RST);
     for (size_t i=0;i<Lat.Size();i++)
     {
@@ -3830,7 +3843,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
     if (FreePar.Size()>0)
     {
-    printf("%s  Suggested Time Step              =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
+    printf("%s  Suggested Time Step for DEM      =  %g%s\n"       ,TERM_CLR5, 0.1*sqrt(MinMass/(MaxKn+MaxBn))      , TERM_RST);
     printf("%s  Suggested Verlet distance        =  %g or %g%s\n" ,TERM_CLR5, 0.5*MinDmax, 0.25*(MinDmax + MaxDmax), TERM_RST);
 
     if (Alpha > MinDmax&&MinDmax>0.0)
@@ -3842,6 +3855,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     if (Alpha < 0.0) throw new Fatal("Verlet distance cannot be negative");
     }
 
+     
 
 
     //std::cout << "1" << std::endl;
@@ -3910,6 +3924,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
 #endif
     double tout = Time;
+    double tlbm = Time;
     //std::cout << "3" << std::endl;
     while (Time < Tf)
     {
@@ -3977,7 +3992,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         #pragma omp parallel for schedule(static) num_threads(Nproc)
         for (size_t i=0; i<Interactons.Size(); i++)
         {
-		    if (Interactons[i]->CalcForce(dt))
+		    if (Interactons[i]->CalcForce(dtdem))
             {
                 WriteXDMF("error");
                 std::cout << "Maximun overlap detected between particles at time " << Time << std::endl;
@@ -3999,7 +4014,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         #pragma omp parallel for schedule(static) num_threads(Nproc)
         for (size_t i=0; i<DiskPairs.Size(); i++)
         {
-		    DiskPairs[i]->CalcForce(dt);
+		    DiskPairs[i]->CalcForce(dtdem);
             omp_set_lock  (&DiskPairs[i]->P1->lck);
             DiskPairs[i]->P1->F += DiskPairs[i]->F1;
             DiskPairs[i]->P1->T += DiskPairs[i]->T1;
@@ -4031,9 +4046,9 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         for (size_t i=0; i<Particles.Size(); i++)
         {
             //std::cout << "1" << std::endl;
-		    Particles[i]->Translate(dt);
+		    Particles[i]->Translate(dtdem);
             //std::cout << "2" << std::endl;
-		    Particles[i]->Rotate(dt);
+		    Particles[i]->Rotate(dtdem);
             //std::cout << "3" << std::endl;
             if (Particles[i]->MaxDisplacement()>MTD[omp_get_thread_num()].Dmx) MTD[omp_get_thread_num()].Dmx = Particles[i]->MaxDisplacement();
         }
@@ -4043,9 +4058,9 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         for (size_t i=0; i<Disks.Size(); i++)
         {
             //std::cout << "1" << std::endl;
-		    Disks[i]->Translate(dt);
+		    Disks[i]->Translate(dtdem);
             //std::cout << "2" << std::endl;
-		    Disks[i]->Rotate(dt);
+		    Disks[i]->Rotate(dtdem);
             //std::cout << "3" << std::endl;
             if (norm(Disks[i]->X0-Disks[i]->X)>MTD[omp_get_thread_num()].Dmx) MTD[omp_get_thread_num()].Dmx = norm(Disks[i]->X0-Disks[i]->X);
         }
@@ -4075,38 +4090,42 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
         }
 
-        //Apply molecular forces
-        if (Lat.Size()>1||(fabs(Lat[0].G)+fabs(Lat[0].Gs)>1.0e-12))
+        if (Time>=tlbm)
         {
-            bool MC = false;
-            if (Lat.Size()==2)
+            //Apply molecular forces
+            if (Lat.Size()>1||(fabs(Lat[0].G)+fabs(Lat[0].Gs)>1.0e-12))
             {
-                if (fabs(Lat[0].G)<1.0e-9&&fabs(Lat[1].G)<1.0e-9) MC = true;
+                bool MC = false;
+                if (Lat.Size()==2)
+                {
+                    if (fabs(Lat[0].G)<1.0e-9&&fabs(Lat[1].G)<1.0e-9) MC = true;
+                }
+                ApplyForce(0,Nproc,MC);
             }
-            ApplyForce(0,Nproc,MC);
-        }
 
-        //Apply collision operator
-        if (Particles.Size()>0||Disks.Size()>0)
-        {
-            if (Lat.Size()>1)
+            //Apply collision operator
+            if (Particles.Size()>0||Disks.Size()>0)
             {
-                CollideMC(0,Nproc);
+                if (Lat.Size()>1)
+                {
+                    CollideMC(0,Nproc);
+                }
+                else
+                {
+                    CollideSC(0,Nproc);
+                }
             }
             else
             {
-                CollideSC(0,Nproc);
+                CollideNoPar(0,Nproc);
             }
-        }
-        else
-        {
-            CollideNoPar(0,Nproc);
-        }
 
-        //Stream the distribution functions
-        for (size_t i=0;i<Lat.Size();i++)
-        {
-            Lat[i].Stream(0,Nproc);
+            //Stream the distribution functions
+            for (size_t i=0;i<Lat.Size();i++)
+            {
+                Lat[i].Stream(0,Nproc);
+            }
+            tlbm += dt;
         }
         
         //std::cout << "5" <<std::endl;
@@ -4127,11 +4146,11 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         ImprintLattice();
 
         //Move Particles
-        for(size_t i=0;i<Interactons.Size();i++) Interactons[i]->CalcForce(dt);
+        for(size_t i=0;i<Interactons.Size();i++) Interactons[i]->CalcForce(dtdem);
         for(size_t i=0;i<Particles.Size()  ;i++) 
         {
-            Particles[i]->Translate(dt);
-            Particles[i]->Rotate(dt);
+            Particles[i]->Translate(dtdem);
+            Particles[i]->Rotate(dtdem);
         }
 
         //Move fluid
@@ -4150,7 +4169,8 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         }
 #endif
 
-        Time += dt;
+        Time += dtdem;
+        //std::cout << Time << " " << tlbm << std::endl;
     }
     // last output
     Finished = true;

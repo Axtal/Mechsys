@@ -473,9 +473,9 @@ inline void Domain::WriteXDMF(char const * FileKey)
     for (size_t j=0;j<Nl;j++)
     {
         // Creating data sets
-        float * Density   = new float[  Nx*Ny*Nz];
-        float * Gamma     = new float[  Nx*Ny*Nz];
-        float * Vvec      = new float[3*Nx*Ny*Nz];
+        double * Density   = new double[  Nx*Ny*Nz];
+        double * Gamma     = new double[  Nx*Ny*Nz];
+        double * Vvec      = new double[3*Nx*Ny*Nz];
 
         size_t i=0;
         for (size_t m=0;m<Ndim(2);m+=Step)
@@ -497,11 +497,11 @@ inline void Domain::WriteXDMF(char const * FileKey)
             rho  /= Step*Step*Step;
             gamma/= Step*Step*Step;
             vel  /= Step*Step*Step;
-            Density [i]  = (float) rho;
-            Gamma   [i]  = (float) gamma;
-            Vvec[3*i  ]  = (float) vel(0);
-            Vvec[3*i+1]  = (float) vel(1);
-            Vvec[3*i+2]  = (float) vel(2);
+            Density [i]  = (double) rho;
+            Gamma   [i]  = (double) gamma;
+            Vvec[3*i  ]  = (double) vel(0);
+            Vvec[3*i+1]  = (double) vel(1);
+            Vvec[3*i+2]  = (double) vel(2);
             i++;
         }
         
@@ -510,15 +510,15 @@ inline void Domain::WriteXDMF(char const * FileKey)
         dims[0] = Nx*Ny*Nz;
         String dsname;
         dsname.Printf("Density_%d",j);
-        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Density );
+        H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Density );
         if (j==0)
         {
             dsname.Printf("Gamma");
-            H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Gamma   );
+            H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Gamma   );
         }
         dims[0] = 3*Nx*Ny*Nz;
         dsname.Printf("Velocity_%d",j);
-        H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vvec    );
+        H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Vvec    );
         dims[0] = 1;
         int N[1];
         N[0] = Nx;
