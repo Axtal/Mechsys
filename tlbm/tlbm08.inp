@@ -10,4 +10,4 @@ cube     = ptype     Particle type
 3.6      = R         particle size   
 0.00      = w         angular velocity 
 45.0      = ang        angle of the body around the z axis
-1.6e-2   = Tf        time   
+1.0e3   = Tf        time   

@@ -1882,14 +1882,14 @@ void Domain::ImprintLatticeSC (size_t n,size_t Np)
             //else if (ParCellPairs[i].IGeo.Size()==0) continue;
             len = 12.0*Lat[0].dx;
             Vec3_t Nor = OrthoSys::O;
-            if (cell->Index(0)==126&&cell->Index(1)==36&&cell->Index(2)==30) std::cout << ParCellPairs[i].IGeo.Size() << std::endl;
-            if (ParCellPairs[i].IGeo.Size()==0) continue;
-            else
+            //else
+            if (ParCellPairs[i].IGeo.Size()>0) 
             {
                 if (Pa->Faces.Size()>0)
                 {
                     DEM::Distance(C,*Pa->Faces[ParCellPairs[i].IGeo[0]],Xtemp,Xs);
                     minl = norm(Xtemp-Xs);
+                    Nor = Pa->Faces[ParCellPairs[i].IGeo[0]]->Nor;
                     for (size_t j=1;j<ParCellPairs[i].IGeo.Size();j++)
                     {
                         DEM::Distance(C,*Pa->Faces[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
@@ -1898,10 +1898,6 @@ void Domain::ImprintLatticeSC (size_t n,size_t Np)
                             minl = norm(Xtemp-Xstemp);
                             Xs   = Xstemp;
                             Nor = Pa->Faces[ParCellPairs[i].IGeo[j]]->Nor;
-                            if (cell->Index(0)==126&&cell->Index(1)==36&&cell->Index(2)==30)
-                            {
-                                std::cout << Nor << " " << ParCellPairs[i].IGeo[j] << " " << Xs << std::endl;
-                            }
                         }
                     }
                 }

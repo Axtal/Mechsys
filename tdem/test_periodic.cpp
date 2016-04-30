@@ -294,7 +294,7 @@ int main(int argc, char **argv) try
 
     if (test=="normal")
     {
-        if (!load) dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3,Cohesion);
+        if (!load) dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.5,Cohesion);
         dom.GetParticle(-2)->FixVeloc();
         dom.GetParticle(-3)->FixVeloc();
         dom.GetParticle(-4)->FixVeloc();
