@@ -1929,7 +1929,8 @@ void Domain::ImprintLatticeSC (size_t n,size_t Np)
                         }
                     }
                 }
-                if (dot(C-Xs,Nor)>0.0||Pa->Faces.Size()<4) 
+                double dotpro = dot(C-Xs,Nor);
+                if (dotpro>0.0||fabs(dotpro)<0.6*minl||Pa->Faces.Size()<4) 
                 {
                     len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
                 }
@@ -2478,22 +2479,35 @@ inline void Domain::ResetContacts()
                 //NewPCP.IPar = n;
                 NewPCP.ICell= cell->ID;
                 
-                bool valid = false;
+                bool valid = true;
+                Vec3_t Nor = OrthoSys::O;
                 if (Pa->Faces.Size()>0)
                 {
+                    double minl = 2.0*Pa->Dmax;
+                    Vec3_t Xs = OrthoSys::O;
                     for (size_t j=0;j<Pa->Faces.Size();j++)
                     {
-                        if (DEM::Distance(C,*Pa->Faces[j])<2.0*Alpha+Pa->Props.R)
+                        Vec3_t Xstemp,Xtemp;
+                        DEM::Distance(C,*Pa->Faces[j],Xtemp,Xstemp);
+                        double dist = norm(Xtemp - Xstemp);
+                        if (dist<minl)
+                        {
+                            Nor  = Pa->Faces[j]->Nor;
+                            minl = dist;
+                            Xs   = Xstemp;
+                        }
+                        if (dist<2.0*Alpha+Pa->Props.R)
                         {
                             if (Pa->Faces[j]->Area()<2.0*M_PI*Pa->Props.R*Pa->Props.R)
                             {
-                                //std::cout << "it did" << std::endl;
                                 continue;
                             }
                             NewPCP.IGeo.Push(j);
-                            valid = true;
                         }
                     }
+                    double dotpro = dot(C-Xs,Nor);
+                    if ((dotpro>0.0||fabs(dotpro)<0.6*minl)&&Pa->Faces.Size()>3&&minl>2.0*Alpha+Pa->Props.R) valid = false;
+                    else if (minl>2.0*Alpha+Pa->Props.R&&Pa->Faces.Size()<4)               valid = false;
                 }
                 else if (Pa->Edges.Size()>0)
                 {
@@ -2502,9 +2516,8 @@ inline void Domain::ResetContacts()
                         if (DEM::Distance(C,*Pa->Edges[j])<2.0*Alpha+Pa->Props.R) 
                         {
                             NewPCP.IGeo.Push(j);
-                            valid = true;
                         }
-                           
+                        else valid = false;
                     }
                 }
                 else if (Pa->Verts.Size()>0)
@@ -2514,13 +2527,51 @@ inline void Domain::ResetContacts()
                         if (DEM::Distance(C,*Pa->Verts[j])<2.0*Alpha+Pa->Props.R)
                         {
                             NewPCP.IGeo.Push(j);
-                            valid = true;
                         }
+                        else valid = false;
                     }
                 }
-                if (Pa->IsInsideFaceOnly(C)) valid = true;
-
                 if (valid) MTD[omp_get_thread_num()].LPC.Push(NewPCP);
+                //bool valid = false;
+                //if (Pa->Faces.Size()>0)
+                //{
+                    //for (size_t j=0;j<Pa->Faces.Size();j++)
+                    //{
+                        //if (DEM::Distance(C,*Pa->Faces[j])<2.0*Alpha+Pa->Props.R)
+                        //{
+                            //if (Pa->Faces[j]->Area()<2.0*M_PI*Pa->Props.R*Pa->Props.R)
+                            //{
+                                //continue;
+                            //}
+                            //NewPCP.IGeo.Push(j);
+                            //valid = true;
+                        //}
+                    //}
+                //}
+                //else if (Pa->Edges.Size()>0)
+                //{
+                    //for (size_t j=0;j<Pa->Edges.Size();j++)
+                    //{
+                        //if (DEM::Distance(C,*Pa->Edges[j])<2.0*Alpha+Pa->Props.R) 
+                        //{
+                            //NewPCP.IGeo.Push(j);
+                            //valid = true;
+                        //}
+                    //}
+                //}
+                //else if (Pa->Verts.Size()>0)
+                //{
+                    //for (size_t j=0;j<Pa->Verts.Size();j++)
+                    //{
+                        //if (DEM::Distance(C,*Pa->Verts[j])<2.0*Alpha+Pa->Props.R)
+                        //{
+                            //NewPCP.IGeo.Push(j);
+                            //valid = true;
+                        //}
+                    //}
+                //}
+                //if (Pa->IsInsideFaceOnly(C)) valid = true;
+                //if (valid) MTD[omp_get_thread_num()].LPC.Push(NewPCP);
             }
         }
     }

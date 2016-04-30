@@ -191,10 +191,9 @@ int main(int argc, char **argv) try
     }
     else
     {
-        DEM::Particle * Pa = new DEM::Particle(-1, ptype.CStr(), 0.05*R, 3.0, R );
-        Dom.Particles.Push(Pa);
-        Vec3_t t(0.5*nx,0.5*ny,0.5*nz);
-        Pa->Position(t);
+        Dom.AddFromJson(-1, ptype.CStr(), 0.05*R,3.0,R);
+        Vec3_t t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx);
+        Dom.Particles[0]->Position(t);
     }
 
     Dom.Particles[0]->FixVeloc();

@@ -1,4 +1,4 @@
-sphere     = ptype     Particle type
+cube    = ptype     Particle type
 1         = Render    Produce visualization files?       
 240       = nx        x dimension of lbm grid           
 60       = ny        y dimension of lbm grid             
