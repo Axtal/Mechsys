@@ -1127,7 +1127,7 @@ inline void Domain::AddTorus (int Tag, Vec3_t const & X, Vec3_t const & N, doubl
     q(3) = (xp(1)-yp(0))/(4*q(0));
     q = q/norm(q);
 
-    if (isnan(norm(q))) q = 1.0,0.0,0.0,0.0;
+    if (std::isnan(norm(q))) q = 1.0,0.0,0.0,0.0;
 
     Particles[Particles.Size()-1]->Q          = q;
     Particles[Particles.Size()-1]->Props.V    = 2*M_PI*M_PI*R*R*Rmax;
@@ -1186,7 +1186,7 @@ inline void Domain::AddCylinder (int Tag, Vec3_t const & X0, double R0, Vec3_t c
     q(3) = (xp(1)-yp(0))/(4*q(0));
     q = q/norm(q);
 
-    if (isnan(norm(q))) q = 1.0,0.0,0.0,0.0;
+    if (std::isnan(norm(q))) q = 1.0,0.0,0.0,0.0;
 
     Particles[Particles.Size()-1]->Q          = q;
     Particles[Particles.Size()-1]->Props.V    = 4.0*M_PI*R0*R*norm(X1-X0);

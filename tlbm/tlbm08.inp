@@ -1,5 +1,5 @@
-sphere     = ptype     Particle type
-0         = Render    Produce visualization files?       
+cube     = ptype     Particle type
+1         = Render    Produce visualization files?       
 240       = nx        x dimension of lbm grid           
 60       = ny        y dimension of lbm grid             
 60        = nz        z dimension of lbm grid                
@@ -10,4 +10,4 @@ sphere     = ptype     Particle type
 3.6      = R         particle size   
 0.00      = w         angular velocity 
 45.0      = ang        angle of the body around the z axis
-1.0e3   = Tf        time   
+1.6e-2   = Tf        time   

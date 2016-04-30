@@ -55,6 +55,7 @@ public:
     Array<Edge*> Edges;    ///< Edges
     bool         Allocate; ///< It allocates memory or not
     double       Dmax;     ///< Maximun length from face centre
+    Vec3_t       Nor;      ///< Normal vector pointing out kept in memory
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -70,6 +71,8 @@ inline Face::Face (Array<Edge *> E)
     {
         if (norm(C - *Edges[i]->X0)>Dmax) Dmax = norm(C - *Edges[i]->X0);
     }
+    UpdatedL();
+    //std::cout << Nor << " " << C << std::endl;
 }
 
 inline Face::Face (Array<Vec3_t> & V)
@@ -86,6 +89,8 @@ inline Face::Face (Array<Vec3_t> & V)
     {
         if (norm(C - *Edges[i]->X0)>Dmax) Dmax = norm(C - *Edges[i]->X0);
     }
+    UpdatedL();
+    //std::cout << Nor << " " << C << std::endl;
 }
 
 inline Face::Face(Array<Vec3_t*> & V)
@@ -102,6 +107,8 @@ inline Face::Face(Array<Vec3_t*> & V)
     {
         if (norm(C - *Edges[i]->X0)>Dmax) Dmax = norm(C - *Edges[i]->X0);
     }
+    UpdatedL();
+    //std::cout << Nor << " " << C << std::endl;
 }
 
 inline Face::~Face ()
@@ -121,6 +128,7 @@ inline void Face::UpdatedL()
     {
         Edges[i]->UpdatedL();
     }
+    Normal(Nor);
 }
 
 inline void Face::Normal(Vec3_t & N)
