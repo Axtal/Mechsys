@@ -1929,7 +1929,7 @@ void Domain::ImprintLatticeSC (size_t n,size_t Np)
                         }
                     }
                 }
-                if (norm(Nor)>1.0e-12&&dot(C-Xs,Nor)>0.0) 
+                if (dot(C-Xs,Nor)>0.0||Pa->Faces.Size()<4) 
                 {
                     len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
                 }
@@ -2078,14 +2078,18 @@ void Domain::ImprintLatticeMC (size_t n,size_t Np)
             double len,minl = Pa->Dmax;
     
             //std::cout << "1" << std::endl;
-            if (Pa->IsInsideFaceOnly(C)) len = 12.0*Lat[0].dx;
-            else if (ParCellPairs[i].IGeo.Size()==0) continue;
-            else
+            //if (Pa->IsInsideFaceOnly(C)) len = 12.0*Lat[0].dx;
+            //else if (ParCellPairs[i].IGeo.Size()==0) continue;
+            len = 12.0*Lat[0].dx;
+            Vec3_t Nor = OrthoSys::O;
+            //else
+            if (ParCellPairs[i].IGeo.Size()>0) 
             {
                 if (Pa->Faces.Size()>0)
                 {
                     DEM::Distance(C,*Pa->Faces[ParCellPairs[i].IGeo[0]],Xtemp,Xs);
                     minl = norm(Xtemp-Xs);
+                    Nor = Pa->Faces[ParCellPairs[i].IGeo[0]]->Nor;
                     for (size_t j=1;j<ParCellPairs[i].IGeo.Size();j++)
                     {
                         DEM::Distance(C,*Pa->Faces[ParCellPairs[i].IGeo[j]],Xtemp,Xstemp);
@@ -2093,6 +2097,7 @@ void Domain::ImprintLatticeMC (size_t n,size_t Np)
                         {
                             minl = norm(Xtemp-Xstemp);
                             Xs   = Xstemp;
+                            Nor = Pa->Faces[ParCellPairs[i].IGeo[j]]->Nor;
                         }
                     }
                 }
@@ -2124,7 +2129,10 @@ void Domain::ImprintLatticeMC (size_t n,size_t Np)
                         }
                     }
                 }
-                len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
+                if (dot(C-Xs,Nor)>0.0||Pa->Faces.Size()<4) 
+                {
+                    len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
+                }
             }
             //std::cout << "2" << std::endl;
             if (fabs(len)<1.0e-12) continue;
@@ -2469,6 +2477,7 @@ inline void Domain::ResetContacts()
                 NewPCP.IPar = i;
                 //NewPCP.IPar = n;
                 NewPCP.ICell= cell->ID;
+                
                 bool valid = false;
                 if (Pa->Faces.Size()>0)
                 {
@@ -2971,7 +2980,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
 
 #ifdef USE_OMP 
-        std::chrono::high_resolution_clock::time_point ti1 = std::chrono::high_resolution_clock::now();
+        //std::chrono::high_resolution_clock::time_point ti1 = std::chrono::high_resolution_clock::now();
         //Initialize all the particles and cells
         for (size_t i=0;i<Lat.Size();i++)
         {
@@ -3006,13 +3015,13 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             }
         }
 
-        std::chrono::high_resolution_clock::time_point ti2 = std::chrono::high_resolution_clock::now();
-
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>( ti2 - ti1 ).count();
-
-        std::cout << "Duration of DEM/LBM part " << duration << std::endl;
-        
-        std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+        //std::chrono::high_resolution_clock::time_point ti2 = std::chrono::high_resolution_clock::now();
+//
+        //auto duration = std::chrono::duration_cast<std::chrono::microseconds>( ti2 - ti1 ).count();
+//
+        //std::cout << "Duration of DEM/LBM part " << duration << std::endl;
+        //
+        //std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
         //std::cout << "2" <<std::endl;
         //Calculate interparticle forces
         #pragma omp parallel for schedule(static) num_threads(Nproc)
@@ -3115,12 +3124,12 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             ResetContacts();
 
         }
-        std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
-        auto duration12 = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+        //std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+        //auto duration12 = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
 
-        std::cout << "Duration of DEM part " << duration12 << std::endl;
+        //std::cout << "Duration of DEM part " << duration12 << std::endl;
         
-        std::chrono::high_resolution_clock::time_point t3 = std::chrono::high_resolution_clock::now();
+        //std::chrono::high_resolution_clock::time_point t3 = std::chrono::high_resolution_clock::now();
         if (Time>=tlbm)
         {
             //Apply molecular forces
@@ -3159,10 +3168,10 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             tlbm += dt;
         }
         
-        std::chrono::high_resolution_clock::time_point t4 = std::chrono::high_resolution_clock::now();
-        auto duration43 = std::chrono::duration_cast<std::chrono::microseconds>( t4 - t3 ).count();
-
-        std::cout << "Duration of LBM part " << duration43 << std::endl;
+        //std::chrono::high_resolution_clock::time_point t4 = std::chrono::high_resolution_clock::now();
+        //auto duration43 = std::chrono::duration_cast<std::chrono::microseconds>( t4 - t3 ).count();
+//
+        //std::cout << "Duration of LBM part " << duration43 << std::endl;
         //std::cout << "5" <<std::endl;
 #else
         //Assigning a vlaue of zero to the particles forces and torques
