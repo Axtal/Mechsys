@@ -1880,6 +1880,7 @@ void Domain::ImprintLatticeSC (size_t n,size_t Np)
             //std::cout << "1" << std::endl;
             //if (Pa->IsInsideFaceOnly(C)) len = 12.0*Lat[0].dx;
             //else if (ParCellPairs[i].IGeo.Size()==0) continue;
+            if (norm(C-Pa->x)>Pa->Dmax) continue;
             len = 12.0*Lat[0].dx;
             Vec3_t Nor = OrthoSys::O;
             //else
@@ -1930,7 +1931,7 @@ void Domain::ImprintLatticeSC (size_t n,size_t Np)
                     }
                 }
                 double dotpro = dot(C-Xs,Nor);
-                if (dotpro>0.0||fabs(dotpro)<0.6*minl||Pa->Faces.Size()<4) 
+                if (dotpro>0.0||fabs(dotpro)<0.9*minl||Pa->Faces.Size()<4) 
                 {
                     len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
                 }
@@ -2081,6 +2082,7 @@ void Domain::ImprintLatticeMC (size_t n,size_t Np)
             //std::cout << "1" << std::endl;
             //if (Pa->IsInsideFaceOnly(C)) len = 12.0*Lat[0].dx;
             //else if (ParCellPairs[i].IGeo.Size()==0) continue;
+            if (norm(C-Pa->x)>Pa->Dmax) continue;
             len = 12.0*Lat[0].dx;
             Vec3_t Nor = OrthoSys::O;
             //else
@@ -2130,7 +2132,8 @@ void Domain::ImprintLatticeMC (size_t n,size_t Np)
                         }
                     }
                 }
-                if (dot(C-Xs,Nor)>0.0||Pa->Faces.Size()<4) 
+                double dotpro = dot(C-Xs,Nor);
+                if (dotpro>0.0||fabs(dotpro)<0.9*minl||Pa->Faces.Size()<4) 
                 {
                     len = DEM::SphereCube(Xs,C,Pa->Props.R,Lat[0].dx);
                 }
@@ -2506,7 +2509,7 @@ inline void Domain::ResetContacts()
                         }
                     }
                     double dotpro = dot(C-Xs,Nor);
-                    if ((dotpro>0.0||fabs(dotpro)<0.6*minl)&&Pa->Faces.Size()>3&&minl>2.0*Alpha+Pa->Props.R) valid = false;
+                    if ((dotpro>0.0||fabs(dotpro)<0.8*minl)&&Pa->Faces.Size()>3&&minl>2.0*Alpha+Pa->Props.R) valid = false;
                     else if (minl>2.0*Alpha+Pa->Props.R&&Pa->Faces.Size()<4)               valid = false;
                 }
                 else if (Pa->Edges.Size()>0)
