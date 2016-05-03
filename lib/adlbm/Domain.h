@@ -285,8 +285,9 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     // info
     Util::Stopwatch stopwatch;
     printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1   , TERM_RST);
-    printf("%s  Time step                        =  %g%s\n"     ,TERM_CLR2, dt                             , TERM_RST);
-    printf("%s  Tau of Lattice                   =  %g%s\n"     ,TERM_CLR2, Lat.Tau                        , TERM_RST);
+    printf("%s  Time step                        =  %g%s\n"     ,TERM_CLR2, dt                                     , TERM_RST);
+    printf("%s  Tau of Lattice                   =  %g%s\n"     ,TERM_CLR2, Lat.Tau                                , TERM_RST);
+    printf("%s  C   of Lattice                   =  %g%s\n"     ,TERM_CLR2, Lat.dx/Lat.dt                          , TERM_RST);
 
     Nproc = TheNproc;
 

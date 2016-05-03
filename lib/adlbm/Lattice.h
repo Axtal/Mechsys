@@ -60,8 +60,8 @@ public:
     double                                          Tau;              ///< Relaxation time
     double                                          Tauc;             ///< Relaxation time for diffusion 
     Cell                                         ** Cells;            ///< Array of pointer cells
-    Array <double>                                       EEk;         ///< Diadic velocity tensor trace
-    double                                                Sc;         ///< Smagorinsky constant
+    Array <double>                                  EEk;              ///< Diadic velocity tensor trace
+    double                                          Sc;               ///< Smagorinsky constant
 };
 
 inline Lattice::Lattice(LBMethod TheMethod, double Thenu, double TheDif, iVec3_t TheNdim, double Thedx, double Thedt)
