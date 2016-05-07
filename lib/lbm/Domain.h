@@ -139,6 +139,7 @@ public:
 #endif
     //Data
     bool                                         Initialized;         ///< System (particles and interactons) initialized ?
+    bool                                              RotPar;         ///< Check if particles should be rotated, useful if particle displacements are small
     bool                                              PrtVec;         ///< Print Vector data into the xdmf-h5 files
     bool                                            Finished;         ///< Has the simulation finished
     bool                                              Dilate;         ///< True if eroded particles should be dilated for visualization
@@ -213,6 +214,7 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     if (nu.Size()>1) Sc = 0.0;
     else             Sc = 0.17;
     PrtVec = true;
+    RotPar = true;
     Fconv  = 1.0;
 
 
@@ -246,6 +248,7 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     Step   = 1;
     Sc     = 0.17;
     PrtVec = true;
+    RotPar = true;
     Fconv  = 1.0;
 
     EEk.Resize(Lat[0].Cells[0]->Nneigh);
@@ -3131,15 +3134,25 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             MTD[i].Dmx = 0.0;
         }
 
-        #pragma omp parallel for schedule(static) num_threads(Nproc)
-        for (size_t i=0; i<Particles.Size(); i++)
+        if (RotPar)
         {
-            //std::cout << "1" << std::endl;
-		    Particles[i]->Translate(dtdem);
-            //std::cout << "2" << std::endl;
-		    Particles[i]->Rotate(dtdem);
-            //std::cout << "3" << std::endl;
-            if (Particles[i]->MaxDisplacement()>MTD[omp_get_thread_num()].Dmx) MTD[omp_get_thread_num()].Dmx = Particles[i]->MaxDisplacement();
+            #pragma omp parallel for schedule(static) num_threads(Nproc)
+            for (size_t i=0; i<Particles.Size(); i++)
+            {
+		        Particles[i]->Translate(dtdem);
+		        Particles[i]->Rotate(dtdem);
+                if (Particles[i]->MaxDisplacement()>MTD[omp_get_thread_num()].Dmx) MTD[omp_get_thread_num()].Dmx = Particles[i]->MaxDisplacement();
+            }
+        }
+        else
+        {
+            #pragma omp parallel for schedule(static) num_threads(Nproc)
+            for (size_t i=0; i<Particles.Size(); i++)
+            {
+		        Particles[i]->Translate(dtdem);
+                if (Particles[i]->MaxDisplacement()>MTD[omp_get_thread_num()].Dmx) MTD[omp_get_thread_num()].Dmx = Particles[i]->MaxDisplacement();
+            }
+
         }
 
         //2D case
