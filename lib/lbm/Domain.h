@@ -1557,8 +1557,8 @@ void Domain::CollideSC (size_t n, size_t Np)
                     #ifdef USE_HDF5
                     //WriteXDMF("error");
                     #endif
-                    std::cout << "CollideSC: Nan found, resetting" << std::endl;
-                    std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << 0 << " " << k << " " << std::endl;
+                    //std::cout << "CollideSC: Nan found, resetting" << std::endl;
+                    //std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << 0 << " " << k << " " << std::endl;
                     c->Ftemp[k] = c->F[k];
                     //throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
                 }
@@ -1660,8 +1660,8 @@ void Domain::CollideMC (size_t n, size_t Np)
                         #ifdef USE_HDF5
                         //WriteXDMF("error");
                         #endif
-                        std::cout << "CollideMC: Nan found, resetting" << std::endl;
-                        std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << " " << std::endl;
+                        //std::cout << "CollideMC: Nan found, resetting" << std::endl;
+                        //std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << j << " " << k << " " << std::endl;
                         c->Ftemp[k] = c->F[k];
                         //throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
                     }
