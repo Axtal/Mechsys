@@ -22,18 +22,122 @@
 // MechSys
 #include <mechsys/flbm/Domain.h>
 
+
+
 struct UserData
 {
-    Array<double> Vel;
+    double      * Vel;
     double        vmax;
     double        rho;
+    #ifdef USE_OCL
+    cl::Buffer        bBCVel;
+    cl::Program       UserProgram;
+    #endif
 };
 
 void Setup (FLBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
-    // Cells with prescribed velocity
+    
+    #ifdef USE_OCL
+    if (dom.IsFirstTime)
+    {
+        dom.IsFirstTime = false;
+        dat.bBCVel      = cl::Buffer(dom.CL_Context,CL_MEM_READ_WRITE,sizeof(double)*dom.Ndim[1]);
+        dom.CL_Queue.enqueueWriteBuffer(dat.bBCVel,CL_TRUE,0,sizeof(double)*dom.Ndim[1],dat.Vel);
+        
+        char* pMECHSYS_ROOT;
+        pMECHSYS_ROOT = getenv ("MECHSYS_ROOT");
+        if (pMECHSYS_ROOT==NULL) pMECHSYS_ROOT = getenv ("HOME");
 
+        String pCL;
+        pCL.Printf("%s/mechsys/lib/flbm/lbm.cl",pMECHSYS_ROOT);
+
+        std::ifstream infile(pCL.CStr(),std::ifstream::in);
+        std::string main_kernel_code((std::istreambuf_iterator<char>(infile)), std::istreambuf_iterator<char>());
+        
+        std::string BC_kernel_code =
+            " void kernel Left_BC (global double * VBC, global const bool * IsSolid, global double * F, global double3 * Vel, global double * Rho, global const struct lbm_aux * lbmaux) \n"
+            " { \n"
+                " size_t ic  = get_global_id(0); \n"
+                " size_t ib  = ic*lbmaux[0].Nx; \n"
+                " if (!IsSolid[ib]) \n"
+                " { \n"
+                    " size_t iv  = ib*lbmaux[0].Nneigh; \n"
+		            " double rho = (F[iv+0]+F[iv+2]+F[iv+4] + 2.0*(F[iv+3]+F[iv+6]+F[iv+7]))/(1.0-VBC[ic]); \n"
+		            " F[iv+1] = F[iv+3] + (2.0/3.0)*rho*VBC[ic]; \n"
+		            " F[iv+5] = F[iv+7] + (1.0/6.0)*rho*VBC[ic] - 0.5*(F[iv+2]-F[iv+4]); \n"
+		            " F[iv+8] = F[iv+6] + (1.0/6.0)*rho*VBC[ic] + 0.5*(F[iv+2]-F[iv+4]); \n"
+                    " Rho   [ib] = 0.0; \n"
+                    " Vel   [ib] = (double3)(0.0,0.0,0.0); \n"
+                    " for(size_t k=0;k<lbmaux[0].Nneigh;k++) \n"
+                    " { \n"
+                        " Rho[ib] += F[iv + k]; \n"
+                        " Vel[ib] += F[iv + k]*lbmaux[0].C[k]; \n"
+                    " } \n"
+                    " Vel[ib] /= Rho[ib]; \n"
+                " } \n"
+            " } \n"
+            "  \n"
+            " void kernel Right_BC (global const bool * IsSolid, global double * F, global double3 * Vel, global double * Rho, global const struct lbm_aux * lbmaux) \n"
+            " { \n"
+                " size_t ic  = get_global_id(0); \n"
+                " size_t ib  = ic*lbmaux[0].Nx + lbmaux[0].Nx-1; \n"
+                " if (!IsSolid[ib]) \n"
+                " { \n"
+                    " size_t iv  = ib*lbmaux[0].Nneigh; \n"
+                    " double rho = 1.0; \n"
+		            " double vx = -1.0 + (F[iv+0]+F[iv+2]+F[iv+4] + 2.0*(F[iv+1]+F[iv+5]+F[iv+8]))/rho; \n"
+		            " F[iv+3] = F[iv+1] - (2.0/3.0)*rho*vx;  \n"
+		            " F[iv+7] = F[iv+5] - (1.0/6.0)*rho*vx + 0.5*(F[iv+2]-F[iv+4]); \n"
+		            " F[iv+6] = F[iv+8] - (1.0/6.0)*rho*vx - 0.5*(F[iv+2]-F[iv+4]); \n"
+                    " Rho   [ib] = 0.0; \n"
+                    " Vel   [ib] = (double3)(0.0,0.0,0.0); \n"
+                    " for(size_t k=0;k<lbmaux[0].Nneigh;k++) \n"
+                    " { \n"
+                        " Rho[ib] += F[iv + k]; \n"
+                        " Vel[ib] += F[iv + k]*lbmaux[0].C[k]; \n"
+                    " } \n"
+                    " Vel[ib] /= Rho[ib]; \n"
+                " } \n"
+            " } \n"
+        ;
+
+        BC_kernel_code = main_kernel_code + BC_kernel_code;
+
+        cl::Program::Sources sources;
+        sources.push_back({BC_kernel_code.c_str(),BC_kernel_code.length()});
+
+        dat.UserProgram = cl::Program(dom.CL_Context,sources);
+        if(dat.UserProgram.build({dom.CL_Device})!=CL_SUCCESS){
+            std::cout<<" Error building: "<<dat.UserProgram.getBuildInfo<CL_PROGRAM_BUILD_LOG>(dom.CL_Device)<<"\n";
+            exit(1);
+        }
+
+    }
+
+    cl::Kernel kernel(dat.UserProgram,"Left_BC");
+    kernel.setArg(0,dat.bBCVel  );
+    kernel.setArg(1,dom.bIsSolid);
+    kernel.setArg(2,dom.bF      );
+    kernel.setArg(3,dom.bVel    );
+    kernel.setArg(4,dom.bRho    );
+    kernel.setArg(5,dom.blbmaux );
+    dom.CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(dom.Ndim[1]),cl::NullRange);
+    dom.CL_Queue.finish();
+
+    kernel = cl::Kernel(dat.UserProgram,"Right_BC");
+    kernel.setArg(0,dom.bIsSolid);
+    kernel.setArg(1,dom.bF      );
+    kernel.setArg(2,dom.bVel    );
+    kernel.setArg(3,dom.bRho    );
+    kernel.setArg(4,dom.blbmaux );
+    dom.CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(dom.Ndim[1]),cl::NullRange);
+    dom.CL_Queue.finish();
+
+
+    #else // USE_OCL
+    // Cells with prescribed velocity
     #ifdef USE_OMP
     #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
     #endif
@@ -74,6 +178,7 @@ void Setup (FLBM::Domain & dom, void * UD)
         }
         dom.Vel[0][dom.Ndim(0)-1][i][0] /= dom.Rho[0][dom.Ndim(0)-1][i][0];
 	}
+    #endif // USE_OCL
 }
 
 int main(int argc, char **argv) try
@@ -92,14 +197,15 @@ int main(int argc, char **argv) try
     Dom.UserData = &dat;
 
     dat.vmax = u_max;
-    
+
+    dat.Vel = new double[ny]; 
     for (size_t i=0;i<ny;i++)
     {
         // set parabolic profile
         double L  = ny - 2;                       // channel width in cell units
         double yp = i - 1.5;                      // ordinate of cell
         double vx = dat.vmax*4/(L*L)*(L*yp - yp*yp); // horizontal velocity
-        dat.Vel.Push(vx);
+        dat.Vel[i] = vx;
     }
     
     dat.rho  = 1.0;
@@ -136,7 +242,6 @@ int main(int argc, char **argv) try
     
 
     Dom.WriteXDMF("test");
-
 
     Dom.Solve(40000.0,80.0,Setup,NULL,"tflbm01",true,Nproc);
 

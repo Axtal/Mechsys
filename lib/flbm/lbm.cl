@@ -36,22 +36,9 @@ typedef struct lbm_aux
     double     Psi[2];      ///< Collection of cohesive constants for multiphase simulation
     double     Gmix;        ///< Repulsion constant for multicomponent simulation
     double     Cs;          ///< Lattice speed
+    double     Sc;          ///< Smagorinsky constant
     
 } d_lbm_aux;
-
-//ulong Pt2idx(uint3 iv,uint3 Dim)
-//{
-    //return iv.x + iv.y*Dim.x + iv.z*Dim.x*Dim.y;
-//}
-//
-//ulong3 idx2Pt(size_t n,uint3 Dim)
-//{
-    //ulong3 tmp;
-    //tmp.x = n%Dim.x;
-    //tmp.y = (n/Dim.x)%Dim.y;
-    //tmp.z = n/(Dim.x*Dim.y);
-    //return tmp;
-//}
 
 void kernel CheckUpLoad (global struct lbm_aux * lbmaux)
 {
@@ -61,6 +48,8 @@ void kernel CheckUpLoad (global struct lbm_aux * lbmaux)
     //printf("Dim      %d %d \n",0,lbmaux[0].Nx );
     //printf("Dim      %d %d \n",1,lbmaux[0].Ny );
     //printf("Dim      %d %d \n",2,lbmaux[0].Nz );
+    //printf("Sc          %f \n"  ,lbmaux[0].Sc );
+    //printf("Tau_0        %f \n"  ,lbmaux[0].Tau[0]);
     //for (size_t i=0;i < lbmaux[0].Nneigh;i++)
     //{
         //printf("C      %d %f %f %f \n",i,lbmaux[0].C[i].x,lbmaux[0].C[i].y,lbmaux[0].C[i].z);
@@ -68,6 +57,7 @@ void kernel CheckUpLoad (global struct lbm_aux * lbmaux)
     //for (size_t i=0;i < lbmaux[0].Nneigh;i++)
     //{
         //printf("EEk    %d %f       \n",i,lbmaux[0].EEk[i]);
+        //printf("Op    %lu %lu       \n",i,lbmaux[0].Op[i]);
     //}
 }
 
@@ -117,6 +107,18 @@ void kernel CollideSC    (global const bool * IsSolid, global double * F, global
         double VdotV = dot(vel,vel);
         double Cs    = lbmaux[0].Cs;
         double tau   = lbmaux[0].Tau[0];
+        double NonEq[27];
+        double Q = 0.0;
+        for (size_t k=0;k<lbmaux[0].Nneigh;k++)
+        {
+            double VdotC = dot(vel,lbmaux[0].C[k]);
+            double Feq   = lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
+            NonEq[k]     = F[ic*lbmaux[0].Nneigh + k] - Feq;
+            Q           += NonEq[k]*NonEq[k]*lbmaux[0].EEk[k];
+        }
+        Q = sqrt(2.0*Q);
+        tau = 0.5*(tau+sqrt(tau*tau + 6.0*Q*lbmaux[0].Sc/rho));
+        
 
         bool valid = true;
         double alpha = 1.0;
@@ -125,12 +127,10 @@ void kernel CollideSC    (global const bool * IsSolid, global double * F, global
             valid = false;
             for (size_t k=0;k<lbmaux[0].Nneigh;k++)
             {
-                double VdotC = dot(vel,lbmaux[0].C[k]);
-                double Feq   = lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
-                Ftemp[ic*lbmaux[0].Nneigh + k] = F[ic*lbmaux[0].Nneigh + k] - alpha*(F[ic*lbmaux[0].Nneigh + k] - Feq)/tau;
+                Ftemp[ic*lbmaux[0].Nneigh + k] = F[ic*lbmaux[0].Nneigh + k] - alpha*(NonEq[k])/tau;
                 if (Ftemp[ic*lbmaux[0].Nneigh + k]<-1.0e-12)
                 {
-                    double temp = tau*F[ic*lbmaux[0].Nneigh + k]/(F[ic*lbmaux[0].Nneigh + k] - Feq);
+                    double temp = tau*F[ic*lbmaux[0].Nneigh + k]/(NonEq[k]);
                     if (temp<alpha) alpha = temp;
                     valid = true;
                 }
@@ -169,6 +169,10 @@ void kernel Stream1     (global double * F, global double * Ftemp, global const 
 void kernel Stream2     (global const bool * IsSolid, global double * F, global double * Ftemp, global double3* BForce, global double3* Vel, global double * Rho, global const struct lbm_aux * lbmaux)
 {
     size_t ic  = get_global_id(0);
+    for (size_t k=0;k<lbmaux[0].Nneigh;k++)
+    {
+        F[ic*lbmaux[0].Nneigh + k] = Ftemp[ic*lbmaux[0].Nneigh + k];
+    }
     Rho   [ic] = 0.0;
     Vel   [ic] = (double3)(0.0,0.0,0.0);
     BForce[ic] = (double3)(0.0,0.0,0.0);
@@ -176,7 +180,6 @@ void kernel Stream2     (global const bool * IsSolid, global double * F, global 
     {
         for (size_t k=0;k<lbmaux[0].Nneigh;k++)
         {
-            F[ic*lbmaux[0].Nneigh + k] = Ftemp[ic*lbmaux[0].Nneigh + k];
             Rho[ic] += F[ic*lbmaux[0].Nneigh + k];
             Vel[ic] += F[ic*lbmaux[0].Nneigh + k]*lbmaux[0].C[k];
             //if (ic==0) printf("k: %lu %f %f %f %f \n",k,Rho[ic],Vel[ic].x,Vel[ic].y,Vel[ic].z);

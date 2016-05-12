@@ -27,7 +27,7 @@
 #endif
 
 #ifdef USE_OCL
-#include <CL/cl.hpp>
+#include <mechsys/oclaux/cl.hpp>
 #endif
 
 // Std lib
@@ -74,6 +74,7 @@ typedef struct lbm_aux
     double        Psi[2];      ///< Collection of cohesive constants for multiphase simulation
     double        Gmix;        ///< Repulsion constant for multicomponent simulation
     double        Cs;          ///< Lattice speed
+    double        Sc;          ///< Smagorinsky constant
     
 } d_lbm_aux;
 #endif
@@ -176,6 +177,7 @@ public:
     double       dt;                          ///< Time Step
     double       dx;                          ///< Grid size
     double       Cs;                          ///< Lattice Velocity
+    bool         IsFirstTime;                 ///< Bool variable checking if it is the first time function Setup is called
     iVec3_t      Ndim;                        ///< Lattice Dimensions
     size_t       Ncells;                      ///< Number of cells
     size_t       Nproc;                       ///< Number of processors for openmp
@@ -195,6 +197,7 @@ public:
     cl::CommandQueue CL_Queue;                ///< CL Queue for coprocessor commands 
     cl::Context      CL_Context;              ///< CL Context for coprocessor commands
     cl::Program      CL_Program;              ///< CL program object containing the kernel routines
+    cl::Device       CL_Device;               ///< Identity of the accelrating device
     cl::Buffer bF;                            ///< Buffer with the distribution functions
     cl::Buffer bFtemp;                        ///< Buffer with the distribution functions temporal
     cl::Buffer bIsSolid;                      ///< Buffer with the solid bool information
@@ -245,15 +248,16 @@ inline Domain::Domain(LBMethod TheMethod, Array<double> nu, iVec3_t TheNdim, dou
     }
     
 
-    Time   = 0.0;
-    dt     = Thedt;
-    dx     = Thedx;
-    Cs     = dx/dt;
-    Step   = 1;
-    Sc     = 0.17;
-    Nl     = nu.Size();
-    Ndim   = TheNdim;
-    Ncells = Nl*Ndim(0)*Ndim(1)*Ndim(2);
+    Time        = 0.0;
+    dt          = Thedt;
+    dx          = Thedx;
+    Cs          = dx/dt;
+    Step        = 1;
+    Sc          = 0.17;
+    Nl          = nu.Size();
+    Ndim        = TheNdim;
+    Ncells      = Nl*Ndim(0)*Ndim(1)*Ndim(2);
+    IsFirstTime = true;
 
 
     Tau = new double [Nl];
@@ -375,22 +379,23 @@ inline Domain::Domain(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, double 
     }
     
 
-    Time   = 0.0;
-    dt     = Thedt;
-    dx     = Thedx;
-    Cs     = dx/dt;
-    Step   = 1;
-    Sc   = 0.17;
-    Nl   = 1;
-    Ndim = TheNdim;
-    Ncells = Ndim(0)*Ndim(1)*Ndim(2);
+    Time        = 0.0;
+    dt          = Thedt;
+    dx          = Thedx;
+    Cs          = dx/dt;
+    Step        = 1;
+    Sc          = 0.17;
+    Nl          = 1;
+    Ndim        = TheNdim;
+    Ncells      = Ndim(0)*Ndim(1)*Ndim(2);
+    IsFirstTime = true;
 
 
     Tau    = new double [Nl];
     G      = new double [Nl];
     Rhoref = new double [Nl];
     Psi    = new double [Nl];
-    Gmix= 0.0;
+    Gmix   = 0.0;
 
     F       = new double **** [Nl];
     Ftemp   = new double **** [Nl];
@@ -902,6 +907,7 @@ inline void Domain::UpLoadDevice()
     lbmaux[0].Nl        = Nl;
     lbmaux[0].Gmix      = Gmix;
     lbmaux[0].Cs        = Cs;
+    lbmaux[0].Sc        = Sc;
     
     //std::cout << "1" << std::endl;
 
@@ -1068,7 +1074,6 @@ inline void Domain::StreamCL()
     CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
     CL_Queue.finish();
 }
-
 #endif
 
 
@@ -1085,9 +1090,12 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     cl::Platform default_platform=all_platforms[0];
     std::vector<cl::Device> all_devices; 
     default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
-    cl::Device default_device = all_devices[0];
-    
-    CL_Context = cl::Context(default_device);
+    if (all_devices.size()==0)
+    {
+        throw new Fatal("FLBM::Domain: There are no GPUs or APUs, please compile with the A_USE_OCL flag turned off");
+    }
+    CL_Device  = all_devices[0];
+    CL_Context = cl::Context(CL_Device);
  
     cl::Program::Sources sources;
 
@@ -1104,12 +1112,12 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     sources.push_back({kernel_code.c_str(),kernel_code.length()}); 
 
     CL_Program = cl::Program(CL_Context,sources);
-    if(CL_Program.build({default_device})!=CL_SUCCESS){
-        std::cout<<" Error building: "<<CL_Program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(default_device)<<"\n";
+    if(CL_Program.build({CL_Device})!=CL_SUCCESS){
+        std::cout<<" Error building: "<<CL_Program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(CL_Device)<<"\n";
         exit(1);
     }
 
-    CL_Queue   = cl::CommandQueue(CL_Context,default_device);
+    CL_Queue   = cl::CommandQueue(CL_Context,CL_Device);
     #endif
 
 
@@ -1128,7 +1136,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     //printf("%s  Using GPU:                       =  %c%s\n"     ,TERM_CLR2, Default_Device.getInfo<CL_DEVICE_NAME>(), TERM_RST);
     std::cout 
         << TERM_CLR2 
-        << "  Using GPU:                       =  " << default_device.getInfo<CL_DEVICE_NAME>() << TERM_RST << std::endl;
+        << "  Using GPU:                       =  " << CL_Device.getInfo<CL_DEVICE_NAME>() << TERM_RST << std::endl;
     #endif
    
     {

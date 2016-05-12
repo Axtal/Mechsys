@@ -1558,7 +1558,7 @@ void Domain::CollideSC (size_t n, size_t Np)
                     //WriteXDMF("error");
                     #endif
                     //std::cout << "CollideSC: Nan found, resetting" << std::endl;
-                    //std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << 0 << " " << k << " " << std::endl;
+                    std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << c->Gamma << " " << k << " " << std::endl;
                     c->Ftemp[k] = c->F[k];
                     //throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
                 }
