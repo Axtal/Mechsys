@@ -241,8 +241,6 @@ int main(int argc, char **argv) try
     }  
     
 
-    Dom.WriteXDMF("test");
-
     Dom.Solve(40000.0,80.0,Setup,NULL,"tflbm01",true,Nproc);
 
 

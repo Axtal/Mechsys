@@ -40,6 +40,11 @@ typedef struct lbm_aux
     
 } d_lbm_aux;
 
+//double Feq (size_t k, double rho, double3 vel, global struct lbm_aux * lbmaux)
+//{
+    //
+//}
+
 void kernel CheckUpLoad (global struct lbm_aux * lbmaux)
 {
     //printf("Nl          %d \n",  lbmaux[0].Nl     );
@@ -102,18 +107,22 @@ void kernel CollideSC    (global const bool * IsSolid, global double * F, global
     size_t ic  = get_global_id(0);
     if (!IsSolid[ic])
     {
-        double3 vel  = Vel[ic]+BForce[ic]/Rho[ic];
+        double3 vel  = Vel[ic]+lbmaux[0].Tau[0]*BForce[ic]/Rho[ic];
+        //double3 vel  = Vel[ic]+BForce[ic]/Rho[ic];
+        //double3 vel  = Vel[ic]+0.5*BForce[ic]/Rho[ic];
+        //double3 vel  = Vel[ic];
         double rho   = Rho[ic];
         double VdotV = dot(vel,vel);
         double Cs    = lbmaux[0].Cs;
         double tau   = lbmaux[0].Tau[0];
         double NonEq[27];
+        double Feq  [27];
         double Q = 0.0;
         for (size_t k=0;k<lbmaux[0].Nneigh;k++)
         {
             double VdotC = dot(vel,lbmaux[0].C[k]);
-            double Feq   = lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
-            NonEq[k]     = F[ic*lbmaux[0].Nneigh + k] - Feq;
+            Feq  [k]     = lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
+            NonEq[k]     = F[ic*lbmaux[0].Nneigh + k] - Feq[k];
             Q           += NonEq[k]*NonEq[k]*lbmaux[0].EEk[k];
         }
         Q = sqrt(2.0*Q);
@@ -127,9 +136,12 @@ void kernel CollideSC    (global const bool * IsSolid, global double * F, global
             valid = false;
             for (size_t k=0;k<lbmaux[0].Nneigh;k++)
             {
-                Ftemp[ic*lbmaux[0].Nneigh + k] = F[ic*lbmaux[0].Nneigh + k] - alpha*(NonEq[k])/tau;
+                //double Fk = 3.0*(1 - 0.5/lbmaux[0].Tau[0])*dot(BForce[ic],Cs*lbmaux[0].C[k]-vel)*Feq[k]/(rho*Cs*Cs);
+                //Ftemp[ic*lbmaux[0].Nneigh + k] = F[ic*lbmaux[0].Nneigh + k] - alpha*(NonEq[k]/tau - Fk);
+                Ftemp[ic*lbmaux[0].Nneigh + k] = F[ic*lbmaux[0].Nneigh + k] - alpha*(NonEq[k]/tau);
                 if (Ftemp[ic*lbmaux[0].Nneigh + k]<-1.0e-12)
                 {
+                    //double temp = F[ic*lbmaux[0].Nneigh + k]/(NonEq[k]/tau - Fk);
                     double temp = tau*F[ic*lbmaux[0].Nneigh + k]/(NonEq[k]);
                     if (temp<alpha) alpha = temp;
                     valid = true;

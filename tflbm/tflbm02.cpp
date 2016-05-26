@@ -17,6 +17,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+// Simulation of single component bubble
+
 // Std Lib
 #include <iostream>
 #include <stdlib.h>
@@ -33,22 +35,24 @@ int main(int argc, char **argv) try
     if (argc==2) Nproc=atoi(argv[1]);
     size_t nx = 200;
     size_t ny = 200;
-    size_t nz = 200;
+    //size_t nz = 200;
     //size_t nx = 10;
     //size_t ny = 10;
-    //size_t nz = 1;
+    size_t nz = 1;
     double nu = 1.0/6.0;
+    //double nu = 0.001;
     double dx = 1.0;
     double dt = 1.0;
     double Tf = 10000.0;
     //double Tf = 200.0;
-    FLBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
+    //FLBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
     //FLBM::Domain Dom(D3Q19, nu, iVec3_t(nx,ny,nz), dx, dt);
-    //FLBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,nz), dx, dt);
+    FLBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,nz), dx, dt);
     //Dom.Rhoref[0] =  2.0;
     //Dom.G     [0] = -4.0;
     //Dom.Gs    [0] =  0.0;
     Dom.G[0]     = -200.0;
+    //Dom.Sc       = 0.0;
     
 	for (size_t i=0; i<nx; ++i)
 	for (size_t j=0; j<ny; ++j)

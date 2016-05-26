@@ -130,6 +130,7 @@ public:
     //Methods
     void   ApplyForcesSC();                                                       ///< Apply the molecular forces for the single component case
     void   ApplyForcesMP();                                                       ///< Apply the molecular forces for the multiphase case
+    void   ApplyForcesSCMP();                                                     ///< Apply the molecular forces for the both previous cases
     void   CollideSC();                                                           ///< The collide step of LBM for single component simulations
     void   CollideMP();                                                           ///< The collide step of LBM for multi phase simulations
     void   StreamSC();                                                            ///< The stream step of LBM SC
@@ -161,11 +162,11 @@ public:
     double ***** Ftemp;                       ///< A similar array to hold provitional data
     bool   ****  IsSolid;                     ///< An array of bools with an identifier to see if the cell is a solid cell
     Vec3_t ****  Vel;                         ///< The fluid velocities
-    Vec3_t ****  Vmix;                        ///< Mixture velocity for the whole domain
     Vec3_t ****  BForce;                      ///< Body Force for each cell
     double ****  Rho;                         ///< The fluid densities
     double *     Tau;                         ///< The characteristic time of the lattice
     double *     G;                           ///< The attractive constant for multiphase simulations
+    double *     Gs;                          ///< The attractive constant for solid phase
     double *     Psi;                         ///< Parameters for the Shan Chen pseudo potential
     double *     Rhoref;                      ///< Parameters for the Shan Chen pseudo potential
     double       Gmix;                        ///< The mixing constant for multicomponent simulations
@@ -262,6 +263,7 @@ inline Domain::Domain(LBMethod TheMethod, Array<double> nu, iVec3_t TheNdim, dou
 
     Tau = new double [Nl];
     G   = new double [Nl];
+    Gs  = new double [Nl];
     Rhoref = new double [Nl];
     Psi    = new double [Nl];
     Gmix= 0.0;
@@ -269,7 +271,6 @@ inline Domain::Domain(LBMethod TheMethod, Array<double> nu, iVec3_t TheNdim, dou
     F       = new double **** [Nl];
     Ftemp   = new double **** [Nl];
     Vel     = new Vec3_t ***  [Nl];
-    Vmix    = new Vec3_t ***  [Nl];
     BForce  = new Vec3_t ***  [Nl];
     Rho     = new double ***  [Nl];
     IsSolid = new bool   ***  [Nl];
@@ -278,12 +279,12 @@ inline Domain::Domain(LBMethod TheMethod, Array<double> nu, iVec3_t TheNdim, dou
     {
         Tau     [i]    = 3.0*nu[i]*dt/(dx*dx)+0.5;
         G       [i]    = 0.0;
+        Gs      [i]    = 0.0;
         Rhoref  [i]    = 200.0;
         Psi     [i]    = 4.0;
         F       [i]    = new double *** [Ndim(0)];
         Ftemp   [i]    = new double *** [Ndim(0)];
         Vel     [i]    = new Vec3_t **  [Ndim(0)];
-        Vmix    [i]    = new Vec3_t **  [Ndim(0)];
         BForce  [i]    = new Vec3_t **  [Ndim(0)];
         Rho     [i]    = new double **  [Ndim(0)];
         IsSolid [i]    = new bool   **  [Ndim(0)];
@@ -292,7 +293,6 @@ inline Domain::Domain(LBMethod TheMethod, Array<double> nu, iVec3_t TheNdim, dou
             F       [i][nx]    = new double ** [Ndim(1)];
             Ftemp   [i][nx]    = new double ** [Ndim(1)];
             Vel     [i][nx]    = new Vec3_t *  [Ndim(1)];
-            Vmix    [i][nx]    = new Vec3_t *  [Ndim(1)];
             BForce  [i][nx]    = new Vec3_t *  [Ndim(1)];
             Rho     [i][nx]    = new double *  [Ndim(1)];
             IsSolid [i][nx]    = new bool   *  [Ndim(1)];
@@ -301,7 +301,6 @@ inline Domain::Domain(LBMethod TheMethod, Array<double> nu, iVec3_t TheNdim, dou
                 F       [i][nx][ny]    = new double * [Ndim(2)];
                 Ftemp   [i][nx][ny]    = new double * [Ndim(2)];
                 Vel     [i][nx][ny]    = new Vec3_t   [Ndim(2)];
-                Vmix    [i][nx][ny]    = new Vec3_t   [Ndim(2)];
                 BForce  [i][nx][ny]    = new Vec3_t   [Ndim(2)];
                 Rho     [i][nx][ny]    = new double   [Ndim(2)];
                 IsSolid [i][nx][ny]    = new bool     [Ndim(2)];
@@ -393,6 +392,7 @@ inline Domain::Domain(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, double 
 
     Tau    = new double [Nl];
     G      = new double [Nl];
+    Gs     = new double [Nl];
     Rhoref = new double [Nl];
     Psi    = new double [Nl];
     Gmix   = 0.0;
@@ -408,6 +408,7 @@ inline Domain::Domain(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, double 
     {
         Tau     [i]    = 3.0*nu[i]*dt/(dx*dx)+0.5;
         G       [i]    = 0.0;
+        Gs      [i]    = 0.0;
         Rhoref  [i]    = 200.0;
         Psi     [i]    = 4.0;
         F       [i]    = new double *** [Ndim(0)];
@@ -686,12 +687,117 @@ inline void Domain::ApplyForcesSC()
 
         double psic = 0.0;
         double psin = 0.0;
+
         IsSolid[0][ixc][iyc][izc] ? psic = 0.0 : psic = Psi[0]*exp(-Rhoref[0]/Rho[0][ixc][iyc][izc]);
         IsSolid[0][ixn][iyn][izn] ? psin = 0.0 : psin = Psi[0]*exp(-Rhoref[0]/Rho[0][ixn][iyn][izn]);
 
         Vec3_t bforce = -G[0]*W[k]*C[k]*psic*psin;
 
         BForce[0][ixc][iyc][izc] += bforce;
+        BForce[0][ixn][iyn][izn] -= bforce;
+    }
+}
+
+inline void Domain::ApplyForcesMP()
+{
+    #ifdef USE_OMP
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    #endif
+    for (size_t n=0;n<NCellPairs;n++)
+    {
+        iVec3_t idxc,idxn;
+        size_t k = CellPairs[n](2);
+        idx2Pt(CellPairs[n](0),idxc,Ndim);
+        idx2Pt(CellPairs[n](1),idxn,Ndim);
+
+        size_t ixc = idxc(0);
+        size_t iyc = idxc(1);
+        size_t izc = idxc(2);
+        size_t ixn = idxn(0);
+        size_t iyn = idxn(1);
+        size_t izn = idxn(2);
+
+        double psic = 0.0;
+        double psin = 0.0;
+
+        double Gt   = Gmix;
+
+        IsSolid[0][ixc][iyc][izc] ? psic = 1.0, Gt = Gs[0] : psic = Rho[0][ixc][iyc][izc];
+        IsSolid[1][ixn][iyn][izn] ? psin = 1.0, Gt = Gs[1] : psin = Rho[1][ixn][iyn][izn];
+
+        Vec3_t bforce = -Gt*W[k]*C[k]*psic*psin;
+
+        BForce[0][ixc][iyc][izc] += bforce;
+        BForce[1][ixn][iyn][izn] -= bforce;
+
+        Gt          = Gmix;
+
+        IsSolid[1][ixc][iyc][izc] ? psic = 1.0, Gt = Gs[1] : psic = Rho[1][ixc][iyc][izc];
+        IsSolid[0][ixn][iyn][izn] ? psin = 1.0, Gt = Gs[0] : psin = Rho[0][ixn][iyn][izn];
+
+        bforce      = -Gt*W[k]*C[k]*psic*psin;
+
+        BForce[1][ixc][iyc][izc] += bforce;
+        BForce[0][ixn][iyn][izn] -= bforce;
+    }
+}
+
+inline void Domain::ApplyForcesSCMP()
+{
+    #ifdef USE_OMP
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    #endif
+    for (size_t n=0;n<NCellPairs;n++)
+    {
+        iVec3_t idxc,idxn;
+        size_t k = CellPairs[n](2);
+        idx2Pt(CellPairs[n](0),idxc,Ndim);
+        idx2Pt(CellPairs[n](1),idxn,Ndim);
+
+        size_t ixc = idxc(0);
+        size_t iyc = idxc(1);
+        size_t izc = idxc(2);
+        size_t ixn = idxn(0);
+        size_t iyn = idxn(1);
+        size_t izn = idxn(2);
+
+        double psic = 0.0;
+        double psin = 0.0;
+
+        IsSolid[0][ixc][iyc][izc] ? psic = 0.0 : psic = Psi[0]*exp(-Rhoref[0]/Rho[0][ixc][iyc][izc]);
+        IsSolid[0][ixn][iyn][izn] ? psin = 0.0 : psin = Psi[0]*exp(-Rhoref[0]/Rho[0][ixn][iyn][izn]);
+
+        Vec3_t bforce = -G[0]*W[k]*C[k]*psic*psin;
+
+        BForce[0][ixc][iyc][izc] += bforce;
+        BForce[0][ixn][iyn][izn] -= bforce;
+
+        IsSolid[1][ixc][iyc][izc] ? psic = 0.0 : psic = Psi[1]*exp(-Rhoref[1]/Rho[1][ixc][iyc][izc]);
+        IsSolid[1][ixn][iyn][izn] ? psin = 0.0 : psin = Psi[1]*exp(-Rhoref[1]/Rho[1][ixn][iyn][izn]);
+
+        bforce        = -G[1]*W[k]*C[k]*psic*psin;
+
+        BForce[1][ixc][iyc][izc] += bforce;
+        BForce[1][ixn][iyn][izn] -= bforce;
+
+        double Gt   = Gmix;
+
+        IsSolid[0][ixc][iyc][izc] ? psic = 1.0, Gt = Gs[0] : psic = Rho[0][ixc][iyc][izc];
+        IsSolid[1][ixn][iyn][izn] ? psin = 1.0, Gt = Gs[1] : psin = Rho[1][ixn][iyn][izn];
+
+        bforce      = -Gt*W[k]*C[k]*psic*psin;
+
+        BForce[0][ixc][iyc][izc] += bforce;
+        BForce[1][ixn][iyn][izn] -= bforce;
+
+        Gt          = Gmix;
+
+        IsSolid[1][ixc][iyc][izc] ? psic = 1.0, Gt = Gs[1] : psic = Rho[1][ixc][iyc][izc];
+        IsSolid[0][ixn][iyn][izn] ? psin = 1.0, Gt = Gs[0] : psin = Rho[0][ixn][iyn][izn];
+
+        bforce      = -Gt*W[k]*C[k]*psic*psin;
+
+        BForce[1][ixc][iyc][izc] += bforce;
         BForce[0][ixn][iyn][izn] -= bforce;
     }
 }
@@ -765,6 +871,76 @@ inline void Domain::CollideSC()
     Ftemp = tmp;
 }
 
+inline void Domain::CollideMP ()
+{
+    size_t nx = Ndim(0);
+    size_t ny = Ndim(1);
+    size_t nz = Ndim(2);
+
+    #ifdef USE_OMP
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    #endif
+    for (size_t ix=0;ix<nx;ix++)
+    for (size_t iy=0;iy<ny;iy++)
+    for (size_t iz=0;iz<nz;iz++)
+    {
+        Vec3_t Vmix = OrthoSys::O;
+        double den  = 0.0;
+        for (size_t il=0;il<Nl;il++)
+        {
+            Vmix += Rho[il][ix][iy][iz]*Vel[il][ix][iy][iz]/Tau[il];
+            den  += Rho[il][ix][iy][iz]/Tau[il];
+        }
+        Vmix /= den;
+
+        for (size_t il=0;il<Nl;il++)
+        {
+            if (!IsSolid[il][ix][iy][iz])
+            {
+                double rho = Rho[il][ix][iy][iz];
+                Vec3_t vel = Vmix + Tau[il]*BForce[il][ix][iy][iz]/rho;
+                double VdotV = dot(vel,vel);
+                bool valid = true;
+                double alpha = 1.0;
+                while (valid)
+                {
+                    valid = false;
+                    for (size_t k=0;k<Nneigh;k++)
+                    {
+                        double VdotC = dot(vel,C[k]);
+                        double Feq   = W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
+                        Ftemp[il][ix][iy][iz][k] = F[il][ix][iy][iz][k] - alpha*(F[il][ix][iy][iz][k] - Feq)/Tau[il];
+                        if (Ftemp[il][ix][iy][iz][k]<-1.0e-12)
+                        {
+                            //std::cout << Ftemp[0][ix][iy][iz][k] << std::endl;
+                            double temp =  Tau[il]*F[il][ix][iy][iz][k]/(F[il][ix][iy][iz][k] - Feq);
+                            if (temp<alpha) alpha = temp;
+                            valid = true;
+                        }
+                        if (std::isnan(Ftemp[il][ix][iy][iz][k]))
+                        {
+                            std::cout << "CollideMP: Nan found, resetting" << std::endl;
+                            std::cout << " " << alpha << " " << iVec3_t(ix,iy,iz) << " " << k << " " << std::endl;
+                            throw new Fatal("Domain::CollideMP: Distribution funcitons gave nan value, check parameters");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (size_t k=0;k<Nneigh;k++)
+                {
+                    Ftemp[il][ix][iy][iz][k] = F[il][ix][iy][iz][Op[k]];
+                }
+            }
+        }
+    }
+
+    double ***** tmp = F;
+    F = Ftemp;
+    Ftemp = tmp;
+}
+
 inline void Domain::StreamSC()
 {
     size_t nx = Ndim(0);
@@ -799,8 +975,8 @@ inline void Domain::StreamSC()
     for (size_t iz=0;iz<nz;iz++)
     {
         BForce[0][ix][iy][iz] = OrthoSys::O;
-        Vel[0][ix][iy][iz] = OrthoSys::O;
-        Rho[0][ix][iy][iz] = 0.0;
+        Vel   [0][ix][iy][iz] = OrthoSys::O;
+        Rho   [0][ix][iy][iz] = 0.0;
         if (!IsSolid[0][ix][iy][iz])
         {
             for (size_t k=0;k<Nneigh;k++)
@@ -851,10 +1027,9 @@ inline void Domain::StreamMP()
     {
         for (size_t il=0;il<Nl;il++)
         {
-            Vel[il][ix][iy][iz] = OrthoSys::O;
-            Rho[il][ix][iy][iz] = 0.0;
-            Vec3_t num = OrthoSys::O;
-            double den = 0.0;
+            BForce[il][ix][iy][iz] = OrthoSys::O;
+            Vel   [il][ix][iy][iz] = OrthoSys::O;
+            Rho   [il][ix][iy][iz] = 0.0;
             if (!IsSolid[il][ix][iy][iz])
             {
                 for (size_t k=0;k<Nneigh;k++)
@@ -863,8 +1038,6 @@ inline void Domain::StreamMP()
                     Vel[il][ix][iy][iz] +=  F[il][ix][iy][iz][k]*C[k];
                 }
                 Vel[il][ix][iy][iz] /= Rho[il][ix][iy][iz];
-                num += Vel[il][ix][iy][iz]/Tau[il];
-                den += Rho[il][ix][iy][iz]/Tau[il];
             }
         }
     }
@@ -1215,6 +1388,13 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
             if (fabs(G[0])>1.0e-12) ApplyForcesSC();
             CollideSC();
             StreamSC();
+        }
+        else
+        {
+            if ((fabs(G[0])>1.0e-12)||(fabs(G[1])>1.0e-12)) ApplyForcesSCMP();
+            else ApplyForcesMP();
+            CollideMP();
+            StreamMP();
         }
         #endif
 
