@@ -14,7 +14,7 @@ sudo apt-get install \
     python-tk python-numpy python-scipy python-matplotlib \
     libvtk5-dev \
     libxml2-dev \
-    cmake opencl-headers
+    cmake opencl-headers ocl-icd-opencl-dev \
     #libhdf5-serial-dev
 
 #sudo apt-get upgrade
