@@ -70,6 +70,7 @@ typedef struct lbm_aux
     double        W[27];       ///< Collection of discrete weights
     double        Tau[2];      ///< Collection of characteristic collision times
     double        G[2];        ///< Collection of cohesive constants for multiphase simulation
+    double        Gs[2];       ///< Collection of cohesive constants for multiphase simulation
     double        Rhoref[2];   ///< Collection of cohesive constants for multiphase simulation
     double        Psi[2];      ///< Collection of cohesive constants for multiphase simulation
     double        Gmix;        ///< Repulsion constant for multicomponent simulation
@@ -257,7 +258,7 @@ inline Domain::Domain(LBMethod TheMethod, Array<double> nu, iVec3_t TheNdim, dou
     Sc          = 0.17;
     Nl          = nu.Size();
     Ndim        = TheNdim;
-    Ncells      = Nl*Ndim(0)*Ndim(1)*Ndim(2);
+    Ncells      = Ndim(0)*Ndim(1)*Ndim(2);
     IsFirstTime = true;
 
 
@@ -331,7 +332,7 @@ inline Domain::Domain(LBMethod TheMethod, Array<double> nu, iVec3_t TheNdim, dou
         }
     }
 
-    printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Ncells,TERM_RST);
+    printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Nl*Ncells,TERM_RST);
 #ifdef USE_OMP
     omp_init_lock(&lck);
 #endif
@@ -460,7 +461,7 @@ inline Domain::Domain(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, double 
         }
     }
 
-    printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Ncells,TERM_RST);
+    printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Nl*Ncells,TERM_RST);
 #ifdef USE_OMP
     omp_init_lock(&lck);
 #endif
@@ -722,8 +723,8 @@ inline void Domain::ApplyForcesMP()
 
         double Gt   = Gmix;
 
-        IsSolid[0][ixc][iyc][izc] ? psic = 1.0, Gt = Gs[0] : psic = Rho[0][ixc][iyc][izc];
-        IsSolid[1][ixn][iyn][izn] ? psin = 1.0, Gt = Gs[1] : psin = Rho[1][ixn][iyn][izn];
+        IsSolid[0][ixc][iyc][izc] ? psic = 1.0, Gt = Gs[1] : psic = Rho[0][ixc][iyc][izc];
+        IsSolid[1][ixn][iyn][izn] ? psin = 1.0, Gt = Gs[0] : psin = Rho[1][ixn][iyn][izn];
 
         Vec3_t bforce = -Gt*W[k]*C[k]*psic*psin;
 
@@ -732,8 +733,8 @@ inline void Domain::ApplyForcesMP()
 
         Gt          = Gmix;
 
-        IsSolid[1][ixc][iyc][izc] ? psic = 1.0, Gt = Gs[1] : psic = Rho[1][ixc][iyc][izc];
-        IsSolid[0][ixn][iyn][izn] ? psin = 1.0, Gt = Gs[0] : psin = Rho[0][ixn][iyn][izn];
+        IsSolid[1][ixc][iyc][izc] ? psic = 1.0, Gt = Gs[0] : psic = Rho[1][ixc][iyc][izc];
+        IsSolid[0][ixn][iyn][izn] ? psin = 1.0, Gt = Gs[1] : psin = Rho[0][ixn][iyn][izn];
 
         bforce      = -Gt*W[k]*C[k]*psic*psin;
 
@@ -782,8 +783,8 @@ inline void Domain::ApplyForcesSCMP()
 
         double Gt   = Gmix;
 
-        IsSolid[0][ixc][iyc][izc] ? psic = 1.0, Gt = Gs[0] : psic = Rho[0][ixc][iyc][izc];
-        IsSolid[1][ixn][iyn][izn] ? psin = 1.0, Gt = Gs[1] : psin = Rho[1][ixn][iyn][izn];
+        IsSolid[0][ixc][iyc][izc] ? psic = 1.0, Gt = Gs[1] : psic = Rho[0][ixc][iyc][izc];
+        IsSolid[1][ixn][iyn][izn] ? psin = 1.0, Gt = Gs[0] : psin = Rho[1][ixn][iyn][izn];
 
         bforce      = -Gt*W[k]*C[k]*psic*psin;
 
@@ -792,8 +793,8 @@ inline void Domain::ApplyForcesSCMP()
 
         Gt          = Gmix;
 
-        IsSolid[1][ixc][iyc][izc] ? psic = 1.0, Gt = Gs[1] : psic = Rho[1][ixc][iyc][izc];
-        IsSolid[0][ixn][iyn][izn] ? psin = 1.0, Gt = Gs[0] : psin = Rho[0][ixn][iyn][izn];
+        IsSolid[1][ixc][iyc][izc] ? psic = 1.0, Gt = Gs[0] : psic = Rho[1][ixc][iyc][izc];
+        IsSolid[0][ixn][iyn][izn] ? psin = 1.0, Gt = Gs[1] : psin = Rho[0][ixn][iyn][izn];
 
         bforce      = -Gt*W[k]*C[k]*psic*psin;
 
@@ -1047,13 +1048,12 @@ inline void Domain::StreamMP()
 inline void Domain::UpLoadDevice()
 {
 
-    bF         = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Ncells*Nneigh);            
-    bFtemp     = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Ncells*Nneigh); 
-    bIsSolid   = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(bool      )*Ncells       );
-    bBForce    = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(cl_double3)*Ncells       );     
-    bVel       = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(cl_double3)*Ncells       ); 
-    bRho       = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Ncells       ); 
-    //bCellPair  = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(cl_uint3  )*NCellPairs   );
+    bF         = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Nl*Ncells*Nneigh);            
+    bFtemp     = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Nl*Ncells*Nneigh); 
+    bIsSolid   = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(bool      )*Nl*Ncells       );
+    bBForce    = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(cl_double3)*Nl*Ncells       );     
+    bVel       = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(cl_double3)*Nl*Ncells       ); 
+    bRho       = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Nl*Ncells       ); 
     blbmaux    = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(lbm_aux   )              );
 
 
@@ -1062,13 +1062,12 @@ inline void Domain::UpLoadDevice()
     cl_double3 *VelCL,*BForceCL;
     //cl_uint3   *CellPairCL;
     lbm_aux    *lbmaux;
-    FCL        = new double    [Ncells*Nneigh];
-    FtempCL    = new double    [Ncells*Nneigh];
-    IsSolidCL  = new bool      [Ncells       ];
-    RhoCL      = new double    [Ncells       ];
-    VelCL      = new cl_double3[Ncells       ];
-    BForceCL   = new cl_double3[Ncells       ];
-    //CellPairCL = new cl_uint3  [NCellPairs   ];
+    FCL        = new double    [Nl*Ncells*Nneigh];
+    FtempCL    = new double    [Nl*Ncells*Nneigh];
+    IsSolidCL  = new bool      [Nl*Ncells       ];
+    RhoCL      = new double    [Nl*Ncells       ];
+    VelCL      = new cl_double3[Nl*Ncells       ];
+    BForceCL   = new cl_double3[Nl*Ncells       ];
     lbmaux     = new lbm_aux   [1];
 
 
@@ -1110,6 +1109,7 @@ inline void Domain::UpLoadDevice()
     {
         lbmaux[0].Tau     [i]    = Tau     [i];
         lbmaux[0].G       [i]    = G       [i];
+        lbmaux[0].Gs      [i]    = Gs      [i];
         lbmaux[0].Rhoref  [i]    = Rhoref  [i];
         lbmaux[0].Psi     [i]    = Psi     [i];
         for (size_t nz=0;nz<Ndim(2);nz++)
@@ -1141,14 +1141,13 @@ inline void Domain::UpLoadDevice()
 
     //std::cout << "3" << std::endl;
 
-    CL_Queue.enqueueWriteBuffer(bF       ,CL_TRUE,0,sizeof(double    )*Ncells*Nneigh,FCL       );  
-    CL_Queue.enqueueWriteBuffer(bFtemp   ,CL_TRUE,0,sizeof(double    )*Ncells*Nneigh,FtempCL   );  
-    CL_Queue.enqueueWriteBuffer(bIsSolid ,CL_TRUE,0,sizeof(bool      )*Ncells       ,IsSolidCL );  
-    CL_Queue.enqueueWriteBuffer(bBForce  ,CL_TRUE,0,sizeof(cl_double3)*Ncells       ,BForceCL  );  
-    CL_Queue.enqueueWriteBuffer(bVel     ,CL_TRUE,0,sizeof(cl_double3)*Ncells       ,VelCL     );  
-    CL_Queue.enqueueWriteBuffer(bRho     ,CL_TRUE,0,sizeof(double    )*Ncells       ,RhoCL     );  
-    //CL_Queue.enqueueWriteBuffer(bCellPair,CL_TRUE,0,sizeof(cl_uint3  )*NCellPairs   ,CellPairCL);  
-    CL_Queue.enqueueWriteBuffer(blbmaux  ,CL_TRUE,0,sizeof(lbm_aux   )              ,lbmaux    );  
+    CL_Queue.enqueueWriteBuffer(bF       ,CL_TRUE,0,sizeof(double    )*Nl*Ncells*Nneigh,FCL       );  
+    CL_Queue.enqueueWriteBuffer(bFtemp   ,CL_TRUE,0,sizeof(double    )*Nl*Ncells*Nneigh,FtempCL   );  
+    CL_Queue.enqueueWriteBuffer(bIsSolid ,CL_TRUE,0,sizeof(bool      )*Nl*Ncells       ,IsSolidCL );  
+    CL_Queue.enqueueWriteBuffer(bBForce  ,CL_TRUE,0,sizeof(cl_double3)*Nl*Ncells       ,BForceCL  );  
+    CL_Queue.enqueueWriteBuffer(bVel     ,CL_TRUE,0,sizeof(cl_double3)*Nl*Ncells       ,VelCL     );  
+    CL_Queue.enqueueWriteBuffer(bRho     ,CL_TRUE,0,sizeof(double    )*Nl*Ncells       ,RhoCL     );  
+    CL_Queue.enqueueWriteBuffer(blbmaux  ,CL_TRUE,0,sizeof(lbm_aux   )                 ,lbmaux    );  
 
     cl::Kernel kernel = cl::Kernel(CL_Program,"CheckUpLoad");
     kernel.setArg(0,blbmaux );
@@ -1162,7 +1161,6 @@ inline void Domain::UpLoadDevice()
     delete [] RhoCL     ;
     delete [] VelCL     ;
     delete [] BForceCL  ;
-    //delete [] CellPairCL;
     delete [] lbmaux    ;
 
 }
@@ -1171,11 +1169,11 @@ inline void Domain::DnLoadDevice()
 {
     double     * RhoCL;
     cl_double3 * VelCL;
-    RhoCL      = new double    [Ncells       ];
-    VelCL      = new cl_double3[Ncells       ];
+    RhoCL      = new double    [Nl*Ncells];
+    VelCL      = new cl_double3[Nl*Ncells];
 
-    CL_Queue.enqueueReadBuffer(bRho,CL_TRUE,0,sizeof(double    )*Ncells,RhoCL);
-    CL_Queue.enqueueReadBuffer(bVel,CL_TRUE,0,sizeof(cl_double3)*Ncells,VelCL);
+    CL_Queue.enqueueReadBuffer(bRho,CL_TRUE,0,sizeof(double    )*Nl*Ncells,RhoCL);
+    CL_Queue.enqueueReadBuffer(bVel,CL_TRUE,0,sizeof(cl_double3)*Nl*Ncells,VelCL);
 
     size_t Nm = 0;
     for (size_t i=0;i<Nl;i++)
@@ -1203,19 +1201,23 @@ inline void Domain::DnLoadDevice()
 
 inline void Domain::ApplyForceCL()
 {
-    cl::Kernel kernel = cl::Kernel(CL_Program,"ApplyForcesSC");
+    cl::Kernel kernel;
+    if (Nl==1)                                             kernel = cl::Kernel(CL_Program,"ApplyForcesSC"  );
+    else if ((fabs(G[0])>1.0e-12)||(fabs(G[1])>1.0e-12))   kernel = cl::Kernel(CL_Program,"ApplyForcesSCMP");
+    else                                                   kernel = cl::Kernel(CL_Program,"ApplyForcesMP"  );
     kernel.setArg(0,bIsSolid );
     kernel.setArg(1,bBForce  );
     kernel.setArg(2,bRho     );
     kernel.setArg(3,blbmaux  );
-    //CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(NCellPairs),cl::NullRange);
     CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
     CL_Queue.finish();
 }
 
 inline void Domain::CollideCL()
 {
-    cl::Kernel kernel = cl::Kernel(CL_Program,"CollideSC");
+    cl::Kernel kernel;
+    if (Nl==1)   kernel = cl::Kernel(CL_Program,"CollideSC");
+    else         kernel = cl::Kernel(CL_Program,"CollideMP");
     kernel.setArg(0,bIsSolid );
     kernel.setArg(1,bF       );
     kernel.setArg(2,bFtemp   );
@@ -1244,7 +1246,7 @@ inline void Domain::StreamCL()
     kernel.setArg(4,bVel     );
     kernel.setArg(5,bRho     );
     kernel.setArg(6,blbmaux  );
-    CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
+    CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells*Nl),cl::NullRange);
     CL_Queue.finish();
 }
 #endif
@@ -1345,10 +1347,12 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         }
     }
 
+    //std::cout << "1" << std::endl;
     #ifdef USE_OCL
     UpLoadDevice();
     #endif
     
+    //std::cout << "2" << std::endl;
 
     double tout = Time;
     while (Time < Tf)
@@ -1356,9 +1360,11 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
         if (Time >= tout)
         {
+            //std::cout << "3" << std::endl;
             #ifdef USE_OCL
             DnLoadDevice();
             #endif
+            //std::cout << "4" << std::endl;
             if (TheFileKey!=NULL)
             {
                 String fn;
