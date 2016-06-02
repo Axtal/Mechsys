@@ -165,11 +165,11 @@ void kernel ApplyForcesSCMP(global const bool * IsSolid, global double3* BForce,
         double psin = 0.0;
         double G    = lbmaux[0].G[0];
         //if (!IsSolid[ic]) psic = lbmaux[0].Psi[0]*exp(-lbmaux[0].Rhoref[0]/Rho[ic]);
-        if (!IsSolid[in]) psin = lbmaux[0].Psi[0]*exp(-lbmaux[0].Rhoref[0]/Rho[in]);
-        if (!IsSolid[ic]) psic = lbmaux[0].Psi[0]*(lbmaux[0].Rhoref[0]);
+        //if (!IsSolid[in]) psin = lbmaux[0].Psi[0]*exp(-lbmaux[0].Rhoref[0]/Rho[in]);
+        //if (!IsSolid[ic]) psic = lbmaux[0].Psi[0]*(lbmaux[0].Rhoref[0]);
         //if (!IsSolid[in]) psin = lbmaux[0].Psi[0]*(lbmaux[0].Rhoref[0]);
         
-        BForce[ic] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
+        //BForce[ic] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
 //
         //psic        = 0.0;
         //psin        = 0.0;
