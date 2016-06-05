@@ -69,22 +69,17 @@ void kernel CheckUpLoad (global struct lbm_aux * lbmaux)
 
 void kernel ApplyForcesSC(global const bool * IsSolid, global double3* BForce, global const double * Rho, global const struct lbm_aux * lbmaux)
 {
-    //uint3 ic = idx2Pt(get_global_id(0),lbmaux[0].Ndim);
-    //printf("%d %d %d %d \n",get_global_id(0),ic.s1,ic.s2,ic.s3);
     size_t ic  = get_global_id(0);
     size_t icx = ic%lbmaux[0].Nx;
     size_t icy = (ic/lbmaux[0].Nx)%lbmaux[0].Ny;
     size_t icz = ic/(lbmaux[0].Nx*lbmaux[0].Ny);
 
-    //BForce[ic] = (double3)(0.0,0.0,0.0);
     for (size_t k=1;k<lbmaux[0].Nneigh;k++)
     {
         size_t inx = (size_t)((long)icx + (long)lbmaux[0].C[k].x + (long)lbmaux[0].Nx)%lbmaux[0].Nx;
         size_t iny = (size_t)((long)icy + (long)lbmaux[0].C[k].y + (long)lbmaux[0].Ny)%lbmaux[0].Ny;
         size_t inz = (size_t)((long)icz + (long)lbmaux[0].C[k].z + (long)lbmaux[0].Nz)%lbmaux[0].Nz;
         size_t in  = inx + iny*lbmaux[0].Nx + inz*lbmaux[0].Nx*lbmaux[0].Ny;
-        
-        //if (ic==0) printf("ic: %lu %lu %lu %lu k: %lu in: %lu %lu %lu %lu \n",ic,icx,icy,icz,k,in,inx,iny,inz);
         
         double psic = 1.0;
         double psin = 1.0;
@@ -94,60 +89,13 @@ void kernel ApplyForcesSC(global const bool * IsSolid, global double3* BForce, g
         else              G    = lbmaux[0].Gs[0];
         
         BForce[ic] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
-
-        //if (ic==0) printf("k: %lu %f %f %f \n",k,BForce[ic].x,BForce[ic].y,BForce[ic].z);
     }
-
-    //printf("%lu %lu %lu %lu \n",ic,icx,icy,icz);
-    //printf("%d Dim %d %d %d \n",ic,lbmaux[0].Nx,lbmaux[0].Ny,lbmaux[0].Nz);
-    //printf("Dim      %d %d \n",ic,icx );
-    //printf("Dim      %d %d \n",ic,icy );
-    //printf("Dim      %d %d \n",ic,icz );
 }
                                                                                                               
-void kernel ApplyForcesMP(global const bool * IsSolid, global double3* BForce, global const double * Rho, global const struct lbm_aux * lbmaux)
-{
-    size_t ic  = get_global_id(0);
-    size_t icx = ic%lbmaux[0].Nx;
-    size_t icy = (ic/lbmaux[0].Nx)%lbmaux[0].Ny;
-    size_t icz = ic/(lbmaux[0].Nx*lbmaux[0].Ny);
-
-    //BForce[ic] = (double3)(0.0,0.0,0.0);
-    for (size_t k=1;k<lbmaux[0].Nneigh;k++)
-    {
-        size_t inx = (size_t)((long)icx + (long)lbmaux[0].C[k].x + (long)lbmaux[0].Nx)%lbmaux[0].Nx;
-        size_t iny = (size_t)((long)icy + (long)lbmaux[0].C[k].y + (long)lbmaux[0].Ny)%lbmaux[0].Ny;
-        size_t inz = (size_t)((long)icz + (long)lbmaux[0].C[k].z + (long)lbmaux[0].Nz)%lbmaux[0].Nz;
-        size_t in  = inx + iny*lbmaux[0].Nx + inz*lbmaux[0].Nx*lbmaux[0].Ny;
-        
-        //if (ic==0) printf("ic: %lu %lu %lu %lu k: %lu in: %lu %lu %lu %lu \n",ic,icx,icy,icz,k,in,inx,iny,inz);
-        
-        double psic = 1.0;
-        double psin = 1.0;
-        double G    = lbmaux[0].Gmix;
-        if (!IsSolid[ic]) psic = Rho[ic];
-        else              G    = lbmaux[0].Gs[1];
-        if (!IsSolid[in]) psin = Rho[in + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz];
-        else              G    = lbmaux[0].Gs[0];
-        
-        BForce[ic] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
-
-        psic        = 1.0;
-        psin        = 1.0;
-        G           = lbmaux[0].Gmix;
-        if (!IsSolid[ic]) psic = Rho[ic + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz];
-        else              G    = lbmaux[0].Gs[0];
-        if (!IsSolid[in]) psin = Rho[in];
-        else              G    = lbmaux[0].Gs[1];
-        
-        BForce[ic + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
-
-        //if (ic==0) printf("k: %lu %f %f %f \n",k,BForce[ic].x,BForce[ic].y,BForce[ic].z);
-    }
-    
-}
-
-void kernel ApplyForcesSCMP(global const bool * IsSolid, global double3* BForce, global const double * Rho, global const struct lbm_aux * lbmaux)
+void kernel ApplyForcesSCMP(global const bool * IsSolid0 , global const bool * IsSolid1 ,
+                            global       double3* BForce0, global       double3* BForce1,
+                            global const double * Rho0   , global const double * Rho1   , 
+                            global const struct lbm_aux * lbmaux)
 {
     size_t ic  = get_global_id(0);
     size_t icx = ic%lbmaux[0].Nx;
@@ -160,44 +108,82 @@ void kernel ApplyForcesSCMP(global const bool * IsSolid, global double3* BForce,
         size_t iny = (size_t)((long)icy + (long)lbmaux[0].C[k].y + (long)lbmaux[0].Ny)%lbmaux[0].Ny;
         size_t inz = (size_t)((long)icz + (long)lbmaux[0].C[k].z + (long)lbmaux[0].Nz)%lbmaux[0].Nz;
         size_t in  = inx + iny*lbmaux[0].Nx + inz*lbmaux[0].Nx*lbmaux[0].Ny;
+        
         
         double psic = 0.0;
         double psin = 0.0;
         double G    = lbmaux[0].G[0];
-        //if (!IsSolid[ic]) psic = lbmaux[0].Psi[0]*exp(-lbmaux[0].Rhoref[0]/Rho[ic]);
-        //if (!IsSolid[in]) psin = lbmaux[0].Psi[0]*exp(-lbmaux[0].Rhoref[0]/Rho[in]);
-        //if (!IsSolid[ic]) psic = lbmaux[0].Psi[0]*(lbmaux[0].Rhoref[0]);
-        //if (!IsSolid[in]) psin = lbmaux[0].Psi[0]*(lbmaux[0].Rhoref[0]);
+        if (!IsSolid0[ic]) psic = lbmaux[0].Psi[0]*exp(-lbmaux[0].Rhoref[0]/Rho0[ic]);
+        if (!IsSolid0[in]) psin = lbmaux[0].Psi[0]*exp(-lbmaux[0].Rhoref[0]/Rho0[in]);
+        else               G    = lbmaux[0].Gs[0];
         
-        //BForce[ic] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
-//
-        //psic        = 0.0;
-        //psin        = 0.0;
-        //G           = lbmaux[0].G[1];
-        //if (!IsSolid[ic + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz]) psic = lbmaux[0].Psi[1]*exp(-lbmaux[0].Rhoref[1]/Rho[ic + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz]);
-        //if (!IsSolid[in + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz]) psin = lbmaux[0].Psi[1]*exp(-lbmaux[0].Rhoref[1]/Rho[in + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz]);
-        //
-        //BForce[ic + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
-        //
-        //psic        = 1.0;
-        //psin        = 1.0;
-        //G           = lbmaux[0].Gmix;
-        //if (!IsSolid[ic]) psic = Rho[ic];
-        //else              G    = lbmaux[0].Gs[1];
-        //if (!IsSolid[in + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz]) psin = Rho[in + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz];
-        //else              G    = lbmaux[0].Gs[0];
-        //
-        //BForce[ic] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
-//
-        //psic        = 1.0;
-        //psin        = 1.0;
-        //G           = lbmaux[0].Gmix;
-        //if (!IsSolid[ic + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz]) psic = Rho[ic + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz];
-        //else                                                       G    = lbmaux[0].Gs[0];
-        //if (!IsSolid[in])                                          psin = Rho[in];
-        //else                                                       G    = lbmaux[0].Gs[1];
-        //
-        //BForce[ic + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
+        BForce0[ic] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
+
+        psic        = 0.0;
+        psin        = 0.0;
+        G           = lbmaux[0].G[1];
+        if (!IsSolid1[ic]) psic = lbmaux[0].Psi[1]*exp(-lbmaux[0].Rhoref[1]/Rho1[ic]);
+        if (!IsSolid1[in]) psin = lbmaux[0].Psi[1]*exp(-lbmaux[0].Rhoref[1]/Rho1[in]);
+        else               G    = lbmaux[0].Gs[1];
+        
+        BForce1[ic] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
+
+        psic        = 1.0;
+        psin        = 1.0;
+        G           = lbmaux[0].Gmix;
+        if (!IsSolid0[ic]) psic = Rho0[ic];
+        if (!IsSolid1[in]) psin = Rho1[in];
+        else               G    = lbmaux[0].Gs[0];
+        
+        BForce0[ic] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
+
+        psic        = 1.0;
+        psin        = 1.0;
+        G           = lbmaux[0].Gmix;
+        if (!IsSolid1[ic]) psic = Rho1[ic];
+        if (!IsSolid0[in]) psin = Rho0[in];
+        else               G    = lbmaux[0].Gs[1];
+        
+        BForce1[ic] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
+    }
+    
+}
+
+void kernel ApplyForcesMP(global const bool * IsSolid0 , global const bool * IsSolid1 ,
+                          global       double3* BForce0, global       double3* BForce1,
+                          global const double * Rho0   , global const double * Rho1   , 
+                          global const struct lbm_aux * lbmaux)
+{
+    size_t ic  = get_global_id(0);
+    size_t icx = ic%lbmaux[0].Nx;
+    size_t icy = (ic/lbmaux[0].Nx)%lbmaux[0].Ny;
+    size_t icz = ic/(lbmaux[0].Nx*lbmaux[0].Ny);
+
+    
+    for (size_t k=1;k<lbmaux[0].Nneigh;k++)
+    {
+        size_t inx = (size_t)((long)icx + (long)lbmaux[0].C[k].x + (long)lbmaux[0].Nx)%lbmaux[0].Nx;
+        size_t iny = (size_t)((long)icy + (long)lbmaux[0].C[k].y + (long)lbmaux[0].Ny)%lbmaux[0].Ny;
+        size_t inz = (size_t)((long)icz + (long)lbmaux[0].C[k].z + (long)lbmaux[0].Nz)%lbmaux[0].Nz;
+        size_t in  = inx + iny*lbmaux[0].Nx + inz*lbmaux[0].Nx*lbmaux[0].Ny;
+        
+        double psic = 1.0;
+        double psin = 1.0;
+        double G    = lbmaux[0].Gmix;
+        if (!IsSolid0[ic]) psic = Rho0[ic];
+        if (!IsSolid1[in]) psin = Rho1[in];
+        else               G    = lbmaux[0].Gs[0];
+        
+        BForce0[ic] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
+
+        psic        = 1.0;
+        psin        = 1.0;
+        G           = lbmaux[0].Gmix;
+        if (!IsSolid1[ic]) psic = Rho1[ic];
+        if (!IsSolid0[in]) psin = Rho0[in];
+        else               G    = lbmaux[0].Gs[1];
+        
+        BForce1[ic] += -G*lbmaux[0].W[k]*psic*psin*lbmaux[0].C[k];
     }
 }
 
@@ -261,60 +247,88 @@ void kernel CollideSC    (global const bool * IsSolid, global double * F, global
     }
 }
 
-void kernel CollideMP    (global const bool * IsSolid, global double * F, global double * Ftemp, global const double3* BForce, global const double3* Vel, global const double * Rho, global const struct lbm_aux * lbmaux)
+void kernel CollideMP    (global const bool * IsSolid0 , global const bool * IsSolid1 ,
+                          global double * F0           , global double * F1           , 
+                          global double * Ftemp0       , global double * Ftemp1       , 
+                          global const double3* BForce0, global const double3* BForce1,
+                          global const double3* Vel0   , global const double3* Vel1   ,
+                          global const double * Rho0   , global const double * Rho1   , 
+                          global const struct lbm_aux * lbmaux)
 {
     size_t ic  = get_global_id(0);
-    if (!IsSolid[ic])
+    double3 Vmix = Rho0[ic]*Vel0[ic]/lbmaux[0].Tau[0] + Rho1[ic]*Vel1[ic]/lbmaux[0].Tau[1];
+    Vmix = Vmix/(Rho0[ic]/lbmaux[0].Tau[0] + Rho1[ic]/lbmaux[0].Tau[1]);
+    if (!IsSolid0[ic])
     {
-        double3 Vmix = Rho[ic]*Vel[ic]/lbmaux[0].Tau[0] + Rho[ic + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz]*Vel[ic + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz]/lbmaux[0].Tau[1];
-        Vmix = Vmix/(Rho[ic]/lbmaux[0].Tau[0] + Rho[ic + lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz]/lbmaux[0].Tau[1]);
 
-        for (size_t il=0;il<lbmaux[0].Nl;il++)
+        double  rho   = Rho0[ic];
+        double3 vel   = Vmix + lbmaux[0].Tau[0]*BForce0[ic]/rho;
+        double  Cs    = lbmaux[0].Cs; 
+        double  VdotV = dot(vel,vel);
+        double  tau   = lbmaux[0].Tau[0];
+        bool    valid = true;
+        double  alpha = 1.0;
+        while (valid)
         {
-            size_t  it   = ic + il*lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz;
-            double  rho  = Rho[it];
-            double3 vel  = Vmix + lbmaux[0].Tau[il]*BForce[it];
-            double Cs    = lbmaux[0].Cs; 
-            double VdotV = dot(vel,vel);
-            double tau   = lbmaux[0].Tau[il];
-            bool valid = true;
-            double alpha = 1.0;
-            while (valid)
+            valid = false;
+            for (size_t k=0;k<lbmaux[0].Nneigh;k++)
             {
-                valid = false;
-                for (size_t k=0;k<lbmaux[0].Nneigh;k++)
+                double VdotC = dot(vel,lbmaux[0].C[k]);
+                double NonEq = F0[ic*lbmaux[0].Nneigh + k] - lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
+                Ftemp0[ic*lbmaux[0].Nneigh + k] = F0[ic*lbmaux[0].Nneigh + k] - alpha*(NonEq/tau);
+                if (Ftemp0[ic*lbmaux[0].Nneigh + k]<-1.0e-12)
                 {
-                    double VdotC = dot(vel,lbmaux[0].C[k]);
-                    double NonEq = F[it*lbmaux[0].Nneigh + k] - lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
-                    Ftemp[it*lbmaux[0].Nneigh + k] = F[it*lbmaux[0].Nneigh + k] - alpha*(NonEq/tau);
-                    if (Ftemp[it*lbmaux[0].Nneigh + k]<-1.0e-12)
-                    {
-                        double temp = tau*F[it*lbmaux[0].Nneigh + k]/(NonEq);
-                        if (temp<alpha) alpha = temp;
-                        valid = true;
-                    }
+                    double temp = tau*F0[ic*lbmaux[0].Nneigh + k]/(NonEq);
+                    if (temp<alpha) alpha = temp;
+                    valid = true;
                 }
             }
-        }           
+        }
     }
     else
     {
-        for (size_t il=0;il<lbmaux[0].Nl;il++)
+        for (size_t k=0;k<lbmaux[0].Nneigh;k++)
         {
-            size_t  it   = ic + il*lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz;
+            Ftemp0[ic*lbmaux[0].Nneigh + k] = F0[ic*lbmaux[0].Nneigh + lbmaux[0].Op[k]]; 
+        }
+    }
+    if (!IsSolid1[ic])
+    {
+        double  rho  = Rho1[ic];
+        double3 vel  = Vmix + lbmaux[0].Tau[1]*BForce1[ic]/rho;
+        double  Cs    = lbmaux[0].Cs; 
+        double  VdotV = dot(vel,vel);
+        double  tau   = lbmaux[0].Tau[1];
+        bool    valid = true;
+        double  alpha = 1.0;
+        while (valid)
+        {
+            valid = false;
             for (size_t k=0;k<lbmaux[0].Nneigh;k++)
             {
-                Ftemp[it*lbmaux[0].Nneigh + k] = F[it*lbmaux[0].Nneigh + lbmaux[0].Op[k]]; 
+                double VdotC = dot(vel,lbmaux[0].C[k]);
+                double NonEq = F1[ic*lbmaux[0].Nneigh + k] - lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
+                Ftemp1[ic*lbmaux[0].Nneigh + k] = F1[ic*lbmaux[0].Nneigh + k] - alpha*(NonEq/tau);
+                if (Ftemp1[ic*lbmaux[0].Nneigh + k]<-1.0e-12)
+                {
+                    double temp = tau*F1[ic*lbmaux[0].Nneigh + k]/(NonEq);
+                    if (temp<alpha) alpha = temp;
+                    valid = true;
+                }
             }
         }
     }
-    for (size_t il=0;il<lbmaux[0].Nl;il++)
+    else
     {
-        size_t  it   = ic + il*lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz;
         for (size_t k=0;k<lbmaux[0].Nneigh;k++)
         {
-            F[it*lbmaux[0].Nneigh + k] = Ftemp[it*lbmaux[0].Nneigh + k]; 
+            Ftemp1[ic*lbmaux[0].Nneigh + k] = F1[ic*lbmaux[0].Nneigh + lbmaux[0].Op[k]]; 
         }
+    }
+    for (size_t k=0;k<lbmaux[0].Nneigh;k++)
+    {
+        F0[ic*lbmaux[0].Nneigh + k] = Ftemp0[ic*lbmaux[0].Nneigh + k]; 
+        F1[ic*lbmaux[0].Nneigh + k] = Ftemp1[ic*lbmaux[0].Nneigh + k]; 
     }
 }
 
@@ -325,18 +339,13 @@ void kernel Stream1    (global double * F, global double * Ftemp, global const s
     size_t icy = (ic/lbmaux[0].Nx)%lbmaux[0].Ny;
     size_t icz = ic/(lbmaux[0].Nx*lbmaux[0].Ny);
 
-    for (size_t il=0;il<lbmaux[0].Nl;il++)
+    for (size_t k=1;k<lbmaux[0].Nneigh;k++)
     {
-        size_t  it   = ic + il*lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz;
-
-        for (size_t k=1;k<lbmaux[0].Nneigh;k++)
-        {
-            size_t inx = (size_t)((long)icx + (long)lbmaux[0].C[k].x + (long)lbmaux[0].Nx)%lbmaux[0].Nx;
-            size_t iny = (size_t)((long)icy + (long)lbmaux[0].C[k].y + (long)lbmaux[0].Ny)%lbmaux[0].Ny;
-            size_t inz = (size_t)((long)icz + (long)lbmaux[0].C[k].z + (long)lbmaux[0].Nz)%lbmaux[0].Nz;
-            size_t in  = inx + iny*lbmaux[0].Nx + inz*lbmaux[0].Nx*lbmaux[0].Ny + il*lbmaux[0].Nx*lbmaux[0].Ny*lbmaux[0].Nz;
-            Ftemp[in*lbmaux[0].Nneigh + k] = F[it*lbmaux[0].Nneigh + k];
-        }
+        size_t inx = (size_t)((long)icx + (long)lbmaux[0].C[k].x + (long)lbmaux[0].Nx)%lbmaux[0].Nx;
+        size_t iny = (size_t)((long)icy + (long)lbmaux[0].C[k].y + (long)lbmaux[0].Ny)%lbmaux[0].Ny;
+        size_t inz = (size_t)((long)icz + (long)lbmaux[0].C[k].z + (long)lbmaux[0].Nz)%lbmaux[0].Nz;
+        size_t in  = inx + iny*lbmaux[0].Nx + inz*lbmaux[0].Nx*lbmaux[0].Ny;
+        Ftemp[in*lbmaux[0].Nneigh + k] = F[ic*lbmaux[0].Nneigh + k];
     }
 }
 

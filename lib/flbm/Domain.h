@@ -200,14 +200,15 @@ public:
     cl::Context      CL_Context;              ///< CL Context for coprocessor commands
     cl::Program      CL_Program;              ///< CL program object containing the kernel routines
     cl::Device       CL_Device;               ///< Identity of the accelrating device
-    cl::Buffer bF;                            ///< Buffer with the distribution functions
-    cl::Buffer bFtemp;                        ///< Buffer with the distribution functions temporal
-    cl::Buffer bIsSolid;                      ///< Buffer with the solid bool information
-    cl::Buffer bBForce;                       ///< Buffer with the body forces
-    cl::Buffer bVel;                          ///< Buffer with the cell velocities
-    cl::Buffer bRho;                          ///< Buffer with the cell densities
-    cl::Buffer bCellPair;                     ///< Buffer with the pair cell information for force calculation
-    cl::Buffer blbmaux;                       ///< Buffer with the strcuture containing generic lbm information
+    cl::Buffer     * bF;                      ///< Buffer with the distribution functions
+    cl::Buffer     * bFtemp;                  ///< Buffer with the distribution functions temporal
+    cl::Buffer     * bIsSolid;                ///< Buffer with the solid bool information
+    cl::Buffer     * bBForce;                 ///< Buffer with the body forces
+    cl::Buffer     * bVel;                    ///< Buffer with the cell velocities
+    cl::Buffer     * bRho;                    ///< Buffer with the cell densities
+    cl::Buffer     * bCellPair;               ///< Buffer with the pair cell information for force calculation
+    cl::Buffer       blbmaux;                 ///< Buffer with the strcuture containing generic lbm information
+    size_t     N_Groups;                      ///< Number of work gropous that the GPU can allocate
     #endif
 };
 
@@ -1048,28 +1049,16 @@ inline void Domain::StreamMP()
 inline void Domain::UpLoadDevice()
 {
 
-    bF         = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Nl*Ncells*Nneigh);            
-    bFtemp     = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Nl*Ncells*Nneigh); 
-    bIsSolid   = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(bool      )*Nl*Ncells       );
-    bBForce    = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(cl_double3)*Nl*Ncells       );     
-    bVel       = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(cl_double3)*Nl*Ncells       ); 
-    bRho       = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Nl*Ncells       ); 
+    bF         = new cl::Buffer [Nl];
+    bFtemp     = new cl::Buffer [Nl];
+    bIsSolid   = new cl::Buffer [Nl];
+    bBForce    = new cl::Buffer [Nl];
+    bVel       = new cl::Buffer [Nl];
+    bRho       = new cl::Buffer [Nl];
+    
     blbmaux    = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(lbm_aux   )              );
 
-
-    bool       *IsSolidCL;
-    double     *FCL,*FtempCL,*RhoCL;
-    cl_double3 *VelCL,*BForceCL;
-    //cl_uint3   *CellPairCL;
-    lbm_aux    *lbmaux;
-    FCL        = new double    [Nl*Ncells*Nneigh];
-    FtempCL    = new double    [Nl*Ncells*Nneigh];
-    IsSolidCL  = new bool      [Nl*Ncells       ];
-    RhoCL      = new double    [Nl*Ncells       ];
-    VelCL      = new cl_double3[Nl*Ncells       ];
-    BForceCL   = new cl_double3[Nl*Ncells       ];
-    lbmaux     = new lbm_aux   [1];
-
+    lbm_aux lbmaux[1];
 
     lbmaux[0].Nx = Ndim(0);
     lbmaux[0].Ny = Ndim(1);
@@ -1080,8 +1069,6 @@ inline void Domain::UpLoadDevice()
     lbmaux[0].Gmix      = Gmix;
     lbmaux[0].Cs        = Cs;
     lbmaux[0].Sc        = Sc;
-    
-    //std::cout << "1" << std::endl;
 
     for (size_t nn=0;nn<Nneigh;nn++)
     {
@@ -1092,162 +1079,213 @@ inline void Domain::UpLoadDevice()
        lbmaux[0].W  [nn]      = W  [nn]   ;
        lbmaux[0].Op [nn]      = Op [nn]   ;
     }
-    
-    //for (size_t nn=0;nn<NCellPairs;nn++)
-    //{
-       //CellPairCL[nn].s[0] = CellPairs[nn](0);
-       //CellPairCL[nn].s[1] = CellPairs[nn](1);
-       //CellPairCL[nn].s[2] = CellPairs[nn](2);
-       //std::cout << CellPairCL[nn].s[0] << " " << CellPairCL[nn].s[1] << " " << CellPairCL[nn].s[2] << " " << std::endl;
-    //}
-   
-    //std::cout << "2" << std::endl;
 
-    size_t Nn = 0;
-    size_t Nm = 0;
-    for (size_t i=0;i<Nl;i++)
+    for (size_t il=0;il<Nl;il++)
     {
-        lbmaux[0].Tau     [i]    = Tau     [i];
-        lbmaux[0].G       [i]    = G       [i];
-        lbmaux[0].Gs      [i]    = Gs      [i];
-        lbmaux[0].Rhoref  [i]    = Rhoref  [i];
-        lbmaux[0].Psi     [i]    = Psi     [i];
+        lbmaux[0].Tau     [il]    = Tau     [il];
+        lbmaux[0].G       [il]    = G       [il];
+        lbmaux[0].Gs      [il]    = Gs      [il];
+        lbmaux[0].Rhoref  [il]    = Rhoref  [il];
+        lbmaux[0].Psi     [il]    = Psi     [il];
+
+        bF       [il]  = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Ncells*Nneigh);            
+        bFtemp   [il]  = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Ncells*Nneigh); 
+        bIsSolid [il]  = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(bool      )*Ncells       );
+        bBForce  [il]  = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(cl_double3)*Ncells       );     
+        bVel     [il]  = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(cl_double3)*Ncells       ); 
+        bRho     [il]  = cl::Buffer(CL_Context,CL_MEM_READ_WRITE,sizeof(double    )*Ncells       ); 
+
+
+        bool       *IsSolidCL;
+        double     *FCL,*FtempCL,*RhoCL;
+        cl_double3 *VelCL,*BForceCL;
+        FCL        = new double    [Ncells*Nneigh];
+        FtempCL    = new double    [Ncells*Nneigh];
+        IsSolidCL  = new bool      [Ncells       ];
+        RhoCL      = new double    [Ncells       ];
+        VelCL      = new cl_double3[Ncells       ];
+        BForceCL   = new cl_double3[Ncells       ];
+    
+        size_t Nn = 0;
+        size_t Nm = 0;
         for (size_t nz=0;nz<Ndim(2);nz++)
         {
             for (size_t ny=0;ny<Ndim(1);ny++)
             {
                 for (size_t nx=0;nx<Ndim(0);nx++)
                 {
-                    //std::cout << iVec3_t(nx,ny,nz) << Nl << std::endl;
-                    IsSolidCL[Nm]      = IsSolid  [i][nx][ny][nz];
-                    RhoCL    [Nm]      = Rho      [i][nx][ny][nz];
-                    VelCL    [Nm].s[0] = Vel      [i][nx][ny][nz][0];
-                    VelCL    [Nm].s[1] = Vel      [i][nx][ny][nz][1];
-                    VelCL    [Nm].s[2] = Vel      [i][nx][ny][nz][2];
-                    BForceCL [Nm].s[0] = BForce   [i][nx][ny][nz][0];
-                    BForceCL [Nm].s[1] = BForce   [i][nx][ny][nz][1];
-                    BForceCL [Nm].s[2] = BForce   [i][nx][ny][nz][2];
+                    IsSolidCL[Nm]      = IsSolid  [il][nx][ny][nz];
+                    RhoCL    [Nm]      = Rho      [il][nx][ny][nz];
+                    VelCL    [Nm].s[0] = Vel      [il][nx][ny][nz][0];
+                    VelCL    [Nm].s[1] = Vel      [il][nx][ny][nz][1];
+                    VelCL    [Nm].s[2] = Vel      [il][nx][ny][nz][2];
+                    BForceCL [Nm].s[0] = BForce   [il][nx][ny][nz][0];
+                    BForceCL [Nm].s[1] = BForce   [il][nx][ny][nz][1];
+                    BForceCL [Nm].s[2] = BForce   [il][nx][ny][nz][2];
                     Nm++;
                     for (size_t nn=0;nn<Nneigh;nn++)
                     {
-                        FCL    [Nn] = F    [i][nx][ny][nz][nn];
-                        FtempCL[Nn] = Ftemp[i][nx][ny][nz][nn];
+                        FCL    [Nn] = F    [il][nx][ny][nz][nn];
+                        FtempCL[Nn] = Ftemp[il][nx][ny][nz][nn];
                         Nn++;
                     }
                 }
             }
         }
+
+        CL_Queue.enqueueWriteBuffer(bF      [il],CL_TRUE,0,sizeof(double    )*Ncells*Nneigh,FCL       );  
+        CL_Queue.enqueueWriteBuffer(bFtemp  [il],CL_TRUE,0,sizeof(double    )*Ncells*Nneigh,FtempCL   );  
+        CL_Queue.enqueueWriteBuffer(bIsSolid[il],CL_TRUE,0,sizeof(bool      )*Ncells       ,IsSolidCL );  
+        CL_Queue.enqueueWriteBuffer(bBForce [il],CL_TRUE,0,sizeof(cl_double3)*Ncells       ,BForceCL  );  
+        CL_Queue.enqueueWriteBuffer(bVel    [il],CL_TRUE,0,sizeof(cl_double3)*Ncells       ,VelCL     );  
+        CL_Queue.enqueueWriteBuffer(bRho    [il],CL_TRUE,0,sizeof(double    )*Ncells       ,RhoCL     );  
+        
+
+        delete [] FCL       ;
+        delete [] FtempCL   ;
+        delete [] IsSolidCL ;
+        delete [] RhoCL     ;
+        delete [] VelCL     ;
+        delete [] BForceCL  ;
     }
-
-    //std::cout << "3" << std::endl;
-
-    CL_Queue.enqueueWriteBuffer(bF       ,CL_TRUE,0,sizeof(double    )*Nl*Ncells*Nneigh,FCL       );  
-    CL_Queue.enqueueWriteBuffer(bFtemp   ,CL_TRUE,0,sizeof(double    )*Nl*Ncells*Nneigh,FtempCL   );  
-    CL_Queue.enqueueWriteBuffer(bIsSolid ,CL_TRUE,0,sizeof(bool      )*Nl*Ncells       ,IsSolidCL );  
-    CL_Queue.enqueueWriteBuffer(bBForce  ,CL_TRUE,0,sizeof(cl_double3)*Nl*Ncells       ,BForceCL  );  
-    CL_Queue.enqueueWriteBuffer(bVel     ,CL_TRUE,0,sizeof(cl_double3)*Nl*Ncells       ,VelCL     );  
-    CL_Queue.enqueueWriteBuffer(bRho     ,CL_TRUE,0,sizeof(double    )*Nl*Ncells       ,RhoCL     );  
-    CL_Queue.enqueueWriteBuffer(blbmaux  ,CL_TRUE,0,sizeof(lbm_aux   )                 ,lbmaux    );  
+    CL_Queue.enqueueWriteBuffer(blbmaux  ,CL_TRUE,0,sizeof(lbm_aux   )              ,lbmaux    );  
 
     cl::Kernel kernel = cl::Kernel(CL_Program,"CheckUpLoad");
     kernel.setArg(0,blbmaux );
     CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(1),cl::NullRange);
     CL_Queue.finish();
-    
-
-    delete [] FCL       ;
-    delete [] FtempCL   ;
-    delete [] IsSolidCL ;
-    delete [] RhoCL     ;
-    delete [] VelCL     ;
-    delete [] BForceCL  ;
-    delete [] lbmaux    ;
-
 }
 
 inline void Domain::DnLoadDevice()
 {
-    double     * RhoCL;
-    cl_double3 * VelCL;
-    RhoCL      = new double    [Nl*Ncells];
-    VelCL      = new cl_double3[Nl*Ncells];
-
-    CL_Queue.enqueueReadBuffer(bRho,CL_TRUE,0,sizeof(double    )*Nl*Ncells,RhoCL);
-    CL_Queue.enqueueReadBuffer(bVel,CL_TRUE,0,sizeof(cl_double3)*Nl*Ncells,VelCL);
-
-    size_t Nm = 0;
-    for (size_t i=0;i<Nl;i++)
+    for (size_t il=0;il<Nl;il++)
     {
+        double     * RhoCL;
+        cl_double3 * VelCL;
+        RhoCL      = new double    [Ncells];
+        VelCL      = new cl_double3[Ncells];
+
+        CL_Queue.enqueueReadBuffer(bRho[il],CL_TRUE,0,sizeof(double    )*Ncells,RhoCL);
+        CL_Queue.enqueueReadBuffer(bVel[il],CL_TRUE,0,sizeof(cl_double3)*Ncells,VelCL);
+
+        size_t Nm = 0;
         for (size_t nz=0;nz<Ndim(2);nz++)
         {
             for (size_t ny=0;ny<Ndim(1);ny++)
             {
                 for (size_t nx=0;nx<Ndim(0);nx++)
                 {
-                    //std::cout << iVec3_t(nx,ny,nz) << Nl << std::endl;
-                    Rho[i][nx][ny][nz]    =  RhoCL[Nm]     ;
-                    Vel[i][nx][ny][nz][0] =  VelCL[Nm].s[0];
-                    Vel[i][nx][ny][nz][1] =  VelCL[Nm].s[1];
-                    Vel[i][nx][ny][nz][2] =  VelCL[Nm].s[2];
+                    Rho[il][nx][ny][nz]    =  RhoCL[Nm]     ;
+                    Vel[il][nx][ny][nz][0] =  VelCL[Nm].s[0];
+                    Vel[il][nx][ny][nz][1] =  VelCL[Nm].s[1];
+                    Vel[il][nx][ny][nz][2] =  VelCL[Nm].s[2];
                     Nm++;
                 }
             }
         }
+        delete [] RhoCL     ;
+        delete [] VelCL     ;
     }
-
-    delete [] RhoCL     ;
-    delete [] VelCL     ;
 }
 
 inline void Domain::ApplyForceCL()
 {
     cl::Kernel kernel;
-    if (Nl==1)                                             kernel = cl::Kernel(CL_Program,"ApplyForcesSC"  );
-    else if ((fabs(G[0])>1.0e-12)||(fabs(G[1])>1.0e-12))   kernel = cl::Kernel(CL_Program,"ApplyForcesSCMP");
-    else                                                   kernel = cl::Kernel(CL_Program,"ApplyForcesMP"  );
-    kernel.setArg(0,bIsSolid );
-    kernel.setArg(1,bBForce  );
-    kernel.setArg(2,bRho     );
-    kernel.setArg(3,blbmaux  );
-    CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
-    CL_Queue.finish();
+    if (Nl==1)
+    {
+        kernel = cl::Kernel(CL_Program,"ApplyForcesSC"  );
+        kernel.setArg(0,bIsSolid[0]);
+        kernel.setArg(1,bBForce [0]);
+        kernel.setArg(2,bRho    [0]);
+        kernel.setArg(3,blbmaux    );
+        CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
+        CL_Queue.finish();
+    }
+    else if ((fabs(G[0])>1.0e-12)||(fabs(G[1])>1.0e-12))
+    {
+        kernel = cl::Kernel(CL_Program,"ApplyForcesSCMP");
+        kernel.setArg(0,bIsSolid[0]);
+        kernel.setArg(1,bIsSolid[1]);
+        kernel.setArg(2,bBForce [0]);
+        kernel.setArg(3,bBForce [1]);
+        kernel.setArg(4,bRho    [0]);
+        kernel.setArg(5,bRho    [1]);
+        kernel.setArg(6,blbmaux    );
+        CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
+        CL_Queue.finish();
+    }
+    else
+    {
+        kernel = cl::Kernel(CL_Program,"ApplyForcesMP"  );
+        kernel.setArg(0,bIsSolid[0]);
+        kernel.setArg(1,bIsSolid[1]);
+        kernel.setArg(2,bBForce [0]);
+        kernel.setArg(3,bBForce [1]);
+        kernel.setArg(4,bRho    [0]);
+        kernel.setArg(5,bRho    [1]);
+        kernel.setArg(6,blbmaux    );
+        CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
+        CL_Queue.finish();
+    }
 }
 
 inline void Domain::CollideCL()
 {
     cl::Kernel kernel;
-    if (Nl==1)   kernel = cl::Kernel(CL_Program,"CollideSC");
-    else         kernel = cl::Kernel(CL_Program,"CollideMP");
-    kernel.setArg(0,bIsSolid );
-    kernel.setArg(1,bF       );
-    kernel.setArg(2,bFtemp   );
-    kernel.setArg(3,bBForce  );
-    kernel.setArg(4,bVel     );
-    kernel.setArg(5,bRho     );
-    kernel.setArg(6,blbmaux  );
+    if (Nl==1)   
+    {
+        kernel = cl::Kernel(CL_Program,"CollideSC");
+        kernel.setArg(0,bIsSolid[0]);
+        kernel.setArg(1,bF      [0]);
+        kernel.setArg(2,bFtemp  [0]);
+        kernel.setArg(3,bBForce [0]);
+        kernel.setArg(4,bVel    [0]);
+        kernel.setArg(5,bRho    [0]);
+        kernel.setArg(6,blbmaux    );
+    }
+    else
+    {        
+        kernel = cl::Kernel(CL_Program,"CollideMP");
+        kernel.setArg( 0,bIsSolid[0]);
+        kernel.setArg( 1,bIsSolid[1]);
+        kernel.setArg( 2,bF      [0]);
+        kernel.setArg( 3,bF      [1]);
+        kernel.setArg( 4,bFtemp  [0]);
+        kernel.setArg( 5,bFtemp  [1]);
+        kernel.setArg( 6,bBForce [0]);
+        kernel.setArg( 7,bBForce [1]);
+        kernel.setArg( 8,bVel    [0]);
+        kernel.setArg( 9,bVel    [1]);
+        kernel.setArg(10,bRho    [0]);
+        kernel.setArg(11,bRho    [1]);
+        kernel.setArg(12,blbmaux    );
+    }
     CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
     CL_Queue.finish();
 }
 
 inline void Domain::StreamCL()
 {
-    cl::Kernel kernel = cl::Kernel(CL_Program,"Stream1");
-    kernel.setArg(0,bF       );
-    kernel.setArg(1,bFtemp   );
-    kernel.setArg(2,blbmaux  );
-    CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
-    CL_Queue.finish();
+    for (size_t il=0;il<Nl;il++)
+    {
+        cl::Kernel kernel = cl::Kernel(CL_Program,"Stream1");
+        kernel.setArg(0,bF      [il]);
+        kernel.setArg(1,bFtemp  [il]);
+        kernel.setArg(2,blbmaux     );
+        CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
+        CL_Queue.finish();
 
-    kernel            = cl::Kernel(CL_Program,"Stream2");
-    kernel.setArg(0,bIsSolid );
-    kernel.setArg(1,bF       );
-    kernel.setArg(2,bFtemp   );
-    kernel.setArg(3,bBForce  );
-    kernel.setArg(4,bVel     );
-    kernel.setArg(5,bRho     );
-    kernel.setArg(6,blbmaux  );
-    CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells*Nl),cl::NullRange);
-    CL_Queue.finish();
+        kernel            = cl::Kernel(CL_Program,"Stream2");
+        kernel.setArg(0,bIsSolid[il]);
+        kernel.setArg(1,bF      [il]);
+        kernel.setArg(2,bFtemp  [il]);
+        kernel.setArg(3,bBForce [il]);
+        kernel.setArg(4,bVel    [il]);
+        kernel.setArg(5,bRho    [il]);
+        kernel.setArg(6,blbmaux     );
+        CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(Ncells),cl::NullRange);
+        CL_Queue.finish();
+    }
 }
 #endif
 
@@ -1293,6 +1331,8 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     }
 
     CL_Queue   = cl::CommandQueue(CL_Context,CL_Device);
+
+    N_Groups   = CL_Device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
     #endif
 
 

@@ -240,7 +240,6 @@ int main(int argc, char **argv) try
         Dom.Initialize(0,idx,rho0,v0);
     }  
     
-
     Dom.Solve(40000.0,80.0,Setup,NULL,"tflbm01",true,Nproc);
 
 
