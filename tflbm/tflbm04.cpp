@@ -16,6 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+//Multicomponent bubble interacting with solid surface
+
 // Std Lib
 #include <iostream>
 #include <stdlib.h>

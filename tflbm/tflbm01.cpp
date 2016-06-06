@@ -117,21 +117,21 @@ void Setup (FLBM::Domain & dom, void * UD)
     }
 
     cl::Kernel kernel(dat.UserProgram,"Left_BC");
-    kernel.setArg(0,dat.bBCVel  );
-    kernel.setArg(1,dom.bIsSolid);
-    kernel.setArg(2,dom.bF      );
-    kernel.setArg(3,dom.bVel    );
-    kernel.setArg(4,dom.bRho    );
-    kernel.setArg(5,dom.blbmaux );
+    kernel.setArg(0,dat.bBCVel     );
+    kernel.setArg(1,dom.bIsSolid[0]);
+    kernel.setArg(2,dom.bF      [0]);
+    kernel.setArg(3,dom.bVel    [0]);
+    kernel.setArg(4,dom.bRho    [0]);
+    kernel.setArg(5,dom.blbmaux    );
     dom.CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(dom.Ndim[1]),cl::NullRange);
     dom.CL_Queue.finish();
 
     kernel = cl::Kernel(dat.UserProgram,"Right_BC");
-    kernel.setArg(0,dom.bIsSolid);
-    kernel.setArg(1,dom.bF      );
-    kernel.setArg(2,dom.bVel    );
-    kernel.setArg(3,dom.bRho    );
-    kernel.setArg(4,dom.blbmaux );
+    kernel.setArg(0,dom.bIsSolid[0]);
+    kernel.setArg(1,dom.bF      [0]);
+    kernel.setArg(2,dom.bVel    [0]);
+    kernel.setArg(3,dom.bRho    [0]);
+    kernel.setArg(4,dom.blbmaux    );
     dom.CL_Queue.enqueueNDRangeKernel(kernel,cl::NullRange,cl::NDRange(dom.Ndim[1]),cl::NullRange);
     dom.CL_Queue.finish();
 
