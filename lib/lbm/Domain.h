@@ -939,7 +939,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
             Vec3_t Ome,Tor;
             Rotation(Particles[i]->w,Particles[i]->Q,Ome);
             Rotation(Particles[i]->T,Particles[i]->Q,Tor);
-            Radius[i]     = (float) Particles[i]->Dmax;
+            Particles[i]->Verts.Size()==1 ? Radius[i] = float(Particles[i]->Dmax) : Radius[i] = 0.0;
             Posvec[3*i  ] = (float) Particles[i]->x(0);
             Posvec[3*i+1] = (float) Particles[i]->x(1);
             Posvec[3*i+2] = (float) Particles[i]->x(2);
@@ -2968,7 +2968,6 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         MTD[i].dt       = Lat[0].dt;
     }
     //std::cout << "3" << std::endl;
-    //std::cout << "4" << std::endl;
 #ifdef USE_OMP
     if (Disks.Size()>0)
     {
@@ -3009,11 +3008,12 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 #endif
     double tout = Time;
     double tlbm = Time;
-    //std::cout << "3" << std::endl;
+
+    //std::cout << "4" << std::endl;
     while (Time < Tf)
     {
         //std::cout << Interactons.Size() << " " << CInteractons.Size() << " " << BInteractons.Size() << " " << ParCellPairs.Size() << " " << Particles.Size() << std::endl;
-        if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
+        //if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
         if (Time >= tout)
         {
             if (TheFileKey!=NULL)
@@ -3039,6 +3039,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 #ifdef USE_OMP 
         //std::chrono::high_resolution_clock::time_point ti1 = std::chrono::high_resolution_clock::now();
         //Initialize all the particles and cells
+        //std::cout << "0" <<std::endl;
         for (size_t i=0;i<Lat.Size();i++)
         {
             Lat[i].SetZeroGamma(0,Nproc);
@@ -3062,7 +3063,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         //Imprint the particles into the lattice
         if (Particles.Size()>0||Disks.Size()>0)
         {
-            if (Lat.Size()>1)
+            if (Lat.Size()>1||fabs(Lat[0].Gs)>0.0)
             {
                 ImprintLatticeMC(0,Nproc);
             }

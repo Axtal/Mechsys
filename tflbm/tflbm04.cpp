@@ -41,8 +41,8 @@ int main(int argc, char **argv) try
     double R     = 25.0;
     double rho0  = 2.0;
     double rho1  = 2.0;
-    double Tf    = 50000.0;
-    double dtout = 500.0;
+    double Tf    = 100000.0;
+    double dtout = 1000.0;
     if (argc>=2) Nproc  =atoi(argv[ 1]);
     if (argc>=3)
     {
