@@ -41,9 +41,12 @@ typedef struct lbm_aux
     
 } d_lbm_aux;
 
-//double Feq (size_t k, double rho, double3 vel, global struct lbm_aux * lbmaux)
+//double FeqFluid (size_t const k, double const rho, double3 const vel, global const struct lbm_aux * lbmaux)
 //{
-    //
+    //double VdotV = dot(vel,vel);
+    //double VdotC = dot(vel,lbmaux[0].C[k]);
+    //double Cs    = lbmaux[0].Cs;
+    //return lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotV/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
 //}
 
 void kernel CheckUpLoad (global struct lbm_aux * lbmaux)
@@ -207,6 +210,7 @@ void kernel CollideSC    (global const bool * IsSolid, global double * F, global
         {
             double VdotC = dot(vel,lbmaux[0].C[k]);
             Feq  [k]     = lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
+            //Feq[k]       = FeqFluid(k,rho,vel,lbmaux);
             NonEq[k]     = F[ic*lbmaux[0].Nneigh + k] - Feq[k];
             Q           += NonEq[k]*NonEq[k]*lbmaux[0].EEk[k];
         }

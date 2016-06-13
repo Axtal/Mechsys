@@ -3013,7 +3013,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     while (Time < Tf)
     {
         //std::cout << Interactons.Size() << " " << CInteractons.Size() << " " << BInteractons.Size() << " " << ParCellPairs.Size() << " " << Particles.Size() << std::endl;
-        //if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
+        if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
         if (Time >= tout)
         {
             if (TheFileKey!=NULL)
