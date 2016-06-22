@@ -41,13 +41,26 @@ typedef struct lbm_aux
     
 } d_lbm_aux;
 
-//double FeqFluid (size_t const k, double const rho, double3 const vel, global const struct lbm_aux * lbmaux)
-//{
-    //double VdotV = dot(vel,vel);
-    //double VdotC = dot(vel,lbmaux[0].C[k]);
-    //double Cs    = lbmaux[0].Cs;
-    //return lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotV/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
-//}
+double FeqFluid (size_t const k, double const rho, double3 const vel, global const struct lbm_aux * lbmaux)
+{
+    double VdotV = dot(vel,vel);
+    double VdotC = dot(vel,lbmaux[0].C[k]);
+    double Cs    = lbmaux[0].Cs;
+    return lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
+}
+
+void Initialize(size_t iv, global double * F, global double * Rho, global double3 * Vel, double const rho, double3 const vel, global const struct lbm_aux * lbmaux)
+{
+    Rho[iv] = 0.0;
+    Vel[iv] = (double3)(0.0,0.0,0.0);
+    for (size_t k=0;k<lbmaux[0].Nneigh;k++)
+    {
+        F[iv*lbmaux[0].Nneigh + k] = FeqFluid(k,rho,vel,lbmaux);
+        Rho[iv] += F[iv*lbmaux[0].Nneigh + k];
+        Vel[iv] += F[iv*lbmaux[0].Nneigh + k]*lbmaux[0].C[k];
+    }
+    Vel[iv] /= Rho[iv];
+}
 
 void kernel CheckUpLoad (global struct lbm_aux * lbmaux)
 {
@@ -68,6 +81,8 @@ void kernel CheckUpLoad (global struct lbm_aux * lbmaux)
         //printf("EEk    %d %f       \n",i,lbmaux[0].EEk[i]);
         //printf("Op    %lu %lu       \n",i,lbmaux[0].Op[i]);
     //}
+    //double Feq = FeqFluid(3,1.0,(double3)(0.2,0.0,0.0),lbmaux);
+    //printf(" %f \n",Feq);
 }
 
 void kernel ApplyForcesSC(global const bool * IsSolid, global double3* BForce, global const double * Rho, global const struct lbm_aux * lbmaux)
@@ -200,17 +215,17 @@ void kernel CollideSC    (global const bool * IsSolid, global double * F, global
         //double3 vel  = Vel[ic]+0.5*BForce[ic]/Rho[ic];
         //double3 vel  = Vel[ic];
         double rho   = Rho[ic];
-        double VdotV = dot(vel,vel);
-        double Cs    = lbmaux[0].Cs;
+        //double VdotV = dot(vel,vel);
+        //double Cs    = lbmaux[0].Cs;
         double tau   = lbmaux[0].Tau[0];
         double NonEq[27];
         double Feq  [27];
         double Q = 0.0;
         for (size_t k=0;k<lbmaux[0].Nneigh;k++)
         {
-            double VdotC = dot(vel,lbmaux[0].C[k]);
-            Feq  [k]     = lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
-            //Feq[k]       = FeqFluid(k,rho,vel,lbmaux);
+            //double VdotC = dot(vel,lbmaux[0].C[k]);
+            //Feq  [k]     = lbmaux[0].W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
+            Feq[k]       = FeqFluid(k,rho,vel,lbmaux);
             NonEq[k]     = F[ic*lbmaux[0].Nneigh + k] - Feq[k];
             Q           += NonEq[k]*NonEq[k]*lbmaux[0].EEk[k];
         }
@@ -335,6 +350,18 @@ void kernel CollideMP    (global const bool * IsSolid0 , global const bool * IsS
         F1[ic*lbmaux[0].Nneigh + k] = Ftemp1[ic*lbmaux[0].Nneigh + k]; 
     }
 }
+
+void kernel CollideAD    (global const bool * IsSolid0 , global const bool * IsSolid1 ,
+                          global double * F0           , global double * F1           , 
+                          global double * Ftemp0       , global double * Ftemp1       , 
+                          global const double3* BForce0, global const double3* BForce1,
+                          global const double3* Vel0   , global const double3* Vel1   ,
+                          global const double * Rho0   , global const double * Rho1   , 
+                          global const struct lbm_aux * lbmaux)
+{
+     
+}
+
 
 void kernel Stream1    (global double * F, global double * Ftemp, global const struct lbm_aux * lbmaux)
 {

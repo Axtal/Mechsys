@@ -208,7 +208,7 @@ public:
     cl::Buffer     * bRho;                    ///< Buffer with the cell densities
     cl::Buffer     * bCellPair;               ///< Buffer with the pair cell information for force calculation
     cl::Buffer       blbmaux;                 ///< Buffer with the strcuture containing generic lbm information
-    size_t     N_Groups;                      ///< Number of work gropous that the GPU can allocate
+    size_t           N_Groups;                ///< Number of work gropous that the GPU can allocate
     #endif
 };
 
