@@ -62,7 +62,7 @@ endif(MISSING)
 #
 ### FEATURES ############################################################################################
 
-SET(ALLDIRS src) # sub-directories
+SET(ALLDIRS ) # sub-directories
 
 IF(A_WITH_TLBM)
 	SET(ALLDIRS ${ALLDIRS} tlbm)
