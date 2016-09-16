@@ -460,6 +460,37 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
     if (!ThereisanAxis) delete Axis;
 }
 
+inline void Domain::GenBox (int InitialTag, Vec3_t const & X0, Vec3_t const & X1, double R, double Cf, double rho)
+{
+    Vec3_t axis0(OrthoSys::e0); // rotation of face
+    Vec3_t axis1(OrthoSys::e1); // rotation of face
+    size_t IIndex = Particles.Size();  // First face index
+    double Lx = X1(0)-X0(0);
+    double Ly = X1(1)-X0(1);
+    double Lz = X1(2)-X0(2);
+    Vec3_t Pos[6];
+    Pos[0] = Vec3_t(X1(0),0.5*(X1(1)+X0(1)),0.5*(X1(2)+X0(2)));
+    Pos[1] = Vec3_t(X0(0),0.5*(X1(1)+X0(1)),0.5*(X1(2)+X0(2)));
+    Pos[2] = Vec3_t(0.5*(X1(0)+X0(0)),X1(1),0.5*(X1(2)+X0(2)));
+    Pos[3] = Vec3_t(0.5*(X1(0)+X0(0)),X0(1),0.5*(X1(2)+X0(2)));
+    Pos[4] = Vec3_t(0.5*(X1(0)+X0(0)),0.5*(X1(1)+X0(1)),X1(2));
+    Pos[5] = Vec3_t(0.5*(X1(0)+X0(0)),0.5*(X1(1)+X0(1)),X0(2));
+
+    
+    AddPlane (InitialTag  , Pos[0],  R, Cf*Lz, Cf*Ly, rho, M_PI/2.0, &axis1);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-1, Pos[1], R, Cf*Lz, Cf*Ly, rho, 3.0*M_PI/2.0, &axis1);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-2, Pos[2],  R, Cf*Lx, Cf*Lz, rho, 3.0*M_PI/2.0, &axis0);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-3, Pos[3], R, Cf*Lx, Cf*Lz, rho, M_PI/2.0, &axis0);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-4, Pos[4],  R, Cf*Lx, Cf*Ly, rho);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+    AddPlane (InitialTag-5, Pos[5], R, Cf*Lx, Cf*Ly, rho, M_PI, &axis0);
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
+}
+
 inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, double rho, bool Cohesion)
 {
     /*                         +----------------+

@@ -33,11 +33,11 @@
 #include <mechsys/dem/domain.h>
 #include <mechsys/lbm/Lattice.h>
 #include <mechsys/lbm/Interacton.h>
-#include <mechsys/mesh/mesh.h>
-#include <mechsys/util/util.h>
-#include <mechsys/util/maps.h>
-#include <mechsys/mesh/unstructured.h>
-#include <mechsys/util/tree.h>
+//#include <mechsys/mesh/mesh.h>
+//#include <mechsys/util/util.h>
+//#include <mechsys/util/maps.h>
+//#include <mechsys/mesh/unstructured.h>
+//#include <mechsys/util/tree.h>
 
 using std::set;
 using std::map;
@@ -91,6 +91,7 @@ public:
     void AddTetra        (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);                                ///< Add a octahedron at position X with spheroradius R, side of length L and density rho
     void AddPlane        (int Tag, Vec3_t const & X, double R, double Lx,double Ly , double rho, double Angle=0, Vec3_t * Axis=NULL);                    ///< Add a cube at position X with spheroradius R, side of length L and density rho
     void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf, double rho, bool Cohesion=false);                        ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
+    void GenBox          (int InitialTag, Vec3_t const & X0, Vec3_t const & X1, double R, double Cf, double rho);                                        ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenBoundingBox  (int InitialTag, double R, double Cf, double rho, bool Cohesion=false);                                                         ///< Generate o bounding box enclosing the previous included particles.
     void GenFromMesh     (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);                           ///< Generate particles from a FEM mesh generator
     void AddVoroCell     (int Tag, voro::voronoicell & VC, double R, double rho, bool Erode, Vec3_t nv = iVec3_t(1.0,1.0,1.0));                          ///< Add a single voronoi cell, it should be built before tough
