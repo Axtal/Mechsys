@@ -66,6 +66,8 @@ public:
     bool                                              PrtVec;         ///< Print Vector data into the xdmf-h5 files
     bool                                            Finished;         ///< Has the simulation finished
     String                                           FileKey;         ///< File Key for output files
+    String                                          Concname;         ///< String to identify the solute
+    String                                          Fluxname;         ///< String to identify the solute flux
     Lattice                                              Lat;         ///< Fluid Lattices
     double                                              Time;         ///< Time of the simulation
     double                                                dt;         ///< Timestep
@@ -87,6 +89,8 @@ inline Domain::Domain(LBMethod Method, double Thenu, double Thedif, iVec3_t Ndim
     dt     = Thedt;
     Step   = 1;
     PrtVec = true;
+    Concname= "Concentration";
+    Fluxname= "Massflux";
     printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Ncells,TERM_RST);
 
 }
@@ -162,7 +166,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
     String dsname;
     dsname.Printf("Density");
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Rho );
-    dsname.Printf("Temperature");
+    dsname.Printf(Concname.CStr());
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Temp);
     dsname.Printf("Gamma");
     H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Gamma);
@@ -173,7 +177,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
         dims[0] = 3*Nx*Ny*Nz;
         dsname.Printf("Velocity");
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Vel );
-        dsname.Printf("HeatFlux");
+        dsname.Printf(Fluxname.CStr());
         H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Flux);
     }
     dims[0] = 1;
@@ -234,9 +238,9 @@ inline void Domain::WriteXDMF(char const * FileKey)
     oss << "        " << fn.CStr() <<":/Density" << "\n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
-    oss << "     <Attribute Name=\"Temperature" << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    oss << "     <Attribute Name=\"" << Concname.CStr() << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
     oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/Temperature" << "\n";
+    oss << "        " << fn.CStr() <<":/"<< Concname.CStr() << "\n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     oss << "     <Attribute Name=\"Gamma" << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
@@ -256,9 +260,9 @@ inline void Domain::WriteXDMF(char const * FileKey)
     oss << "        " << fn.CStr() <<":/Velocity" << "\n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
-    oss << "     <Attribute Name=\"HeatFlux" << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    oss << "     <Attribute Name=\"" << Fluxname.CStr() << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
     oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    oss << "        " << fn.CStr() <<":/HeatFlux" << "\n";
+    oss << "        " << fn.CStr() <<":/" << Fluxname.CStr() << "\n";
     oss << "       </DataItem>\n";
     oss << "     </Attribute>\n";
     }
