@@ -730,11 +730,15 @@ inline void Domain::WriteXDMF(char const * FileKey)
             rho  /= Step*Step*Step;
             gamma/= Step*Step*Step;
             vel  /= Step*Step*Step;
-            Density [i]  = (float) rho;
             Gamma   [i]  = (float) Lat[j].Cells[i]->IsSolid&&Step==1? 1.0: gamma;
-            Vvec[3*i  ]  = (float) vel(0);
-            Vvec[3*i+1]  = (float) vel(1);
-            Vvec[3*i+2]  = (float) vel(2);
+            //Density [i]  = (float) rho;
+            //Vvec[3*i  ]  = (float) vel(0);
+            //Vvec[3*i+1]  = (float) vel(1);
+            //Vvec[3*i+2]  = (float) vel(2);
+            Density [i]  = (float) rho   *(1.0-Gamma[i]);
+            Vvec[3*i  ]  = (float) vel(0)*(1.0-Gamma[i]);
+            Vvec[3*i+1]  = (float) vel(1)*(1.0-Gamma[i]);
+            Vvec[3*i+2]  = (float) vel(2)*(1.0-Gamma[i]);
             i++;
         }
 
@@ -1513,7 +1517,7 @@ void Domain::CollideSC (size_t n, size_t Np)
                 NonEq[k] = c->F[k] - FDeqn;
                 //FEq  [k] = FDeqn;
                 Q += NonEq[k]*NonEq[k]*EEk[k];
-                if(c->Gamma>1.0e-12) c->Omeis[k] /= c->Gamma;
+                //if(c->Gamma>1.0e-12) c->Omeis[k] /= c->Gamma;
             }
             Q = sqrt(2.0*Q);
             Tau = 0.5*(Tau + sqrt(Tau*Tau + 6.0*Q*Sc/rho));
@@ -1945,9 +1949,10 @@ void Domain::ImprintLatticeSC (size_t n,size_t Np)
     
             double Tau = Lat[0].Tau;
             cell = Lat[0].Cells[ParCellPairs[i].ICell];
-            //cell->Gamma   = std::max(len/(12.0*Lat[0].dx),cell->Gamma);
             double gamma  = len/(12.0*Lat[0].dx);
-            cell->Gamma   = std::min(gamma+cell->Gamma,1.0);
+            cell->Gamma = gamma;
+            //cell->Gamma   = std::max(gamma,cell->Gamma);
+            //cell->Gamma   = std::min(gamma+cell->Gamma,1.0);
             //if (fabs(cell->Gamma-1.0)<1.0e-12)
             //if (fabs(cell->Gamma-1.0)<1.0e-12&&(fabs(Lat[0].G)>1.0e-12||Gmix>1.0e-12)) 
             Vec3_t B      = C - Pa->x;
@@ -1966,8 +1971,8 @@ void Domain::ImprintLatticeSC (size_t n,size_t Np)
                 double Fvp      = cell->Feq(k          ,VelP,rho);
                 double Omega    = cell->F[cell->Op[k]] - Fvpp - (cell->F[k] - Fvp);
                 //cell->Omeis[k] += Omega;
-                cell->Omeis[k] += gamma*Omega;
-
+                //cell->Omeis[k] += gamma*Omega;
+                cell->Omeis[k] = Omega;
                 Flbm += -Fconv*Bn*Omega*cell->Cs*cell->Cs*Lat[0].dx*Lat[0].dx*cell->C[k];
             }
             Vec3_t T,Tt;

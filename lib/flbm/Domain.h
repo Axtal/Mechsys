@@ -42,6 +42,7 @@
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/util/util.h>
 #include <mechsys/util/stopwatch.h>
+#include <mechsys/util/numstreams.h>
 
 enum LBMethod
 {
