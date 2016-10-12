@@ -36,7 +36,7 @@
 //#include <mechsys/mesh/mesh.h>
 //#include <mechsys/util/util.h>
 //#include <mechsys/util/maps.h>
-//#include <mechsys/mesh/unstructured.h>
+#include <mechsys/mesh/unstructured.h>
 //#include <mechsys/util/tree.h>
 
 using std::set;
