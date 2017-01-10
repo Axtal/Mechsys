@@ -85,7 +85,8 @@ int main(int argc, char **argv) try
     double nu     = u_max*(2*radius)/Re; // viscocity
     //double nu     = 1.0/6.0; // viscocity
     LBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
-    Dom.Fconv = 1.0;
+    //Dom.Fconv = 1.0;
+    Dom.PrtDou = true;
     UserData dat;
     Dom.UserData = &dat;
 

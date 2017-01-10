@@ -111,6 +111,7 @@ public:
     void WriteBF           (char const * FileKey);  ///< Save a h5 with branch and force information
     void WriteFrac         (char const * FileKey);  ///< Save a xdmf file for fracture visualization
     void WriteXDMF         (char const * FileKey);  ///< Write the domain data in xdmf file
+    void WriteXDMF_D       (char const * FileKey);  ///< Write the domain data in xdmf file with double precision
     void Load              (char const * FileKey);  ///< Load particle data from Mechsys DEM
 #endif
     void UpdateLinkedCells ();                                                                                  ///< Update the linked cells
@@ -142,6 +143,7 @@ public:
     bool                                         Initialized;         ///< System (particles and interactons) initialized ?
     bool                                              RotPar;         ///< Check if particles should be rotated, useful if particle displacements are small
     bool                                              PrtVec;         ///< Print Vector data into the xdmf-h5 files
+    bool                                              PrtDou;         ///< Use double precision in h5 output files
     bool                                            Finished;         ///< Has the simulation finished
     bool                                              Dilate;         ///< True if eroded particles should be dilated for visualization
     Array<size_t>                                    FreePar;         ///< Particles that are free
@@ -215,6 +217,7 @@ inline Domain::Domain(LBMethod Method, Array<double> nu, iVec3_t Ndim, double dx
     if (nu.Size()>1) Sc = 0.0;
     else             Sc = 0.17;
     PrtVec = true;
+    PrtDou = false;
     RotPar = true;
     Fconv  = 1.0;
 
@@ -249,6 +252,7 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
     Step   = 1;
     Sc     = 0.17;
     PrtVec = true;
+    PrtDou = false;
     RotPar = true;
     Fconv  = 1.0;
 
@@ -742,18 +746,6 @@ inline void Domain::WriteXDMF(char const * FileKey)
             i++;
         }
 
-
-        //for (size_t i=0;i<Lat[j].Cells.Size();i++)
-        //{
-            //double rho   = Lat[j].Cells[i]->Rho;
-            //Vec3_t vel   = Lat[j].Cells[i]->Vel;
-            //Density [i]  = (float) rho;
-            //Gamma   [i]  = (float) Lat[j].Cells[i]->IsSolid? 1.0:Lat[j].Cells[i]->Gamma;
-            //Vvec[3*i  ]  = (float) vel(0);
-            //Vvec[3*i+1]  = (float) vel(1);
-            //Vvec[3*i+2]  = (float) vel(2);
-        //}
-
         //Write the data
         hsize_t dims[1];
         dims[0] = Nx*Ny*Nz;
@@ -1158,6 +1150,474 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "     </Attribute>\n";
         oss << "     <Attribute Name=\"Torque\" AttributeType=\"Vector\" Center=\"Node\">\n";
         oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/PTorque\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "   </Grid>\n";
+        }
+        oss << " </Domain>\n";
+        oss << "</Xdmf>\n";
+    }
+    fn = FileKey;
+    fn.append(".xmf");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
+}
+
+inline void Domain::WriteXDMF_D(char const * FileKey)
+{
+    String fn(FileKey);
+    fn.append(".h5");
+    hid_t     file_id;
+    file_id = H5Fcreate(fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    size_t  Nx = Lat[0].Ndim[0]/Step;
+    size_t  Ny = Lat[0].Ndim[1]/Step;
+    size_t  Nz = Lat[0].Ndim[2]/Step;
+    for (size_t j=0;j<Lat.Size();j++)
+    {
+        // Creating data sets
+        double * Density   = new double[  Nx*Ny*Nz];
+        double * Gamma     = new double[  Nx*Ny*Nz];
+        double * Vvec      = new double[3*Nx*Ny*Nz];
+
+        size_t i=0;
+        for (size_t m=0;m<Lat[0].Ndim(2);m+=Step)
+        for (size_t l=0;l<Lat[0].Ndim(1);l+=Step)
+        for (size_t n=0;n<Lat[0].Ndim(0);n+=Step)
+        {
+            double rho    = 0.0;
+            double gamma  = 0.0;
+            Vec3_t vel    = OrthoSys::O;
+
+            for (size_t ni=0;ni<Step;ni++)
+            for (size_t li=0;li<Step;li++)
+            for (size_t mi=0;mi<Step;mi++)
+            {
+                rho  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Rho;
+                gamma+= Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Gamma;
+                vel  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel;
+                vel  += dt*0.5*Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->BForce;
+            }
+            rho  /= Step*Step*Step;
+            gamma/= Step*Step*Step;
+            vel  /= Step*Step*Step;
+            Gamma   [i]  = (double) Lat[j].Cells[i]->IsSolid&&Step==1? 1.0: gamma;
+            //Density [i]  = (double) rho;
+            //Vvec[3*i  ]  = (double) vel(0);
+            //Vvec[3*i+1]  = (double) vel(1);
+            //Vvec[3*i+2]  = (double) vel(2);
+            Density [i]  = (double) rho   *(1.0-Gamma[i]);
+            Vvec[3*i  ]  = (double) vel(0)*(1.0-Gamma[i]);
+            Vvec[3*i+1]  = (double) vel(1)*(1.0-Gamma[i]);
+            Vvec[3*i+2]  = (double) vel(2)*(1.0-Gamma[i]);
+            i++;
+        }
+
+        //Write the data
+        hsize_t dims[1];
+        dims[0] = Nx*Ny*Nz;
+        String dsname;
+        dsname.Printf("Density_%d",j);
+        H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Density );
+        if (j==0)
+        {
+            dsname.Printf("Gamma");
+            H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Gamma   );
+        }
+        if (PrtVec)
+        {
+            dims[0] = 3*Nx*Ny*Nz;
+            dsname.Printf("Velocity_%d",j);
+            H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Vvec    );
+        }
+        dims[0] = 1;
+        int N[1];
+        N[0] = Nx;
+        dsname.Printf("Nx");
+        H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,N);
+        dims[0] = 1;
+        N[0] = Ny;
+        dsname.Printf("Ny");
+        H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,N);
+        dims[0] = 1;
+        N[0] = Nz;
+        dsname.Printf("Nz");
+        H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,N);
+
+        delete [] Density ;
+        delete [] Gamma   ;
+        delete [] Vvec    ;
+    }
+
+
+    size_t N_Faces = 0;
+    size_t N_Verts = 0;
+    //Writing particle data
+    if (Particles.Size()>0)
+    {
+        for (size_t i=0; i<Particles.Size(); i++) 
+        { 
+            for (size_t j=0;j<Particles[i]->Faces.Size();j++)
+            {
+                N_Faces += Particles[i]->Faces[j]->Edges.Size();
+            }
+            N_Verts += Particles[i]->Verts.Size() + Particles[i]->Faces.Size();
+        }
+        if (N_Faces>0)
+        {
+
+            //Geometric information
+            double  * Verts   = new double [3*N_Verts];
+            int    * FaceCon = new int   [3*N_Faces];
+            
+            //Atributes
+            int    * Tags    = new int   [  N_Faces];
+            int    * Clus    = new int   [  N_Faces];
+            double  * Vel     = new double [  N_Faces];
+            double  * Ome     = new double [  N_Faces];
+            //double  * Stress  = new double [9*N_Faces];
+
+            size_t n_verts = 0;
+            size_t n_faces = 0;
+            size_t n_attrs = 0;
+            //size_t n_attrv = 0;
+            //size_t n_attrt = 0;
+            for (size_t i=0;i<Particles.Size();i++)
+            {
+                DEM::Particle * Pa = Particles[i];
+                size_t n_refv = n_verts/3;
+                Array<Vec3_t> Vtemp(Pa->Verts.Size());
+                Array<Vec3_t> Vres (Pa->Verts.Size());
+                for (size_t j=0;j<Pa->Verts.Size();j++)
+                {
+                    Vtemp[j] = *Pa->Verts[j];
+                    Vres [j] = *Pa->Verts[j];
+                }
+                double multiplier = 0.0;
+
+                if (Dilate&&Pa->Eroded&&Pa->Faces.Size()>=4)
+                {
+                    DEM::Dilation(Vtemp,Pa->EdgeCon,Pa->FaceCon,Vres,Pa->Props.R);
+                    multiplier = 1.0;
+                }
+
+                for (size_t j=0;j<Pa->Verts.Size();j++)
+                {
+                    //Verts[n_verts++] = (double) (*Pa->Verts[j])(0);
+                    //Verts[n_verts++] = (double) (*Pa->Verts[j])(1);
+                    //Verts[n_verts++] = (double) (*Pa->Verts[j])(2);
+                    Verts[n_verts++] = (double) Vres[j](0);
+                    Verts[n_verts++] = (double) Vres[j](1);
+                    Verts[n_verts++] = (double) Vres[j](2);
+                }
+                size_t n_reff = n_verts/3;
+                for (size_t j=0;j<Pa->FaceCon.Size();j++)
+                {
+                    Vec3_t C,N;
+                    Pa->Faces[j]->Centroid(C);
+                    Pa->Faces[j]->Normal(N);
+                    Verts[n_verts++] = (double) C(0) + multiplier*Pa->Props.R*N(0);
+                    Verts[n_verts++] = (double) C(1) + multiplier*Pa->Props.R*N(1);
+                    Verts[n_verts++] = (double) C(2) + multiplier*Pa->Props.R*N(2);
+                    //Verts[n_verts++] = (double) C(0);
+                    //Verts[n_verts++] = (double) C(1);
+                    //Verts[n_verts++] = (double) C(2);
+                    for (size_t k=0;k<Pa->FaceCon[j].Size();k++)
+                    {
+                        size_t nin = Pa->FaceCon[j][k];
+                        size_t nen = Pa->FaceCon[j][(k+1)%Pa->FaceCon[j].Size()];
+                        FaceCon[n_faces++] = (int) n_reff + j;  
+                        FaceCon[n_faces++] = (int) n_refv + nin;
+                        FaceCon[n_faces++] = (int) n_refv + nen;
+
+                        //Writing the attributes
+                        Tags  [n_attrs] = (int)   Pa->Tag;
+                        Clus  [n_attrs] = size_t(Pa->Cluster);
+                        Vel   [n_attrs] = (double) norm(Pa->v);
+                        Ome   [n_attrs] = (double) norm(Pa->w);
+                        n_attrs++;
+
+                        //Vel [n_attrv  ] = (double) Pa->v(0);
+                        //Vel [n_attrv+1] = (double) Pa->v(1);
+                        //Vel [n_attrv+2] = (double) Pa->v(2);
+                        //n_attrv += 3;
+
+                        //Stress[n_attrt  ] = (double) Pa->M(0,0);
+                        //Stress[n_attrt+1] = (double) Pa->M(1,0);
+                        //Stress[n_attrt+2] = (double) Pa->M(2,0);
+                        //Stress[n_attrt+3] = (double) Pa->M(0,1);
+                        //Stress[n_attrt+4] = (double) Pa->M(1,1);
+                        //Stress[n_attrt+5] = (double) Pa->M(2,1);
+                        //Stress[n_attrt+6] = (double) Pa->M(0,2);
+                        //Stress[n_attrt+7] = (double) Pa->M(1,2);
+                        //Stress[n_attrt+8] = (double) Pa->M(2,2);
+                        //n_attrt += 9;
+                    }
+                }
+            }
+
+            //Write the data
+            hsize_t dims[1];
+            String dsname;
+            dims[0] = 3*N_Verts;
+            dsname.Printf("Verts");
+            H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Verts);
+            dims[0] = 3*N_Faces;
+            dsname.Printf("FaceCon");
+            H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,FaceCon);
+            dims[0] = N_Faces;
+            dsname.Printf("Tag");
+            H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,Tags   );
+            dims[0] = N_Faces;
+            dsname.Printf("Cluster");
+            H5LTmake_dataset_int(file_id,dsname.CStr(),1,dims,Clus   );
+            dims[0] = N_Faces;
+            dsname.Printf("Velocity");
+            H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Vel);
+            dims[0] = N_Faces;
+            dsname.Printf("AngVelocity");
+            H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Ome);
+            //dims[0] = 9*N_Faces;
+            //dsname.Printf("Stress");
+            //H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Stress);
+            
+            //Erasing the data
+            delete [] Verts;
+            delete [] FaceCon;
+            delete [] Tags;
+            delete [] Clus;
+            delete [] Vel;
+            delete [] Ome;
+            //delete [] Stress;
+        }
+        //Creating data sets
+        double * Radius = new double[  Particles.Size()];
+        double * Posvec = new double[3*Particles.Size()];
+        double * Velvec = new double[3*Particles.Size()];
+        double * Omevec = new double[3*Particles.Size()];
+        double * Forvec = new double[3*Particles.Size()];
+        double * Torvec = new double[3*Particles.Size()];
+        int   * Tags   = new int  [  Particles.Size()];
+        for (size_t i=0;i<Particles.Size();i++)
+        {
+            Vec3_t Ome,Tor;
+            Rotation(Particles[i]->w,Particles[i]->Q,Ome);
+            Rotation(Particles[i]->T,Particles[i]->Q,Tor);
+            Particles[i]->Verts.Size()==1 ? Radius[i] = double(Particles[i]->Dmax) : Radius[i] = 0.0;
+            Posvec[3*i  ] = (double) Particles[i]->x(0);
+            Posvec[3*i+1] = (double) Particles[i]->x(1);
+            Posvec[3*i+2] = (double) Particles[i]->x(2);
+            Velvec[3*i  ] = (double) Particles[i]->v(0);
+            Velvec[3*i+1] = (double) Particles[i]->v(1);
+            Velvec[3*i+2] = (double) Particles[i]->v(2);
+            Omevec[3*i  ] = (double) Ome(0);
+            Omevec[3*i+1] = (double) Ome(1);
+            Omevec[3*i+2] = (double) Ome(2);
+            Forvec[3*i  ] = (double) Particles[i]->F(0);
+            Forvec[3*i+1] = (double) Particles[i]->F(1);
+            Forvec[3*i+2] = (double) Particles[i]->F(2);
+            Torvec[3*i  ] = (double) Tor(0);
+            Torvec[3*i+1] = (double) Tor(1);
+            Torvec[3*i+2] = (double) Tor(2);
+            Tags  [i]     = (int)   Particles[i]->Tag;
+        }
+
+        hsize_t dims[1];
+        dims[0] = 3*Particles.Size();
+        String dsname;
+        dsname.Printf("Position");
+        H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Posvec);
+        dsname.Printf("PVelocity");
+        H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Velvec);
+        dsname.Printf("PAngVel");
+        H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Omevec);
+        dsname.Printf("PForce");
+        H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Forvec);
+        dsname.Printf("PTorque");
+        H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Torvec);
+        dims[0] = Particles.Size();
+        dsname.Printf("Radius");
+        H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Radius);
+        dsname.Printf("PTag");
+        H5LTmake_dataset_int  (file_id,dsname.CStr(),1,dims,Tags  );
+
+
+        delete [] Radius;
+        delete [] Posvec;
+        delete [] Velvec;
+        delete [] Omevec;
+        delete [] Forvec;
+        delete [] Torvec;
+        delete [] Tags  ;
+    }
+    
+    //Closing the file
+    H5Fflush(file_id,H5F_SCOPE_GLOBAL);
+    H5Fclose(file_id);
+
+	// Writing xmf fil
+    std::ostringstream oss;
+
+    //std::cout << "2" << std::endl;
+
+    if (Lat[0].Ndim(2)==1)
+    {
+        oss << "<?xml version=\"1.0\" ?>\n";
+        oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
+        oss << "<Xdmf Version=\"2.0\">\n";
+        oss << " <Domain>\n";
+        oss << "   <Grid Name=\"mesh1\" GridType=\"Uniform\">\n";
+        oss << "     <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"" << Lat[0].Ndim(1) << " " << Lat[0].Ndim(0) << "\"/>\n";
+        oss << "     <Geometry GeometryType=\"ORIGIN_DXDY\">\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Double\" Dimensions=\"2\"> 0.0 0.0\n";
+        oss << "       </DataItem>\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Double\" Dimensions=\"2\"> 1.0 1.0\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Geometry>\n";
+        for (size_t j=0;j<Lat.Size();j++)
+        {
+        oss << "     <Attribute Name=\"Density_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Density_" << j << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        if (PrtVec)
+        {
+        oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        }
+        }
+        oss << "     <Attribute Name=\"Gamma\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Gamma\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "   </Grid>\n";
+        oss << " </Domain>\n";
+        oss << "</Xdmf>\n";
+    }
+    else
+    {
+        oss << "<?xml version=\"1.0\" ?>\n";
+        oss << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n";
+        oss << "<Xdmf Version=\"2.0\">\n";
+        oss << " <Domain>\n";
+        oss << "   <Grid Name=\"LBM_Mesh\" GridType=\"Uniform\">\n";
+        oss << "     <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\"/>\n";
+        oss << "     <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Double\" Dimensions=\"3\"> 0.0 0.0 0.0\n";
+        oss << "       </DataItem>\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Double\" Dimensions=\"3\"> " << Step*Lat[0].dx << " " << Step*Lat[0].dx  << " " << Step*Lat[0].dx  << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Geometry>\n";
+        for (size_t j=0;j<Lat.Size();j++)
+        {
+        oss << "     <Attribute Name=\"Density_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Density_" << j << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        if (PrtVec)
+        {
+        oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        }
+        }
+        oss << "     <Attribute Name=\"Gamma\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Gamma\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "   </Grid>\n";
+        if(Particles.Size()>0)
+        {
+        if(N_Faces>0)
+        {
+        oss << "   <Grid Name=\"DEM_Faces\">\n";
+        oss << "     <Topology TopologyType=\"Triangle\" NumberOfElements=\"" << N_Faces << "\">\n";
+        oss << "       <DataItem Format=\"HDF\" DataType=\"Int\" Dimensions=\"" << N_Faces << " 3\">\n";
+        oss << "        " << fn.CStr() <<":/FaceCon \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Topology>\n";
+        oss << "     <Geometry GeometryType=\"XYZ\">\n";
+        oss << "       <DataItem Format=\"HDF\" NumberType=\"Double\" Precision=\"4\" Dimensions=\"" << N_Verts << " 3\" >\n";
+        oss << "        " << fn.CStr() <<":/Verts \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Geometry>\n";
+        oss << "     <Attribute Name=\"Tag\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+        oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Tag \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Cluster\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+        oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Cluster \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+        oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Double\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Velocity \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"AngVelocity\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
+        oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Double\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/AngVelocity \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        //oss << "     </Attribute>\n";
+        //oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Cell\">\n";
+        //oss << "       <DataItem Dimensions=\"" << N_Faces << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        //oss << "        " << fn.CStr() <<":/AngVelocity \n";
+        //oss << "       </DataItem>\n";
+        //oss << "     </Attribute>\n";
+        //oss << "     <Attribute Name=\"Stress\" AttributeType=\"Tensor\" Center=\"Cell\">\n";
+        //oss << "       <DataItem Dimensions=\"" << N_Faces << " 3 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        //oss << "        " << fn.CStr() <<":/Stress \n";
+        //oss << "       </DataItem>\n";
+        //oss << "     </Attribute>\n";
+        oss << "   </Grid>\n";
+        }
+        oss << "   <Grid Name=\"DEM_Center\" GridType=\"Uniform\">\n";
+        oss << "     <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"" << Particles.Size() << "\"/>\n";
+        oss << "     <Geometry GeometryType=\"XYZ\">\n";
+        oss << "       <DataItem Format=\"HDF\" NumberType=\"Double\" Precision=\"4\" Dimensions=\"" << Particles.Size() << " 3\" >\n";
+        oss << "        " << fn.CStr() <<":/Position \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Geometry>\n";
+        oss << "     <Attribute Name=\"Radius\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << "\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Radius \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Tag\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << "\" NumberType=\"Int\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/PTag \n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/PVelocity\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"AngVel\" AttributeType=\"Vector\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/PAngVel\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Force\" AttributeType=\"Vector\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/PForce\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        oss << "     <Attribute Name=\"Torque\" AttributeType=\"Vector\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/PTorque\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
@@ -3029,7 +3489,8 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
                 if ( RenderVideo) 
                 {
                     #ifdef USE_HDF5
-                    WriteXDMF(fn.CStr());
+                    if (PrtDou) WriteXDMF_D(fn.CStr());
+                    else        WriteXDMF  (fn.CStr());
                     #else
                     //WriteVTK (fn.CStr());
                     #endif
