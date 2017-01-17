@@ -21,6 +21,7 @@ SET(PROGS
     dam
     magnus
     multicomp
+    single
     tlbm01
     tlbm02
     tlbm03

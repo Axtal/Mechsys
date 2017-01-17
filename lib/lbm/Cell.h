@@ -89,6 +89,7 @@ public:
     Vec3_t       BForce;   ///< Applied body force
     Vec3_t       BForcef;  ///< Fixed Applied body force
     double       RhoBC;    ///< Density at boundary
+    double       Pf;       ///< Percolation parameter for partial porosity calculation
 
     size_t const  * Op;    ///< Pointer to opposite velocities
     double const  * W;     ///< Pointer to array of weights
@@ -112,6 +113,7 @@ inline Cell::Cell(size_t TheID, LBMethod TheMethod, iVec3_t TheIndexes, iVec3_t 
     Cs     = TheCs;
     Gamma  = 0.0;
     Gammap = 0.0;
+    Pf     = 1.0;
     Gs     = 1.0;
     //Tau    = TheTau;
     if (TheMethod==D2Q5)

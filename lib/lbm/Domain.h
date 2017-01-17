@@ -144,6 +144,7 @@ public:
     bool                                              RotPar;         ///< Check if particles should be rotated, useful if particle displacements are small
     bool                                              PrtVec;         ///< Print Vector data into the xdmf-h5 files
     bool                                              PrtDou;         ///< Use double precision in h5 output files
+    bool                                              PrtPer;         ///< Print percolation parameter when applicable
     bool                                            Finished;         ///< Has the simulation finished
     bool                                              Dilate;         ///< True if eroded particles should be dilated for visualization
     Array<size_t>                                    FreePar;         ///< Particles that are free
@@ -711,6 +712,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
         // Creating data sets
         float * Density   = new float[  Nx*Ny*Nz];
         float * Gamma     = new float[  Nx*Ny*Nz];
+        float * Per       = new float[  Nx*Ny*Nz];
         float * Vvec      = new float[3*Nx*Ny*Nz];
 
         size_t i=0;
@@ -720,6 +722,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
         {
             double rho    = 0.0;
             double gamma  = 0.0;
+            double per    = 0.0;
             Vec3_t vel    = OrthoSys::O;
 
             for (size_t ni=0;ni<Step;ni++)
@@ -728,13 +731,16 @@ inline void Domain::WriteXDMF(char const * FileKey)
             {
                 rho  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Rho;
                 gamma+= Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Gamma;
+                per  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Pf;
                 vel  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel;
                 vel  += dt*0.5*Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->BForce;
             }
             rho  /= Step*Step*Step;
             gamma/= Step*Step*Step;
+            per  /= Step*Step*Step;
             vel  /= Step*Step*Step;
             Gamma   [i]  = (float) Lat[j].Cells[i]->IsSolid&&Step==1? 1.0: gamma;
+            Per     [i]  = per;
             //Density [i]  = (float) rho;
             //Vvec[3*i  ]  = (float) vel(0);
             //Vvec[3*i+1]  = (float) vel(1);
@@ -756,6 +762,11 @@ inline void Domain::WriteXDMF(char const * FileKey)
         {
             dsname.Printf("Gamma");
             H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Gamma   );
+            if (PrtPer)
+            {
+                dsname.Printf("Per");
+                H5LTmake_dataset_float(file_id,dsname.CStr(),1,dims,Per );
+            }
         }
         if (PrtVec)
         {
@@ -779,6 +790,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
 
         delete [] Density ;
         delete [] Gamma   ;
+        delete [] Per     ;
         delete [] Vvec    ;
     }
 
@@ -1023,6 +1035,14 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "     </Attribute>\n";
         }
         }
+        if (PrtPer)
+        {
+        oss << "     <Attribute Name=\"Per\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Per\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        }
         oss << "     <Attribute Name=\"Gamma\" AttributeType=\"Scalar\" Center=\"Node\">\n";
         oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Gamma\n";
@@ -1061,6 +1081,14 @@ inline void Domain::WriteXDMF(char const * FileKey)
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         }
+        }
+        if (PrtPer)
+        {
+        oss << "     <Attribute Name=\"Per\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Per\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
         }
         oss << "     <Attribute Name=\"Gamma\" AttributeType=\"Scalar\" Center=\"Node\">\n";
         oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
@@ -2003,12 +2031,11 @@ void Domain::CollideSC (size_t n, size_t Np)
                 {
                     //double FDeqn = c->Feq(k,DV,rho);
                     //c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
-                    c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k]);
-                    //newrho += c->Ftemp[k];
+                    c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k] - (1.0 - c->Pf)*(c->F[c->Op[k]] - c->F[k] + NonEq[k]/Tau));
                     if (c->Ftemp[k]<-1.0e-12&&num<2)
                     {
                         //double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
-                        double temp = fabs(c->F[k]/((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k]));
+                        double temp = fabs(c->F[k]/((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k] - (1.0 - c->Pf)*(c->F[c->Op[k]] - c->F[k] + NonEq[k]/Tau)));
                         if (temp<alphat) alphat = temp;
                         valid = true;
                     }
@@ -2216,11 +2243,11 @@ void Domain::CollideNoPar (size_t n, size_t Np)
                     alphal  = alphat;
                     for (size_t k=0;k<c->Nneigh;k++)
                     {
-                        c->Ftemp[k] = c->F[k] - alphal*((NonEq[k])/Tau);
+                        c->Ftemp[k] = c->F[k] - alphal*((NonEq[k])/Tau - (1.0 - c->Pf)*(c->F[c->Op[k]] - c->F[k] + NonEq[k]/Tau));
                         //newrho += c->Ftemp[k];
                         if (c->Ftemp[k]<-1.0e-12&&num<2)
                         {
-                            double temp = fabs(c->F[k]/(NonEq[k]/Tau));
+                            double temp = fabs(c->F[k]/(NonEq[k]/Tau - (1.0 - c->Pf)*(c->F[c->Op[k]] - c->F[k] + NonEq[k]/Tau)));
                             if (temp<alphat) alphat = temp;
                             valid = true;
                         }
@@ -3413,6 +3440,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
     for (size_t i=0;i<Lat[0].Ncells;i++)
     {
         Cell * c = Lat[0].Cells[i];
+        if (fabs(1.0-c->Pf) > 1.0e-8) PrtPer = true;
         for (size_t j=1;j<c->Nneigh;j++)
         {
             Cell * nb = Lat[0].Cells[c->Neighs[j]];
