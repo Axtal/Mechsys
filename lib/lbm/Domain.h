@@ -730,7 +730,7 @@ inline void Domain::WriteXDMF(char const * FileKey)
             for (size_t mi=0;mi<Step;mi++)
             {
                 rho  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Rho;
-                gamma+= Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Gamma;
+                gamma+= std::max(Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Gamma,(double) Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->IsSolid);
                 per  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Pf;
                 vel  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel;
                 vel  += dt*0.5*Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->BForce;
@@ -739,7 +739,8 @@ inline void Domain::WriteXDMF(char const * FileKey)
             gamma/= Step*Step*Step;
             per  /= Step*Step*Step;
             vel  /= Step*Step*Step;
-            Gamma   [i]  = (float) Lat[j].Cells[i]->IsSolid&&Step==1? 1.0: gamma;
+            //Gamma   [i]  = (float) Lat[j].Cells[i]->IsSolid? 1.0: gamma;
+            Gamma   [i]  = gamma;
             Per     [i]  = per;
             //Density [i]  = (float) rho;
             //Vvec[3*i  ]  = (float) vel(0);
@@ -1207,6 +1208,7 @@ inline void Domain::WriteXDMF_D(char const * FileKey)
         // Creating data sets
         double * Density   = new double[  Nx*Ny*Nz];
         double * Gamma     = new double[  Nx*Ny*Nz];
+        double * Per       = new double[  Nx*Ny*Nz];
         double * Vvec      = new double[3*Nx*Ny*Nz];
 
         size_t i=0;
@@ -1216,6 +1218,7 @@ inline void Domain::WriteXDMF_D(char const * FileKey)
         {
             double rho    = 0.0;
             double gamma  = 0.0;
+            double per    = 0.0;
             Vec3_t vel    = OrthoSys::O;
 
             for (size_t ni=0;ni<Step;ni++)
@@ -1223,14 +1226,18 @@ inline void Domain::WriteXDMF_D(char const * FileKey)
             for (size_t mi=0;mi<Step;mi++)
             {
                 rho  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Rho;
-                gamma+= Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Gamma;
+                gamma+= std::max(Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Gamma,(double) Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->IsSolid);
+                per  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Pf;
                 vel  += Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->Vel;
                 vel  += dt*0.5*Lat[j].GetCell(iVec3_t(n+ni,l+li,m+mi))->BForce;
             }
             rho  /= Step*Step*Step;
             gamma/= Step*Step*Step;
+            per  /= Step*Step*Step;
             vel  /= Step*Step*Step;
-            Gamma   [i]  = (double) Lat[j].Cells[i]->IsSolid&&Step==1? 1.0: gamma;
+            //Gamma   [i]  = (double) Lat[j].Cells[i]->IsSolid? 1.0: gamma;
+            Gamma   [i]  = gamma;
+            Per     [i]  = per;
             //Density [i]  = (double) rho;
             //Vvec[3*i  ]  = (double) vel(0);
             //Vvec[3*i+1]  = (double) vel(1);
@@ -1252,6 +1259,11 @@ inline void Domain::WriteXDMF_D(char const * FileKey)
         {
             dsname.Printf("Gamma");
             H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Gamma   );
+            if (PrtPer)
+            {
+                dsname.Printf("Per");
+                H5LTmake_dataset_double(file_id,dsname.CStr(),1,dims,Per );
+            }
         }
         if (PrtVec)
         {
@@ -1275,6 +1287,7 @@ inline void Domain::WriteXDMF_D(char const * FileKey)
 
         delete [] Density ;
         delete [] Gamma   ;
+        delete [] Per     ;
         delete [] Vvec    ;
     }
 
@@ -1498,29 +1511,37 @@ inline void Domain::WriteXDMF_D(char const * FileKey)
         oss << "   <Grid Name=\"mesh1\" GridType=\"Uniform\">\n";
         oss << "     <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"" << Lat[0].Ndim(1) << " " << Lat[0].Ndim(0) << "\"/>\n";
         oss << "     <Geometry GeometryType=\"ORIGIN_DXDY\">\n";
-        oss << "       <DataItem Format=\"XML\" NumberType=\"Double\" Dimensions=\"2\"> 0.0 0.0\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\"> 0.0 0.0\n";
         oss << "       </DataItem>\n";
-        oss << "       <DataItem Format=\"XML\" NumberType=\"Double\" Dimensions=\"2\"> 1.0 1.0\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\"> 1.0 1.0\n";
         oss << "       </DataItem>\n";
         oss << "     </Geometry>\n";
         for (size_t j=0;j<Lat.Size();j++)
         {
         oss << "     <Attribute Name=\"Density_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Density_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         if (PrtVec)
         {
         oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         }
         }
+        if (PrtPer)
+        {
+        oss << "     <Attribute Name=\"Per\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Per\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        }
         oss << "     <Attribute Name=\"Gamma\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Lat[0].Ndim(0) << " " << Lat[0].Ndim(1) << " " << Lat[0].Ndim(2) << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Gamma\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
@@ -1537,29 +1558,37 @@ inline void Domain::WriteXDMF_D(char const * FileKey)
         oss << "   <Grid Name=\"LBM_Mesh\" GridType=\"Uniform\">\n";
         oss << "     <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\"/>\n";
         oss << "     <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n";
-        oss << "       <DataItem Format=\"XML\" NumberType=\"Double\" Dimensions=\"3\"> 0.0 0.0 0.0\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> 0.0 0.0 0.0\n";
         oss << "       </DataItem>\n";
-        oss << "       <DataItem Format=\"XML\" NumberType=\"Double\" Dimensions=\"3\"> " << Step*Lat[0].dx << " " << Step*Lat[0].dx  << " " << Step*Lat[0].dx  << "\n";
+        oss << "       <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\"> " << Step*Lat[0].dx << " " << Step*Lat[0].dx  << " " << Step*Lat[0].dx  << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Geometry>\n";
         for (size_t j=0;j<Lat.Size();j++)
         {
         oss << "     <Attribute Name=\"Density_" << j << "\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Density_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         if (PrtVec)
         {
         oss << "     <Attribute Name=\"Velocity_" << j << "\" AttributeType=\"Vector\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Velocity_" << j << "\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         }
         }
+        if (PrtPer)
+        {
+        oss << "     <Attribute Name=\"Per\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "        " << fn.CStr() <<":/Per\n";
+        oss << "       </DataItem>\n";
+        oss << "     </Attribute>\n";
+        }
         oss << "     <Attribute Name=\"Gamma\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Nz << " " << Ny << " " << Nx << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Gamma\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
@@ -1575,7 +1604,7 @@ inline void Domain::WriteXDMF_D(char const * FileKey)
         oss << "       </DataItem>\n";
         oss << "     </Topology>\n";
         oss << "     <Geometry GeometryType=\"XYZ\">\n";
-        oss << "       <DataItem Format=\"HDF\" NumberType=\"Double\" Precision=\"4\" Dimensions=\"" << N_Verts << " 3\" >\n";
+        oss << "       <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"4\" Dimensions=\"" << N_Verts << " 3\" >\n";
         oss << "        " << fn.CStr() <<":/Verts \n";
         oss << "       </DataItem>\n";
         oss << "     </Geometry>\n";
@@ -1590,23 +1619,23 @@ inline void Domain::WriteXDMF_D(char const * FileKey)
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
-        oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Double\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Float\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Velocity \n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         oss << "     <Attribute Name=\"AngVelocity\" AttributeType=\"Scalar\" Center=\"Cell\">\n";
-        oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Double\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << N_Faces << "\" NumberType=\"Float\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/AngVelocity \n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         //oss << "     </Attribute>\n";
         //oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Cell\">\n";
-        //oss << "       <DataItem Dimensions=\"" << N_Faces << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        //oss << "       <DataItem Dimensions=\"" << N_Faces << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         //oss << "        " << fn.CStr() <<":/AngVelocity \n";
         //oss << "       </DataItem>\n";
         //oss << "     </Attribute>\n";
         //oss << "     <Attribute Name=\"Stress\" AttributeType=\"Tensor\" Center=\"Cell\">\n";
-        //oss << "       <DataItem Dimensions=\"" << N_Faces << " 3 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        //oss << "       <DataItem Dimensions=\"" << N_Faces << " 3 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         //oss << "        " << fn.CStr() <<":/Stress \n";
         //oss << "       </DataItem>\n";
         //oss << "     </Attribute>\n";
@@ -1615,12 +1644,12 @@ inline void Domain::WriteXDMF_D(char const * FileKey)
         oss << "   <Grid Name=\"DEM_Center\" GridType=\"Uniform\">\n";
         oss << "     <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"" << Particles.Size() << "\"/>\n";
         oss << "     <Geometry GeometryType=\"XYZ\">\n";
-        oss << "       <DataItem Format=\"HDF\" NumberType=\"Double\" Precision=\"4\" Dimensions=\"" << Particles.Size() << " 3\" >\n";
+        oss << "       <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"4\" Dimensions=\"" << Particles.Size() << " 3\" >\n";
         oss << "        " << fn.CStr() <<":/Position \n";
         oss << "       </DataItem>\n";
         oss << "     </Geometry>\n";
         oss << "     <Attribute Name=\"Radius\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Particles.Size() << "\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/Radius \n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
@@ -1630,22 +1659,22 @@ inline void Domain::WriteXDMF_D(char const * FileKey)
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         oss << "     <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/PVelocity\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         oss << "     <Attribute Name=\"AngVel\" AttributeType=\"Vector\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/PAngVel\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         oss << "     <Attribute Name=\"Force\" AttributeType=\"Vector\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/PForce\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";
         oss << "     <Attribute Name=\"Torque\" AttributeType=\"Vector\" Center=\"Node\">\n";
-        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Double\" Precision=\"4\" Format=\"HDF\">\n";
+        oss << "       <DataItem Dimensions=\"" << Particles.Size() << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
         oss << "        " << fn.CStr() <<":/PTorque\n";
         oss << "       </DataItem>\n";
         oss << "     </Attribute>\n";

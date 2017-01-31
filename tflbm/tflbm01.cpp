@@ -189,8 +189,8 @@ int main(int argc, char **argv) try
     if (argc==2) Nproc=atoi(argv[1]);
     double u_max  = 0.1;                // Poiseuille's maximum velocity
     double Re     = 40000.0;                  // Reynold's number
-    size_t nx = 800;
-    size_t ny = 100;
+    size_t nx = 2400;
+    size_t ny = 300;
     int radius = ny/10 + 1;           // radius of inner circle (obstacle)
     double nu     = u_max*(2*radius)/Re; // viscocity
     FLBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,1), 1.0, 1.0);
