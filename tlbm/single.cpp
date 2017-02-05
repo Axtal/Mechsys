@@ -28,6 +28,8 @@ struct UserData
     double        rhomax;
     double        rhomin;
     double            pf;
+    double            dt;
+    double            dx;
     std::ofstream oss_ss;      
 };
 
@@ -88,7 +90,8 @@ void Report (LBM::Domain & dom, void * UD)
     }
     vave /= dom.Lat[0].Ndim(2)-2;
 
-    double kave = dat.pf*(dom.Lat[0].Tau-0.5)/(dat.rhomax-dat.rhomin)*vave*(dom.Lat[0].Ndim(0));
+    double kave = dat.pf*dat.dx*dat.dt*(dom.Lat[0].Tau-0.5)/(dat.rhomax-dat.rhomin)*vave*(dom.Lat[0].Ndim(0));
+    //double kave = dat.pf/(dat.rhomax-dat.rhomin)*vave*(dom.Lat[0].Ndim(0));
     
     double vth = (dom.Lat[0].Ndim(2)-2)*(dom.Lat[0].Ndim(2)-2)/(12.0*(dom.Lat[0].Tau-0.5))*(dat.rhomax-dat.rhomin)/(dom.Lat[0].Ndim(0));
 
@@ -98,18 +101,29 @@ void Report (LBM::Domain & dom, void * UD)
 int main(int argc, char **argv) try
 {
     size_t Nproc = 1; 
-    if (argc==2) Nproc=atoi(argv[1]);
+    double Pf    = 0.9;
+    double nu    = 0.16;
+    double dx    = 1.0;
+    double dt    = 1.0;
+    if (argc>=2) Nproc=atoi(argv[1]);
+    if (argc>=3) Pf   =atof(argv[2]);
+    if (argc>=4) nu   =atof(argv[3]);
+    if (argc>=5) dx   =atof(argv[4]);
+    if (argc>=6) dt   =atof(argv[5]);
     size_t nx = 100;
     size_t ny = 6;
     size_t nz = 20;
-    LBM::Domain Dom(D3Q15, 0.16, iVec3_t(nx,ny,nz), 1.0, 1.0);
+    LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
     
     UserData dat;
     Dom.UserData = &dat;
 
     dat.rhomin  = 1.0;
     dat.rhomax  = 1.03;
-    dat.pf      = 0.2;
+    //dat.rhomax  = 1.1;
+    dat.pf      = Pf;
+    dat.dt      = dt;
+    dat.dx      = dx;
 
     //Assigning solid boundaries at top and bottom
     //for (size_t i=0;i<nx;i++)
@@ -129,7 +143,7 @@ int main(int argc, char **argv) try
         Dom.Lat[0].GetCell(idx)->Pf = dat.pf;
     }  
     
-    Dom.Solve(40000.0,400.0,Setup,Report,"single",true,Nproc);
+    Dom.Solve(40000.0*dt,400.0*dt,Setup,Report,"single",true,Nproc);
     dat.oss_ss.close();
 }
 MECHSYS_CATCH

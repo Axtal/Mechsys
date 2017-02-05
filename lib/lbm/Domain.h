@@ -2060,11 +2060,11 @@ void Domain::CollideSC (size_t n, size_t Np)
                 {
                     //double FDeqn = c->Feq(k,DV,rho);
                     //c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
-                    c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k] - (1.0 - c->Pf)*(c->F[c->Op[k]] - c->F[k] + NonEq[k]/Tau));
+                    c->Ftemp[k] = c->F[k] - alphal*((1.0 - Bn)*(NonEq[k]/Tau - (1.0 - c->Pf)*(c->F[c->Op[k]] - c->F[k] + NonEq[k]/Tau)) - Bn*c->Omeis[k]);
                     if (c->Ftemp[k]<-1.0e-12&&num<2)
                     {
                         //double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
-                        double temp = fabs(c->F[k]/((1 - Bn)*(NonEq[k])/Tau - Bn*c->Omeis[k] - (1.0 - c->Pf)*(c->F[c->Op[k]] - c->F[k] + NonEq[k]/Tau)));
+                        double temp = fabs(c->F[k]/((1.0 - Bn)*(NonEq[k]/Tau - (1.0 - c->Pf)*(c->F[c->Op[k]] - c->F[k] + NonEq[k]/Tau)) - Bn*c->Omeis[k]));
                         if (temp<alphat) alphat = temp;
                         valid = true;
                     }
