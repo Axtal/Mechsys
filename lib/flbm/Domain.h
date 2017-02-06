@@ -112,6 +112,16 @@ public:
 	static const size_t   OPPOSITED3Q15 [15]; ///< Opposite directions (D3Q15)
 	static const size_t   OPPOSITED3Q19 [19]; ///< Opposite directions (D3Q19)
 	//static const size_t   OPPOSITED3Q27 [27]; ///< Opposite directions (D3Q27)
+    static const double   MD2Q5       [5][5]; ///< MRT transformation matrix (D2Q5)
+    static const double   MD2Q9       [9][9]; ///< MRT transformation matrix (D2Q9)
+    static const double   MD3Q15    [15][15]; ///< MRT transformation matrix (D3Q15)
+    static const double   MD3Q19    [19][19]; ///< MRT transformation matrix (D3Q19)
+    //static const size_t   MD3Q27    [27][27]; ///< MRT transformation matrix (D3Q27)
+    //static const double   SD2Q5          [5]; ///< MRT relaxation time vector (D2Q5)
+    //static const double   SD2Q9          [9]; ///< MRT relaxation time vector (D2Q9)
+    //static const double   SD3Q15        [15]; ///< MRT relaxation time vector (D3Q15)
+    //static const double   SD3Q19        [19]; ///< MRT relaxation time vector (D3Q19)
+    //static       double   SD3Q19        [27]; ///< MRT relaxation time vector (D3Q27)
     
     //typedefs
     typedef void (*ptDFun_t) (Domain & Dom, void * UserData);
@@ -134,6 +144,7 @@ public:
     void   ApplyForcesSC();                                                       ///< Apply the molecular forces for the single component case
     void   ApplyForcesMP();                                                       ///< Apply the molecular forces for the multiphase case
     void   ApplyForcesSCMP();                                                     ///< Apply the molecular forces for the both previous cases
+    void   CollideMRT();                                                          ///< The collide step of LBM with MRT
     void   CollideSC();                                                           ///< The collide step of LBM for single component simulations
     void   CollideMP();                                                           ///< The collide step of LBM for multi phase simulations
     void   StreamSC();                                                            ///< The stream step of LBM SC
@@ -177,6 +188,9 @@ public:
     double const *  W;                        ///< An array with the direction weights
     double *     EEk;                         ///< Diadic product of the velocity vectors
     Vec3_t const *  C;                        ///< The array of lattice velocities
+    Mat_t        M;                           ///< Transformation matrix to momentum space for MRT calculations
+    Mat_t        Minv;                        ///< Inverse Transformation matrix to momentum space for MRT calculations
+    Vec_t        S;                           ///< Vector of relaxation times for MRT
     size_t       Nneigh;                      ///< Number of Neighbors, depends on the scheme
     double       dt;                          ///< Time Step
     double       dx;                          ///< Grid size
@@ -243,6 +257,15 @@ inline Domain::Domain(LBMethod TheMethod, Array<double> nu, iVec3_t TheNdim, dou
         W      = WEIGHTSD3Q15;
         C      = LVELOCD3Q15;
         Op     = OPPOSITED3Q15;
+        M.Resize(Nneigh,Nneigh);
+        Minv.Resize(Nneigh,Nneigh);
+        std::cout << "miu" << std::endl;
+        for (size_t n=0;n<Nneigh;n++)
+        for (size_t m=0;m<Nneigh;m++)
+        {
+            M(n,m) = MD3Q15[n][m];
+        }
+        Inv(M,Minv);
     }
     if (TheMethod==D3Q19)
     {
@@ -372,6 +395,18 @@ inline Domain::Domain(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, double 
         W      = WEIGHTSD3Q15;
         C      = LVELOCD3Q15;
         Op     = OPPOSITED3Q15;
+        M.Resize(Nneigh,Nneigh);
+        Minv.Resize(Nneigh,Nneigh);
+        for (size_t n=0;n<Nneigh;n++)
+        for (size_t m=0;m<Nneigh;m++)
+        {
+            M(n,m) = MD3Q15[n][m];
+        }
+        Inv(M,Minv);
+        double tau = 3.0*Thenu*dt/(dx*dx)+0.5;
+        double s   = 8.0*(2.0-1.0/tau)/(8.0-1.0/tau);
+        S.Resize(Nneigh);
+        S = 0.0,1.0/tau,1.0/tau,0.0,s,0.0,s,0.0,s,1.0/tau,1.0/tau,1.0/tau,1.0/tau,1.0/tau,s;
     }
     if (TheMethod==D3Q19)
     {
@@ -825,7 +860,7 @@ inline void Domain::CollideSC()
             double Q = 0.0;
             double tau = Tau[0];
             double rho = Rho[0][ix][iy][iz];
-            Vec3_t vel = Vel[0][ix][iy][iz]+dt*BForce[0][ix][iy][iz]/rho;
+            Vec3_t vel = Vel[0][ix][iy][iz]+dt*tau*BForce[0][ix][iy][iz]/rho;
             double VdotV = dot(vel,vel);
             for (size_t k=0;k<Nneigh;k++)
             {
@@ -875,6 +910,100 @@ inline void Domain::CollideSC()
     Ftemp = tmp;
 }
 
+inline void Domain::CollideMRT()
+{
+    size_t nx = Ndim(0);
+    size_t ny = Ndim(1);
+    size_t nz = Ndim(2);
+
+    #ifdef USE_OMP
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+    #endif
+    for (size_t ix=0;ix<nx;ix++)
+    for (size_t iy=0;iy<ny;iy++)
+    for (size_t iz=0;iz<nz;iz++)
+    {
+        if (!IsSolid[0][ix][iy][iz])
+        {
+            //double NonEq[Nneigh];
+            double Q = 0.0;
+            double tau = Tau[0];
+            double rho = Rho[0][ix][iy][iz];
+            Vec3_t vel = Vel[0][ix][iy][iz]+dt*BForce[0][ix][iy][iz]/rho;
+            //double VdotV = dot(vel,vel);
+            //for (size_t k=0;k<Nneigh;k++)
+            //{
+                //double VdotC = dot(vel,C[k]);
+                //double Feq   = W[k]*rho*(1.0 + 3.0*VdotC/Cs + 4.5*VdotC*VdotC/(Cs*Cs) - 1.5*VdotV/(Cs*Cs));
+                //NonEq[k] = F[0][ix][iy][iz][k] - Feq;
+                //Q +=  NonEq[k]*NonEq[k]*EEk[k];
+            //}
+            //Q = sqrt(2.0*Q);
+            //tau = 0.5*(tau+sqrt(tau*tau + 6.0*Q*Sc/rho));
+            Vec3_t J = rho*vel;
+            Vec_t m(Nneigh),mnoneq(Nneigh),mt(Nneigh);
+            for (size_t k=0;k<Nneigh;k++)
+            {
+                mt(k) = F[0][ix][iy][iz][k];
+            }
+            m = M*mt;
+            mnoneq( 0) = 0.0; 
+            mnoneq( 1) = S( 1)*(m( 1) + rho - dot(J,J)/(Cs*Cs*rho));
+            mnoneq( 2) = S( 2)*(m( 2) + rho);
+            mnoneq( 3) = 0.0;
+            mnoneq( 4) = S( 4)*(m( 4) + 7.0/3.0*J(0)/Cs); 
+            mnoneq( 5) = 0.0;
+            mnoneq( 6) = S( 6)*(m( 6) + 7.0/3.0*J(1)/Cs); 
+            mnoneq( 7) = 0.0;
+            mnoneq( 8) = S( 8)*(m( 8) + 7.0/3.0*J(2)/Cs); 
+            mnoneq( 9) = S( 9)*(m( 9) - (2.0*J(0)*J(0)-J(1)*J(1)-J(2)*J(2))/(Cs*Cs*rho));
+            mnoneq(10) = S(10)*(m(10) - (J(1)*J(1)-J(2)*J(2))/(Cs*Cs*rho));
+            mnoneq(11) = S(11)*(m(11) - (J(0)*J(1))/(Cs*Cs*rho));
+            mnoneq(12) = S(12)*(m(12) - (J(1)*J(2))/(Cs*Cs*rho));
+            mnoneq(13) = S(13)*(m(13) - (J(0)*J(2))/(Cs*Cs*rho));
+            mnoneq(14) = S(14)* m(14);
+            
+            mnoneq = Minv*mnoneq;
+             
+                
+            bool valid = true;
+            double alpha = 1.0;
+            while (valid)
+            {
+                valid = false;
+                for (size_t k=0;k<Nneigh;k++)
+                {
+                    Ftemp[0][ix][iy][iz][k] = F[0][ix][iy][iz][k] - alpha*mnoneq(k);
+                    //if (Ftemp[0][ix][iy][iz][k]<-1.0e-12)
+                    //{
+                        //std::cout << Ftemp[0][ix][iy][iz][k] << std::endl;
+                        //double temp =  F[0][ix][iy][iz][k]/mnoneq(k);
+                        //if (temp<alpha) alpha = temp;
+                        //valid = true;
+                    //}
+                    //if (std::isnan(Ftemp[0][ix][iy][iz][k]))
+                    //{
+                        //std::cout << "CollideSC: Nan found, resetting" << std::endl;
+                        //std::cout << " " << alpha << " " << iVec3_t(ix,iy,iz) << " " << k << " " << std::endl;
+                        //throw new Fatal("Domain::CollideSC: Distribution funcitons gave nan value, check parameters");
+                    //}
+                }
+            }
+        }
+        else
+        {
+            for (size_t k=0;k<Nneigh;k++)
+            {
+                Ftemp[0][ix][iy][iz][k] = F[0][ix][iy][iz][Op[k]];
+            }
+        }
+    }
+
+    double ***** tmp = F;
+    F = Ftemp;
+    Ftemp = tmp;
+}
+
 inline void Domain::CollideMP ()
 {
     size_t nx = Ndim(0);
@@ -902,7 +1031,7 @@ inline void Domain::CollideMP ()
             if (!IsSolid[il][ix][iy][iz])
             {
                 double rho = Rho[il][ix][iy][iz];
-                Vec3_t vel = Vmix + Tau[il]*BForce[il][ix][iy][iz]/rho;
+                Vec3_t vel = Vmix + dt*Tau[il]*BForce[il][ix][iy][iz]/rho;
                 double VdotV = dot(vel,vel);
                 bool valid = true;
                 double alpha = 1.0;
@@ -1435,6 +1564,7 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         {
             if (fabs(G[0])>1.0e-12) ApplyForcesSC();
             CollideSC();
+            //CollideMRT();
             StreamSC();
         }
         else
@@ -1474,6 +1604,20 @@ const Vec3_t Domain::LVELOCD3Q19 [19] =
     { 1, 1, 0}, {-1,-1, 0}, { 1,-1, 0}, {-1, 1, 0}, { 1, 0, 1}, {-1, 0,-1},
     { 1, 0,-1}, {-1, 0, 1}, { 0, 1, 1}, { 0,-1,-1}, { 0, 1,-1}, { 0,-1, 1}
 };
-
+const double Domain::MD3Q15 [15][15]  = { { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0},
+                                          {-2.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0},
+                                          {16.0,-4.0,-4.0,-4.0,-4.0,-4.0,-4.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0},
+                                          { 0.0, 1.0,-1.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0, 1.0,-1.0, 1.0,-1.0},
+                                          { 0.0,-4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0, 1.0,-1.0, 1.0,-1.0},
+                                          { 0.0, 0.0, 0.0, 1.0,-1.0, 0.0, 0.0, 1.0, 1.0,-1.0,-1.0, 1.0, 1.0,-1.0,-1.0},
+                                          { 0.0, 0.0, 0.0,-4.0, 4.0, 0.0, 0.0, 1.0, 1.0,-1.0,-1.0, 1.0, 1.0,-1.0,-1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0, 1.0, 1.0, 1.0, 1.0,-1.0,-1.0,-1.0,-1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0,-4.0, 4.0, 1.0, 1.0, 1.0, 1.0,-1.0,-1.0,-1.0,-1.0},
+                                          { 0.0, 2.0, 2.0,-1.0,-1.0,-1.0,-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+                                          { 0.0, 0.0, 0.0, 1.0, 1.0,-1.0,-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0,-1.0, 1.0, 1.0,-1.0,-1.0, 1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,-1.0,-1.0,-1.0,-1.0, 1.0, 1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0,-1.0, 1.0,-1.0, 1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0,-1.0, 1.0,-1.0, 1.0, 1.0,-1.0} };
 }
 #endif

@@ -218,12 +218,14 @@ void Report (FLBM::Domain & dom, void * UD)
 
 int main(int argc, char **argv) try
 {
-    size_t Nproc = 1; 
-    if (argc==2) Nproc=atoi(argv[1]);
+    size_t Nproc = 1;
+    double nu    = 0.16; 
+    if (argc>=2) Nproc=atoi(argv[1]);
+    if (argc>=3) nu   =atof(argv[2]);
     size_t nx = 100;
     size_t ny = 6;
     size_t nz = 10;
-    FLBM::Domain Dom(D3Q15, 1.0e-1, iVec3_t(nx,ny,nz), 1.0, 1.0);
+    FLBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), 1.0, 1.0);
     
     UserData dat;
     Dom.UserData = &dat;
@@ -248,8 +250,9 @@ int main(int argc, char **argv) try
         iVec3_t idx(ix,iy,iz);
         Dom.Initialize(0,idx,1.0,OrthoSys::O);
     }  
-    
-    Dom.Solve(8000.0,80.0,Setup,Report,"single",true,Nproc);
+    //std::cout << Dom.Minv << Dom.M << std::endl;
+
+    Dom.Solve(1.0,80.0,Setup,Report,"single",true,Nproc);
     dat.oss_ss.close();
 }
 MECHSYS_CATCH
