@@ -69,6 +69,9 @@ extern "C"
 
     // DGESV - double-general-solver
     void dgesv_(int *Np, int *NRHSp, double *A, int *LDAp, int *IPIVp, double *B, int *LDBp, int *INFOp);
+
+    // DGEMV - double-matrix-vector
+    void dgemv_(const char* jobu, const int* m, const int* n, const double* a, const double* A, const int* lda, const double* x, const int* incx, const double* b, double* y, const int* incy);
 }
 
 

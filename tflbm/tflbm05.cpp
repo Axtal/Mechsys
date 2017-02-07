@@ -225,6 +225,9 @@ int main(int argc, char **argv) try
     size_t nx = 100;
     size_t ny = 6;
     size_t nz = 10;
+    //size_t nx = 1;
+    //size_t ny = 1;
+    //size_t nz = 2;
     FLBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), 1.0, 1.0);
     
     UserData dat;
@@ -247,12 +250,14 @@ int main(int argc, char **argv) try
     for (size_t iy=0;iy<ny;iy++)
     for (size_t iz=0;iz<nz;iz++)
     {
+        Vec3_t v(0.0,0.0,0.0);
         iVec3_t idx(ix,iy,iz);
-        Dom.Initialize(0,idx,1.0,OrthoSys::O);
+        Dom.Initialize(0,idx,1.0,v);
     }  
     //std::cout << Dom.Minv << Dom.M << std::endl;
 
-    Dom.Solve(1.0,80.0,Setup,Report,"single",true,Nproc);
+    Dom.Solve(8000.0,80.0,Setup,Report,"single",true,Nproc);
+    //Dom.Solve(1.0,80.0,NULL,NULL,"single",true,Nproc);
     dat.oss_ss.close();
 }
 MECHSYS_CATCH

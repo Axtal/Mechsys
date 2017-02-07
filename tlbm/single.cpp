@@ -126,12 +126,12 @@ int main(int argc, char **argv) try
     dat.dx      = dx;
 
     //Assigning solid boundaries at top and bottom
-    for (size_t i=0;i<nx;i++)
-    for (size_t j=0;j<ny;j++)
-    {
-        Dom.Lat[0].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
-        Dom.Lat[0].GetCell(iVec3_t(i,j,nz-1))->IsSolid = true;
-    }
+    //for (size_t i=0;i<nx;i++)
+    //for (size_t j=0;j<ny;j++)
+    //{
+        //Dom.Lat[0].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
+        //Dom.Lat[0].GetCell(iVec3_t(i,j,nz-1))->IsSolid = true;
+    //}
 
 
     for (size_t ix=0;ix<nx;ix++)

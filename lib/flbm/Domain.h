@@ -375,6 +375,17 @@ inline Domain::Domain(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, double 
     if (TheNdim(2) >1&&(TheMethod==D2Q9 ||TheMethod==D2Q5 ))  throw new Fatal("LBM::Domain: D2Q9 scheme does not allow for a third dimension, please set Ndim(2)=1 or change to D3Q15");
     if (TheNdim(2)==1&&(TheMethod==D3Q15||TheMethod==D3Q19))  throw new Fatal("LBM::Domain: Ndim(2) is 1. Either change the method to D2Q9 or increase the z-dimension");
    
+    Time        = 0.0;
+    dt          = Thedt;
+    dx          = Thedx;
+    Cs          = dx/dt;
+    Step        = 1;
+    Sc          = 0.17;
+    Nl          = 1;
+    Ndim        = TheNdim;
+    Ncells      = Ndim(0)*Ndim(1)*Ndim(2);
+    IsFirstTime = true;
+
     if (TheMethod==D2Q5)
     {
         Nneigh = 5;
@@ -416,17 +427,6 @@ inline Domain::Domain(LBMethod TheMethod, double Thenu, iVec3_t TheNdim, double 
         Op     = OPPOSITED3Q19;
     }
     
-
-    Time        = 0.0;
-    dt          = Thedt;
-    dx          = Thedx;
-    Cs          = dx/dt;
-    Step        = 1;
-    Sc          = 0.17;
-    Nl          = 1;
-    Ndim        = TheNdim;
-    Ncells      = Ndim(0)*Ndim(1)*Ndim(2);
-    IsFirstTime = true;
 
 
     Tau    = new double [Nl];
@@ -940,32 +940,82 @@ inline void Domain::CollideMRT()
             //}
             //Q = sqrt(2.0*Q);
             //tau = 0.5*(tau+sqrt(tau*tau + 6.0*Q*Sc/rho));
-            Vec3_t J = rho*vel;
-            Vec_t m(Nneigh),mnoneq(Nneigh),mt(Nneigh);
-            for (size_t k=0;k<Nneigh;k++)
-            {
-                mt(k) = F[0][ix][iy][iz][k];
-            }
-            m = M*mt;
-            mnoneq( 0) = 0.0; 
-            mnoneq( 1) = S( 1)*(m( 1) + rho - dot(J,J)/(Cs*Cs*rho));
-            mnoneq( 2) = S( 2)*(m( 2) + rho);
-            mnoneq( 3) = 0.0;
-            mnoneq( 4) = S( 4)*(m( 4) + 7.0/3.0*J(0)/Cs); 
-            mnoneq( 5) = 0.0;
-            mnoneq( 6) = S( 6)*(m( 6) + 7.0/3.0*J(1)/Cs); 
-            mnoneq( 7) = 0.0;
-            mnoneq( 8) = S( 8)*(m( 8) + 7.0/3.0*J(2)/Cs); 
-            mnoneq( 9) = S( 9)*(m( 9) - (2.0*J(0)*J(0)-J(1)*J(1)-J(2)*J(2))/(Cs*Cs*rho));
-            mnoneq(10) = S(10)*(m(10) - (J(1)*J(1)-J(2)*J(2))/(Cs*Cs*rho));
-            mnoneq(11) = S(11)*(m(11) - (J(0)*J(1))/(Cs*Cs*rho));
-            mnoneq(12) = S(12)*(m(12) - (J(1)*J(2))/(Cs*Cs*rho));
-            mnoneq(13) = S(13)*(m(13) - (J(0)*J(2))/(Cs*Cs*rho));
-            mnoneq(14) = S(14)* m(14);
-            
-            mnoneq = Minv*mnoneq;
+            //Vec_t f(Nneigh),fnoneq(Nneigh);
+            //for (size_t k=0;k<Nneigh;k++)
+            //{
+                //f(k) = F[0][ix][iy][iz][k];
+            //}
+            //m = M*f;
+            //f = M*f;
+            //fnoneq( 0) = 0.0; 
+            //fnoneq( 1) = S( 1)*(f( 1) + rho - rho*dot(vel,vel)/(Cs*Cs));
+            //fnoneq( 2) = S( 2)*(f( 2) - rho);
+            //fnoneq( 3) = 0.0;
+            //fnoneq( 4) = S( 4)*(f( 4) + 7.0/3.0*rho*vel(0)/Cs); 
+            //fnoneq( 5) = 0.0;
+            //fnoneq( 6) = S( 6)*(f( 6) + 7.0/3.0*rho*vel(1)/Cs); 
+            //fnoneq( 7) = 0.0;
+            //fnoneq( 8) = S( 8)*(f( 8) + 7.0/3.0*rho*vel(2)/Cs); 
+            //fnoneq( 9) = S( 9)*(f( 9) - rho*(2.0*vel(0)*vel(0)-vel(1)*vel(1)-vel(2)*vel(2))/(Cs*Cs));
+            //fnoneq(10) = S(10)*(f(10) - rho*(vel(1)*vel(1)-vel(2)*vel(2))/(Cs*Cs));
+            //fnoneq(11) = S(11)*(f(11) - rho*(vel(0)*vel(1))/(Cs*Cs));
+            //fnoneq(12) = S(12)*(f(12) - rho*(vel(1)*vel(2))/(Cs*Cs));
+            //fnoneq(13) = S(13)*(f(13) - rho*(vel(0)*vel(2))/(Cs*Cs));
+            //fnoneq(14) = S(14)* f(14);
+            //
+            //fnoneq = Minv*fnoneq;
              
-                
+            //std::cout << f << fnoneq << std::endl;
+            //bool valid = true;
+            //double alpha = 1.0;
+            //while (valid)
+            //{
+                //valid = false;
+                //for (size_t k=0;k<Nneigh;k++)
+                //{
+                    //Ftemp[0][ix][iy][iz][k] = F[0][ix][iy][iz][k] - alpha*fnoneq(k);
+                    //if (Ftemp[0][ix][iy][iz][k]<-1.0e-12)
+                    //{
+                        //std::cout << Ftemp[0][ix][iy][iz][k] << std::endl;
+                        //double temp =  F[0][ix][iy][iz][k]/fnoneq(k);
+                        //if (temp<alpha) alpha = temp;
+                        //valid = true;
+                    //}
+                    //if (std::isnan(Ftemp[0][ix][iy][iz][k]))
+                    //{
+                        //std::cout << "CollideSC: Nan found, resetting" << std::endl;
+                        //std::cout << " " << alpha << " " << iVec3_t(ix,iy,iz) << " " << k << " " << std::endl;
+                        //throw new Fatal("Domain::CollideSC: Distribution funcitons gave nan value, check parameters");
+                    //}
+                //}
+            //}
+            
+            double *f = F[0][ix][iy][iz];
+            double *ft= Ftemp[0][ix][iy][iz];
+            double fneq[Nneigh];
+            int n=Nneigh,m=1;
+            double a = 1.0,b = 0.0;
+            dgemv_("N",&n,&n,&a,M.data,&n,f,&m,&b,ft,&m);
+
+            ft[ 0] = 0.0; 
+            ft[ 1] = S( 1)*(ft[ 1] + rho - rho*dot(vel,vel)/(Cs*Cs));
+            ft[ 2] = S( 2)*(ft[ 2] - rho);
+            ft[ 3] = 0.0;
+            ft[ 4] = S( 4)*(ft[ 4] + 7.0/3.0*rho*vel(0)/Cs); 
+            ft[ 5] = 0.0;
+            ft[ 6] = S( 6)*(ft[ 6] + 7.0/3.0*rho*vel(1)/Cs); 
+            ft[ 7] = 0.0;
+            ft[ 8] = S( 8)*(ft[ 8] + 7.0/3.0*rho*vel(2)/Cs); 
+            ft[ 9] = S( 9)*(ft[ 9] - rho*(2.0*vel(0)*vel(0)-vel(1)*vel(1)-vel(2)*vel(2))/(Cs*Cs));
+            ft[10] = S(10)*(ft[10] - rho*(vel(1)*vel(1)-vel(2)*vel(2))/(Cs*Cs));
+            ft[11] = S(11)*(ft[11] - rho*(vel(0)*vel(1))/(Cs*Cs));
+            ft[12] = S(12)*(ft[12] - rho*(vel(1)*vel(2))/(Cs*Cs));
+            ft[13] = S(13)*(ft[13] - rho*(vel(0)*vel(2))/(Cs*Cs));
+            ft[14] = S(14)* ft[14];
+            
+            dgemv_("N",&n,&n,&a,Minv.data,&n,ft,&m,&b,fneq,&m);
+
+
             bool valid = true;
             double alpha = 1.0;
             while (valid)
@@ -973,11 +1023,11 @@ inline void Domain::CollideMRT()
                 valid = false;
                 for (size_t k=0;k<Nneigh;k++)
                 {
-                    Ftemp[0][ix][iy][iz][k] = F[0][ix][iy][iz][k] - alpha*mnoneq(k);
+                    Ftemp[0][ix][iy][iz][k] = F[0][ix][iy][iz][k] - alpha*fneq[k];
                     //if (Ftemp[0][ix][iy][iz][k]<-1.0e-12)
                     //{
                         //std::cout << Ftemp[0][ix][iy][iz][k] << std::endl;
-                        //double temp =  F[0][ix][iy][iz][k]/mnoneq(k);
+                        //double temp =  F[0][ix][iy][iz][k]/fnoneq(k);
                         //if (temp<alpha) alpha = temp;
                         //valid = true;
                     //}
@@ -1563,8 +1613,8 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         if (Nl==1)
         {
             if (fabs(G[0])>1.0e-12) ApplyForcesSC();
-            CollideSC();
-            //CollideMRT();
+            //CollideSC();
+            CollideMRT();
             StreamSC();
         }
         else
@@ -1609,15 +1659,15 @@ const double Domain::MD3Q15 [15][15]  = { { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1
                                           {16.0,-4.0,-4.0,-4.0,-4.0,-4.0,-4.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0},
                                           { 0.0, 1.0,-1.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0, 1.0,-1.0, 1.0,-1.0},
                                           { 0.0,-4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0, 1.0,-1.0, 1.0,-1.0},
-                                          { 0.0, 0.0, 0.0, 1.0,-1.0, 0.0, 0.0, 1.0, 1.0,-1.0,-1.0, 1.0, 1.0,-1.0,-1.0},
-                                          { 0.0, 0.0, 0.0,-4.0, 4.0, 0.0, 0.0, 1.0, 1.0,-1.0,-1.0, 1.0, 1.0,-1.0,-1.0},
-                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0, 1.0, 1.0, 1.0, 1.0,-1.0,-1.0,-1.0,-1.0},
-                                          { 0.0, 0.0, 0.0, 0.0, 0.0,-4.0, 4.0, 1.0, 1.0, 1.0, 1.0,-1.0,-1.0,-1.0,-1.0},
+                                          { 0.0, 0.0, 0.0, 1.0,-1.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0,-1.0, 1.0,-1.0, 1.0},
+                                          { 0.0, 0.0, 0.0,-4.0, 4.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0,-1.0, 1.0,-1.0, 1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0,-1.0, 1.0, 1.0,-1.0,-1.0, 1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0,-4.0, 4.0, 1.0,-1.0,-1.0, 1.0, 1.0,-1.0,-1.0, 1.0},
                                           { 0.0, 2.0, 2.0,-1.0,-1.0,-1.0,-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
                                           { 0.0, 0.0, 0.0, 1.0, 1.0,-1.0,-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
-                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0,-1.0, 1.0, 1.0,-1.0,-1.0, 1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0,-1.0,-1.0,-1.0,-1.0},
                                           { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,-1.0,-1.0,-1.0,-1.0, 1.0, 1.0},
-                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0,-1.0, 1.0,-1.0, 1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,-1.0,-1.0, 1.0, 1.0,-1.0,-1.0},
                                           { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0,-1.0, 1.0,-1.0, 1.0, 1.0,-1.0} };
 }
 #endif
