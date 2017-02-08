@@ -27,6 +27,8 @@ struct UserData
 {
     double        rhomax;
     double        rhomin;
+    double            dt;
+    double            dx;
     std::ofstream oss_ss;      
     #ifdef USE_OCL
     cl::Buffer        bBCVel;
@@ -210,7 +212,7 @@ void Report (FLBM::Domain & dom, void * UD)
     }
     vave /= dom.Ndim(2)-2;
     
-    double vth = (dom.Ndim(2)-2)*(dom.Ndim(2)-2)/(12.0*(dom.Tau[0]-0.5))*(dat.rhomax-dat.rhomin)/(dom.Ndim(0));
+    double vth = dat.dx/dat.dt*(dom.Ndim(2)-2)*(dom.Ndim(2)-2)/(12.0*(dom.Tau[0]-0.5))*(dat.rhomax-dat.rhomin)/(dom.Ndim(0));
 
     dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << vave << Util::_8s << vth << std::endl;
     //std::cout << Util::_10_6 << dom.Time << Util::_8s << vave << Util::_8s << vth << std::endl;
@@ -219,16 +221,20 @@ void Report (FLBM::Domain & dom, void * UD)
 int main(int argc, char **argv) try
 {
     size_t Nproc = 1;
-    double nu    = 0.16; 
+    double nu    = 0.16;
+    double dx    = 1.0;
+    double dt    = 1.0;
     if (argc>=2) Nproc=atoi(argv[1]);
     if (argc>=3) nu   =atof(argv[2]);
+    if (argc>=4) dx   =atof(argv[3]);
+    if (argc>=5) dt   =atof(argv[4]);
     size_t nx = 100;
     size_t ny = 6;
     size_t nz = 10;
     //size_t nx = 1;
     //size_t ny = 1;
     //size_t nz = 2;
-    FLBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), 1.0, 1.0);
+    FLBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
     
     UserData dat;
     Dom.UserData = &dat;
@@ -236,6 +242,8 @@ int main(int argc, char **argv) try
 
     dat.rhomin  = 1.0;
     dat.rhomax  = 1.03;
+    dat.dx      = dx;
+    dat.dt      = dt;
 
     //Assigning solid boundaries at top and bottom
     for (size_t i=0;i<nx;i++)
@@ -256,7 +264,7 @@ int main(int argc, char **argv) try
     }  
     //std::cout << Dom.Minv << Dom.M << std::endl;
 
-    Dom.Solve(8000.0,80.0,Setup,Report,"single",true,Nproc);
+    Dom.Solve(1.0e4*dt,100.0*dt,Setup,Report,"single",true,Nproc);
     //Dom.Solve(1.0,80.0,NULL,NULL,"single",true,Nproc);
     dat.oss_ss.close();
 }

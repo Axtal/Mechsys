@@ -926,8 +926,8 @@ inline void Domain::CollideMRT()
         if (!IsSolid[0][ix][iy][iz])
         {
             //double NonEq[Nneigh];
-            double Q = 0.0;
-            double tau = Tau[0];
+            //double Q = 0.0;
+            //double tau = Tau[0];
             double rho = Rho[0][ix][iy][iz];
             Vec3_t vel = Vel[0][ix][iy][iz]+dt*BForce[0][ix][iy][iz]/rho;
             //double VdotV = dot(vel,vel);
@@ -940,56 +940,6 @@ inline void Domain::CollideMRT()
             //}
             //Q = sqrt(2.0*Q);
             //tau = 0.5*(tau+sqrt(tau*tau + 6.0*Q*Sc/rho));
-            //Vec_t f(Nneigh),fnoneq(Nneigh);
-            //for (size_t k=0;k<Nneigh;k++)
-            //{
-                //f(k) = F[0][ix][iy][iz][k];
-            //}
-            //m = M*f;
-            //f = M*f;
-            //fnoneq( 0) = 0.0; 
-            //fnoneq( 1) = S( 1)*(f( 1) + rho - rho*dot(vel,vel)/(Cs*Cs));
-            //fnoneq( 2) = S( 2)*(f( 2) - rho);
-            //fnoneq( 3) = 0.0;
-            //fnoneq( 4) = S( 4)*(f( 4) + 7.0/3.0*rho*vel(0)/Cs); 
-            //fnoneq( 5) = 0.0;
-            //fnoneq( 6) = S( 6)*(f( 6) + 7.0/3.0*rho*vel(1)/Cs); 
-            //fnoneq( 7) = 0.0;
-            //fnoneq( 8) = S( 8)*(f( 8) + 7.0/3.0*rho*vel(2)/Cs); 
-            //fnoneq( 9) = S( 9)*(f( 9) - rho*(2.0*vel(0)*vel(0)-vel(1)*vel(1)-vel(2)*vel(2))/(Cs*Cs));
-            //fnoneq(10) = S(10)*(f(10) - rho*(vel(1)*vel(1)-vel(2)*vel(2))/(Cs*Cs));
-            //fnoneq(11) = S(11)*(f(11) - rho*(vel(0)*vel(1))/(Cs*Cs));
-            //fnoneq(12) = S(12)*(f(12) - rho*(vel(1)*vel(2))/(Cs*Cs));
-            //fnoneq(13) = S(13)*(f(13) - rho*(vel(0)*vel(2))/(Cs*Cs));
-            //fnoneq(14) = S(14)* f(14);
-            //
-            //fnoneq = Minv*fnoneq;
-             
-            //std::cout << f << fnoneq << std::endl;
-            //bool valid = true;
-            //double alpha = 1.0;
-            //while (valid)
-            //{
-                //valid = false;
-                //for (size_t k=0;k<Nneigh;k++)
-                //{
-                    //Ftemp[0][ix][iy][iz][k] = F[0][ix][iy][iz][k] - alpha*fnoneq(k);
-                    //if (Ftemp[0][ix][iy][iz][k]<-1.0e-12)
-                    //{
-                        //std::cout << Ftemp[0][ix][iy][iz][k] << std::endl;
-                        //double temp =  F[0][ix][iy][iz][k]/fnoneq(k);
-                        //if (temp<alpha) alpha = temp;
-                        //valid = true;
-                    //}
-                    //if (std::isnan(Ftemp[0][ix][iy][iz][k]))
-                    //{
-                        //std::cout << "CollideSC: Nan found, resetting" << std::endl;
-                        //std::cout << " " << alpha << " " << iVec3_t(ix,iy,iz) << " " << k << " " << std::endl;
-                        //throw new Fatal("Domain::CollideSC: Distribution funcitons gave nan value, check parameters");
-                    //}
-                //}
-            //}
-            
             double *f = F[0][ix][iy][iz];
             double *ft= Ftemp[0][ix][iy][iz];
             double fneq[Nneigh];
@@ -1017,20 +967,21 @@ inline void Domain::CollideMRT()
 
 
             bool valid = true;
-            double alpha = 1.0;
+            double alpha = 1.0, alphat = 1.0;
             while (valid)
             {
+                alpha = alphat;
                 valid = false;
                 for (size_t k=0;k<Nneigh;k++)
                 {
                     Ftemp[0][ix][iy][iz][k] = F[0][ix][iy][iz][k] - alpha*fneq[k];
-                    //if (Ftemp[0][ix][iy][iz][k]<-1.0e-12)
-                    //{
+                    if (Ftemp[0][ix][iy][iz][k]<-1.0e-12)
+                    {
                         //std::cout << Ftemp[0][ix][iy][iz][k] << std::endl;
-                        //double temp =  F[0][ix][iy][iz][k]/fnoneq(k);
-                        //if (temp<alpha) alpha = temp;
-                        //valid = true;
-                    //}
+                        valid = true;
+                        double temp =  F[0][ix][iy][iz][k]/fneq[k];
+                        if (temp<alphat) alphat = temp;
+                    }
                     //if (std::isnan(Ftemp[0][ix][iy][iz][k]))
                     //{
                         //std::cout << "CollideSC: Nan found, resetting" << std::endl;
@@ -1167,7 +1118,7 @@ inline void Domain::StreamSC()
                 Rho[0][ix][iy][iz] +=  F[0][ix][iy][iz][k];
                 Vel[0][ix][iy][iz] +=  F[0][ix][iy][iz][k]*C[k];
             }
-            Vel[0][ix][iy][iz] /= Rho[0][ix][iy][iz];
+            Vel[0][ix][iy][iz] *= Cs/Rho[0][ix][iy][iz];
         }
     }
 }
@@ -1220,7 +1171,7 @@ inline void Domain::StreamMP()
                     Rho[il][ix][iy][iz] +=  F[il][ix][iy][iz][k];
                     Vel[il][ix][iy][iz] +=  F[il][ix][iy][iz][k]*C[k];
                 }
-                Vel[il][ix][iy][iz] /= Rho[il][ix][iy][iz];
+                Vel[il][ix][iy][iz] *= Cs*Rho[il][ix][iy][iz];
             }
         }
     }
@@ -1613,8 +1564,8 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
         if (Nl==1)
         {
             if (fabs(G[0])>1.0e-12) ApplyForcesSC();
-            //CollideSC();
-            CollideMRT();
+            CollideSC();
+            //CollideMRT();
             StreamSC();
         }
         else
