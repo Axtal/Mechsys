@@ -59,6 +59,12 @@ struct MtData;
 class Domain
 {
 public:
+    // Transformation matrices for MRT LBM
+    static const double   MD2Q5       [5][5]; ///< MRT transformation matrix (D2Q5)
+    static const double   MD2Q9       [9][9]; ///< MRT transformation matrix (D2Q9)
+    static const double   MD3Q15    [15][15]; ///< MRT transformation matrix (D3Q15)
+    static const double   MD3Q19    [19][19]; ///< MRT transformation matrix (D3Q19)
+    
     //typedefs
     typedef void (*ptDFun_t) (Domain & Dom, void * UserData);
 
@@ -118,6 +124,7 @@ public:
 
     void Initialize       (double dt=0.0);                                                                                              ///< Set the particles to a initial state and asign the possible insteractions
     void ApplyForce       (size_t n = 0, size_t Np = 1, bool MC=false);                                                                 ///< Apply the interaction forces
+    void CollideMRT       (size_t n = 0, size_t Np = 1);                                                                                ///< Apply the collision operator with DEM particles in the case of single component fluid
     void CollideSC        (size_t n = 0, size_t Np = 1);                                                                                ///< Apply the collision operator with DEM particles in the case of single component fluid
     void CollideMC        (size_t n = 0, size_t Np = 1);                                                                                ///< Apply the collision operator with DEM particles in the case of multiple component fluid
     void CollideNoPar     (size_t n = 0, size_t Np = 1);                                                                                ///< Apply the collision operator for the case of no DEM particles
@@ -175,6 +182,9 @@ public:
     double                                             Fconv;         ///< Force conversion factor
     Array <double>                                       EEk;         ///< Diadic velocity tensor trace
     void *                                          UserData;         ///< User Data
+    Mat_t                                                  M;         ///< Transformation matrix to momentum space for MRT calculations
+    Mat_t                                               Minv;         ///< Inverse Transformation matrix to momentum space for MRT calculations
+    Vec_t                                                  S;         ///< Vector of relaxation times for MRT
     size_t                                             Nproc;         ///< Number of cores for multithreading
     size_t                                           idx_out;         ///< The discrete time step
     size_t                                              Step;         ///< The space step to reduce the size of the h5 file for visualization
@@ -266,6 +276,23 @@ inline Domain::Domain(LBMethod Method, double nu, iVec3_t Ndim, double dx, doubl
         {
             EEk[k] += fabs(Lat[0].Cells[0]->C[k][n]*Lat[0].Cells[0]->C[k][m]);
         }
+    }
+
+    if (Method==D3Q15)
+    {
+        size_t Nneigh = 15;
+        M.Resize(Nneigh,Nneigh);
+        Minv.Resize(Nneigh,Nneigh);
+        for (size_t n=0;n<Nneigh;n++)
+        for (size_t m=0;m<Nneigh;m++)
+        {
+            M(n,m) = MD3Q15[n][m];
+        }
+        Inv(M,Minv);
+        double tau = 3.0*nu*dt/(dx*dx)+0.5;
+        double s   = 8.0*(2.0-1.0/tau)/(8.0-1.0/tau);
+        S.Resize(Nneigh);
+        S = 0.0,1.0/tau,1.0/tau,0.0,s,0.0,s,0.0,s,1.0/tau,1.0/tau,1.0/tau,1.0/tau,1.0/tau,s;
     }
 
     printf("%s  Num of cells   = %zd%s\n",TERM_CLR2,Lat.Size()*Lat[0].Ncells,TERM_RST);
@@ -1994,6 +2021,113 @@ inline void Domain::ApplyForce(size_t n, size_t Np, bool MC)
                     omp_unset_lock      (&nb->lck);
 #endif
                 }
+            }
+        }
+    }
+}
+
+void Domain::CollideMRT (size_t n, size_t Np)
+{
+    //std::cout << "SCP" << std::endl;
+	size_t Ni = Lat[0].Ncells/Np;
+    size_t In = n*Ni;
+    size_t Fn;
+    n == Np-1 ? Fn = Lat[0].Ncells : Fn = (n+1)*Ni;
+#ifdef USE_OMP
+    In = 0;
+    Fn = Lat[0].Ncells;
+    #pragma omp parallel for schedule(static) num_threads(Nproc)
+#endif
+    for (size_t i=In;i<Fn;i++)
+    {
+        Cell * c = Lat[0].Cells[i];
+        double rho = c->Rho;
+        Vec3_t vel = c->Vel+dt*c->BForce/rho;
+        if (!c->IsSolid)
+        {
+            double *f = c->F;
+            double *ft= c->Ftemp;
+            double fneq[c->Nneigh];
+
+            int n=c->Nneigh,m=1;
+            double a = 1.0,b = 0.0,Cs = c->Cs;
+            dgemv_("N",&n,&n,&a,M.data,&n,f,&m,&b,ft,&m);
+
+            ft[ 0] = 0.0; 
+            ft[ 1] = S( 1)*(ft[ 1] + rho - rho*dot(vel,vel)/(Cs*Cs));
+            ft[ 2] = S( 2)*(ft[ 2] - rho);
+            ft[ 3] = 0.0;
+            ft[ 4] = S( 4)*(ft[ 4] + 7.0/3.0*rho*vel(0)/Cs); 
+            ft[ 5] = 0.0;
+            ft[ 6] = S( 6)*(ft[ 6] + 7.0/3.0*rho*vel(1)/Cs); 
+            ft[ 7] = 0.0;
+            ft[ 8] = S( 8)*(ft[ 8] + 7.0/3.0*rho*vel(2)/Cs); 
+            ft[ 9] = S( 9)*(ft[ 9] - rho*(2.0*vel(0)*vel(0)-vel(1)*vel(1)-vel(2)*vel(2))/(Cs*Cs));
+            ft[10] = S(10)*(ft[10] - rho*(vel(1)*vel(1)-vel(2)*vel(2))/(Cs*Cs));
+            ft[11] = S(11)*(ft[11] - rho*(vel(0)*vel(1))/(Cs*Cs));
+            ft[12] = S(12)*(ft[12] - rho*(vel(1)*vel(2))/(Cs*Cs));
+            ft[13] = S(13)*(ft[13] - rho*(vel(0)*vel(2))/(Cs*Cs));
+            ft[14] = S(14)* ft[14];
+            
+            dgemv_("N",&n,&n,&a,Minv.data,&n,ft,&m,&b,fneq,&m);
+            
+            double Bn;
+            //rho<10e-12 ? Bn =0.0 : Bn = (c->Gamma*(Lat[j].Tau-0.5))/((1.0-c->Gamma)+(Lat[j].Tau-0.5));
+            //rho<10e-12 ? Bn =0.0 : Bn = c->Gamma;
+            Bn = (c->Gamma*(Lat[0].Tau-0.5))/((1.0-c->Gamma)+(Lat[0].Tau-0.5));
+            //Bn = c->Gamma;
+            //Bn = floor(c->Gamma);
+
+            bool valid  = true;
+            double alphal = 1.0;
+            double alphat = 1.0;
+            size_t num = 0;
+            while (valid)
+            {
+                num++;
+                valid = false;
+                alphal  = alphat;
+                for (size_t k=0;k<c->Nneigh;k++)
+                {
+                    //double FDeqn = c->Feq(k,DV,rho);
+                    //c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
+                    c->Ftemp[k] = c->F[k] - alphal*((1.0 - Bn)*fneq[k] - Bn*c->Omeis[k]);
+                    if (c->Ftemp[k]<-1.0e-12&&num<2)
+                    {
+                        //double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
+                        double temp = fabs(c->F[k]/((1.0 - Bn)*fneq[k] - Bn*c->Omeis[k]));
+                        if (temp<alphat) alphat = temp;
+                        valid = true;
+                    }
+                }
+            }
+            for (size_t k=0;k<c->Nneigh;k++)
+            {
+                if (std::isnan(c->Ftemp[k]))
+                {
+                    //c->Gamma = 2.0;
+                    #ifdef USE_HDF5
+                    //WriteXDMF("error");
+                    #endif
+                    //std::cout << "CollideSC: Nan found, resetting" << std::endl;
+                    std::cout << c->Density() << " " << c->BForce << " " << num << " " << alphat << " " << c->Index << " " << c->IsSolid << " " << c->Gamma << " " << k << " " << std::endl;
+                    c->Ftemp[k] = c->F[k];
+                    //throw new Fatal("Domain::Collide: Body force gives nan value, check parameters");
+                }
+                c->F[k] = fabs(c->Ftemp[k]);
+                //c->F[k] = fabs(c->Ftemp[k])*c->Rho/newrho;
+                //std::cout << newrho << std::endl;
+            }
+        }
+        else
+        {
+            for (size_t j = 1;j<c->Nneigh;j++)
+            {
+                c->Ftemp[j] = c->F[j];
+            }
+            for (size_t j = 1;j<c->Nneigh;j++)
+            {
+                c->F[j]     = c->Ftemp[c->Op[j]];
             }
         }
     }
@@ -3814,8 +3948,25 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
 
     printf("%s  Final CPU time       = %s\n",TERM_CLR2, TERM_RST);
 }
+
+//Matrices definitions
+
+const double Domain::MD3Q15 [15][15]  = { { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0},
+                                          {-2.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0},
+                                          {16.0,-4.0,-4.0,-4.0,-4.0,-4.0,-4.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0},
+                                          { 0.0, 1.0,-1.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0, 1.0,-1.0, 1.0,-1.0},
+                                          { 0.0,-4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0, 1.0,-1.0, 1.0,-1.0},
+                                          { 0.0, 0.0, 0.0, 1.0,-1.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0,-1.0, 1.0,-1.0, 1.0},
+                                          { 0.0, 0.0, 0.0,-4.0, 4.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0,-1.0, 1.0,-1.0, 1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0, 1.0,-1.0,-1.0, 1.0, 1.0,-1.0,-1.0, 1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0,-4.0, 4.0, 1.0,-1.0,-1.0, 1.0, 1.0,-1.0,-1.0, 1.0},
+                                          { 0.0, 2.0, 2.0,-1.0,-1.0,-1.0,-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+                                          { 0.0, 0.0, 0.0, 1.0, 1.0,-1.0,-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0,-1.0,-1.0,-1.0,-1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,-1.0,-1.0,-1.0,-1.0, 1.0, 1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,-1.0,-1.0, 1.0, 1.0,-1.0,-1.0},
+                                          { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,-1.0,-1.0, 1.0,-1.0, 1.0, 1.0,-1.0} };
+
 }
 
-
 #endif
-
