@@ -2042,7 +2042,7 @@ void Domain::CollideMRT (size_t n, size_t Np)
     {
         Cell * c = Lat[0].Cells[i];
         double rho = c->Rho;
-        Vec3_t vel = c->Vel+dt*c->BForce/rho;
+        Vec3_t vel = c->Vel;
         if (!c->IsSolid)
         {
             double *f = c->F;
@@ -2091,11 +2091,11 @@ void Domain::CollideMRT (size_t n, size_t Np)
                 {
                     //double FDeqn = c->Feq(k,DV,rho);
                     //c->Ftemp[k] = c->F[k] - alphal*((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]);
-                    c->Ftemp[k] = c->F[k] - alphal*((1.0 - Bn)*fneq[k] - Bn*c->Omeis[k]);
+                    c->Ftemp[k] = c->F[k] - alphal*((1.0 - Bn)*fneq[k] - Bn*c->Omeis[k] - dt*3.0*c->W[k]*dot(c->BForce,c->C[k])/Cs);
                     if (c->Ftemp[k]<-1.0e-12&&num<2)
                     {
                         //double temp = fabs(c->F[k]/((1 - Bn)*(c->F[k] - FDeqn)/Tau - Bn*c->Omeis[k]));
-                        double temp = fabs(c->F[k]/((1.0 - Bn)*fneq[k] - Bn*c->Omeis[k]));
+                        double temp = fabs(c->F[k]/((1.0 - Bn)*fneq[k] - Bn*c->Omeis[k] - dt*3.0*c->W[k]*dot(c->BForce,c->C[k])/Cs));
                         if (temp<alphat) alphat = temp;
                         valid = true;
                     }
@@ -3879,11 +3879,13 @@ inline void Domain::Solve(double Tf, double dtOut, ptDFun_t ptSetup, ptDFun_t pt
                 else
                 {
                     CollideSC(0,Nproc);
+                    //CollideMRT(0,Nproc);
                 }
             }
             else
             {
                 CollideNoPar(0,Nproc);
+                //CollideMRT(0,Nproc);
             }
 
             //Stream the distribution functions

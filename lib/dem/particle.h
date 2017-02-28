@@ -921,6 +921,7 @@ inline void Particle::Draw (std::ostream & os, char const * Color, bool BPY)
 
 inline void Particle::FixVeloc (double vx, double vy, double vz)
 {
+    w   = OrthoSys::O;
     v   = vx, vy, vz;
     vxf = true; vyf = true; vzf = true; 
     wxf = true; wyf = true; wzf = true;

@@ -101,7 +101,7 @@ void Report (LBM::Domain & dom, void * UD)
 int main(int argc, char **argv) try
 {
     size_t Nproc = 1; 
-    double Pf    = 0.9;
+    double Pf    = 1.0;
     double nu    = 0.16;
     double dx    = 1.0;
     double dt    = 1.0;
@@ -112,7 +112,7 @@ int main(int argc, char **argv) try
     if (argc>=6) dt   =atof(argv[5]);
     size_t nx = 100;
     size_t ny = 6;
-    size_t nz = 20;
+    size_t nz = 6;
     LBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
     
     UserData dat;
@@ -126,12 +126,12 @@ int main(int argc, char **argv) try
     dat.dx      = dx;
 
     //Assigning solid boundaries at top and bottom
-    //for (size_t i=0;i<nx;i++)
-    //for (size_t j=0;j<ny;j++)
-    //{
-        //Dom.Lat[0].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
-        //Dom.Lat[0].GetCell(iVec3_t(i,j,nz-1))->IsSolid = true;
-    //}
+    for (size_t i=0;i<nx;i++)
+    for (size_t j=0;j<ny;j++)
+    {
+        Dom.Lat[0].GetCell(iVec3_t(i,j,0   ))->IsSolid = true;
+        Dom.Lat[0].GetCell(iVec3_t(i,j,nz-1))->IsSolid = true;
+    }
 
 
     for (size_t ix=0;ix<nx;ix++)

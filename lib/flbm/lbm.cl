@@ -64,12 +64,12 @@ void Initialize(size_t iv, global double * F, global double * Rho, global double
 
 void kernel CheckUpLoad (global struct lbm_aux * lbmaux)
 {
-    //printf("Nl          %d \n",  lbmaux[0].Nl     );
-    //printf("Nneigh      %d \n",  lbmaux[0].Nneigh );
-    //printf("NCP         %d \n",  lbmaux[0].NCPairs);
-    //printf("Dim      %d %d \n",0,lbmaux[0].Nx );
-    //printf("Dim      %d %d \n",1,lbmaux[0].Ny );
-    //printf("Dim      %d %d \n",2,lbmaux[0].Nz );
+    //printf("Nl          %lu \n",  lbmaux[0].Nl     );
+    //printf("Nneigh      %lu \n",  lbmaux[0].Nneigh );
+    //printf("NCP         %lu \n",  lbmaux[0].NCPairs);
+    //printf("Dim      %d %lu \n",0,lbmaux[0].Nx );
+    //printf("Dim      %d %lu \n",1,lbmaux[0].Ny );
+    //printf("Dim      %d %lu \n",2,lbmaux[0].Nz );
     //printf("Sc          %f \n"  ,lbmaux[0].Sc );
     //printf("Tau_0        %f \n"  ,lbmaux[0].Tau[0]);
     //for (size_t i=0;i < lbmaux[0].Nneigh;i++)

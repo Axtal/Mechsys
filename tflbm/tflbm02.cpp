@@ -45,8 +45,8 @@ int main(int argc, char **argv) try
     double dt = 1.0;
     double Tf = 10000.0;
     //double Tf = 200.0;
-    //FLBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
-    FLBM::Domain Dom(D3Q19, nu, iVec3_t(nx,ny,nz), dx, dt);
+    FLBM::Domain Dom(D3Q15, nu, iVec3_t(nx,ny,nz), dx, dt);
+    //FLBM::Domain Dom(D3Q19, nu, iVec3_t(nx,ny,nz), dx, dt);
     //FLBM::Domain Dom(D2Q9, nu, iVec3_t(nx,ny,nz), dx, dt);
     //Dom.Rhoref[0] =  2.0;
     //Dom.G     [0] = -4.0;

@@ -29,6 +29,7 @@ struct UserData
     Vec3_t                acc;
     double                 nu;
     double                  R;
+    double                 Tf;
     Array<Cell *>        xmin;
     Array<Cell *>        xmax;
 };
@@ -36,14 +37,66 @@ struct UserData
 void Setup(LBM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
+//#ifdef USE_OMP
+    //#pragma omp parallel for schedule(static) num_threads(dom.Nproc)
+//#endif
+    //for (size_t i=0;i<dom.Lat[0].Ncells;i++)
+    //{
+        //Cell * c   = dom.Lat[0].Cells[i];
+        //c->BForcef = c->Rho*dat.acc;
+    //}
+
+    
 #ifdef USE_OMP
     #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
 #endif
-    for (size_t i=0;i<dom.Lat[0].Ncells;i++)
+    for (size_t i=0;i<dat.xmin.Size();i++)
     {
-        Cell * c   = dom.Lat[0].Cells[i];
-        c->BForcef = c->Rho*dat.acc;
+        Cell   * c = dat.xmin[i];
+        //double * f = c->F;
+        double  Cs = c->Cs;
+        double vel;
+        if (3.0*dom.Time<dat.Tf) vel = dat.acc(0)*3.0*dom.Time/dat.Tf;
+        else                 vel = dat.acc(0);
+        double rho = (c->F[0] + c->F[3] + c->F[4] + c->F[5] + c->F[6] + 2.0*(c->F[2] + c->F[8] + c->F[10] + c->F[12] + c->F[14]))/(1.0 - dat.acc(0)/Cs);
+        c->F[ 1] = c->F[ 2] + 2.0/3.0 *rho*vel/Cs;
+        c->F[ 7] = c->F[ 8] + 1.0/12.0*rho*vel/Cs - 1.0/4.0*( c->F[3] - c->F[4] + c->F[5] - c->F[6]);
+        c->F[ 9] = c->F[10] + 1.0/12.0*rho*vel/Cs - 1.0/4.0*( c->F[3] - c->F[4] - c->F[5] + c->F[6]);
+        c->F[11] = c->F[12] + 1.0/12.0*rho*vel/Cs - 1.0/4.0*(-c->F[3] + c->F[4] + c->F[5] - c->F[6]);
+        c->F[13] = c->F[14] + 1.0/12.0*rho*vel/Cs - 1.0/4.0*(-c->F[3] + c->F[4] - c->F[5] + c->F[6]);
+        //f[ 1] = -(2.0*(f[0]+f[3]+f[4]+f[5]+f[6]+2.0*f[8]+2.0*f[10]+2.0*f[12]+2.0*f[14])*dat.acc(0)/Cs+f[2]*(dat.acc(0)/Cs+3.0))/(3.0*(dat.acc(0)/Cs-1.0));
+        //f[ 7] =  (2.0*f[ 8]*(5.0*dat.acc(0)/Cs-6.0)-(f[0]+2.0*f[2]+f[3]+f[4]+f[5]+f[6]+2.0*f[10]+2.0*f[12]+2.0*f[14])*dat.acc(0)/Cs)/(12.0*(dat.acc(0)/Cs-1.0));
+        //f[ 9] =  (2.0*f[10]*(5.0*dat.acc(0)/Cs-6.0)-(f[0]+2.0*f[2]+f[3]+f[4]+f[5]+f[6]+2.0*f[ 8]+2.0*f[12]+2.0*f[14])*dat.acc(0)/Cs)/(12.0*(dat.acc(0)/Cs-1.0));
+        //f[11] =  (2.0*f[12]*(5.0*dat.acc(0)/Cs-6.0)-(f[0]+2.0*f[2]+f[3]+f[4]+f[5]+f[6]+2.0*f[ 8]+2.0*f[10]+2.0*f[14])*dat.acc(0)/Cs)/(12.0*(dat.acc(0)/Cs-1.0));
+        //f[13] =  (2.0*f[14]*(5.0*dat.acc(0)/Cs-6.0)-(f[0]+2.0*f[2]+f[3]+f[4]+f[5]+f[6]+2.0*f[ 8]+2.0*f[10]+2.0*f[12])*dat.acc(0)/Cs)/(12.0*(dat.acc(0)/Cs-1.0));
+        c->Rho = c->VelDen(c->Vel);
     }
+
+//#ifdef USE_OMP
+    //#pragma omp parallel for schedule(static) num_threads(dom.Nproc)
+//#endif
+    //for (size_t i=0;i<dat.xmax.Size();i++)
+    //{
+        //Cell   * c = dat.xmax[i];
+        //double * f = c->F;
+        //double  Cs = c->Cs;
+        //double vel;
+        //if (3.0*dom.Time<dat.Tf) vel = dat.acc(0)*3.0*dom.Time/dat.Tf;
+        //else                 vel = dat.acc(0);
+        //double rho = (c->F[0] + c->F[3] + c->F[4] + c->F[5] + c->F[6] + 2.0*(c->F[1] + c->F[7] + c->F[9] + c->F[11] + c->F[13]))/(1.0 + dat.acc(0)/Cs);
+        //c->F[ 2] = c->F[ 1] - 2.0/3.0 *rho*vel/Cs;
+        //c->F[ 8] = c->F[ 7] - 1.0/12.0*rho*vel/Cs + 1.0/4.0*( c->F[3] - c->F[4] + c->F[5] - c->F[6]);
+        //c->F[10] = c->F[ 9] - 1.0/12.0*rho*vel/Cs + 1.0/4.0*( c->F[3] - c->F[4] - c->F[5] + c->F[6]);
+        //c->F[12] = c->F[11] - 1.0/12.0*rho*vel/Cs + 1.0/4.0*(-c->F[3] + c->F[4] + c->F[5] - c->F[6]);
+        //c->F[14] = c->F[13] - 1.0/12.0*rho*vel/Cs + 1.0/4.0*(-c->F[3] + c->F[4] - c->F[5] + c->F[6]);
+        //f[ 2] =  -(f[1]*(dat.acc(0)/Cs-3.0)+2.0*(f[0]+f[3]+f[4]+f[5]+f[6]+2.0*f[7]+2.0*f[9]+2.0*f[11]+2.0*f[13])*dat.acc(0)/Cs)/(3.0*(dat.acc(0)/Cs+1.0));
+        //f[ 8] =   (2.0*f[ 7]*(5.0*dat.acc(0)/Cs+6.0)-(f[0]+2.0*f[1]+f[3]+f[4]+f[5]+f[6]+2.0*f[9]+2.0*f[11]+2.0*f[13])*dat.acc(0)/Cs)/(12.0*(dat.acc(0)/Cs+1.0));
+        //f[10] =   (2.0*f[ 9]*(5.0*dat.acc(0)/Cs+6.0)-(f[0]+2.0*f[1]+f[3]+f[4]+f[5]+f[6]+2.0*f[7]+2.0*f[11]+2.0*f[13])*dat.acc(0)/Cs)/(12.0*(dat.acc(0)/Cs+1.0));
+        //f[12] =   (2.0*f[11]*(5.0*dat.acc(0)/Cs+6.0)-(f[0]+2.0*f[1]+f[3]+f[4]+f[5]+f[6]+2.0*f[7]+2.0*f[9 ]+2.0*f[13])*dat.acc(0)/Cs)/(12.0*(dat.acc(0)/Cs+1.0));
+        //f[14] =   (2.0*f[13]*(5.0*dat.acc(0)/Cs+6.0)-(f[0]+2.0*f[1]+f[3]+f[4]+f[5]+f[6]+2.0*f[7]+2.0*f[9 ]+2.0*f[11])*dat.acc(0)/Cs)/(12.0*(dat.acc(0)/Cs+1.0));
+        //c->Rho = c->VelDen(c->Vel);
+    //}
+
     //for (size_t i=0;i<dat.xmin.Size();i++)
     //{
         //Cell * c = dat.xmin[i];
@@ -55,17 +108,20 @@ void Setup(LBM::Domain & dom, void * UD)
         //c->F[13]= 1.0/24.0*(-2*c->F[0] - 4*c->F[10] - 4 *c->F[12]+20*c->F[14]-4*c->F[2]-5*c->F[3]+  c->F[4]-5*c->F[5]+c->F[6]-4*c->F[8]+2*c->RhoBC);
         //c->Rho = c->VelDen(c->Vel);
     //}
-    //for (size_t i=0;i<dat.xmax.Size();i++)
-    //{
-        //Cell * c = dat.xmax[i];
-        //if(c->IsSolid) continue;
-        //c->F[2] = 1/3.0* (-2*c->F[0]-c->F[1]-2*(2*c->F[11]+2*c->F[13]+c->F[3]+c->F[4]+c->F[5]+c->F[6]+2*c->F[7]+2*c->F[9]-c->RhoBC));
-        //c->F[8] = 1/24.0*(-2*c->F[0] - 4*c->F[1] - 4*c->F[11] - 4*c->F[13] - 5*c->F[3] + c->F[4] - 5*c->F[5] + c->F[6] +20*c->F[7] - 4*c->F[9] + 2*c->RhoBC);
-        //c->F[10]= 1/24.0*(-2*c->F[0] - 4*c->F[1] - 4*c->F[11] - 4*c->F[13] - 5*c->F[3] + c->F[4] + c->F[5] - 5*c->F[6] - 4*c->F[7] + 20*c->F[9] + 2*c->RhoBC) ;
-        //c->F[12]= 1/24.0*(-2*c->F[0] - 4*c->F[1] + 20*c->F[11] - 4*c->F[13] + c->F[3] - 5*c->F[4] - 5*c->F[5] + c->F[6] -  4*c->F[7] - 4*c->F[9] + 2*c->RhoBC);
-        //c->F[14]= 1/24.0*(-2*c->F[0] - 4*c->F[1] - 4*c->F[11] + 20*c->F[13] + c->F[3] - 5*c->F[4] + c->F[5] - 5*c->F[6] -  4*c->F[7] - 4*c->F[9] + 2*c->RhoBC);
-        //c->Rho = c->VelDen(c->Vel);
-    //}
+#ifdef USE_OMP
+    #pragma omp parallel for schedule(static) num_threads(dom.Nproc)
+#endif
+    for (size_t i=0;i<dat.xmax.Size();i++)
+    {
+        Cell * c = dat.xmax[i];
+        if(c->IsSolid) continue;
+        c->F[2] = 1/3.0* (-2*c->F[0]-c->F[1]-2*(2*c->F[11]+2*c->F[13]+c->F[3]+c->F[4]+c->F[5]+c->F[6]+2*c->F[7]+2*c->F[9]-1.0));
+        c->F[8] = 1/24.0*(-2*c->F[0] - 4*c->F[1] - 4*c->F[11] - 4*c->F[13] - 5*c->F[3] + c->F[4] - 5*c->F[5] + c->F[6] +20*c->F[7] - 4*c->F[9] + 2*1.0);
+        c->F[10]= 1/24.0*(-2*c->F[0] - 4*c->F[1] - 4*c->F[11] - 4*c->F[13] - 5*c->F[3] + c->F[4] + c->F[5] - 5*c->F[6] - 4*c->F[7] + 20*c->F[9] + 2*1.0) ;
+        c->F[12]= 1/24.0*(-2*c->F[0] - 4*c->F[1] + 20*c->F[11] - 4*c->F[13] + c->F[3] - 5*c->F[4] - 5*c->F[5] + c->F[6] -  4*c->F[7] - 4*c->F[9] + 2*1.0);
+        c->F[14]= 1/24.0*(-2*c->F[0] - 4*c->F[1] - 4*c->F[11] + 20*c->F[13] + c->F[3] - 5*c->F[4] + c->F[5] - 5*c->F[6] -  4*c->F[7] - 4*c->F[9] + 2*1.0);
+        c->Rho = c->VelDen(c->Vel);
+    }
 }
 
 void Report(LBM::Domain & dom, void * UD)
@@ -164,13 +220,15 @@ int main(int argc, char **argv) try
     dat.acc      = Vec3_t(Dp,0.0,0.0);
     dat.R        = R;
     dat.nu       = nu;
+    dat.Tf       = Tf;
 
     for (int i=0;i<nx;i++)
     for (int j=0;j<ny;j++)
     for (int k=0;k<nz;k++)
     {
-        Vec3_t v0(0.0,0.0,0.0);
-        Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(1.0,v0);
+        Dom.Lat[0].GetCell(iVec3_t(i,j,k))->Initialize(1.0,OrthoSys::O);
+        if (i==0   ) dat.xmin.Push(Dom.Lat[0].GetCell(iVec3_t(i,j,k)));
+        if (i==nx-1) dat.xmax.Push(Dom.Lat[0].GetCell(iVec3_t(i,j,k)));
     }
 
     if       (ptype=="sphere")  Dom.AddSphere(-1,Vec3_t(0.5*nx*dx,0.5*ny*dx,0.5*nz*dx),R,3.0);
